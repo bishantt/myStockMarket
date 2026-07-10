@@ -61,20 +61,26 @@ Eleven commits on `main`, all pushed to github.com/bishantt/myStockMarket (priva
 Tests: 45 app unit + 14 Playwright (auth + PWA) + 13 pipeline pytest, all green. CI runs the
 app and pipeline jobs on every push; e2e + Lighthouse on `phase-*` tags.
 
+## P0 is DONE (tagged phase-0, CI green). Now in P1 — the data spine (plan §7 P1).
+
+**P1 build order (plan §7):** 1) Prisma schema v1 + seed · 2) adapters/base.py + alpaca.py
+(mint new-provider-adapter) · 3) indicators.py toy-series-tested (mint new-indicator) ·
+4) Parquet/DuckDB store + scans.py (5 presets) · 5) publish.py wired into job_a · 6) Desk
+modules 01 macro / 04 movers / 05 watchlist, all 8 mastheads · 7) RailSheet + /ticker/[symbol]
+with Lightweight Charts · 8) SW morning-payload cache + OfflineRibbon · 9) weekly pg_dump.
+**Tests-first (§6.2):** every indicator (toy series), adapter fixtures + rate-limit, universe
+hard-fail (<95%), publish transaction isolation, stage-skip rerun, signal_log idempotency,
+watchlist server actions, e2e journeys 1/2/5, visual baselines.
+
 ## Next 3 tasks
 
-1. **Close the §6.4 gate → tag phase-0.** (a) Set up Lighthouse (mint the `release-phase` skill
-   per §9.3): an authenticated mobile run of `/` with a CI-minted session cookie, asserting the
-   perf/a11y budgets and first-load JS ≤ 200KB. (b) The healthchecks down-drill: disable
-   nightly-b, wait past the 45-min grace, confirm the check goes DOWN via the read-only API,
-   re-enable and confirm recovery. Then `git tag phase-0` + push.
-2. **Optional polish before P1:** connect the GitHub repo in the Vercel dashboard (Project →
-   Settings → Git, Root Directory = `app`) so `git push` auto-deploys; delete the unused
-   "My First Check" in healthchecks; rotate the Supabase DB password (was visible in chat).
-3. **P1 begins — the data spine:** Prisma schema v1 (Appendix B), `adapters/base.py` +
-   `adapters/alpaca.py` and mint the `new-provider-adapter` skill, `indicators.py` (toy-series
-   tests) + `new-indicator` skill, the Parquet/DuckDB store, and the first real Desk modules
-   (macro pulse, movers, watchlist).
+1. **P1 step 1 — Prisma schema v1** (Appendix B): Instrument, PriceBar, ScanResult, SignalLog,
+   WatchlistItem + enums; migrate; extend prisma/seed.ts with a deterministic synthetic morning.
+2. **P1 step 2 — the Alpaca adapter**, test-first: `adapters/base.py` (repository interface +
+   token-bucket rate limiter + fixture loader), then `adapters/alpaca.py` (daily bars, universe,
+   corporate actions) with recorded fixtures via httpx.MockTransport. Mint `new-provider-adapter`.
+3. **P1 step 3 — indicators.py**: the Appendix F set as Polars expressions, toy-series tests
+   first (frozen 30-bar series, expected values from pandas-ta-classic). Mint `new-indicator`.
 
 ## Deployment facts (2026-07-10)
 - Production: **https://mystockmarket-eight.vercel.app** — our /login wall gates it; preview/

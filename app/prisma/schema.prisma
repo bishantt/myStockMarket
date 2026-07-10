@@ -1,9 +1,9 @@
 // Prisma schema — the serving and user-state database (plan Appendix B).
 //
-// This is schema v0: the pipeline_run table and nothing else (plan P0 step 7). It is
-// deliberately the whole schema at this phase — the walking skeleton only has to prove that a
-// cloud cron writes a row and the app reads it. The real serving tables (instrument, price_bar,
-// scan_result, signal_log, ...) arrive at P1 and grow phase by phase.
+// Schema v1 (plan P1 step 1): the data spine. Beyond the pipeline_run heartbeat from v0, this
+// adds the tables the nightly pipeline fills and the Desk reads — instruments, price bars, scan
+// results, the insert-only signal log — plus the user's watchlist. The remaining tables
+// (base rates, setup cards, vol bands, briefings, paper trades, ...) arrive in later phases.
 //
 // Two connection URLs, and the split matters (Supabase + Prisma, plan Appendix D):
 //   url       — the transaction pooler (port 6543). The app's runtime queries go here. It
@@ -44,4 +44,111 @@ model PipelineRun {
   batchId      String?   @map("batch_id")
 
   @@map("pipeline_run")
+}
+
+/// The US exchanges in scope (plan Appendix F: NYSE/Nasdaq/AMEX common stocks + ETFs, no OTC).
+enum Exchange {
+  NYSE
+  NASDAQ
+  AMEX
+}
+
+/// The master list of tradable symbols — the universe (Appendix B).
+///
+/// Delisted names are RETAINED (never deleted): survivorship-filtered history flatters every
+/// backtest, and keeping delisted rows is how the app avoids that trap (Research Report §6.5).
+/// `isActive` and `delistedAt` record a symbol's status without dropping its history.
+model Instrument {
+  symbol     String    @id
+  name       String
+  exchange   Exchange
+  sector     String?
+  industry   String?
+  /// SEC Central Index Key, for EDGAR filings (null until matched). Set in P2.
+  cik        String?
+  isActive   Boolean   @default(true) @map("is_active")
+  delistedAt DateTime? @map("delisted_at") @db.Date
+
+  watchlistItems WatchlistItem[]
+
+  @@map("instrument")
+}
+
+/// Daily OHLCV for the symbols the app serves — the watchlist plus the indices and sector ETFs,
+/// roughly five years each (Appendix B). The full ~5-6k-symbol history lives as Parquet on R2 and
+/// is never loaded into Postgres; this table is only what the Desk needs to render.
+///
+/// Keyed by (symbol, date) so a re-pull of a trading day updates in place rather than duplicating.
+model PriceBar {
+  symbol String   @map("symbol")
+  date   DateTime @db.Date
+  open   Float
+  high   Float
+  low    Float
+  close  Float
+  /// Split- and dividend-adjusted close, used for indicator math and forward returns.
+  adjC   Float    @map("adj_close")
+  /// Daily share volume. BigInt because a heavily-traded penny stock can exceed the 2.1B Int32
+  /// ceiling on a spike day; the app serialises it down to a JS number for display.
+  vol    BigInt
+
+  @@id([symbol, date])
+  @@map("price_bar")
+}
+
+/// The user's watchlist — the only table in this file the APP writes (via server actions).
+///
+/// The focus cap (max 3 focus names) is enforced in the UI, not the schema, so the rule can carry
+/// its own explanatory copy rather than surfacing as a raw database error (plan Appendix B).
+model WatchlistItem {
+  id        String     @id @default(cuid())
+  symbol    String
+  instrument Instrument @relation(fields: [symbol], references: [symbol])
+  /// A written reason is required per name — the app makes the user articulate why they are
+  /// watching it (Research Report §9.2, the focus-watchlist discipline).
+  reason    String
+  isFocus   Boolean    @default(false) @map("is_focus")
+  addedAt   DateTime   @default(now()) @map("added_at")
+
+  @@index([symbol])
+  @@map("watchlist_item")
+}
+
+/// One row per symbol that matched a scan preset on a given run (Appendix B). Written nightly by
+/// the pipeline. `metrics` is JSON so each preset can carry its own fields (RVOL, gap %, the
+/// lottery-risk flag, ...) without a migration per preset.
+model ScanResult {
+  id        String   @id @default(cuid())
+  runDate   DateTime @map("run_date") @db.Date
+  /// Which preset matched, e.g. "unusual-volume" (Appendix F keys). A string, not an enum, so a
+  /// new preset can ship without a schema migration.
+  presetKey String   @map("preset_key")
+  symbol    String
+  rank      Int
+  metrics   Json
+
+  @@index([runDate])
+  @@map("scan_result")
+}
+
+/// The public track record's foundation: every setup the app flags is logged here, INSERT-ONLY,
+/// from P1 (Appendix B, plan §1.5 rule 7). The database GRANT is revoked for UPDATE/DELETE in a
+/// migration so the log can never be edited — misses stay visible forever.
+///
+/// Rate fields (statedWinRate, statedN) are null until P4, when base rates exist; at P1 the
+/// signal log records only that a pattern fired and when it resolves.
+model SignalLog {
+  id            String   @id @default(cuid())
+  firedDate     DateTime @map("fired_date") @db.Date
+  symbol        String
+  patternKey    String   @map("pattern_key")
+  horizonDays   Int      @map("horizon_days")
+  statedWinRate Float?   @map("stated_win_rate")
+  statedN       Int?     @map("stated_n")
+  resolvesOn    DateTime @map("resolves_on") @db.Date
+
+  /// One log row per (day, pattern, symbol, horizon) — a rerun of a night inserts nothing new
+  /// (the publish uses ON CONFLICT DO NOTHING). This is what makes the nightly job idempotent.
+  @@unique([firedDate, patternKey, symbol, horizonDays])
+  @@map("signal_log")
 }
