@@ -1,0 +1,6 @@
+# app/.env is a symlink to the repo-root .env — it exists only for local dev, where Next and
+# Prisma read one shared secret store. On Vercel the environment comes from the platform (the
+# project's environment variables), never from a file, and the symlink's target is not uploaded,
+# so shipping the broken link makes `next build` fail trying to stat it. Keep it out of the deploy.
+.env
+.env.*
