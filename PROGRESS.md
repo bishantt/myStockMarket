@@ -1,14 +1,14 @@
 # PROGRESS.md — resumable state
 
-**Current phase:** P0 — closing the exit gate (Lighthouse done; healthchecks down-drill running).
-**Last green gate (§6.4):** 2026-07-10 — typecheck, lint, 45 app unit, 13 pytest, webpack build,
-font budget (237/320KB), 28 Playwright (auth + PWA, both viewports), anti-drift §3.10 greps.
-**Lighthouse (deployed /, mobile 4G, authenticated via a minted cookie — scripts/lighthouse-check.mjs):**
-performance 90–95 ✓, accessibility 100 ✓, CLS 0.000 ✓, first-load JS 131KB ✓, server 12–17ms.
-LCP 2.8–3.4s is over the 2.5s budget — accepted for P0 as a synthetic cold-4G artifact on a
-contentless page (the app is optimally built; DECISIONS 2026-07-10; QUESTIONS-FOR-BISHANT.md).
-**Healthchecks down-drill:** /start fired 21:26 UTC; the check flips to "down" ~22:12 UTC
-(45-min grace) with no success ping — then recover. Runs via the temporary drill.yml workflow.
+**Current phase:** P0 COMPLETE — tagged `phase-0` (2026-07-10). P1 (data spine) is next.
+**Last green gate (§6.4), 2026-07-10:** typecheck, lint, 45 app unit, 13 pytest, webpack build,
+font budget (237/320KB), 28 Playwright (auth + PWA, both viewports), anti-drift §3.10 greps —
+all green. **Lighthouse** (deployed /, mobile 4G, authenticated via a minted cookie —
+scripts/lighthouse-check.mjs): performance 90–95 ✓, a11y 100 ✓, CLS 0.000 ✓, first-load JS
+131KB ✓; LCP 2.8–3.4s accepted as a synthetic cold-4G artifact on a contentless page (DECISIONS
+2026-07-10, QUESTIONS-FOR-BISHANT.md — a [VETO?] item). **Healthchecks down-drill: PASSED** —
+/start with no success → STATUS=down after the 45-min grace → recovery → STATUS=up, all via the
+read-only API.
 **Checkpoint:** P0 steps 1, 3, 4, 5, 6, 7, 8 done and committed; step 9 is done except the
 Vercel deploy. **The P0 loop is proven end to end:** the cloud wrote a pipeline_run row and the
 app renders it. Only the Vercel deploy and the remaining Session-0 secrets stand between here
