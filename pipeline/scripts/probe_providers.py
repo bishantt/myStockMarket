@@ -76,9 +76,12 @@ def probe_finnhub(s: Settings) -> Result:
 def probe_fmp(s: Settings) -> Result:
     if not s.fmp_key:
         return Result("FMP", "SKIP", "FMP_KEY not set")
+    # FMP retired its /api/v3/ endpoints on 2025-08-31 ("Legacy Endpoint ... no longer
+    # supported") and moved to a /stable/ API. The P2 earnings-calendar adapter must use
+    # /stable/earnings-calendar; this smoke test hits the light /stable/quote to confirm auth.
     return _http_probe(
         "FMP",
-        lambda c: c.get("https://financialmodelingprep.com/api/v3/profile/AAPL", params={"apikey": s.fmp_key}),
+        lambda c: c.get("https://financialmodelingprep.com/stable/quote", params={"symbol": "AAPL", "apikey": s.fmp_key}),
     )
 
 

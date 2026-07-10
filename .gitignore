@@ -27,3 +27,6 @@ test-results/
 .vercel/
 .DS_Store
 *.log
+
+# temp raw auth hash for Vercel (delete after deploy)
+.vercel-auth-hash.tmp
