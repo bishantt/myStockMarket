@@ -23,6 +23,10 @@ const TEST_PASS_HASH =
 
 export default defineConfig({
   testDir: "./e2e",
+  // The web server below authenticates with the fixture credentials in `env`. Those survive
+  // because the developer's real login lives in app/.env.development.local (loaded by `next dev`,
+  // never by the `next start` this server runs), so root .env carries no AUTH_PASS_HASH to make
+  // dotenv-expand mangle the fixture hash. CI has neither file, so the fixtures win there too.
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 1 : 0,
