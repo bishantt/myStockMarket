@@ -4,8 +4,16 @@
 **Last green gate (§6.4):** partial, 2026-07-10 — typecheck, lint, 45 unit tests, build,
 font budget, and 9 Playwright auth tests all green. The full gate cannot run yet: it needs
 Lighthouse (nothing is deployed) and the visual-regression baselines (captured at P0 step 9).
-**Checkpoint:** P0 steps 1, 3, 4 and 5 are done and committed. Step 2 (Session-0) is waiting
-on the user. Steps 6, 7, 8, 9 remain.
+**Checkpoint:** P0 steps 1, 3, 4, 5 and 7 are done and committed. Step 2 (Session-0) is
+partly in — Supabase is fully wired and the first migration is applied. Steps 6, 8, 9 remain,
+plus the rest of the Session-0 secrets.
+
+**Supabase is live (2026-07-10).** All three connection strings verified; `pipeline_run`
+migrated onto the real database; a Prisma write/read/delete round-trip through the pooler
+succeeds. `DIRECT_URL` points at the IPv4 session pooler because the free-tier direct host is
+IPv6-only on this network (logged). The DB password was visible in chat when pasted — a
+rotation at the end of Session-0 is recommended, after which the strings get re-pasted and
+re-tested once.
 
 ## Where the build actually is
 
@@ -28,14 +36,16 @@ colour), dropping to 48px at the phone breakpoint; its delta is 13.5px in `--up-
 
 1. **P0 step 6 — PWA seed.** `manifest.ts`, `public/mark.svg` (the three-candle tick mark from
    the document covers), `scripts/icons.mjs` (sharp is installed and verified), the generated
-   icon set, Serwist wiring, and the `/offline` route. All of it is key-free — nothing here
-   waits on the user. Note `/offline` must be `force-static` like `/login`, for the same reason.
-2. **P0 step 8, authoring half — pipeline skeleton.** `uv init` in `pipeline/`, `config.py`
-   (pydantic settings, env names per Appendix D) with its missing-env test, the
-   `scripts/probe_providers.py` shell, `jobs/job_a.py` and `jobs/job_b.py` stubs, and the three
-   workflow YAMLs per Appendix C. Authoring is key-free; *running* the probes needs the keys.
-3. **P0 step 7 — Prisma.** Schema v0 is `pipeline_run` only, plus `lib/db.ts`. This is the
-   first hard block: `prisma migrate dev` needs Supabase's `DIRECT_URL`.
+   icon set, Serwist wiring, and the `/offline` route. All key-free. `/offline` must be
+   `force-static` like `/login`, for the same reason.
+2. **P0 step 8, authoring half — pipeline skeleton.** `uv init` in `pipeline/` (uv is
+   installed), `config.py` (pydantic settings, env names per Appendix D) with its missing-env
+   test, `scripts/probe_providers.py` shell, `jobs/job_a.py` and `jobs/job_b.py` stubs, and the
+   three workflow YAMLs per Appendix C. Authoring is key-free; *running* the probes needs keys.
+   `config.py` must strip `?pgbouncer=true` from DATABASE_URL before handing it to psycopg.
+3. **P0 step 9 + deploy** — needs the GitHub repo (Session-0 #1: user runs `gh auth login`,
+   then repo creation is mine), Vercel link, and the app env vars. Wires the Desk module 0 to
+   show the last `pipeline_run` timestamp, deploys, runs one `workflow_dispatch`.
 
 ## Blocked
 
