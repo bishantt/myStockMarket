@@ -1,0 +1,47 @@
+// Prisma schema — the serving and user-state database (plan Appendix B).
+//
+// This is schema v0: the pipeline_run table and nothing else (plan P0 step 7). It is
+// deliberately the whole schema at this phase — the walking skeleton only has to prove that a
+// cloud cron writes a row and the app reads it. The real serving tables (instrument, price_bar,
+// scan_result, signal_log, ...) arrive at P1 and grow phase by phase.
+//
+// Two connection URLs, and the split matters (Supabase + Prisma, plan Appendix D):
+//   url       — the transaction pooler (port 6543). The app's runtime queries go here. It
+//               carries ?pgbouncer=true so Prisma disables prepared statements, which the
+//               pooler's transaction mode cannot keep across pooled connections.
+//   directUrl — a per-session connection (port 5432). Prisma Migrate uses this, never the
+//               pooler. On this network it points at Supabase's session pooler rather than the
+//               true direct host, because the free-tier direct host is IPv6-only (see .env and
+//               DECISIONS.md 2026-07-10).
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+/// One row per pipeline run — the heartbeat of the nightly cloud jobs (Appendix B).
+///
+/// Keyed by the trading day it processed, so a run is idempotent by date: re-running a night
+/// updates that day's row rather than inserting a duplicate. `stageStatus` and `sourceStatus`
+/// are JSON maps that will carry per-stage and per-provider health as the pipeline grows; at
+/// P0 the hello-run writes them as small placeholder objects.
+model PipelineRun {
+  /// The US trading day this run processed (its primary key). Stored as a bare date.
+  runDate      DateTime  @id @map("run_date") @db.Date
+  startedAt    DateTime  @map("started_at")
+  finishedAt   DateTime? @map("finished_at")
+  /// Per-stage status, e.g. {"ingest": "ok", "compute": "ok"}. JSON so stages can be added
+  /// without a migration.
+  stageStatus  Json      @map("stage_status")
+  /// Per-provider status, e.g. {"alpaca": "ok", "finnhub": "degraded"}.
+  sourceStatus Json      @map("source_status")
+  /// The Anthropic Batch API id, set once the extraction batch is submitted (null until P3).
+  batchId      String?   @map("batch_id")
+
+  @@map("pipeline_run")
+}
