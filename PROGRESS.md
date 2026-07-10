@@ -4,10 +4,16 @@
 **Last green gate (§6.4):** partial, 2026-07-10 — typecheck, lint, 45 unit tests, build,
 font budget, and 9 Playwright auth tests all green. The full gate cannot run yet: it needs
 Lighthouse (nothing is deployed) and the visual-regression baselines (captured at P0 step 9).
-**Checkpoint:** P0 steps 1, 3, 4, 5, 6 and 7 are done and committed. GitHub repo is live
-(private, Actions on, pushed). Step 2 (Session-0) is partly in — Supabase wired + migrated,
-GitHub done. Step 8 (pipeline skeleton) and step 9 (deploy) remain, plus the rest of the
-Session-0 secrets (Vercel, R2, provider keys, Anthropic, healthchecks, EDGAR, app login).
+**Checkpoint:** P0 steps 1, 3, 4, 5, 6, 7, 8 done and committed; step 9 is done except the
+Vercel deploy. **The P0 loop is proven end to end:** the cloud wrote a pipeline_run row and the
+app renders it. Only the Vercel deploy and the remaining Session-0 secrets stand between here
+and the P0 exit gate.
+
+**THE LOOP IS CLOSED (2026-07-10).** Dispatched nightly-a → Job A ran green in GitHub Actions
+and wrote pipeline_run(run_date=2026-07-10, stage={hello: ok}) to Supabase, cloud-only. The
+Desk reads it and shows "as of 14:43 ET · Written by the nightly pipeline in the cloud". CI is
+green on every push (app + pipeline jobs; e2e runs on phase-* tags). GitHub secrets set so far:
+DATABASE_URL, SESSION_POOLER_URL, CRON_SECRET.
 
 **GitHub is live (2026-07-10).** github.com/bishantt/myStockMarket — private, Actions enabled,
 all commits pushed. Token has repo + workflow scope. First push needed http.postBuffer raised
@@ -26,50 +32,50 @@ re-tested once.
 
 ## Where the build actually is
 
-Four commits on `main` (no remote yet — the GitHub repo is Session-0 item #1):
+Eleven commits on `main`, all pushed to github.com/bishantt/myStockMarket (private, CI green):
 
-- `89c6cfa` repo initialized; scaffold verified against plan §2.2; DEVELOPMENT-PLAN.md
-  confirmed to regenerate byte-identical from `docs/src/dp-*.html`.
-- `33fc449` Next 16.2.10 + React 19 + Tailwind v4 scaffolded; the whole §3.2–3.4 token set in
-  `globals.css`; three self-hosted fonts at 237KB against a 320KB budget.
-- `3995ae5` `lib/time.ts` (DST-tested), `lib/copy.ts` (Appendix J, pinned verbatim),
-  `SectionMasthead` / `Tag` / `StatFigure`, the Desk shell, and `/styleguide`.
-- `d7da3c3` the login wall: `lib/auth.ts`, `lib/password.ts`, `proxy.ts`, `/login`,
-  `scripts/hash-password.mjs`, and an e2e suite that proves the wall stands.
+- repo init + scaffold verified against §2.2; DEVELOPMENT-PLAN.md regenerates byte-identical.
+- Next 16.2.10 + React 19 + Tailwind v4; the full §3.2–3.4 token set; fonts 237KB / 320KB.
+- `lib/time.ts` (DST-tested), `lib/copy.ts` (Appendix J, pinned), `SectionMasthead` / `Tag` /
+  `StatFigure`, the Desk shell, `/styleguide`.
+- The login wall: `lib/auth.ts`, `lib/password.ts`, `proxy.ts`, `/login`, hash script.
+- Prisma 6.19 schema v0 (`pipeline_run`), migrated onto Supabase, `lib/db.ts`.
+- PWA seed: manifest, six icons from `public/mark.svg`, Serwist SW (`app/sw.ts`), `/offline`.
+- Pipeline skeleton: `config.py`, `monitoring.py`, `jobs/job_a.py`, `jobs/job_b.py`,
+  `scripts/probe_providers.py`; four workflow YAMLs (nightly-a/b, ci, migrate).
+- The Desk reads `pipeline_run` and shows the cloud run's timestamp — the loop, closed.
 
-Verified in a real browser, not by eye: the masthead renders Archivo at `font-stretch: 120%`,
-weight 700, 0.07em tracking; the hero numeral is IBM Plex Mono 64px in `--ink` (never Wong
-colour), dropping to 48px at the phone breakpoint; its delta is 13.5px in `--up-text`.
+Tests: 45 app unit + 14 Playwright (auth + PWA) + 13 pipeline pytest, all green. CI runs the
+app and pipeline jobs on every push; e2e + Lighthouse on `phase-*` tags.
 
-## Next 3 tasks
+## Next 3 tasks (all need Session-0 values from the user)
 
-1. **P0 step 6 — PWA seed.** `manifest.ts`, `public/mark.svg` (the three-candle tick mark from
-   the document covers), `scripts/icons.mjs` (sharp is installed and verified), the generated
-   icon set, Serwist wiring, and the `/offline` route. All key-free. `/offline` must be
-   `force-static` like `/login`, for the same reason.
-2. **P0 step 8, authoring half — pipeline skeleton.** `uv init` in `pipeline/` (uv is
-   installed), `config.py` (pydantic settings, env names per Appendix D) with its missing-env
-   test, `scripts/probe_providers.py` shell, `jobs/job_a.py` and `jobs/job_b.py` stubs, and the
-   three workflow YAMLs per Appendix C. Authoring is key-free; *running* the probes needs keys.
-   `config.py` must strip `?pgbouncer=true` from DATABASE_URL before handing it to psycopg.
-3. **P0 step 9 + deploy** — needs the GitHub repo (Session-0 #1: user runs `gh auth login`,
-   then repo creation is mine), Vercel link, and the app env vars. Wires the Desk module 0 to
-   show the last `pipeline_run` timestamp, deploys, runs one `workflow_dispatch`.
+1. **Vercel deploy — finishes P0 step 9 and unlocks the P0 exit.** Needs the user to link a
+   Vercel project (root directory `app/`) and confirm preview Deployment Protection is ON. Then
+   set the app env in Vercel: DATABASE_URL (with `?pgbouncer=true`), DIRECT_URL, AUTH_USER,
+   AUTH_PASS_HASH (RAW — Vercel injects directly, no escaping), AUTH_COOKIE_SECRET, CRON_SECRET,
+   APP_BASE_URL. Build command is `npm run build` (= `next build --webpack`). Deploy, confirm
+   login works on the deployed shell and it shows the pipeline timestamp.
+2. **App login → finishes P0 step 5.** User picks username + password; run
+   `node app/scripts/hash-password.mjs`; local .env gets AUTH_USER + the ESCAPED hash, Vercel
+   gets the RAW hash. Discard the plaintext.
+3. **Provider keys + probes green (a named P0 exit criterion).** As each of Alpaca / Finnhub /
+   FMP / Marketaux / FRED / EDGAR / Anthropic / R2 / healthchecks arrives, set it as a GitHub
+   secret and re-run `uv run python -m scripts.probe_providers` until all show OK. Then run the
+   §6.4 exit gate and tag `phase-0`.
 
 ## Blocked
 
-- **Session-0 values.** Presented to the user in full on 2026-07-10 (all nine rows of §1.4).
-  Nothing is blocked yet, but these will be, in this order:
-  - `DIRECT_URL` (Supabase) blocks P0 step 7 (Prisma migrate).
-  - Provider keys + Anthropic + healthchecks + R2 block *running* the step-8 probes.
-  - `AUTH_USER` / `AUTH_PASS_HASH` block the P0 step 9 deployed-login check. The code is
-    finished and tested against fixture credentials; only the real values are missing.
-  - `gh` is installed but unauthenticated, so `gh repo create` could not be run autonomously.
-    The user runs `gh auth login`; then repo creation and enabling Actions are mine.
-- **Fallback in force:** none needed. Everything key-free in P0 (steps 1, 3, 4, 5, 6, and the
-  authoring half of 8) proceeds without the user.
-- Already generated and sitting in the git-ignored root `.env`: `CRON_SECRET`,
-  `AUTH_COOKIE_SECRET`, `R2_BUCKET=msm-history`.
+- **Remaining Session-0 values** (Supabase ✓ and GitHub ✓ are already in): Vercel link +
+  preview-protection confirmation · Cloudflare R2 (account id + access key + secret) · provider
+  keys (Alpaca, Finnhub, FMP, Marketaux, FRED) · EDGAR name+email · Anthropic key + $15 cap ·
+  healthchecks check + read-only API key · the app login username+password. Drop them in the
+  git-ignored root `.env` and say so; I distribute per Appendix D. **Fallback in force:** none
+  needed — all key-free P0 work is done.
+- **Recommended cleanup:** rotate the Supabase DB password (it was visible in chat when pasted),
+  then re-paste the three strings for a single re-test.
+- Already generated / set: `CRON_SECRET`, `AUTH_COOKIE_SECRET`, `R2_BUCKET` in `.env`;
+  DATABASE_URL, SESSION_POOLER_URL, CRON_SECRET as GitHub secrets.
 
 ## Decisions worth knowing before you touch anything
 
