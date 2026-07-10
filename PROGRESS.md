@@ -12,8 +12,16 @@ and the P0 exit gate.
 **THE LOOP IS CLOSED (2026-07-10).** Dispatched nightly-a → Job A ran green in GitHub Actions
 and wrote pipeline_run(run_date=2026-07-10, stage={hello: ok}) to Supabase, cloud-only. The
 Desk reads it and shows "as of 14:43 ET · Written by the nightly pipeline in the cloud". CI is
-green on every push (app + pipeline jobs; e2e runs on phase-* tags). GitHub secrets set so far:
-DATABASE_URL, SESSION_POOLER_URL, CRON_SECRET.
+green on every push (app + pipeline jobs; e2e runs on phase-* tags).
+
+**SESSION-0 ALL BUT DONE (2026-07-10).** All 9 provider probes green with real keys
+(Alpaca, Finnhub, FMP, Marketaux, FRED, EDGAR, Anthropic, R2 put/get/delete, healthchecks) —
+a named P0 exit criterion. 19 GitHub secrets set. App login (bishantt) in local .env, hash
+verified through Next's loader + bcrypt. nightly-b dispatched → the healthchecks dead-man check
+is **up**, confirmed via the read-only API. The only Session-0 item left is Vercel.
+- FMP needed the /stable/ API (v3 retired 2025-08-31) — probe fixed, P2 adapter noted.
+- `.env.session0` collection file deleted after distribution; `.vercel-auth-hash.tmp` (raw hash
+  for Vercel, git-ignored) is kept for the deploy.
 
 **GitHub is live (2026-07-10).** github.com/bishantt/myStockMarket — private, Actions enabled,
 all commits pushed. Token has repo + workflow scope. First push needed http.postBuffer raised
@@ -48,21 +56,21 @@ Eleven commits on `main`, all pushed to github.com/bishantt/myStockMarket (priva
 Tests: 45 app unit + 14 Playwright (auth + PWA) + 13 pipeline pytest, all green. CI runs the
 app and pipeline jobs on every push; e2e + Lighthouse on `phase-*` tags.
 
-## Next 3 tasks (all need Session-0 values from the user)
+## Next 3 tasks
 
-1. **Vercel deploy — finishes P0 step 9 and unlocks the P0 exit.** Needs the user to link a
-   Vercel project (root directory `app/`) and confirm preview Deployment Protection is ON. Then
-   set the app env in Vercel: DATABASE_URL (with `?pgbouncer=true`), DIRECT_URL, AUTH_USER,
-   AUTH_PASS_HASH (RAW — Vercel injects directly, no escaping), AUTH_COOKIE_SECRET, CRON_SECRET,
-   APP_BASE_URL. Build command is `npm run build` (= `next build --webpack`). Deploy, confirm
-   login works on the deployed shell and it shows the pipeline timestamp.
-2. **App login → finishes P0 step 5.** User picks username + password; run
-   `node app/scripts/hash-password.mjs`; local .env gets AUTH_USER + the ESCAPED hash, Vercel
-   gets the RAW hash. Discard the plaintext.
-3. **Provider keys + probes green (a named P0 exit criterion).** As each of Alpaca / Finnhub /
-   FMP / Marketaux / FRED / EDGAR / Anthropic / R2 / healthchecks arrives, set it as a GitHub
-   secret and re-run `uv run python -m scripts.probe_providers` until all show OK. Then run the
-   §6.4 exit gate and tag `phase-0`.
+1. **Vercel deploy — the ONE remaining P0 item.** User runs `! vercel login` in the session.
+   Then I: `vercel link` (root `app/`), set the app env from local .env + `.vercel-auth-hash.tmp`
+   (DATABASE_URL with `?pgbouncer=true`, DIRECT_URL, AUTH_USER, AUTH_PASS_HASH **raw**,
+   AUTH_COOKIE_SECRET, CRON_SECRET, APP_BASE_URL once known), confirm the build command is
+   `npm run build` (= `next build --webpack`), deploy, and set APP_BASE_URL to the deploy URL.
+   User confirms preview Deployment Protection is ON. Then log in on the deployed shell and see
+   the pipeline timestamp — that finishes P0 step 9.
+2. **Run the P0 exit gate + tag phase-0.** §6.4: typecheck, lint, unit, pytest, build,
+   Playwright/PWA, Lighthouse budgets, anti-drift §3.10, update PROGRESS/DECISIONS, tag.
+   Also: the healthchecks down-then-recover drill (disable nightly-b once, watch the check go
+   down via the read-only API, re-enable).
+3. **Then P1 begins** (data spine): Prisma schema v1, the Alpaca adapter + the
+   `new-provider-adapter` skill, indicators, the real Desk modules.
 
 ## Blocked
 
