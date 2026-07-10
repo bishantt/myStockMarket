@@ -1,0 +1,88 @@
+# ci.yml — the checks that gate every push (plan §6.1, §6.4, Appendix C).
+#
+# On every push: the app's typecheck, lint, unit tests, and build, plus the pipeline's pytest.
+# The heavier browser suite (Playwright + axe + visual + PWA) and Lighthouse run only on the
+# phase-* tags that mark a phase exit, because they need a browser and a full build and would slow
+# every push down for little gain mid-phase.
+#
+# Red CI blocks a phase exit — no exceptions (plan §6.4).
+
+name: ci
+
+on:
+  push:
+    branches: ["**"]
+    tags: ["phase-*"]
+
+jobs:
+  app:
+    name: app — typecheck, lint, unit, build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: app
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+
+      - run: npm ci
+
+      - run: npm run typecheck
+      - run: npm run lint
+      - run: npm test
+
+      # The production build uses webpack, because Serwist's service-worker injection is a webpack
+      # plugin and Next 16 defaults to Turbopack (see next.config.ts). `npm run build` already
+      # carries the --webpack flag. No secrets are needed: env values are read at request time,
+      # not at build time.
+      - run: npm run build
+
+      - name: Font budget (plan §4.5)
+        run: npm run check:fonts
+
+  pipeline:
+    name: pipeline — pytest
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: pipeline
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
+
+      - run: uv sync --frozen
+
+      # Tests use recorded fixtures and mock transports — never a live key or a real database.
+      - run: uv run pytest -q
+
+  e2e:
+    name: e2e + PWA (phase-exit tags only)
+    if: startsWith(github.ref, 'refs/tags/phase-')
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: app
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+
+      - run: npm ci
+
+      - name: Install Playwright browser
+        run: npx playwright install --with-deps chromium
+
+      # The webServer in playwright.config.ts builds and starts the app with fixture auth
+      # credentials, so this needs no repository secrets.
+      - run: npm run e2e

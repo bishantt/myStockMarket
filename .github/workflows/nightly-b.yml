@@ -1,0 +1,41 @@
+# nightly-b.yml — Job B: the publish-and-monitor run (plan §2.1, Appendix C).
+#
+# Cron 25 0 * * 2-6 UTC = 8:25pm EDT / 7:25pm EST. This cron matches the healthchecks.io check, so
+# Job B OWNS the dead-man switch: every scheduled night it must feed the check, or an alert fires.
+#
+# At P0 Job B is a stub that pings /start, does its (empty) work, and pings success — proving the
+# schedule and the monitor are live from day one. The pings live inside jobs/job_b.py (so they are
+# unit-testable with a mock transport); the workflow only runs the job. The full briefing pipeline,
+# the weekly pg_dump backup, and the monthly Stooq spot-check attach here in P1-P3.
+
+name: nightly-b
+
+on:
+  schedule:
+    - cron: "25 0 * * 2-6"
+  workflow_dispatch: {}
+
+concurrency:
+  group: msm-nightly
+  cancel-in-progress: false
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: pipeline
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
+
+      - name: Sync dependencies
+        run: uv sync --frozen
+
+      - name: Run Job B
+        env:
+          HEALTHCHECKS_PING_URL: ${{ secrets.HEALTHCHECKS_PING_URL }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: uv run python -m jobs.job_b

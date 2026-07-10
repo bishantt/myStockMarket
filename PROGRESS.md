@@ -4,9 +4,18 @@
 **Last green gate (§6.4):** partial, 2026-07-10 — typecheck, lint, 45 unit tests, build,
 font budget, and 9 Playwright auth tests all green. The full gate cannot run yet: it needs
 Lighthouse (nothing is deployed) and the visual-regression baselines (captured at P0 step 9).
-**Checkpoint:** P0 steps 1, 3, 4, 5 and 7 are done and committed. Step 2 (Session-0) is
-partly in — Supabase is fully wired and the first migration is applied. Steps 6, 8, 9 remain,
-plus the rest of the Session-0 secrets.
+**Checkpoint:** P0 steps 1, 3, 4, 5, 6 and 7 are done and committed. GitHub repo is live
+(private, Actions on, pushed). Step 2 (Session-0) is partly in — Supabase wired + migrated,
+GitHub done. Step 8 (pipeline skeleton) and step 9 (deploy) remain, plus the rest of the
+Session-0 secrets (Vercel, R2, provider keys, Anthropic, healthchecks, EDGAR, app login).
+
+**GitHub is live (2026-07-10).** github.com/bishantt/myStockMarket — private, Actions enabled,
+all commits pushed. Token has repo + workflow scope. First push needed http.postBuffer raised
+(the PDFs exceeded Git's 1MB default) and HTTP/1.1; those are set in the local git config.
+
+**PWA seed done (step 6).** Manifest, six icons from public/mark.svg, Serwist service worker,
+/offline. 14 e2e tests green. The production build uses `next build --webpack` (Serwist needs
+webpack; Next 16 defaults to Turbopack) — dev stays on Turbopack.
 
 **Supabase is live (2026-07-10).** All three connection strings verified; `pipeline_run`
 migrated onto the real database; a Prisma write/read/delete round-trip through the pooler

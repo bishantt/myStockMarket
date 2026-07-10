@@ -1,0 +1,54 @@
+# nightly-a.yml — Job A: the after-close ingest-and-compute run (plan §2.1, Appendix C).
+#
+# Cron 37 22 * * 1-5 UTC = 6:37pm EDT / 5:37pm EST, weekdays, after the US close. The schedule is
+# UTC-fixed on purpose: it sits after the close in both DST regimes, so the cron is never edited —
+# only the user's wall-clock reading of it shifts with the season.
+#
+# At P0 Job A writes one pipeline_run row (a hello-run). It does NOT touch healthchecks.io; its
+# failures surface as GitHub's own failure e-mails via a non-zero exit. The dead-man check belongs
+# to Job B (nightly-b.yml), whose cron matches it.
+
+name: nightly-a
+
+on:
+  schedule:
+    - cron: "37 22 * * 1-5"
+  workflow_dispatch: {} # lets a run be triggered by hand from the Actions tab
+
+# One nightly run at a time. Job A and Job B share this group so they never overlap.
+concurrency:
+  group: msm-nightly
+  cancel-in-progress: false
+
+permissions:
+  contents: write # for the heartbeat commit below
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: pipeline
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
+
+      - name: Sync dependencies
+        run: uv sync --frozen
+
+      - name: Run Job A
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: uv run python -m jobs.job_a
+
+      # A private repo's scheduled workflows are disabled by GitHub after 60 days without repo
+      # activity. An empty heartbeat commit each night keeps the schedule alive.
+      - name: Heartbeat
+        working-directory: .
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git commit --allow-empty -m "chore: heartbeat"
+          git push

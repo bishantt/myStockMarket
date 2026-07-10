@@ -1,0 +1,39 @@
+# migrate.yml — apply Prisma migrations to the production database (plan Appendix C).
+#
+# workflow_dispatch only: migrations are never applied automatically on push. Someone triggers this
+# by hand from the Actions tab when a reviewed migration is ready to deploy.
+#
+# It runs `prisma migrate deploy`, which applies committed migrations without a shadow database —
+# unlike `migrate dev`, so it is safe over the connection pooler. It uses the SESSION_POOLER_URL
+# (IPv4, port 5432): the true direct host is IPv6-only on Supabase's free tier and unreachable
+# from most runners.
+
+name: migrate
+
+on:
+  workflow_dispatch: {}
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: app
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+
+      - run: npm ci
+
+      # Both URLs point at the session pooler for this job: migrate deploy connects via the
+      # datasource's directUrl (DIRECT_URL), and DATABASE_URL is set too so the client generates.
+      - name: Apply migrations
+        env:
+          DATABASE_URL: ${{ secrets.SESSION_POOLER_URL }}
+          DIRECT_URL: ${{ secrets.SESSION_POOLER_URL }}
+        run: npx prisma migrate deploy
