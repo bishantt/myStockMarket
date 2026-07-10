@@ -91,8 +91,13 @@ test.describe("service worker", () => {
     await page.getByRole("button", { name: "Sign in" }).click();
     await expect(page).toHaveURL("/");
 
-    // A reload lets the already-activated worker take control of the page.
+    // A reload lets the already-activated worker take control of the page. Claiming the client
+    // is asynchronous, and on a slow CI runner it can lag a beat behind the reload — so we WAIT
+    // for the controller rather than sampling it once (the earlier one-shot check flaked in CI).
     await page.reload();
+    await page.waitForFunction(() => navigator.serviceWorker.controller !== null, null, {
+      timeout: 10_000,
+    });
     const controlled = await page.evaluate(
       () => navigator.serviceWorker.controller !== null,
     );
