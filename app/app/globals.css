@@ -1,0 +1,178 @@
+/*
+ * globals.css — the single source of every design token in myStockMarket.
+ *
+ * The design system is "Broadsheet Terminal" (DEVELOPMENT-PLAN.md Part 3): a financial
+ * broadsheet set by a typographer, not a SaaS dashboard. Ink on bone paper, hairline rules,
+ * mono numerals, 2px corners, colour used only where it carries information.
+ *
+ * HARD RULE (plan §3.10, checked by a grep at every phase exit): no hex colour may appear
+ * anywhere else in the codebase. If you need a colour, it is already here, or it does not
+ * belong in the product. The same goes for font families, radii, and motion durations.
+ *
+ * Token naming: Tailwind v4 generates utilities from these namespaces, so
+ *   --color-ink        gives  text-ink / bg-ink / border-ink
+ *   --text-sm          gives  text-sm (with its paired line-height)
+ *   --font-ui          gives  font-ui
+ *   --radius-edge      gives  rounded-edge
+ * The plan writes these as `--ink`, `--text-sm`, etc.; the `--color-` prefix is Tailwind's
+ * requirement, not a change of meaning.
+ */
+
+@import "tailwindcss";
+
+/*
+ * `static` (rather than a bare `@theme`) forces Tailwind to emit EVERY variable below as a
+ * real CSS custom property, instead of tree-shaking the ones no utility class happens to
+ * reference. Two things in this app depend on that:
+ *
+ *   1. The Lightweight Charts hook themes candles, grid lines, and crosshairs by reading
+ *      --color-ink / --color-up / --color-down off the computed style at runtime (plan §3.7).
+ *      Tailwind cannot see those reads, so it would drop the tokens.
+ *   2. /styleguide renders the token set as a living spec, and the visual-regression suite
+ *      captures it. A token that vanishes when it is temporarily unused is a token that
+ *      silently drifts.
+ */
+@theme static {
+  /* ── Type families (§3.2) ────────────────────────────────────────────────────────────
+   * Three families, no more. The next/font loaders in lib/fonts.ts define the inner
+   * variables; the fallback stacks below keep layout stable before the fonts land.
+   *
+   * font-ui    Archivo       — every label, header, button, nav. Never a number.
+   * font-mono  IBM Plex Mono — every quantitative figure in the product, without exception.
+   *                            Mono means tabular by construction: columns align for free.
+   * font-prose Newsreader    — Academy lesson bodies and the briefing paragraphs.
+   */
+  --font-ui: var(--font-archivo), ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-mono: var(--font-plex-mono), ui-monospace, "SF Mono", Menlo, monospace;
+  --font-prose: var(--font-newsreader), ui-serif, Georgia, serif;
+
+  /* ── Type scale (§3.2) ───────────────────────────────────────────────────────────────
+   * Size / line-height pairs. Boldness in this design comes from the contrast between
+   * --text-hero (64px) and --text-2xs (11px), never from decoration.
+   */
+  --text-2xs: 11px;              /* provenance lines, axis ticks, footnotes */
+  --text-2xs--line-height: 1.35;
+  --text-xs: 12px;               /* mastheads (uppercase), tags, table headers */
+  --text-xs--line-height: 1.4;
+  --text-sm: 13.5px;             /* Desk body UI, table cells */
+  --text-sm--line-height: 1.5;
+  --text-base: 15px;             /* drawers, settings, longer UI copy */
+  --text-base--line-height: 1.55;
+  --text-prose: 17.5px;          /* Academy + brief prose (Newsreader) */
+  --text-prose--line-height: 1.65;
+  --text-lg: 21px;               /* card titles, lesson H2 */
+  --text-lg--line-height: 1.35;
+  --text-xl: 27px;               /* page titles, brief headline */
+  --text-xl--line-height: 1.25;
+  --text-2xl: 34px;              /* zone titles, Academy lesson H1 */
+  --text-2xl--line-height: 1.15;
+  --text-num-lg: 44px;           /* module-level key figures (mono) */
+  --text-num-lg--line-height: 1.1;
+  --text-hero: 64px;             /* THE hero numeral — exactly one per view */
+  --text-hero--line-height: 1;
+  --text-hero-mobile: 48px;      /* the same numeral in the phone ritual column (§3.8) */
+  --text-hero-mobile--line-height: 1;
+
+  /* ── Colour: the Desk room, light (§3.3) ─────────────────────────────────────────────
+   * Colour is nearly absent on purpose. That scarcity is what lets a single delta triangle
+   * or an amber flag mean something. Interactive elements are ink + underline, never colour.
+   */
+  --color-desk-bg: #f4f5f3;      /* Desk page plane — cool bone */
+  --color-surface: #fcfcfb;      /* module surfaces, cards */
+  --color-academy-bg: #faf6ef;   /* Academy paper — warm; the room switch must be felt */
+  --color-ink: #141511;          /* primary text; also the 2px section rules */
+  --color-ink-2: #4a4b45;        /* secondary text */
+  --color-muted: #6b6c64;        /* provenance, ticks, placeholders — clears 4.5:1 on both
+                                    light surfaces, because the honesty layer must never
+                                    be the least legible thing on screen */
+  --color-hairline: #ddded7;     /* 1px rules and borders — the only "elevation" we have */
+
+  /* Petrol. Focus rings, active nav, selected states, link hover. Never on data. */
+  --color-accent: #0e6e64;
+
+  /* ── Colour: the semantic channel (§3.3) ─────────────────────────────────────────────
+   * The Wong colourblind-safe pair. Used for chart strokes, candle bodies, and delta
+   * triangles, and for text at >= 21px where the 3:1 large-text threshold applies.
+   * ALWAYS paired with a redundant non-colour channel: a triangle and a sign for deltas,
+   * hollow vs filled bodies for candles. Banned from buttons, links, and decoration.
+   */
+  --color-up: #0072b2;
+  --color-down: #d55e00;
+
+  /* Darkened Wong variants for delta TEXT at <= 18px (mover percentages, table deltas).
+   * Same hues, AA-compliant at small sizes. Charts keep the originals above. */
+  --color-up-text: #005a8e;
+  --color-down-text: #a84a00;
+
+  /* Reserved attention. Exactly two consumers exist in the whole app (§3.3):
+   * the verification-gate flag on a briefing sentence, and a fired-signal marker on a
+   * focus-watchlist row. Amber anywhere else is a bug the anti-drift grep will catch. */
+  --color-alert: #8a5200;
+  --color-alert-wash: #f6e3b4;
+
+  /* Evidence-grade dots. These live inside the Tag component and nowhere else, always
+   * beside the word they grade — never alone, because a coloured dot is not a claim. */
+  --color-grade-supported: #0b7a3b;
+  --color-grade-mixed: #8a5200;
+  --color-grade-weak: #a64a32;
+  --color-grade-folklore: #a21c1c;
+
+  /* ── Shape (§3.4) ────────────────────────────────────────────────────────────────────
+   * 2px everywhere. The near-square corner is a signature: any corner that reads as
+   * "rounded" is a bug. There is one radius token and it is used for everything.
+   */
+  --radius-edge: 2px;
+
+  /* ── Motion (§3.5) ───────────────────────────────────────────────────────────────────
+   * 160ms fades, 200ms sheet-and-rail slides, ease-out. Nothing else in the app moves.
+   * Numbers, probability visuals, and chart data are never animated at all.
+   */
+  --duration-fade: 160ms;
+  --duration-slide: 200ms;
+  --ease-quiet: cubic-bezier(0, 0, 0.2, 1);
+
+  /* ── Layout (§3.4, §3.8) ─────────────────────────────────────────────────────────── */
+  --breakpoint-desk: 1366px;     /* the one-screen Desk claim applies at or above this */
+}
+
+/* ── Non-token globals ────────────────────────────────────────────────────────────────
+ * Everything below is behaviour, not palette. Colours here read from the tokens above.
+ */
+
+:root {
+  /* The drawer scrim is the only shadow-like surface in the entire app (§3.4). */
+  --scrim: rgb(20 21 17 / 0.4);
+}
+
+html {
+  background-color: var(--color-desk-bg);
+  color: var(--color-ink);
+  /* Mono numerals are tabular by construction, but Archivo's lining figures need asking. */
+  font-variant-numeric: tabular-nums lining-nums;
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+  line-height: var(--text-sm--line-height);
+}
+
+/* Focus is visible everywhere, in petrol, offset so it never crowds a hairline (§3.9). */
+:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+/* Calm technology, taken literally: a reader who asks for less motion gets none.
+ * Focus outlines survive because they are an accessibility affordance, not decoration. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0ms !important;
+    scroll-behavior: auto !important;
+  }
+}

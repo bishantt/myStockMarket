@@ -42,10 +42,26 @@
         <td>Everything on the Desk that is not a number or prose: labels, table headers, buttons, nav. Mastheads use Expanded width (wdth ~120) 700–800 uppercase, tracking +6–8%; body UI at wdth 100, wght 400/500.</td></tr>
       <tr><td>Data &amp; numerals</td><td><strong>IBM Plex Mono</strong> (400/500/600; OFL)</td>
         <td>Every quantitative figure in the product — prices, percentages, counts, N, CIs, timestamps, axis ticks — renders in Plex Mono. This is the single strongest identity move and also the alignment guarantee (mono ⇒ tabular by construction). Never render a number in Archivo.</td></tr>
-      <tr><td>Prose (Academy + briefs)</td><td><strong>Newsreader</strong> (variable incl. optical size + italic; OFL)</td>
-        <td>Academy lesson bodies, the AM/PM brief paragraphs, worked-example prose: 17–18px/1.65, measure 62–68ch, opsz auto. Display italic (opsz 36+) for the brief’s “Today’s focus” headline — the one literary flourish.</td></tr>
+      <tr><td>Prose (Academy + briefs)</td><td><strong>Newsreader</strong> (variable, italic; OFL)</td>
+        <td>Academy lesson bodies, the AM/PM brief paragraphs, worked-example prose: 17–18px/1.65, measure 62–68ch. Display italic for the brief’s “Today’s focus” headline — the one literary flourish.</td></tr>
     </tbody>
   </table>
+
+  <p><strong>Correction, 2026-07-10 (P0 · structural · Part 10 rule 9).</strong> The Newsreader row
+  above originally read “variable incl. optical size + italic” and asked for “opsz auto” with
+  “display italic (opsz 36+)”. The optical-size axis is dropped; the row and §4.5 now describe what
+  is actually built. Measured on the latin subset, Newsreader costs 272KB with
+  <code>ital + opsz + wght</code> and 119KB with <code>ital + wght</code> — that single axis costs
+  153KB, more than Archivo (87KB) and IBM Plex Mono (29KB) put together, and it pushed the three
+  families to 388KB against the ≤ 320KB budget this same plan sets in §4.5. Two clauses of the plan
+  contradicted each other and neither is protected by a rank-1 or rank-2 source, so the budget wins:
+  it serves the Research Report’s calm, fast reading experience directly (LCP ≤ 2.5s on a
+  Moto-G-class phone), whereas optical sizing is a refinement of letterform proportions that most
+  readers never consciously see. The display italic — “the one literary flourish” — survives intact.
+  The three families now total 237KB with 83KB of headroom, guarded permanently by
+  <code>app/scripts/check-font-budget.mjs</code> in the §6.4 phase-exit gate. Logged in
+  DECISIONS.md.</p>
+
   <table>
     <caption>Type scale (px) — Tailwind v4 @theme tokens; line-height beside each</caption>
     <thead><tr><th>Token</th><th class="num">Size/leading</th><th>Use</th></tr></thead>

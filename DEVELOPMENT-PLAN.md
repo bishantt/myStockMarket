@@ -192,7 +192,9 @@ Part 3
 | --- | --- | --- |
 | Structure & UI | **Archivo** (variable: wght 100–900, wdth 62–125; OFL) | Everything on the Desk that is not a number or prose: labels, table headers, buttons, nav. Mastheads use Expanded width (wdth ~120) 700–800 uppercase, tracking +6–8%; body UI at wdth 100, wght 400/500. |
 | Data & numerals | **IBM Plex Mono** (400/500/600; OFL) | Every quantitative figure in the product — prices, percentages, counts, N, CIs, timestamps, axis ticks — renders in Plex Mono. This is the single strongest identity move and also the alignment guarantee (mono ⇒ tabular by construction). Never render a number in Archivo. |
-| Prose (Academy + briefs) | **Newsreader** (variable incl. optical size + italic; OFL) | Academy lesson bodies, the AM/PM brief paragraphs, worked-example prose: 17–18px/1.65, measure 62–68ch, opsz auto. Display italic (opsz 36+) for the brief’s “Today’s focus” headline — the one literary flourish. |
+| Prose (Academy + briefs) | **Newsreader** (variable, italic; OFL) | Academy lesson bodies, the AM/PM brief paragraphs, worked-example prose: 17–18px/1.65, measure 62–68ch. Display italic for the brief’s “Today’s focus” headline — the one literary flourish. |
+
+**Correction, 2026-07-10 (P0 · structural · Part 10 rule 9).** The Newsreader row above originally read “variable incl. optical size + italic” and asked for “opsz auto” with “display italic (opsz 36+)”. The optical-size axis is dropped; the row and §4.5 now describe what is actually built. Measured on the latin subset, Newsreader costs 272KB with `ital + opsz + wght` and 119KB with `ital + wght` — that single axis costs 153KB, more than Archivo (87KB) and IBM Plex Mono (29KB) put together, and it pushed the three families to 388KB against the ≤ 320KB budget this same plan sets in §4.5. Two clauses of the plan contradicted each other and neither is protected by a rank-1 or rank-2 source, so the budget wins: it serves the Research Report’s calm, fast reading experience directly (LCP ≤ 2.5s on a Moto-G-class phone), whereas optical sizing is a refinement of letterform proportions that most readers never consciously see. The display italic — “the one literary flourish” — survives intact. The three families now total 237KB with 83KB of headroom, guarded permanently by `app/scripts/check-font-budget.mjs` in the §6.4 phase-exit gate. Logged in DECISIONS.md.
 
 **Type scale (px) — Tailwind v4 @theme tokens; line-height beside each**
 
@@ -359,7 +361,7 @@ Node 24 LTS · Next.js 16 (App Router; `proxy.ts`) · TypeScript strict · Tailw
 
 ### 4.5 Fonts, caching, performance budgets
 
-- Fonts via `next/font` (self-hosted at build, same-origin, precacheable): Archivo variable, Newsreader variable, IBM Plex Mono 400/500/600 — subsets latin; total budget ≤ 320KB woff2. `display: swap`; fallback stacks defined in tokens.
+- Fonts via `next/font` (self-hosted at build, same-origin, precacheable): Archivo variable (wght + wdth), Newsreader variable (wght + italic, *no* opsz axis — see the §3.2 correction of 2026-07-10), IBM Plex Mono 400/500/600 — subsets latin; total budget ≤ 320KB woff2, actual 237KB, enforced by `app/scripts/check-font-budget.mjs` at every phase exit. `display: swap`; fallback stacks defined in tokens.
 
 - Rendering: dynamic RSC everywhere (single user; DB reads are cheap); fetches wrapped with `next: { tags: ['morning'] }` where applicable so the pipeline’s revalidate call is meaningful. No ISR complexity in v1. Two exceptions: `/offline` and `/login` export `dynamic = 'force-static'` so a concrete HTML asset exists for the SW to precache (§5.2).
 

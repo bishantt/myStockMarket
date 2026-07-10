@@ -85,8 +85,10 @@
   <h3>4.5 &nbsp;Fonts, caching, performance budgets</h3>
   <ul>
     <li>Fonts via <code>next/font</code> (self-hosted at build, same-origin, precacheable):
-    Archivo variable, Newsreader variable, IBM Plex Mono 400/500/600 — subsets latin; total budget
-    ≤ 320KB woff2. <code>display: swap</code>; fallback stacks defined in tokens.</li>
+    Archivo variable (wght + wdth), Newsreader variable (wght + italic, <em>no</em> opsz axis — see
+    the §3.2 correction of 2026-07-10), IBM Plex Mono 400/500/600 — subsets latin; total budget
+    ≤ 320KB woff2, actual 237KB, enforced by <code>app/scripts/check-font-budget.mjs</code> at every
+    phase exit. <code>display: swap</code>; fallback stacks defined in tokens.</li>
     <li>Rendering: dynamic RSC everywhere (single user; DB reads are cheap); fetches wrapped with
     <code>next: { tags: ['morning'] }</code> where applicable so the pipeline’s revalidate call is
     meaningful. No ISR complexity in v1. Two exceptions: <code>/offline</code> and
