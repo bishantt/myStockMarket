@@ -1,0 +1,297 @@
+<!-- ================= PART 2 ================= -->
+<section class="part">
+  <div class="part-head">
+    <div class="kicker">Part 2</div>
+    <h2>System architecture</h2>
+    <p class="dek">Seven boxes, one direction of flow. Everything heavy happens in two short cloud
+    jobs in your early evening, right after the close; the app is a thin, authenticated window
+    onto their output. Every trigger is fixed in UTC — DST-proof by construction: when your clocks
+    shift (you live on US Eastern), the triggers don’t move, and they sit after the close in both
+    EDT and EST.</p>
+  </div>
+
+  <figure class="avoid-break">
+    <div class="fig-frame">
+    <svg viewBox="0 0 700 400" role="img" aria-label="System architecture diagram" font-family="-apple-system,'Segoe UI',sans-serif">
+      <defs>
+        <marker id="ar2" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="6.5" markerHeight="6.5" orient="auto">
+          <path d="M0 0 L8 4 L0 8 z" fill="#898781"/>
+        </marker>
+      </defs>
+
+      <!-- providers -->
+      <rect x="12" y="16" width="150" height="212" rx="8" fill="#fcfcfb" stroke="#e1e0d9"/>
+      <text x="87" y="36" font-size="11" font-weight="700" fill="#0b0b0b" text-anchor="middle">US DATA PROVIDERS</text>
+      <text x="87" y="49" font-size="8.5" fill="#898781" text-anchor="middle">all free tiers · verified Jul 2026</text>
+      <g font-size="9.6" fill="#52514e">
+        <rect x="24" y="58" width="126" height="20" rx="10" fill="#f9f9f7" stroke="#e1e0d9"/><text x="87" y="71.5" text-anchor="middle">Alpaca — EOD bars</text>
+        <rect x="24" y="83" width="126" height="20" rx="10" fill="#f9f9f7" stroke="#e1e0d9"/><text x="87" y="96.5" text-anchor="middle">Finnhub — metrics/news</text>
+        <rect x="24" y="108" width="126" height="20" rx="10" fill="#f9f9f7" stroke="#e1e0d9"/><text x="87" y="121.5" text-anchor="middle">FMP — earnings calendar</text>
+        <rect x="24" y="133" width="126" height="20" rx="10" fill="#f9f9f7" stroke="#e1e0d9"/><text x="87" y="146.5" text-anchor="middle">Marketaux — tagged news</text>
+        <rect x="24" y="158" width="126" height="20" rx="10" fill="#f9f9f7" stroke="#e1e0d9"/><text x="87" y="171.5" text-anchor="middle">SEC EDGAR — filings</text>
+        <rect x="24" y="183" width="126" height="20" rx="10" fill="#f9f9f7" stroke="#e1e0d9"/><text x="87" y="196.5" text-anchor="middle">FRED — macro series</text>
+      </g>
+      <text x="87" y="219" font-size="8.5" fill="#898781" text-anchor="middle">each behind a repository adapter</text>
+
+      <!-- pipeline -->
+      <rect x="204" y="16" width="212" height="264" rx="8" fill="#fcfcfb" stroke="#2a78d6" stroke-width="1.5"/>
+      <text x="310" y="36" font-size="11" font-weight="700" fill="#0b0b0b" text-anchor="middle">GITHUB ACTIONS · nightly</text>
+      <text x="310" y="49" font-size="8.5" fill="#898781" text-anchor="middle">Python 3.12 · Job A 22:37 UTC + Job B 00:25 UTC</text>
+      <g font-size="9.8" fill="#52514e">
+        <rect x="218" y="58" width="184" height="24" rx="4" fill="#f9f9f7" stroke="#e1e0d9"/>
+        <text x="226" y="74">A1 · Preflight — US trading day? (XNYS)</text>
+        <rect x="218" y="88" width="184" height="24" rx="4" fill="#f9f9f7" stroke="#e1e0d9"/>
+        <text x="226" y="104">A2 · Ingest EOD, full universe → Parquet</text>
+        <rect x="218" y="118" width="184" height="24" rx="4" fill="#f9f9f7" stroke="#e1e0d9"/>
+        <text x="226" y="134">A3 · Context — news · calendar · filings</text>
+        <rect x="218" y="148" width="184" height="24" rx="4" fill="#f9f9f7" stroke="#e1e0d9"/>
+        <text x="226" y="164">A4 · Compute — indicators · scans · base rates</text>
+        <rect x="218" y="178" width="184" height="24" rx="4" fill="#f9f9f7" stroke="#e1e0d9"/>
+        <text x="226" y="194">A5 · Submit extraction batch → exit</text>
+        <rect x="218" y="208" width="184" height="24" rx="4" fill="#f9f9f7" stroke="#e1e0d9"/>
+        <text x="226" y="224">B · Late news → synthesize → verify → publish</text>
+      </g>
+      <text x="310" y="252" font-size="8.8" fill="#898781" text-anchor="middle">idempotent reruns · per-source isolation ·</text>
+      <text x="310" y="263" font-size="8.8" fill="#898781" text-anchor="middle">hard-fails if &lt;95% of universe returns</text>
+
+      <!-- anthropic -->
+      <rect x="452" y="16" width="236" height="74" rx="8" fill="#fcfcfb" stroke="#e1e0d9"/>
+      <text x="570" y="34" font-size="11" font-weight="700" fill="#0b0b0b" text-anchor="middle">ANTHROPIC API</text>
+      <text x="570" y="50" font-size="9.3" fill="#52514e" text-anchor="middle">Haiku-class: per-article extraction — Batch, −50%</text>
+      <text x="570" y="63" font-size="9.3" fill="#52514e" text-anchor="middle">Sonnet-class: one grounded synthesis call (sync)</text>
+      <text x="570" y="76" font-size="9.3" fill="#52514e" text-anchor="middle">then a deterministic verification gate</text>
+
+      <!-- R2 -->
+      <g>
+        <ellipse cx="264" cy="316" rx="60" ry="10" fill="#f9f9f7" stroke="#e1e0d9"/>
+        <path d="M204 316 v42 a60 10 0 0 0 120 0 v-42" fill="#f9f9f7" stroke="#e1e0d9"/>
+        <text x="264" y="342" font-size="9.8" font-weight="650" fill="#52514e" text-anchor="middle">Cloudflare R2</text>
+        <text x="264" y="355" font-size="8.6" fill="#898781" text-anchor="middle">Parquet · ~120–350MB · re-pullable cache</text>
+      </g>
+      <!-- supabase -->
+      <g>
+        <ellipse cx="420" cy="316" rx="60" ry="10" fill="#f9f9f7" stroke="#e1e0d9"/>
+        <path d="M360 316 v42 a60 10 0 0 0 120 0 v-42" fill="#f9f9f7" stroke="#e1e0d9"/>
+        <text x="420" y="342" font-size="9.8" font-weight="650" fill="#52514e" text-anchor="middle">Supabase Postgres</text>
+        <text x="420" y="355" font-size="8.6" fill="#898781" text-anchor="middle">serving tables · Prisma schema</text>
+      </g>
+
+      <!-- vercel app -->
+      <rect x="452" y="118" width="236" height="118" rx="8" fill="#fcfcfb" stroke="#1baf7a" stroke-width="1.4"/>
+      <text x="570" y="138" font-size="11" font-weight="700" fill="#0b0b0b" text-anchor="middle">VERCEL HOBBY · Next.js app</text>
+      <text x="570" y="154" font-size="9.3" fill="#52514e" text-anchor="middle">Desk + Academy (App Router, RSC reads)</text>
+      <text x="570" y="167" font-size="9.3" fill="#52514e" text-anchor="middle">Lightweight Charts (client components)</text>
+      <text x="570" y="180" font-size="9.3" fill="#52514e" text-anchor="middle">Basic Auth in middleware/proxy</text>
+      <text x="570" y="193" font-size="9.3" fill="#52514e" text-anchor="middle">revalidate route gated by CRON_SECRET</text>
+      <text x="570" y="212" font-size="9.3" fill="#898781" text-anchor="middle">Prisma: reads all · writes user-state tables only</text>
+      <!-- user -->
+      <rect x="452" y="252" width="236" height="46" rx="8" fill="#f9f9f7" stroke="#e1e0d9"/>
+      <text x="570" y="271" font-size="10.5" font-weight="650" fill="#0b0b0b" text-anchor="middle">You · same evening · HTTPS</text>
+      <text x="570" y="285" font-size="8.8" fill="#898781" text-anchor="middle">published by 9:00pm ET — nothing ran on your hardware</text>
+
+      <!-- healthchecks -->
+      <rect x="530" y="318" width="158" height="40" rx="8" fill="#fcfcfb" stroke="#e1e0d9"/>
+      <text x="609" y="335" font-size="9.6" font-weight="650" fill="#52514e" text-anchor="middle">healthchecks.io</text>
+      <text x="609" y="348" font-size="8.6" fill="#898781" text-anchor="middle">dead-man ping · alert same evening</text>
+
+      <!-- arrows -->
+      <g stroke="#898781" stroke-width="1.3" fill="none">
+        <line x1="164" y1="130" x2="202" y2="130" marker-end="url(#ar2)"/>
+        <line x1="418" y1="60" x2="450" y2="60" marker-end="url(#ar2)"/>
+        <line x1="264" y1="282" x2="264" y2="304" marker-end="url(#ar2)"/>
+        <line x1="380" y1="282" x2="410" y2="303" marker-end="url(#ar2)"/>
+        <line x1="395" y1="303" x2="448" y2="212" marker-end="url(#ar2)" stroke-dasharray="4 3"/>
+        <line x1="418" y1="230" x2="450" y2="218" marker-end="url(#ar2)"/>
+        <line x1="570" y1="238" x2="570" y2="250" marker-end="url(#ar2)"/>
+        <line x1="400" y1="282" x2="528" y2="342" marker-end="url(#ar2)" stroke-dasharray="4 3"/>
+      </g>
+      <text x="183" y="122" font-size="8" fill="#898781" text-anchor="middle">pull</text>
+      <text x="434" y="52" font-size="8" fill="#898781" text-anchor="middle">LLM</text>
+      <text x="248" y="296" font-size="8" fill="#898781">write</text>
+      <text x="378" y="300" font-size="8" fill="#898781">write</text>
+      <text x="492" y="318" font-size="8" fill="#898781">success ping</text>
+    </svg>
+    </div>
+    <figcaption><b>Figure 2.1 — System architecture.</b> Solid arrows are the nightly batch flow;
+    dashed arrows are the publish/monitoring signals. Two short GitHub Actions jobs do all heavy
+    work; the app reads everything and writes only user-state tables (watchlist, journal, review
+    state, paper trades).</figcaption>
+  </figure>
+
+  <h3>2.1 &nbsp;An evening in the life of the pipeline</h3>
+  <p>All triggers are <strong>fixed in UTC</strong>; your clock is US Eastern, which observes DST.
+  So the local times below shift by an hour between summer and winter while the UTC triggers stay
+  put — and both regimes clear the close comfortably. The design splits the evening into two short
+  jobs so no runner ever sits idle waiting on the LLM batch.</p>
+  <table>
+    <caption>Evening schedule — UTC-anchored, DST-proof. Your-clock column shows EDT (summer);
+    on the winter clock (EST) every local time below reads one hour earlier.</caption>
+    <thead><tr>
+      <th style="width:32mm">Stage</th><th>What happens</th><th style="width:22mm">UTC</th><th style="width:24mm">Your clock (EDT)</th>
+    </tr></thead>
+    <tbody>
+      <tr><td>US regular session (context)</td><td>NYSE/Nasdaq regular hours 9:30am–4:00pm ET — your own working day; pre-market from 4:00am ET, after-hours until 8:00pm ET. Most earnings land before the open (bmo) or just after the close (amc, ~4:00–5:30pm ET).</td><td class="num">13:30–20:00 (EDT)<br>14:30–21:00 (EST)</td><td class="num">9:30am–4:00pm<br>(ET-defined, both regimes)</td></tr>
+      <tr><td><strong>Job A</strong> · trigger + preflight</td><td>Cron <code>37 22 * * 1-5</code> fires mid-after-hours (6:37pm EDT / 5:37pm EST): regular-session bars are final, amc earnings are out. <code>exchange_calendars</code> (XNYS) exits cleanly — with a success ping — on US holidays. The :37 minute dodges GitHub’s top-of-hour cron congestion; worst-case ~30-min jitter is absorbed by the schedule’s slack.</td><td class="num">22:37</td><td class="num">6:37pm</td></tr>
+      <tr><td>A2 · Full-universe EOD ingest</td><td>The day’s daily bars for the defined universe (~5–6k NYSE/Nasdaq/AMEX symbols) from Alpaca’s multi-symbol bars endpoints, well inside 200 calls/min; row-count validation; current-year Parquet partition rewritten in R2. Weekly: corporate-actions refresh — any split or large dividend rewrites the affected symbol’s rows <em>across all year partitions</em>, plus a trailing-5-session re-pull for late corrections.</td><td class="num">22:40–22:55</td><td class="num">6:40–6:55pm</td></tr>
+      <tr><td>A3 · Context ingest, sweep #1</td><td>Rate-limit-aware parallel pulls: Finnhub metrics + company news (60/min), FMP US earnings calendar with bmo/amc flags (250/day budget), SEC EDGAR per-CIK submissions (≤8 req/s, declared User-Agent), FRED series + release calendar (2 req/s), Marketaux tagged news. Each source isolated — one failure degrades one briefing section, never the run.</td><td class="num">22:40–23:05</td><td class="num">6:40–7:05pm</td></tr>
+      <tr><td>A4 · Compute</td><td>DuckDB attaches the Parquet history; Polars computes ~15–20 vectorized indicators; SQL window queries produce screens, base rates (signals shifted one bar to kill lookahead), volatility bands, and the computed-stats table the LLM will narrate verbatim.</td><td class="num">23:05–23:15</td><td class="num">7:05–7:15pm</td></tr>
+      <tr><td>A5 · Submit + exit</td><td>Extraction batch (Stage A of Part 5) submitted to the Batch API; scan/serving staging written; Job A exits. <strong>Runner minutes stop here</strong> — nobody waits on the batch.</td><td class="num">~23:20</td><td class="num">~7:20pm</td></tr>
+      <tr><td><strong>Job B</strong> · finish + publish</td><td>Second cron (<code>25 0 * * 2-6</code>) wakes ~65 min after submission: a late-news delta sweep (after-hours is fully closed in summer, and US earnings calls are done even in winter), batch results fetched (typically complete long before), any delta items extracted synchronously, then <em>one</em> synchronous synthesis call, the deterministic verification gate, the single-transaction publish, revalidate, and the dead-man success ping.</td><td class="num">00:25–00:40</td><td class="num">8:25–8:40pm</td></tr>
+      <tr><td>Fallback path</td><td>If the extraction batch is still incomplete at 00:40 UTC (Job B gives collection 15 minutes): cancel it (already-processed items still bill) and extract the remainder synchronously (~3 min at list price).</td><td class="num">worst ~00:50</td><td class="num">worst ~8:50pm</td></tr>
+      <tr><td><strong>Your evening</strong></td><td><strong>Briefing on screen — the completed session already graded, tomorrow prepared — by 9:00pm ET year-round, read tonight or over pre-open coffee. Guaranteed because every trigger above is UTC-fixed.</strong></td><td class="num">≤00:50</td><td class="num"><strong>by 9:00pm</strong></td></tr>
+    </tbody>
+  </table>
+
+  <div class="callout implication avoid-break">
+    <span class="co-label">Why the timezone math is friendly</span>
+    <p>You live on market time, so there is no conversion to reason about — the close is 4:00pm
+    on your own clock, Job A fires 1h37m–2h37m later (bars settled in both DST regimes), and the
+    verified briefing publishes before 9:00pm the same evening: after-hours noise largely done,
+    more than twelve hours before the next open. Keeping the crons UTC-fixed is still the right
+    call — DST transitions can never skip or double a run; the only thing that moves is the label
+    on your wall clock (an hour earlier in winter). The “briefing” is honestly an evening digest
+    plus next-session preparation, built strictly from closed-session data — reviewed in calm,
+    when no regular-session order could execute anyway.</p>
+  </div>
+</section>
+
+<!-- ================= PART 3 ================= -->
+<section class="part">
+  <div class="part-head">
+    <div class="kicker">Part 3</div>
+    <h2>Stack decisions in detail</h2>
+    <p class="dek">Each layer: what was chosen, why, what else was considered, and what you give up.
+    The bias throughout: simplicity and low ops burden beat sophistication for a single-user
+    system.</p>
+  </div>
+
+  <h3>3.1 &nbsp;Frontend — Next.js App Router + TypeScript + Tailwind + shadcn/ui</h3>
+  <p><strong>Why:</strong> your core skill set; server components read the serving tables via Prisma
+  with zero client data-fetching complexity, which suits a read-mostly app perfectly.
+  <strong>Notes:</strong> chart components are client-side (<code>'use client'</code> +
+  <code>useEffect</code>, or <code>next/dynamic</code> with <code>ssr:&nbsp;false</code>) since every
+  serious chart library is canvas-imperative; Next.js 16 renamed middleware to <code>proxy</code> —
+  the Basic Auth gate lives there. The app writes only user-state tables (watchlist, journal,
+  review state, paper trades, weakener checkboxes) via server actions; everything pipeline-derived
+  is read-only to it. <strong>Alternatives:</strong> none seriously — nothing beats the incumbent
+  skill. <strong>Tradeoffs:</strong> heavy on-demand computation must go to the pipeline (or a
+  manually triggered <code>workflow_dispatch</code>), never a Vercel function — the Hobby
+  300-second cap is a hard wall.</p>
+
+  <h3>3.2 &nbsp;Serving database — Supabase free Postgres + Prisma</h3>
+  <p><strong>Why:</strong> you already know both. Prisma owns the schema and migrations; the Python
+  pipeline INSERTs via a connection string from GitHub secrets. The feared 7-day inactivity pause is
+  moot while the pipeline writes nightly. <strong>Connection fine print (matters in CI):</strong>
+  three URLs, not two — the pooled transaction-mode <code>DATABASE_URL</code> for the app and the
+  pipeline’s normal writes; <code>DIRECT_URL</code> for migrations run from your machine; and the
+  <strong>Supavisor session-mode pooler string (IPv4, port 5432)</strong> for anything running on
+  GitHub-hosted runners (<code>pg_dump</code>, CI migrations) — Supabase free-tier direct
+  connections are IPv6-only and GitHub runners have no IPv6. <strong>Alternative:</strong> Neon
+  free (100 CU-hours/mo, native Vercel Marketplace) is equally valid and decouples database health
+  from pipeline health — with Prisma it is a connection-string change. <strong>Tradeoffs:</strong>
+  a pipeline broken for 7+ days pauses the Supabase project (manual dashboard restore) — mitigated
+  by the dead-man alert, which surfaces a broken pipeline the same evening (~9:10pm EDT /
+  8:10pm EST). The 500MB ceiling
+  means full price history must not live here — hence:</p>
+
+  <h3>3.3 &nbsp;History store — Parquet on Cloudflare R2, queried by DuckDB</h3>
+  <p><strong>Universe, defined once and used everywhere:</strong> US common stocks and ETFs listed
+  on NYSE, Nasdaq, and AMEX (no OTC), ~5–6k active symbols, with delisted symbols retained for
+  survivorship honesty. At Alpaca’s free 7+ years of history that is ~5.5k × 252 × 7 ≈
+  <strong>9.7M rows ≈ 120–350MB of Parquet</strong> — DuckDB full-scans that in seconds; Stooq/
+  yfinance backfill can extend the archive toward 10 years later if base rates want deeper samples.
+  Postgres adds schema ceremony for zero benefit at an append-nightly/scan-nightly access pattern.
+  R2 is deliberately <em>a cache, not a system of record</em>: Alpaca history is re-downloadable,
+  so losing the bucket costs a re-pull, not data. <strong>Adjustment correctness:</strong> raw
+  OHLCV is stored alongside adjusted values; on any corporate action the affected symbol’s rows are
+  rewritten across <em>all</em> year partitions — “immutable prior years” describes the layout’s
+  default, never a bar to adjustment corrections. <strong>Alternatives considered:</strong>
+  everything-in-Postgres (blows the free tier), GitHub Actions cache (7-day eviction — wrong tool),
+  committing Parquet to the repo (~1GB/month of git bloat). <strong>Tradeoffs:</strong> one extra
+  account and credential. R2’s free tier (10GB per research) was <em>not</em> independently
+  verified — confirm at signup; Backblaze B2 is the fallback.</p>
+
+  <h3>3.4 &nbsp;Pipeline runtime — Python 3.12: Polars + DuckDB + exchange_calendars + httpx</h3>
+  <p><strong>Why:</strong> the consensus 2026 pattern for exactly this workload — Polars for
+  ingest/transform with lazy, vectorized expressions; DuckDB as the SQL engine over Parquet for
+  “indicator state → forward return” window queries (zero-copy interop between them).
+  <strong>Indicators are hand-rolled</strong> (~200 lines of Polars expressions for SMA/EMA/RSI/
+  MACD/ATR/Bollinger and friends): pandas-ta passed its announced July 2026 archival deadline, and
+  TA-Lib’s C dependency is CI install pain you don’t need for daily-bar math. Unit-test each
+  indicator against known reference values — this fits your TDD workflow and you own correctness.
+  Base rates are a <code>group_by</code> + shift — ~50 lines of custom code, not a backtesting
+  framework. <strong>Rerun semantics are designed, not hoped:</strong> every serving write carries
+  a natural key with <code>ON CONFLICT DO NOTHING</code> (signals) or full-refresh semantics
+  (scans), per-stage completion rows in <code>pipeline_run</code> let a
+  <code>workflow_dispatch</code> rerun skip completed stages, and the whole night is safe to run
+  twice. <strong>Local development:</strong> each provider adapter ships with recorded fixture
+  responses; tests run against fixtures + a docker-compose Postgres + a local MinIO (or dev R2
+  bucket); CI runs the same fixtures — no test ever touches a live API key.
+  <strong>Alternatives:</strong> TA-Lib (fine, actively maintained, use it if you’d rather not own
+  indicator correctness); vectorbt free edition (reserve for optional parameter sweeps);
+  pandas-ta-classic fork (longevity risk). <strong>Compute reality:</strong> the full-universe scan
+  is minutes on a 2-vCPU runner; wall-clock is dominated by provider APIs, not math.</p>
+
+  <h3>3.5 &nbsp;Scheduler — GitHub Actions, and why not Vercel</h3>
+  <p><strong>The forced departure.</strong> Verified against official docs (July 2026): Vercel Hobby
+  caps <em>every</em> function — cron included — at 300 seconds with no extension; daily Hobby crons
+  fire at an arbitrary minute within the hour; and pandas/numpy-sized Python bundles fight the
+  packaging limits. Vercel Pro ($20/mo) buys 800s functions — worse Python ergonomics at four times
+  the price of a VPS, rejected. A private-repo GitHub Actions workflow gives a full Python
+  environment, a 6-hour job limit, ~2,000 free minutes/month, and <code>workflow_dispatch</code>
+  for manual reruns. <strong>The minutes math is why the night is two jobs:</strong> a single job
+  that blocked on the ~35–40-minute LLM batch would bill ~78 minutes/night ≈ 1,650/month —
+  uncomfortably close to the free cap, and exhausting it mid-month is precisely the silent death
+  the design fears. Splitting at batch submission (Job A ~40 min + Job B ~10 min ≈ 50 billed
+  minutes/night ≈ <strong>1,050/month</strong>) leaves ~45% headroom for reruns, backfills, and the
+  weekly backup step. Cron jitter (5–30 min, community-documented) is irrelevant inside the
+  after-close slack; the <code>:37</code>/<code>:25</code> odd minutes dodge top-of-hour congestion.
+  <strong>Reliability fine print:</strong> GitHub auto-disables schedules in repos with no activity
+  for 60 days — documented for <em>public</em> repositories; whether it applies to private repos is
+  unverified, so a zero-cost heartbeat step stays in the workflow and the dead-man ping remains the
+  primary defense. Schedule events can also be delayed or occasionally <em>dropped</em> under
+  platform load — <code>workflow_dispatch</code> is the manual recovery, and the dead-man alert is
+  what tells you to use it. <strong>Escape hatch:</strong> a Hetzner CX22 VPS (~$5/mo, unverified —
+  confirm at checkout) with a systemd timer, if exact timing or &gt;6h runs ever matter; the DB
+  stays managed so the box remains disposable.</p>
+
+  <h3>3.6 &nbsp;Charts — TradingView Lightweight Charts v5, and the licensing trap avoided</h3>
+  <p><strong>Why:</strong> a purpose-built canvas candlestick engine at 59KB gzipped, Apache-2.0
+  with an attribution requirement satisfied by the built-in TradingView logo (on by default — leave
+  it on and you are compliant for free). v5 brings panes (RSI/volume sub-panes), series markers and
+  price lines — exactly the primitives the explain-why annotations need — plus a custom-primitives
+  plugin API if annotations get fancy. Integrate via the MIT React wrapper
+  (<code>lightweight-charts-react-components</code>, React 19-verified) or a ~30-line hand-rolled
+  hook (TradingView’s own React example; zero dependency risk — arguably the right call here).
+  <strong>The trap:</strong> TradingView <em>Advanced</em> Charts’ free license is companies-only,
+  explicitly excluding personal/hobby use — legally unavailable to this project regardless of its
+  feature appeal. <strong>Fallback:</strong> Highcharts Stock is free for personal non-commercial
+  use (CC BY-NC) and is the turnkey option if you ever want a built-in range-selector/drawing UI;
+  ApexCharts is no longer MIT and its SVG renderer struggles at candlestick data volumes;
+  chartjs-chart-financial is dormant. <strong>General viz:</strong> Recharts 3 (the shadcn/ui
+  charts foundation) for sparklines and small multiples; add tree-shaken ECharts 6 via
+  <code>echarts/core</code> only when the sector heatmap becomes real.</p>
+
+  <h3>3.7 &nbsp;Repository layout</h3>
+  <pre>myStockMarket/
+├─ app/                     # Next.js (Vercel project root)
+│  ├─ app/(desk)/…          # Desk routes: dashboard, ticker/[symbol], track-record
+│  ├─ app/(academy)/…       # Academy routes: modules, lessons, glossary, review
+│  ├─ app/api/revalidate/   # CRON_SECRET-gated revalidation
+│  ├─ proxy.ts              # Basic Auth (Next 16 middleware rename)
+│  └─ prisma/schema.prisma  # owns the serving schema
+├─ pipeline/                # Python 3.12 (uv-managed)
+│  ├─ adapters/             # alpaca.py · finnhub.py · fmp.py · edgar.py · fred.py · marketaux.py
+│  │                        #   + fixtures/ (recorded responses for tests & local dev)
+│  ├─ indicators.py         # ~200 lines of Polars expressions + tests
+│  ├─ scans.py · baserates.py · volbands.py · briefing/ (extract.py · synthesize.py · verify.py)
+│  ├─ publish.py            # single-transaction refresh into Supabase
+│  └─ tests/                # indicator reference values, base-rate lookahead guards, Wilson CI cases
+└─ .github/workflows/
+   ├─ nightly-a.yml         # cron 37 22 * * 1-5 — ingest, compute, submit batch (+ heartbeat)
+   └─ nightly-b.yml         # cron 25 0 * * 2-6 — collect, synthesize, verify, publish (+ weekly pg_dump)</pre>
+  <p>One repo, two deployables, two short workflows. The <code>adapters/</code> directory is the
+  repository pattern the data plan depends on: every provider is swappable in one module, because
+  free tiers have a documented habit of being cut (Alpha Vantage 500→25 req/day; Finnhub’s free
+  candles removed).</p>
+</section>

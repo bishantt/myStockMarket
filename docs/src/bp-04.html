@@ -1,0 +1,234 @@
+<!-- ================= PART 6 ================= -->
+<section class="part">
+  <div class="part-head">
+    <div class="kicker">Part 6</div>
+    <h2>Data model</h2>
+    <p class="dek">A deliberate split: full-market history lives as Parquet files the pipeline scans;
+    Postgres holds what the app serves — plus the small set of tables the user writes (watchlist,
+    journal, review state, paper trades). Two stores, each doing the one thing it is good at.</p>
+  </div>
+
+  <figure class="avoid-break">
+    <div class="fig-frame">
+    <svg viewBox="0 0 700 392" role="img" aria-label="Data model: Parquet analytical zone and Postgres serving zone" font-family="-apple-system,'Segoe UI',sans-serif">
+      <!-- Parquet zone -->
+      <rect x="12" y="16" width="190" height="360" rx="8" fill="#fcfcfb" stroke="#eda100" stroke-width="1.3"/>
+      <text x="107" y="36" font-size="10.5" font-weight="700" fill="#0b0b0b" text-anchor="middle">PARQUET on R2</text>
+      <text x="107" y="49" font-size="8.5" fill="#898781" text-anchor="middle">analytical history · pipeline-only</text>
+      <g font-size="8.8" fill="#52514e">
+        <rect x="24" y="60" width="166" height="56" rx="5" fill="#fff" stroke="#e1e0d9"/>
+        <text x="32" y="74" font-weight="700" fill="#0b0b0b">prices_daily/ (by year)</text>
+        <text x="32" y="87">symbol · date · OHLC raw + adj</text>
+        <text x="32" y="99">volume · ~9.7M rows, 120–350MB</text>
+        <rect x="24" y="126" width="166" height="50" rx="5" fill="#fff" stroke="#e1e0d9"/>
+        <text x="32" y="140" font-weight="700" fill="#0b0b0b">indicators_daily/</text>
+        <text x="32" y="153">symbol · date · sma/ema/rsi/macd</text>
+        <text x="32" y="165">atr · bbands · rvol …(~20 cols)</text>
+        <rect x="24" y="186" width="166" height="50" rx="5" fill="#fff" stroke="#e1e0d9"/>
+        <text x="32" y="200" font-weight="700" fill="#0b0b0b">signal_events/</text>
+        <text x="32" y="213">symbol · date · pattern_key</text>
+        <text x="32" y="225">direction · attrs — full history</text>
+        <rect x="24" y="246" width="166" height="42" rx="5" fill="#fff" stroke="#e1e0d9"/>
+        <text x="32" y="260" font-weight="700" fill="#0b0b0b">adjustments/</text>
+        <text x="32" y="272">symbol · ex_date · factor · type</text>
+        <text x="32" y="283">splits &amp; dividends — audit trail</text>
+      </g>
+      <text x="107" y="308" font-size="8.5" fill="#898781" text-anchor="middle">DuckDB scans → base rates,</text>
+      <text x="107" y="320" font-size="8.5" fill="#898781" text-anchor="middle">screens, vol bands, fwd-return stats</text>
+      <text x="107" y="340" font-size="8.5" fill="#898781" text-anchor="middle">corporate action ⇒ affected symbol</text>
+      <text x="107" y="352" font-size="8.5" fill="#898781" text-anchor="middle">rewritten across ALL partitions</text>
+      <text x="107" y="368" font-size="8.5" fill="#898781" text-anchor="middle">cache, not system of record</text>
+
+      <!-- Postgres zone -->
+      <rect x="226" y="16" width="462" height="360" rx="8" fill="#fcfcfb" stroke="#2a78d6" stroke-width="1.4"/>
+      <text x="457" y="36" font-size="10.5" font-weight="700" fill="#0b0b0b" text-anchor="middle">POSTGRES (Supabase) — serving + user-state, Prisma-owned</text>
+      <g font-size="8.6" fill="#52514e">
+        <!-- row 1 -->
+        <rect x="240" y="48" width="140" height="44" rx="5" fill="#fff" stroke="#e1e0d9"/>
+        <text x="248" y="62" font-weight="700" fill="#0b0b0b">instrument</text>
+        <text x="248" y="74">symbol · name · sector · cik</text>
+        <text x="248" y="85">is_active · delisted_at</text>
+        <rect x="392" y="48" width="140" height="44" rx="5" fill="#fff" stroke="#e1e0d9"/>
+        <text x="400" y="62" font-weight="700" fill="#0b0b0b">watchlist_item ✎</text>
+        <text x="400" y="74">symbol · reason · is_focus</text>
+        <text x="400" y="85">added_at</text>
+        <rect x="544" y="48" width="132" height="44" rx="5" fill="#fff" stroke="#e1e0d9"/>
+        <text x="552" y="62" font-weight="700" fill="#0b0b0b">calendar_event</text>
+        <text x="552" y="74">date · kind · symbol?</text>
+        <text x="552" y="85">bmo/amc · consensus · prior</text>
+        <!-- row 2 -->
+        <rect x="240" y="102" width="140" height="44" rx="5" fill="#fff" stroke="#e1e0d9"/>
+        <text x="248" y="116" font-weight="700" fill="#0b0b0b">scan_result</text>
+        <text x="248" y="128">run_date · preset_key</text>
+        <text x="248" y="139">symbol · rank · metrics</text>
+        <rect x="392" y="102" width="140" height="44" rx="5" fill="#fff" stroke="#e1e0d9"/>
+        <text x="400" y="116" font-weight="700" fill="#0b0b0b">setup_card</text>
+        <text x="400" y="128">run_date · symbol · pattern</text>
+        <text x="400" y="139">tier · weakeners ✎ · state</text>
+        <rect x="544" y="102" width="132" height="44" rx="5" fill="#fff" stroke="#e1e0d9"/>
+        <text x="552" y="116" font-weight="700" fill="#0b0b0b">base_rate_stat</text>
+        <text x="552" y="128">pattern · universe · horizon · n</text>
+        <text x="552" y="139">wins · CI · fwd p10/50/90 · meta</text>
+        <!-- row 3 -->
+        <rect x="240" y="156" width="140" height="44" rx="5" fill="#fff" stroke="#e1e0d9"/>
+        <text x="248" y="170" font-weight="700" fill="#0b0b0b">news_item</text>
+        <text x="248" y="182">published_at · headline</text>
+        <text x="248" y="193">tickers[] · extract_json · url</text>
+        <rect x="392" y="156" width="140" height="44" rx="5" fill="#fff" stroke="#e1e0d9"/>
+        <text x="400" y="170" font-weight="700" fill="#0b0b0b">briefing</text>
+        <text x="400" y="182">run_date · am/pm_json</text>
+        <text x="400" y="193">verification · model_meta</text>
+        <rect x="544" y="156" width="132" height="44" rx="5" fill="#fff" stroke="#e1e0d9"/>
+        <text x="552" y="170" font-weight="700" fill="#0b0b0b">signal_log ⟲ insert-only</text>
+        <text x="552" y="182">fired · pattern · stated rate</text>
+        <text x="552" y="193">resolves_on · UNIQUE key</text>
+        <!-- row 4 -->
+        <rect x="240" y="210" width="140" height="44" rx="5" fill="#fff" stroke="#e1e0d9"/>
+        <text x="248" y="224" font-weight="700" fill="#0b0b0b">pipeline_run</text>
+        <text x="248" y="236">run_date · stage_status</text>
+        <text x="248" y="247">source_status · timings</text>
+        <rect x="392" y="210" width="140" height="44" rx="5" fill="#fff" stroke="#e1e0d9"/>
+        <text x="400" y="224" font-weight="700" fill="#0b0b0b">lesson</text>
+        <text x="400" y="236">module · slug · body_mdx</text>
+        <text x="400" y="247">concepts[]</text>
+        <rect x="544" y="210" width="132" height="44" rx="5" fill="#fff" stroke="#e1e0d9"/>
+        <text x="552" y="224" font-weight="700" fill="#0b0b0b">concept_state ✎</text>
+        <text x="552" y="236">concept · familiarity · box</text>
+        <text x="552" y="247">due_on (Leitner)</text>
+        <!-- row 5 -->
+        <rect x="240" y="264" width="140" height="44" rx="5" fill="#fff" stroke="#e1e0d9"/>
+        <text x="248" y="278" font-weight="700" fill="#0b0b0b">price_bar (serving)</text>
+        <text x="248" y="290">watchlist + indices · ~5y daily</text>
+        <text x="248" y="301">OHLCV + adj — feeds charts</text>
+        <rect x="392" y="264" width="140" height="44" rx="5" fill="#fff" stroke="#e1e0d9"/>
+        <text x="400" y="278" font-weight="700" fill="#0b0b0b">paper_trade ✎</text>
+        <text x="400" y="290">symbol · side · qty · fills</text>
+        <text x="400" y="301">opened/closed · thesis · signal?</text>
+        <rect x="544" y="264" width="132" height="44" rx="5" fill="#fff" stroke="#e1e0d9"/>
+        <text x="552" y="278" font-weight="700" fill="#0b0b0b">vol_band</text>
+        <text x="552" y="290">symbol · horizon (5/10/20d)</text>
+        <text x="552" y="301">lo/hi · “8 in 10” label</text>
+        <!-- row 6 -->
+        <rect x="240" y="318" width="140" height="44" rx="5" fill="#fff" stroke="#e1e0d9"/>
+        <text x="248" y="332" font-weight="700" fill="#0b0b0b">journal_entry ✎</text>
+        <text x="248" y="344">date · prompt · body · forecast?</text>
+        <text x="248" y="355">probability · resolves_on · Brier</text>
+        <rect x="392" y="318" width="140" height="44" rx="5" fill="#fff" stroke="#e1e0d9"/>
+        <text x="400" y="332" font-weight="700" fill="#0b0b0b">signal_resolution ⟲</text>
+        <text x="400" y="344">signal_id FK · outcome</text>
+        <text x="400" y="355">resolved_at — insert-only</text>
+        <text x="552" y="336" font-size="8.4" fill="#898781">✎ = app-writable (user state)</text>
+        <text x="552" y="348" font-size="8.4" fill="#898781">⟲ = insert-only, never updated</text>
+        <text x="552" y="360" font-size="8.4" fill="#898781">all else: pipeline-written</text>
+      </g>
+    </svg>
+    </div>
+    <figcaption><b>Figure 6.1 — Data model zones.</b> Pipeline-derived tables are written only by
+    the nightly jobs; the app writes only the ✎ user-state tables. <code>setup_card</code>
+    references <code>base_rate_stat</code>; every card also inserts a <code>signal_log</code> row at
+    fire time, and the resolver later inserts a matching <code>signal_resolution</code> row — the
+    log itself is never updated. Instrument relations (symbol foreign keys) omitted from the
+    drawing for legibility.</figcaption>
+  </figure>
+
+  <h3>6.1 &nbsp;Table definitions — the fields that carry design decisions</h3>
+  <table class="rowhead">
+    <thead><tr><th style="width:32mm">Table</th><th>Purpose &amp; the columns that matter</th></tr></thead>
+    <tbody>
+      <tr><td>instrument</td><td>Symbol master for the defined US universe (NYSE/Nasdaq/AMEX). <code>is_active</code>/<code>delisted_at</code> exist so backtests can include dead tickers — the survivorship guardrail from the Research Report is a schema feature, not a hope.</td></tr>
+      <tr><td>price_bar</td><td><strong>The serving copy of price data</strong> — watchlist plus index/sector symbols × ~5 years of daily bars (≈40–60k rows, trivial inside the 500MB ceiling), written nightly like every serving table. Candlestick charts and sparklines render from here; full-market history stays Parquet-only, and the app never needs R2 credentials.</td></tr>
+      <tr><td>base_rate_stat</td><td>One row per (pattern_key, universe, horizon, regime): <code>n, wins, win_rate, ci_low, ci_high</code> (Wilson), <code>fwd_p10/median/p90</code>, plus pattern metadata: <code>publication_year</code>, <code>evidence_grade</code> (the Part-4 ledger verdict), and <code>decay_note</code> — the decay stamp is a schema field, not a caption. The UI’s display-precision rules key off <code>n</code>; the tier is capped at “weak” whenever the CI includes the always-up baseline.</td></tr>
+      <tr><td>vol_band</td><td>The product’s only sanctioned forecast: per-watchlist-symbol expected-range bands at 5/10/20 trading days from empirical quantiles of recent realized moves (HAR-lite), each row carrying its frequency label (“8 in 10 past paths stayed inside”) and the regime-break caveat string. Nothing beyond 20 days exists, by schema.</td></tr>
+      <tr><td>setup_card</td><td>A day’s rendered signal: pattern state, tier, weakeners with live check-state (the checkbox is user-writable), FK to its base-rate row. Cards are regenerated nightly; history lives in the log.</td></tr>
+      <tr><td>signal_log + signal_resolution</td><td><strong>The track record, mechanically honest.</strong> <code>signal_log</code> is insert-only (UPDATE/DELETE revoked): fired signal + the exact numbers stated at fire time + <code>resolves_on</code>, with <code>UNIQUE (fired_date, pattern_key, symbol, horizon)</code> and <code>ON CONFLICT DO NOTHING</code> so reruns are idempotent. The nightly resolver <em>inserts</em> a <code>signal_resolution</code> row (outcome, resolved_at) — outcomes live in their own insert-only table, so append-only is a mechanical property, not a convention. Logging starts in Phase 1, resolution in Phase 4.</td></tr>
+      <tr><td>paper_trade</td><td><strong>The paper-trading ledger — v1’s only “orders.”</strong> Symbol, side, qty, simulated fill (next-open price + half-spread + slippage estimate), opened/closed timestamps, a required thesis note, optional link to the signal that prompted it. Turnover from this ledger drives the cost mirror and the trade-frequency mirror; a paper order placed within minutes of a signal firing triggers the cooling-off interstitial. This table is what makes “paper-first” a feature rather than a slogan.</td></tr>
+      <tr><td>briefing</td><td>AM/PM JSON plus <code>verification_json</code> (every extracted number/ticker/date and where it matched) and <code>model_meta</code> (models, token counts, batch vs sync) — the audit trail for every published word.</td></tr>
+      <tr><td>news_item</td><td>Snippet + provider URL + the Stage-A extract. Snippets only (Marketaux never returns full text); the UI always links out.</td></tr>
+      <tr><td>calendar_event</td><td>US earnings (with bmo/amc), US macro prints (consensus/prior — CPI, jobs report, GDP), FOMC dates and Fed speakers. The if/then scenario cards render from this plus base_rate_stat — and a branch whose historical sample has N &lt; 30 renders “insufficient history for this branch — treat as anecdote” rather than a number.</td></tr>
+      <tr><td>pipeline_run</td><td>Per-stage and per-source status — surfaces as the dashboard footer (“news unavailable tonight”) so degraded runs are visible, never silent. Stage-completion rows are what make <code>workflow_dispatch</code> reruns skip finished work.</td></tr>
+      <tr><td>lesson / concept_state</td><td>Academy content (MDX) and the Leitner review queue (<code>box</code>, <code>due_on</code>, familiarity for adaptive fading). concept_state is app-written on every review answer.</td></tr>
+      <tr><td>journal_entry</td><td>PM-prompt responses — plus the forecast-journal fields the Research Report commits to: optional <code>forecast</code> (a falsifiable statement), <code>probability</code> (anchored on a displayed base rate), <code>resolves_on</code>, <code>outcome</code>, so user predictions are Brier-scored on the same track-record page as the app’s own flags. Together with paper_trade, the only truly irreplaceable data in the system — see backup policy, §7.3.</td></tr>
+    </tbody>
+  </table>
+  <p><strong>Parquet layout:</strong> <code>prices_daily/year=YYYY/*.parquet</code> (current year
+  rewritten nightly; prior years rewritten per-symbol when a corporate action lands),
+  <code>adjustments/</code> as the split/dividend audit trail, <code>indicators_daily/</code> and
+  <code>signal_events/</code> regenerated from prices as needed. Losing the bucket costs one
+  re-pull from Alpaca — by design, nothing in R2 is precious.</p>
+</section>
+
+<!-- ================= PART 7 ================= -->
+<section class="part">
+  <div class="part-head">
+    <div class="kicker">Part 7</div>
+    <h2>Security, operations &amp; cost</h2>
+    <p class="dek">Single-user security is mostly about not inventing problems: one wall, few
+    secrets, and monitoring designed around the one catastrophic failure mode — silence.</p>
+  </div>
+
+  <h3>7.1 &nbsp;Authentication &amp; the licensing wall</h3>
+  <p>HTTP Basic Auth implemented in ~20 lines of Next.js middleware (<code>proxy.ts</code> in
+  Next 16): credentials in env vars, constant-time comparison, HTTPS via Vercel. This is
+  deliberately boring — for one user it is exactly sufficient, and it doubles as the data-licensing
+  compliance mechanism (every provider requires the dashboard stay private to you). The pipeline’s
+  revalidate route requires an <code>Authorization: Bearer $CRON_SECRET</code> header. Vercel’s free
+  preview-deployment authentication stays on so preview URLs never expose data pages. Rejected:
+  Vercel Password Protection (requires a $150/mo add-on — absurd here), Clerk (dependency overkill
+  for n=1); the free step-up if Basic Auth’s browser popup ever grates is Auth.js with a single
+  credentials user, or Cloudflare Access in front of a custom domain.</p>
+
+  <h3>7.2 &nbsp;Secrets inventory</h3>
+  <table>
+    <thead><tr><th style="width:44mm">Secret</th><th style="width:34mm">Lives in</th><th>Notes</th></tr></thead>
+    <tbody>
+      <tr><td><code>DATABASE_URL</code> (pooled, transaction mode)</td><td>Vercel env + GH Actions secrets</td><td>App reads and user-state writes; pipeline bulk writes.</td></tr>
+      <tr><td><code>DIRECT_URL</code> / <code>SESSION_POOLER_URL</code></td><td>Local <code>.env</code> / GH Actions secrets</td><td>DIRECT_URL for migrations from your machine. The Supavisor <em>session-mode</em> string (IPv4, port 5432) is what CI uses for <code>pg_dump</code> and migrations — Supabase free direct connections are IPv6-only and GitHub runners have no IPv6.</td></tr>
+      <tr><td><code>ALPACA_KEY_ID</code> / <code>ALPACA_SECRET</code>, <code>FINNHUB_KEY</code>, <code>FMP_KEY</code>, <code>MARKETAUX_KEY</code>, <code>FRED_KEY</code></td><td>GH Actions secrets only</td><td>Provider keys never reach Vercel or the client. EDGAR needs no key — only the declared User-Agent.</td></tr>
+      <tr><td><code>ANTHROPIC_API_KEY</code></td><td>GH Actions secrets only</td><td>Set a monthly spend limit in the console as a belt-and-suspenders cost cap.</td></tr>
+      <tr><td><code>R2_ACCESS_KEY_ID</code> / <code>R2_SECRET</code></td><td>GH Actions secrets only</td><td>Scoped token, one bucket. The app never touches R2 — charts read <code>price_bar</code> in Postgres.</td></tr>
+      <tr><td><code>BASIC_AUTH_USER</code> / <code>BASIC_AUTH_PASS</code>, <code>CRON_SECRET</code></td><td>Vercel env</td><td>Rotate by redeploy; no code change.</td></tr>
+      <tr><td><code>HEALTHCHECKS_PING_URL</code></td><td>GH Actions secrets</td><td>Treat as a secret — anyone with it can fake liveness.</td></tr>
+    </tbody>
+  </table>
+  <p>Nothing uses <code>NEXT_PUBLIC_</code>. The repo is private; secrets exist only in GitHub
+  Actions encrypted secrets and Vercel env vars, pulled locally via <code>vercel env pull</code>
+  when needed. Local development and CI never use live keys — adapters run against recorded
+  fixtures (§3.4).</p>
+
+  <h3>7.3 &nbsp;Monitoring, failure design, and backups</h3>
+  <ul>
+    <li><strong>The catastrophic failure is a silently dead cron</strong> — stale data quietly
+    served day after day. Defense in depth: a zero-cost heartbeat step in the workflow (the 60-day
+    schedule auto-disable is documented for public repos; unverified for private — the heartbeat
+    removes the question either way); workflow-failure e-mails catch crashes; and a
+    <strong>healthchecks.io dead-man check configured on the pipeline’s own cron schedule</strong>
+    (<code>25 0 * * 2-6</code>, ~45-minute grace) so weekends never false-alarm — absence of
+    success alerts by ~9:10pm EDT (8:10pm EST), the same evening, not days later. The holiday-exit
+    path pings
+    success explicitly so US market holidays don’t false-alarm either.</li>
+    <li><strong>Degraded &gt; dead:</strong> each data source is isolated, so one provider outage
+    turns into one “unavailable tonight” section, recorded in <code>pipeline_run</code> and shown in
+    the dashboard footer. Ingest hard-fails if &lt;95% of the expected universe returns, so stale
+    data never masquerades as fresh.</li>
+    <li><strong>Publish is one transaction:</strong> all serving tables are refreshed inside a
+    single transaction (DELETE-and-INSERT of the night’s serving rows, or staged tables renamed
+    together in the same transaction) — MVCC serves readers the previous consistent snapshot until
+    commit, so the Desk never renders a half-written briefing and foreign keys never dangle across
+    generations.</li>
+    <li><strong>Backups follow value:</strong> Parquet is re-pullable and pipeline-derived Postgres
+    tables are regenerable — but <code>signal_log</code>/<code>signal_resolution</code>,
+    <code>paper_trade</code>, and <code>journal_entry</code> are irreplaceable, so a weekly
+    <code>pg_dump</code> step (over the session-mode pooler — see §7.2) ships a compressed dump to
+    R2. Restore is one command; testing it once is a Phase 1 acceptance criterion.</li>
+  </ul>
+
+  <h3>7.4 &nbsp;The monthly bill</h3>
+  <table>
+    <thead><tr><th style="width:34mm">Scenario</th><th class="num" style="width:22mm">$/month</th><th>Composition</th></tr></thead>
+    <tbody>
+      <tr><td>Low</td><td class="num">~$7</td><td>Batch discount lands every night ($0.33 × 21 trading days ≈ $6.90); all free tiers behave.</td></tr>
+      <tr><td><strong>Expected</strong></td><td class="num"><strong>$7–11</strong></td><td>Entirely LLM tokens: occasional all-sync fallback nights (~$0.51), reruns, and development/testing tokens. $11 is the ceiling even if the batch discount never lands; an Opus-class synthesis upgrade would add ~$1.70/mo on top. Everything else — hosting, DB, scheduler, storage, charts, auth, monitoring — rides verified free tiers.</td></tr>
+      <tr><td>High (upgrades fired)</td><td class="num">~$65–105</td><td>EODHD EOD+Intraday $29.99 + FMP Premium $59 (annual-billed) + Hetzner ~$5 + ~$11 LLM — adopted one at a time on named triggers, never all at once.</td></tr>
+    </tbody>
+  </table>
+</section>

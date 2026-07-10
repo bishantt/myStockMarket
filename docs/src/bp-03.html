@@ -1,0 +1,178 @@
+<!-- ================= PART 4 ================= -->
+<section class="part">
+  <div class="part-head">
+    <div class="kicker">Part 4</div>
+    <h2>The data plan</h2>
+    <p class="dek">A $0 baseline with confirmed US coverage — NYSE/Nasdaq breadth, the US earnings
+    calendar, US filings and macro — verified against official pricing pages on 8–9 July 2026, plus
+    a pre-researched upgrade ladder so the response to free-tier friction is a same-week migration,
+    not a scramble.</p>
+  </div>
+
+  <h3>4.1 &nbsp;The $0 baseline</h3>
+  <table>
+    <caption>Chosen source per data type — all free, all verified against official pages, all US-coverage-confirmed</caption>
+    <thead><tr>
+      <th style="width:26mm">Data type</th>
+      <th style="width:26mm">Provider</th>
+      <th>Free-tier terms that matter</th>
+      <th style="width:46mm">The gotcha to respect</th>
+    </tr></thead>
+    <tbody>
+      <tr><td>Full-universe EOD bars + 7y history (NYSE/Nasdaq/AMEX)</td><td>Alpaca Market Data Basic <span class="chip supported">verified</span></td>
+        <td>$0 · 200 API calls/min · multi-symbol bars endpoints · corporate actions included · no brokerage account needed · “100% market coverage”.</td>
+        <td>Historical REST excludes the latest 15 minutes — irrelevant for a post-close batch. Free quotes are IEX-only (~2–3% of consolidated US volume); real-time consolidated SIP is Alpaca’s $99/mo tier — irrelevant for an EOD-centric v1, but the number to know.</td></tr>
+      <tr><td>Fundamentals (metrics, profiles)</td><td>Finnhub free <span class="chip supported">verified</span></td>
+        <td>$0 · 60 calls/min · <code>/stock/metric</code> confirmed non-premium · US coverage.</td>
+        <td><strong>OHLCV candles are premium-only on Finnhub</strong> — never plan price data here; free keys get 403 on <code>/stock/candle</code>.</td></tr>
+      <tr><td>US earnings calendar (bmo/amc timing)</td><td>FMP free <span class="chip supported">verified</span></td>
+        <td>$0 · 250 calls/day · 500MB/30-day bandwidth — ample for one nightly pull of the US calendar.</td>
+        <td>End-of-day timeframe only on free; 5-year history cap; free-tier scope is US companies.</td></tr>
+      <tr><td>Filings (8-K, 10-Q/K) for watchlist</td><td>SEC EDGAR <span class="chip supported">verified</span></td>
+        <td>$0 forever, public domain, the primary source for US filings · per-CIK submissions JSON, full-text search, nightly bulk ZIPs · real-time dissemination.</td>
+        <td>10 req/s cap and a mandatory <code>User-Agent: "Name email@domain"</code> header — undeclared tools get 403’d.</td></tr>
+      <tr><td>US macro series + release calendar (CPI, jobs, rates)</td><td>FRED <span class="chip supported">verified</span></td>
+        <td>$0 with free API key · 845k series · v2 bulk API (Nov 2025) · release-dates endpoints cover the US macro calendar.</td>
+        <td>2 req/s documented limit; mandatory attribution notice must render in the app footer.</td></tr>
+      <tr><td>Ticker-tagged news + sentiment</td><td>Finnhub company-news + Marketaux <span class="chip mixed">partially verified</span></td>
+        <td>Finnhub news free for watchlist scope; Marketaux free = 100 req/day × 3 articles ≈ 300 snippets/night with per-entity sentiment — the market-wide catalyst source for non-watchlist movers (partial coverage; unmatched movers honestly render “no news found”).</td>
+        <td>Marketaux returns snippets only, never full text, on all plans; archive depth undocumented.</td></tr>
+      <tr><td>Backfill / cross-check only</td><td>yfinance · Stooq <span class="chip weak">fallback tier</span></td>
+        <td>$0 · full-market EOD + decades of US history — the path to extending the archive toward 10 years.</td>
+        <td>yfinance is an unofficial scraper: personal-use-only per Yahoo ToS, undocumented rate limits, breaks recurrently. Never a foundation — a monthly cross-check and emergency backfill.</td></tr>
+      <tr><td><em>Deferred:</em> live watchlist quotes</td><td>Alpaca IEX WebSocket <span class="chip weak">post-v1</span></td>
+        <td>$0, real-time, 30-symbol cap — the documented path <em>if</em> an evening live view is ever wanted.</td>
+        <td>Deliberately not in v1: the app is as-of-close by design, and provider keys stay server-side — a live view would require a relay the architecture doesn’t otherwise need. Revisit only with a stated use case.</td></tr>
+    </tbody>
+  </table>
+
+  <div class="callout guardrail avoid-break">
+    <span class="co-label">Licensing — one rule covers everything</span>
+    <p>Every shortlisted provider licenses data for <strong>personal, non-redistributed use with
+    local storage</strong>; several (Finnhub, Tiingo most strictly) forbid showing data to anyone
+    else, and even paid self-serve tiers stay personal-use. US real-time redistribution is further
+    bound by exchange agreements (SIP/OPRA) at the paid tiers — another reason v1 stays end-of-day.
+    The always-on Basic Auth wall <em>is</em> the compliance mechanism. Keep the FRED attribution
+    line and the TradingView logo rendered; no public deploy previews of data pages (Vercel’s free
+    preview authentication covers this).</p>
+  </div>
+
+  <h3>4.2 &nbsp;The upgrade ladder — pay only when a named friction appears</h3>
+  <table>
+    <caption>Pre-researched paid steps, with verified prices and explicit triggers</caption>
+    <thead><tr>
+      <th style="width:34mm">Upgrade</th><th style="width:24mm">Price (verified 8–9 Jul 2026)</th>
+      <th>Adopt when…</th><th style="width:44mm">Fine print that matters</th>
+    </tr></thead>
+    <tbody>
+      <tr><td>EODHD “EOD Historical Data” (All World)</td><td class="num">$19.99/mo</td>
+        <td>The Alpaca nightly batch shows friction: long-tail ticker gaps, split/adjustment issues, or rate-limit pain. Likely the first upgrade.</td>
+        <td>Bulk endpoint returns an entire exchange’s EOD for 100 weighted calls (of 100k/day). Watch call-weighting: fundamentals cost 10 calls, intraday/news 5. Free tier (20 calls/day) is demo-grade.</td></tr>
+      <tr><td>FMP Starter</td><td class="num">$22/mo billed annually</td>
+        <td>The free 250 calls/day binds — i.e., nightly fundamentals/news for more than a handful of tickers.</td>
+        <td>Month-to-month price is higher and unverified (~$29–33 plausible — do not budget on it). Starter = 5y history, <em>annual</em> statements only, US coverage; quarterly/TTM needs Premium $59/mo annual-billed.</td></tr>
+      <tr><td>Tiingo Power</td><td class="num">$30/mo or $300/yr</td>
+        <td>Adjusted-close data quality becomes the complaint — Tiingo has the best cleanliness reputation in this class, with 30+ years of US EOD history.</td>
+        <td>Fundamentals is a separately priced add-on (unlisted). License is strictly personal/internal; the $50/mo tier is for internal commercial use.</td></tr>
+      <tr><td>Massive (ex-Polygon) Stocks Starter</td><td class="num">$29/mo or $288/yr</td>
+        <td>Developer experience and unlimited API calls matter more than freshness: grouped-daily endpoint = the whole US market in one call, best-in-class docs.</td>
+        <td>15-minute delayed (fine here). Real-time needs Advanced at $199/mo with non-professional exchange agreements — don’t. Note the rebrand: polygon.io now redirects to massive.com.</td></tr>
+      <tr><td>Marketaux Basic</td><td class="num">$29/mo ($24 annual)</td>
+        <td>300 snippets/night feels thin for market-wide mover coverage: jumps to 2,500 req/day × 20 articles.</td>
+        <td>Still snippets-only; ToS is personal/non-commercial boilerplate.</td></tr>
+      <tr><td>Finnhub Fundamental-1</td><td class="num">$50/mo, billed quarterly</td>
+        <td>Only if you want standardized + as-reported statements under a key you already integrate.</td>
+        <td>Per-market licensing; strictly personal-use even when paid; no refunds; 30-day cancellation notice. FMP Premium is usually the better fundamentals dollar.</td></tr>
+      <tr><td>Hetzner CX22 VPS (ops, not data)</td><td class="num">~$5/mo <span class="chip weak">unverified</span></td>
+        <td>GH Actions jitter, dropped schedule events, or the 6h cap ever bite: exact-minute systemd timer, unlimited duration, persistent Parquet disk.</td>
+        <td>Third-party trackers cite €4.49–4.59 after an April 2026 price adjustment — confirm at checkout. DB stays managed; the box stays disposable.</td></tr>
+    </tbody>
+  </table>
+
+  <p><strong>Upgrade philosophy:</strong> consolidate onto <em>one</em> paid provider when friction
+  appears rather than stacking several — the likely first move is EODHD (EOD breadth) or FMP Starter
+  (fundamentals breadth), whichever pain arrives first. <strong>Evaluated and rejected:</strong>
+  Alpha Vantage (25 req/day free — precedent of cutting free tiers), Twelve Data, Marketstack,
+  Databento, NewsAPI.org, Benzinga (enterprise pricing), Trading Economics, and scraping
+  Nasdaq/Zacks (legality). Every adapter sits behind the repository interface, so any of these
+  verdicts can be reversed in one module. Account setup is unremarkable for a US-resident signup —
+  create the four keyed accounts (Alpaca, Finnhub, FMP, Marketaux) at kickoff and smoke-test each
+  before writing adapters; per-provider fallbacks stay in the ladder for outages and term changes,
+  and EDGAR/FRED need no account at all.</p>
+</section>
+
+<!-- ================= PART 5 ================= -->
+<section class="part">
+  <div class="part-head">
+    <div class="kicker">Part 5</div>
+    <h2>The AI layer</h2>
+    <p class="dek">Three stages, five grounding rules, one hard gate. The LLM reads and writes; it
+    never counts, never predicts, and never publishes unverified numbers.</p>
+  </div>
+
+  <h3>5.1 &nbsp;Extract → synthesize → verify</h3>
+  <table class="rowhead">
+    <thead><tr><th style="width:34mm">Stage</th><th>Design</th><th style="width:32mm">Model class · run mode · cost/night</th></tr></thead>
+    <tbody>
+      <tr><td>A · Per-article extraction</td>
+        <td>Each news item (~100/night from Finnhub + Marketaux) → rigid JSON: 250-token summary, tickers, sentiment, event type, <strong>mandatory doc-ID citation</strong>. Prompt forbids outside knowledge; the model sees only the fetched article text. Structured outputs enforce the schema.</td>
+        <td>Cheap-fast (Haiku-class: <code>claude-haiku-4-5</code>) · <strong>Batch API, −50%</strong> — submitted by Job A, collected by Job B ~65 min later<br>~$0.35 list / <strong>~$0.18 batched</strong></td></tr>
+      <tr><td>B · Briefing synthesis</td>
+        <td>One call composes the evening briefing — what moved in the US session, why (per cited extracts), what the scanner found, what’s on tomorrow’s US calendar. It sees <strong>only</strong> the structured extracts plus the pipeline’s computed-stats table; every number used verbatim; every bullet carries a source ID, enforced by output schema.</td>
+        <td>Frontier (Sonnet-class: <code>claude-sonnet-5</code>; Opus-class adds ~$0.08/night if prose quality ever warrants) · <strong>synchronous in Job B</strong> — one ~90-second call; batching one call buys nothing and would chain a second batch wait<br>~$0.13</td></tr>
+      <tr><td>C · Verification gate</td>
+        <td>Deterministic, <em>not</em> an LLM judge — with defined tolerances, not naive string equality: numbers are parsed to values and matched within rounding tolerance (a drafted “8.2%” matches a sourced 8.24%), tickers and dates canonicalized, units normalized ($1.2B ≡ 1,200M). Every number, ticker, and date in the draft must match the source extracts or the stats table; violations are flagged inline or block publish. (LLM citation-validation runs ~38% accuracy in studies; deterministic checking is near-free.) Optional cheap-model spot-check on non-numeric claims.</td>
+        <td>Parser/regex + optional Haiku pass · synchronous<br>~$0–0.03</td></tr>
+    </tbody>
+  </table>
+
+  <h3>5.2 &nbsp;The five grounding rules</h3>
+  <ol>
+    <li><strong>The pipeline computes all numbers; the LLM narrates them verbatim.</strong>
+    Benchmark evals show top models collapsing from ~95% on simple financial lookups to near 0% on
+    multivariate calculation — so arithmetic is simply not the model’s job here.</li>
+    <li><strong>Ground on fetched documents only:</strong> every input carries a doc ID; outside
+    knowledge is forbidden; every claim must cite a doc ID — enforced via structured output schema
+    (<code>output_config.format</code> / <code>client.messages.parse</code>), not via hope.</li>
+    <li><strong>Assume residual hallucination and gate it.</strong> Grounded-summarization
+    hallucination rates are ~0.7–1.5% even for top models — low, not zero. Stage C exists to catch
+    the residue; citations render inline in the UI so the user can always click through.</li>
+    <li><strong>Two-stage architecture caps the blast radius:</strong> the synthesis model never
+    sees raw articles — only schema-validated extracts — bounding both context size and
+    hallucination surface.</li>
+    <li><strong>No verbalized probabilities, ever.</strong> LLM-stated confidences are
+    systematically overconfident; every probability on screen is a frequency computed from
+    historical data by the pipeline (Research Report, Part 7).</li>
+  </ol>
+
+  <h3>5.3 &nbsp;Cost math, shown in full</h3>
+  <table>
+    <caption>Nightly token arithmetic — API prices as of the official pricing cache, June 2026 (reconfirm at build time)</caption>
+    <thead><tr><th>Stage</th><th class="num">Input tokens</th><th class="num">Output tokens</th><th>Rate (per MTok)</th><th class="num">$/night</th></tr></thead>
+    <tbody>
+      <tr><td>A · Extraction — 100 items × (≈1,200 article + 1,000 prompt/schema in; 250 out) · <strong>batched −50%</strong></td><td class="num">220K</td><td class="num">25K</td><td>Haiku 4.5 · $1 / $5</td><td class="num">$0.18</td></tr>
+      <tr><td>B · Synthesis — extracts (25K) + 5K stats + 2K instructions; ~2K out · sync</td><td class="num">32K</td><td class="num">2K</td><td>Sonnet 5 · $3 / $15 <span class="cell-note">intro $2/$10 through Aug 31, 2026</span></td><td class="num">$0.13</td></tr>
+      <tr><td>C · Optional spot-check · sync</td><td class="num">27K</td><td class="num">0.5K</td><td>Haiku 4.5</td><td class="num">$0.03</td></tr>
+      <tr><td><strong>Typical night</strong></td><td></td><td></td><td></td><td class="num"><strong>≈ $0.33</strong></td></tr>
+      <tr><td><strong>All-sync fallback night</strong> (batch cancelled at cutoff; already-processed batch items still bill)</td><td></td><td></td><td></td><td class="num"><strong>≈ $0.51</strong></td></tr>
+      <tr><td><strong>Monthly (~21 US trading days)</strong></td><td></td><td></td><td><span class="cell-note">≈$7 typical · ≈$11 if the fallback fired every night</span></td><td class="num"><strong>≈ $7–11</strong></td></tr>
+    </tbody>
+  </table>
+  <p>Only Stage A is batched — it is where the volume is, and the Batch API is the right 50%
+  discount for work nobody is waiting on. Stage B is a single call whose input depends on Stage A’s
+  output; batching it would chain a second batch wait for a ~$0.07 saving — not worth it. Prompt
+  caching is <em>not</em> the lever here either: the shared prefix (~1K tokens) sits below the
+  minimum cacheable prefix for Haiku-class models (2–4K tokens depending on model), and the hundred
+  calls differ in body anyway. Local models were evaluated and rejected: a CPU-only runner is
+  slower and measurably worse, and 2026 TCO analyses put self-hosting far above a ~$7–11/month API
+  bill.</p>
+
+  <div class="callout reality avoid-break">
+    <span class="co-label">What the LLM never does</span>
+    <p>No arithmetic. No probabilities. No direction. No “I think this stock will…”. No content that
+    lacks a source ID. If Stage C finds an unsourced number, the briefing publishes with that line
+    flagged — or not at all: <strong>data beats prose</strong>, and a “briefing unavailable tonight”
+    banner over correct scan results is an acceptable outcome; a fabricated number read before the
+    open is not.</p>
+  </div>
+</section>

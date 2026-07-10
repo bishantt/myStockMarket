@@ -1,0 +1,192 @@
+<!-- ================= PART 8 ================= -->
+<section class="part">
+  <div class="part-head">
+    <div class="kicker">Part 8</div>
+    <h2>Implementation roadmap</h2>
+    <p class="dek">Seven phases, each shippable and each delivering daily value before the next
+    begins. Three sequencing decisions are deliberate: the signal log starts recording in Phase 1
+    (so the track record is long by the time its page ships); setup cards never ship before their
+    accountability surface (the resolver and a visible resolved log land in the same phase); and
+    paper trading arrives after the Academy exists, gated by the risk module — watch first, learn
+    risk, then size paper positions.</p>
+  </div>
+
+  <table>
+    <caption>Phases with acceptance criteria — “done” is testable, not vibes</caption>
+    <thead><tr>
+      <th style="width:30mm">Phase · effort</th>
+      <th>Scope</th>
+      <th style="width:58mm">Acceptance criteria</th>
+    </tr></thead>
+    <tbody>
+      <tr><td><strong>P0 · Walking skeleton</strong><br>1 weekend</td>
+        <td>Repo scaffold (app/ + pipeline/ + two workflows); Next.js deployed on Vercel behind Basic Auth; Supabase + Prisma migrated; Job A cron runs a hello-pipeline that writes one <code>pipeline_run</code> row; the page renders it. Dead-man ping wired from day one. <strong>All provider free-tier keys created and smoke-tested</strong> before any adapter is written.</td>
+        <td>Open the app and see the evening run’s timestamp, produced entirely by the cloud schedule — nothing ran on your hardware. Kill the workflow once → healthchecks alert arrives the same evening. Alpaca, Finnhub, FMP, Marketaux, FRED keys all live in GH secrets.</td></tr>
+      <tr><td><strong>P1 · Data spine</strong><br>1–2 weeks of evenings</td>
+        <td>Alpaca adapter → full-universe EOD → Parquet on R2; indicator library (Polars, unit-tested against reference values); DuckDB scan queries; <code>instrument</code>, <code>price_bar</code>, <code>scan_result</code>, and <code>signal_log</code> tables live; minimal Desk: US macro pulse (index ETFs + VIX via FRED), movers table with RVOL, watchlist CRUD, <strong>slide-over rail</strong> (click any ticker → in-place rail), ticker page with Lightweight Charts candles fed from <code>price_bar</code>. Weekly <code>pg_dump</code> step over the session pooler.</td>
+        <td>Nightly Job A ingests the universe in &lt;30 min; indicator tests green; ingest hard-fails below the 95% threshold (tested with a faked partial response); designated presets write <code>signal_log</code> rows with <code>resolves_on</code> set and rate fields null (until P4); rail opens without route change and Esc restores scroll + selection; backup restore tested once.</td></tr>
+      <tr><td><strong>P2 · Catalyst &amp; context</strong><br>~1 week</td>
+        <td>Remaining adapters: FMP US earnings calendar (bmo/amc), Finnhub news + metrics, Marketaux (the market-wide catalyst source), EDGAR submissions, FRED releases. Movers-with-reason (catalyst matched by ticker + time window); US session calendar (earnings, CPI, jobs report, FOMC) — if/then cards render event + consensus/prior only, with per-branch base rates attaching in P4; per-source status footer.</td>
+        <td>Every &gt;3% mover on the movers table shows a catalyst chip with source link <em>or</em> the honest “no news found — likely noise” tag (market-wide coverage is partial by design and says so); killing one provider key degrades one section, not the run.</td></tr>
+      <tr><td><strong>P3 · The briefing</strong><br>~1 week</td>
+        <td>LLM pipeline split across the two jobs: Job A submits the extraction batch; Job B collects, runs the one synchronous synthesis call, the deterministic verification gate (tolerance rules from §5.1), and the single-transaction publish; <code>briefing</code> table with verification audit; AM brief + PM scorecard rendering (scorecard displays “grading begins in P4” until the resolver exists); “briefing unavailable” degradation banner.</td>
+        <td>Five consecutive nights of briefings in which every number/ticker/date passes the gate; a seeded fake number in a test draft is caught and blocked; the batch-cutoff fallback drill exercised once; publish confirmed atomic (no mixed-generation reads under a mid-publish request).</td></tr>
+      <tr><td><strong>P4 · Setup cards, base rates &amp; accountability</strong><br>~2 weeks</td>
+        <td>First pattern detectors (MA cross, 52-week-high proximity, gap-with-catalyst, RSI extreme, unusual volume, breadth states) writing <code>signal_events</code> history; <code>base_rate_stat</code> with Wilson CIs, regime slices, and the decay-stamp metadata (publication_year, evidence_grade, decay_note); <code>vol_band</code> computation (5/10/20-day empirical quantiles) and fan-chart render; lottery-risk flags (high-skew, low-price) computed in the scan stage; setup-card UI with icon array, reference-class chip, weakeners, baseline-comparison line; display-precision rules; evidence-grade labels and visible criteria on scan presets; <strong>the nightly resolver (<code>signal_resolution</code>) and a minimal track-record page (plain resolved log)</strong> — cards do not ship without them; if/then branch base rates attach, with the N&lt;30 suppression rendering.</td>
+        <td>Every card shows N + CI + the unconditional-baseline line; a CI spanning the always-up baseline renders tier WEAK (unit-tested); an N&lt;30 pattern renders “insufficient history” with the percentage suppressed; the one-bar-shift lookahead guard has a failing-test proof; every fired card logs at display time; the resolved log shows outcomes within a day of each horizon passing; no vol band renders beyond 20 trading days.</td></tr>
+      <tr><td><strong>P5 · Academy</strong><br>2–3 weeks (content-heavy)</td>
+        <td>MDX lesson framework; ~25 launch lessons across M0–M6 (grow toward ~60), M1 anchored on US market mechanics and session structure; glossary popovers (first-occurrence discipline); worked-example drawer with on-chart annotations; Leitner review queue (max 5/day); bidirectional links with return rails; risk-module soft gate.</td>
+        <td>Every term on the Desk has a glossary entry; drawer → lesson → “Return” restores Desk state exactly; a pattern lesson opened before M3 completion shows the soft gate; review queue never exceeds 5 items; Academy-internal breadcrumbs (map → lesson) present.</td></tr>
+      <tr><td><strong>P6 · Paper desk &amp; calibration</strong><br>~2 weeks + ongoing</td>
+        <td>The <code>paper_trade</code> ledger and entry UI (simulated next-open fills + half-spread + slippage), soft-gated on Academy M3; cost mirror computed from the user’s <em>actual</em> paper turnover; cooling-off interstitial (paper order within X minutes of a signal firing) and weekly trade-frequency mirror — the behavior-mirror push channel of RR §6.2, rate-limited; forecast-journal fields on <code>journal_entry</code> with Brier resolution; half-Kelly-capped paper sizing helper (CI-lower-bound win rate + stored payoff percentiles); full track-record page (calibration curve with per-bucket N, rolling Brier with the “0.25 = coin flip” anchor) now covering both the app’s flags and the user’s forecasts; PM scorecard auto-grading; quantile dotplots in drill-down; sector small multiples; dark mode (Desk only — Academy stays light); ⌘K.</td>
+        <td>Track-record page shows ≥30 resolved signals including misses; cost mirror reproduces the spread×turnover arithmetic on the user’s ledger (fixture ledger in tests); a paper order placed &lt;X min after a signal fires triggers the cooling-off interstitial (tested); sizing helper never exceeds half-Kelly (property test); user forecasts resolve and Brier-score alongside app flags.</td></tr>
+    </tbody>
+  </table>
+
+  <table class="rowhead">
+    <caption>Traceability — Research Report widget catalog → build phase</caption>
+    <thead><tr><th style="width:52mm">Widget (RR §9.2)</th><th style="width:18mm">Priority</th><th>Phase</th></tr></thead>
+    <tbody>
+      <tr><td>US macro pulse + breadth strip</td><td>Must</td><td>P1 (breadth internals mature in P4)</td></tr>
+      <tr><td>Movers with reason</td><td>Must</td><td>P1 (table + RVOL) → P2 (catalyst chips)</td></tr>
+      <tr><td>Focus watchlist + slide-over rail</td><td>Must</td><td>P1</td></tr>
+      <tr><td>US session calendar + if/then cards</td><td>Must</td><td>P2 (events) → P4 (branch base rates)</td></tr>
+      <tr><td>Daily brief pair (AM/PM)</td><td>Must</td><td>P3 (PM auto-grading P4–P6)</td></tr>
+      <tr><td>Probabilistic setup cards</td><td>Must</td><td>P4 (with resolver + minimal track record)</td></tr>
+      <tr><td>Track-record page</td><td>Must</td><td>P4 minimal → P6 full calibration</td></tr>
+      <tr><td>Named scan presets, visible criteria</td><td>Should</td><td>P4</td></tr>
+      <tr><td>Quantile dotplot (drill-down)</td><td>Should</td><td>P6</td></tr>
+      <tr><td>Sector small multiples</td><td>Should</td><td>P6</td></tr>
+      <tr><td>Paper portfolio + cost mirror (module 8)</td><td>Must (protective)</td><td>P6, gated on Academy M3</td></tr>
+      <tr><td>Curated top news · RS comparison chart · ⌘K</td><td>Later</td><td>P6+ / backlog</td></tr>
+    </tbody>
+  </table>
+
+  <div class="callout guardrail avoid-break">
+    <span class="co-label">Standing reminders while building</span>
+    <p>The Research Report’s Part 8 commitments function as the PR checklist: no directional
+    forecasts, no bare percentages, no trending surfaces, mechanical voice, folklore labeled. When a
+    tempting feature conflicts with the evidence chapters, the evidence chapters win — that is what
+    they are for. TDD applies throughout (indicators, base rates, the verification gate, display
+    rules, the sizing cap); the acceptance criteria above are deliberately phrased as tests.</p>
+  </div>
+</section>
+
+<!-- ================= PART 9 ================= -->
+<section class="part">
+  <div class="part-head">
+    <div class="kicker">Part 9</div>
+    <h2>Risks &amp; mitigations</h2>
+    <p class="dek">Ordered by expected pain. The catastrophic ones are operational silence and
+    quiet dishonesty — both engineered against, not hoped against.</p>
+  </div>
+
+  <table>
+    <thead><tr>
+      <th style="width:44mm">Risk</th><th style="width:16mm">Severity</th><th>Mitigation</th>
+    </tr></thead>
+    <tbody>
+      <tr><td>Silently dead pipeline — schedules can be auto-disabled (documented for public repos after 60 idle days; unverified for private), delayed, or occasionally dropped; cron failures page nobody by default; the app would quietly serve stale data</td>
+        <td><span class="chip sev-high">High</span></td>
+        <td>Zero-cost heartbeat step removes the auto-disable question; failure e-mails catch crashes; the dead-man check runs on the pipeline’s own cron schedule (no weekend false alarms) with the holiday path pinging success — absence of success alerts by ~9:10pm EDT / 8:10pm EST, the same evening. Freshness timestamp rendered on the Desk; <code>workflow_dispatch</code> is the manual recovery.</td></tr>
+      <tr><td>GitHub Actions free-minutes exhaustion mid-month would kill the cron exactly like a dead pipeline</td>
+        <td><span class="chip sev-med">Medium</span></td>
+        <td>Designed out: the two-job split (~50 min/night ≈ 1,050/mo) leaves ~45% headroom of the 2,000 free minutes for reruns and backfills; a blocking single-job design (~1,650/mo) was explicitly rejected. If usage ever creeps, the Hetzner escape hatch is pre-priced.</td></tr>
+      <tr><td>Oracle drift — the product slowly grows prediction features under enthusiasm pressure</td>
+        <td><span class="chip sev-med">Medium</span></td>
+        <td>The non-negotiables box (Part 1) + Research Report Part 8 as the standing PR checklist; the track-record page makes any drift publicly visible in the app’s own Brier score.</td></tr>
+      <tr><td>Indicator or base-rate math is simply wrong — hand-rolled code feeding every displayed number</td>
+        <td><span class="chip sev-med">Medium</span></td>
+        <td>Unit tests against published reference values; one-time cross-check against TA-Lib in CI; the one-bar-shift lookahead guard has its own failing-test proof; Wilson CI implementation tested against textbook cases.</td></tr>
+      <tr><td>Supabase free pauses after 7 idle days if the pipeline itself is broken — one bug becomes two outages</td>
+        <td><span class="chip sev-med">Medium</span></td>
+        <td>Dead-man alert surfaces a broken pipeline the same evening, not seven days later; if the coupling still rankles, Neon free has no pause concept and Prisma makes the swap a connection-string change.</td></tr>
+      <tr><td>Free-tier rug-pulls — precedent is real (Alpha Vantage 500→25 req/day; Finnhub removed free candles)</td>
+        <td><span class="chip sev-med">Medium</span></td>
+        <td>Repository-pattern adapters make any provider swap a one-module change; the upgrade ladder is pre-researched with verified prices so the response is a same-week migration.</td></tr>
+      <tr><td>LLM hallucination in the briefing — a fabricated number read before the open could influence a real decision</td>
+        <td><span class="chip sev-med">Medium</span></td>
+        <td>Three-layer defense: LLM never computes (numbers passed in, used verbatim); per-claim source-ID citations enforced by schema; deterministic tolerance-based gate blocks unsourced numbers/tickers/dates. Residual ~0.7–1.5% grounded-hallucination rate contained by inline citations in the UI.</td></tr>
+      <tr><td>Alpaca data quality — IEX-only quotes differ slightly from the consolidated tape, and 7 years of history may be short for some base rates</td>
+        <td><span class="chip sev-med">Medium</span></td>
+        <td>For EOD closes the divergence is minor; monthly sample cross-check against Stooq/yfinance; Stooq backfill can extend depth. If quality or depth becomes the binding pain, Tiingo Power ($30, 30+ yrs, best cleanliness reputation) or EODHD ($19.99) is the targeted fix.</td></tr>
+      <tr><td>Scope creep / solo-maintainer fatigue — the Academy alone could swallow months</td>
+        <td><span class="chip sev-med">Medium</span></td>
+        <td>Phase gates with testable acceptance criteria; the widget→phase traceability table keeps design and build reconciled; P0–P3 delivers the daily ritual early so motivation compounds.</td></tr>
+      <tr><td>Licensing violation by accident — sharing the dashboard breaches every provider’s personal-use terms</td>
+        <td><span class="chip sev-low">Low</span></td>
+        <td>Basic Auth always on; preview deployments protected; FRED attribution and TradingView logo rendered; no public screenshots with data.</td></tr>
+      <tr><td>Batch API latency blows the evening deadline</td>
+        <td><span class="chip sev-low">Low</span></td>
+        <td>Job B collects ~65 minutes after submission (typical completion is well under an hour); if incomplete, cancel and extract the remainder synchronously (~3 min, ~$0.18 extra; already-processed items still bill). Worst-case publish ~00:50 UTC = 8:50pm EDT / 7:50pm EST — inside the 9:00pm ET promise year-round.</td></tr>
+      <tr><td>US DST edges — the close shifts between 20:00 and 21:00 UTC across the year, and the user’s own clock shifts with it</td>
+        <td><span class="chip sev-low">Low</span></td>
+        <td>Designed out: every trigger is UTC-fixed and sits after the close in both regimes, so no cron is ever edited; the only visible effect is that listed local times read an hour earlier on the winter clock (the schedule shows both); <code>exchange_calendars</code> handles US holidays and half-days; <code>lib/time.ts</code> owns EDT/EST labeling and is tested across both transitions.</td></tr>
+      <tr><td>Unverified numbers in this blueprint — Hetzner ~$5, R2 10GB free, healthchecks.io free tier, FMP month-to-month rates, Highcharts commercial range, the 60-day rule on private repos</td>
+        <td><span class="chip sev-low">Low</span></td>
+        <td>All flagged inline where used; none is load-bearing for the $0 baseline (each has a same-tier substitute). Confirm at signup before depending on any.</td></tr>
+    </tbody>
+  </table>
+
+  <h3>9.1 &nbsp;Decision changers</h3>
+  <p>Three futures would legitimately reopen parts of this blueprint. <strong>Intraday
+  trading:</strong> minute bars multiply storage ~400×, demand real-time infrastructure (SIP
+  entitlements, a relay for client-side quotes) and a different risk posture — a different product;
+  the Research Report’s evidence argues against wanting it. <strong>Live brokerage
+  integration:</strong> fully available to a US resident, so the gate is earned rather than
+  legal — order routing, credential security, and a changed risk posture arrive with it;
+  legitimate only after the paper track record demonstrates readiness, with every friction
+  mechanism carried over. <strong>More users than you:</strong> every
+  data license, the auth model, and Vercel Hobby terms break simultaneously — that is a commercial
+  product with data-redistribution contracts, not an upgrade.</p>
+</section>
+
+<!-- ================= PART 10 ================= -->
+<section class="part bib">
+  <div class="part-head">
+    <div class="kicker">Part 10</div>
+    <h2>Sources</h2>
+    <p class="dek">Official pages used for verification, with dates checked. Domain-evidence sources
+    live in the Research Report’s Part 11; this list covers platforms, pricing, licensing, and
+    tooling.</p>
+  </div>
+  <ol>
+    <li>Alpaca — Market Data API plans, limits, redistribution policy (verified 2026-07-08).<span class="src-url">docs.alpaca.markets/docs/about-market-data-api · alpaca.markets/data · alpaca.markets/support/redistribute-alpaca-api</span></li>
+    <li>Finnhub — pricing (incl. embedded price map), API docs (candles premium-gating), Terms of Service (verified 2026-07-08).<span class="src-url">finnhub.io/pricing · finnhub.io/docs/api · finnhub.io/terms-of-service</span></li>
+    <li>EODHD — pricing, API limits &amp; call weighting, personal-vs-commercial license (verified 2026-07-08).<span class="src-url">eodhd.com/pricing · eodhd.com/financial-apis/api-limits · eodhd.com/financial-apis/commercial-vs-personal-license-use</span></li>
+    <li>Tiingo — pricing, IEX documentation, fundamentals add-on, license scope (verified 2026-07-09).<span class="src-url">tiingo.com/pricing · tiingo.com/documentation/general/overview</span></li>
+    <li>Massive (formerly Polygon.io, rebranded Oct 2025) — plan catalog, Market Data Terms (verified 2026-07-09).<span class="src-url">massive.com/pricing · massive.com/terms/market_data_terms.pdf</span></li>
+    <li>Financial Modeling Prep — pricing plans and FAQ; annual-vs-monthly billing caveat (verified 2026-07-08).<span class="src-url">site.financialmodelingprep.com/pricing-plans · site.financialmodelingprep.com/faqs</span></li>
+    <li>SEC EDGAR — accessing EDGAR data (rate limit, User-Agent), APIs, dissemination timing, public-domain status (verified 2026-07-08).<span class="src-url">sec.gov/search-filings/edgar-search-assistance/accessing-edgar-data · sec.gov/search-filings/edgar-application-programming-interfaces</span></li>
+    <li>FRED — API docs, v2 launch (Nov 2025), rate limit, Terms of Use and attribution requirement (verified 2026-07-08/09, partially via Internet Archive snapshots of official pages).<span class="src-url">fred.stlouisfed.org/docs/api/fred/ · fred.stlouisfed.org/docs/api/terms_of_use.html</span></li>
+    <li>Marketaux — pricing, documentation, FAQ, ToS (verified 2026-07-08; snippets-only and per-tier request/article caps confirmed).<span class="src-url">marketaux.com/pricing · marketaux.com/documentation</span></li>
+    <li>yfinance — repository and docs (unofficial status, personal-use caveat, rate-limit issue threads); Yahoo exchange-delay page SLN2310 (verified 2026-07-08).<span class="src-url">github.com/ranaroussi/yfinance · help.yahoo.com/kb/SLN2310.html</span></li>
+    <li>TradingView — Lightweight Charts v5 repo, Apache-2.0 license + attribution; Advanced Charts free-license agreement (personal use excluded).<span class="src-url">github.com/tradingview/lightweight-charts · tradingview.com/advanced-charts/</span></li>
+    <li>Highcharts — EULA clarification for personal/non-commercial use; shop pricing.<span class="src-url">highcharts.com/blog/news/our-new-eula-makes-free-usage-clearer/</span></li>
+    <li>ApexCharts v5 — dual-license LICENSE file (no longer MIT; community license for individuals).<span class="src-url">github.com/apexcharts/apexcharts.js LICENSE</span></li>
+    <li>npm registry — peer-dependency verification (2026-07-08): lightweight-charts@5.2.0, lightweight-charts-react-components@2.5.0, recharts@3.9.2, echarts@6.1.0, echarts-for-react@3.0.6, @visx/xychart@4.0.0, chartjs-chart-financial@0.2.1 (dormant).</li>
+    <li>Vercel — function max duration (Hobby 300s, Pro 800s/extended beta), cron jobs (Hobby once-daily, hour-imprecise; 100 crons/project), Python runtime status (verified 2026-07-08).<span class="src-url">vercel.com/docs/functions/configuring-functions/duration · vercel.com/docs/cron-jobs</span></li>
+    <li>GitHub — Actions billing (free minutes, private repos), 6-hour job limit; schedule auto-disable documented for public repositories (private-repo behavior unverified); community documentation of cron jitter and dropped events.<span class="src-url">docs.github.com/en/billing/concepts/product-billing/github-actions</span></li>
+    <li>Supabase — free-project pausing policy; connection modes (direct IPv6-only on free; Supavisor session/transaction poolers).<span class="src-url">supabase.com/docs/guides/platform/free-project-pausing</span></li>
+    <li>Neon — pricing and plans (100 CU-hours/month free; no pause-on-inactivity concept comparable to Supabase’s).<span class="src-url">neon.com/pricing</span></li>
+    <li>Cloudflare — Workers platform limits (basis for elimination); R2 free-tier figure flagged unverified — confirm at signup.<span class="src-url">developers.cloudflare.com/workers/platform/limits</span></li>
+    <li>Anthropic — model pricing and Batch API (official pricing cache dated 2026-06-24: Haiku 4.5 $1/$5, Sonnet 5 $3/$15 with $2/$10 intro through 2026-08-31, Opus 4.8 $5/$25 per MTok; Batches −50%; structured outputs). Reconfirm at build time.<span class="src-url">platform.claude.com/docs/en/pricing</span></li>
+    <li>Python tooling status — pandas-ta archival deadline (2026-07-01) and pandas-ta-classic fork; TA-Lib activity (June 2026); vectorbt 1.1.0 (2026-07-05); exchange_calendars 4.13.2.<span class="src-url">pypi.org/project/pandas-ta · github.com/TA-Lib · pypi.org/project/exchange-calendars</span></li>
+    <li>DuckDB/Polars benchmarks and the Polars-prep + DuckDB-SQL pattern (codecentric large-Parquet memory benchmark; 2026 embedded-database roundups).</li>
+    <li>Parquet-vs-database storage comparisons for OHLCV research workloads (ts_db comparison; Concretum Group writeup).</li>
+    <li>Financial-LLM grounding &amp; verification research — FAITH-style multivariate-calculation collapse; FinGround/FinVerBench atomic-claim verification; 2025–26 grounded-hallucination leaderboards (0.7–1.5%); LLM citation-validation ≈38% accuracy.</li>
+    <li>Local-vs-API LLM TCO comparisons (2026): self-hosted ~$126–233/mo all-in vs ~$7–11/mo API bill at this volume.</li>
+    <li>Hetzner CX22 pricing — third-party trackers (€4.49–4.59 after Apr 2026 adjustment) — <em>unverified</em>; confirm at checkout. Backblaze B2 as R2 fallback.</li>
+    <li>healthchecks.io — dead-man-switch cron monitoring with cron-schedule-matched checks; free tier taken from research, <em>unverified</em> — any equivalent cron monitor works.</li>
+  </ol>
+
+  <p class="footnote">Blueprint compiled July 2026; revised after a six-lens adversarial review
+  (quantitative, data-source, architecture, beginner-protection, UX, and completeness passes) whose
+  accepted findings are incorporated throughout. Provider pricing verified against official pages
+  on 8–9 July 2026 by dedicated verification passes (evidence URLs above); items that could not be
+  confirmed on official pages are explicitly flagged <em>unverified</em> wherever they appear.
+  Companion volume: <em>myStockMarket — Research Report</em> (domain evidence and product design).</p>
+</section>
+
+</body>
+</html>

@@ -1,0 +1,231 @@
+<!-- ================= PART 8 ================= -->
+<section class="part">
+  <div class="part-head">
+    <div class="kicker">Part 8</div>
+    <h2>Phase playbooks — P4 to P6, and the backlog</h2>
+    <p class="dek">The honesty engine, the Academy, and the paper desk. Protection ships with — or
+    before — the features it protects; that ordering is contractual.</p>
+  </div>
+
+  <h3>P4 · Setup cards, base rates &amp; accountability <span class="chip neutral">~2 weeks</span></h3>
+  <p><strong>Objective:</strong> the signature unit ships honest-by-construction: pattern detectors,
+  base rates with intervals and decay stamps, vol bands, the resolver, and a visible resolved log —
+  in the same phase, inseparably.</p>
+  <p><strong>Build order:</strong></p>
+  <ol>
+    <li>Pattern detectors v1 (Appendix F definitions, exactly six): golden cross · 52-week-high
+    proximity · gap-with-catalyst · RSI extreme · unusual volume · breadth-regime cross — each a
+    Polars expression writing <code>signal_events</code> Parquet; one-bar-shift guard test per
+    detector. <em>Mint <code>new-pattern-detector</code> skill after the second one.</em></li>
+    <li><code>baserates.py</code>: DuckDB window queries → base_rate_stat rows (n, wins, Wilson CI,
+    fwd p10/50/90) per (pattern, universe bucket, horizon 5/10/20d, regime) + pattern_meta decay
+    fields (publication_year, evidence_grade, decay_note from the RR ledger — data table in
+    Appendix F); unconditional always-up baselines computed per universe bucket + horizon and
+    stored alongside. Universe bucket and regime are assigned <em>as of the event date</em>
+    (point-in-time cap/dollar-volume, per Appendix F) — classifying historical events by today’s
+    bucket is a lookahead bug, guarded by its own test.</li>
+    <li><code>volbands.py</code>: empirical-quantile expected ranges (5/10/20d) per watchlist
+    symbol → vol_band rows with frequency labels; nothing beyond 20 days by schema.</li>
+    <li>Lottery-risk flag computation (high-skew, low-price rule in Appendix F) → scan_result
+    metric.</li>
+    <li>Prisma v4: base_rate_stat, setup_card, vol_band, signal_resolution; <code>resolve.py</code>
+    nightly resolver (insert-only outcomes) wired into job_b; signal_log rate fields now stated at
+    fire time.</li>
+    <li>UI: SetupCardRow (Desk module 06) + full SetupCard in the rail (IconArray, BaseRate
+    renderer, baseline line, weakener checkboxes — per-pattern items from the Appendix F weakener
+    table — persisted via server action, decay stamp, provenance, Learn doorway); tier logic with
+    the Appendix F band constants and the CI-spans-baseline cap; scans page with fully visible
+    criteria + evidence-grade Tags + folklore labels; CalendarTimeline branches attach per-branch
+    base rates (or the N&lt;30 suppression line); VolBand on the ticker chart <em>with the
+    regime-break caveat line</em> (copy key <code>volband.caveat</code> — §1.5 rule 1); minimal
+    <code>/track-record</code>: resolved-log table (calibration chart arrives P6); ScorecardPM
+    grading goes live off signal_resolution.</li>
+  </ol>
+  <p><strong>Tests first:</strong> six detector tests + six shift-guard tests; bucket point-in-time
+  guard (an event whose symbol later changed bucket classifies by its event-date bucket); Wilson CI
+  textbook cases; baseline computation; tier bands (Appendix F constants) + tier cap (CI 47–65 vs
+  baseline 55 ⇒ WEAK — the RR Fig 9.3 case as a literal fixture); N-gate all three regimes;
+  resolver (horizon passes ⇒ one resolution row; rerun ⇒ still one); vol band never exceeds 20d
+  (property test) + caveat string renders; lottery flag rule; e2e journey 4 complete.</p>
+  <p><strong>Acceptance (= Blueprint P4):</strong> every card shows N + CI + baseline; the WEAK cap
+  proven by test and visible in the seeded morning; suppression rendering proven; lookahead guards
+  have failing-test proofs in git history (commit the red test first); every displayed card logged
+  at render-eligibility time; resolved log fills within a day of horizons passing; decay stamps
+  render on every published-anomaly pattern; anti-drift checklist passes on the card UI (this is
+  the screen most at risk of chip-confetti — the Tag component is the only color carrier).</p>
+
+  <h3>P5 · The Academy <span class="chip neutral">2–3 weeks, content-heavy</span></h3>
+  <p><strong>Objective:</strong> the second room — warm, literary, price-free — with 25 real
+  lessons, the glossary, worked-example drawers, and the review queue.</p>
+  <p><strong>Build order:</strong></p>
+  <ol>
+    <li>MDX infrastructure: <code>@next/mdx</code> + frontmatter loader
+    (<code>lib/academy.ts</code>), <code>content/academy/&lt;module&gt;/&lt;slug&gt;.mdx</code>;
+    Academy layout (warm tokens, Newsreader, 65ch measure); curriculum map with module states +
+    M3 soft gate.</li>
+    <li>Author the 25 launch lessons (Appendix H list — titles, one-line briefs, and which RR
+    ledger rows each cites). Source material: the Research Report itself — every myth-vs-evidence
+    lesson cites its Part 4 verdict and sources; write in the mechanical-honest voice; 3–5 minutes
+    each; 2–3 retrieval questions in frontmatter. <em>Mint <code>new-lesson</code> skill after the
+    second lesson; thereafter lessons are a production line.</em></li>
+    <li>Glossary: seed the 40 Appendix I terms; GlossaryTerm popover wired across the Desk
+    (first-occurrence-per-view discipline via a per-render registry).</li>
+    <li>Worked-example drawer: the fixed three-step template (what happened in the data → what
+    pattern this matches and why it is believed to matter → what happened the last N times, failure
+    count included) with numbered on-chart annotation markers synced to steps.</li>
+    <li>Review queue: Leitner boxes on concept_state (max 5/day, due-date scheduling, skip without
+    guilt); seeded only from concepts the user actually encountered (Desk render logs concept
+    exposures to concept_state).</li>
+    <li>Doorways completed: Learn chips, brief’s single learning link, “See this live” (find a
+    current watchlist instance, open Desk anchored with teaching annotations), ReturnRail on every
+    crossing; adaptive fading v1 (familiarity ≥ quizzed-correct ⇒ terse pro-mode card labels).</li>
+  </ol>
+  <p><strong>Tests first:</strong> loader (frontmatter contract, broken-MDX fails CI); soft-gate
+  logic; queue cap + Leitner scheduling math; first-occurrence glossary discipline (unit on the
+  registry); e2e journeys 3 and 6; visual baseline for a lesson page (the warm room must not drift
+  cool).</p>
+  <p><strong>Acceptance (= Blueprint P5):</strong> every term on the Desk has a glossary entry
+  (CI check: scan rendered Desk seed for dotted-underline coverage against the term list); drawer →
+  lesson → Return restores Desk state exactly; pattern lesson before M3 completion shows the gate;
+  queue never exceeds 5; Academy breadcrumbs present; no live prices anywhere under
+  <code>/academy</code> (e2e asserts absence of price elements).</p>
+
+  <h3>P6 · Paper desk, calibration &amp; polish <span class="chip neutral">~2 weeks + ongoing</span></h3>
+  <p><strong>Objective:</strong> the protective loop closes: paper trading with friction, the full
+  self-grading surface, the remaining should-widgets, dark Desk, and PWA/perf polish.</p>
+  <p><strong>Build order:</strong></p>
+  <ol>
+    <li>Prisma v5: paper_trade (+ journal_entry forecast fields); ledger CRUD with simulated fills
+    (next-open + half-spread + slippage per Appendix F constants); soft-gated on Academy M3.</li>
+    <li>Friction, wired to the ledger: cooling-off interstitial (paper order &lt; 30 min after a
+    signal fires on that symbol — constant in Appendix F), weekly frequency mirror, CostMirror
+    (spread × the user’s actual turnover, arithmetic spelled out); half-Kelly-capped sizing helper
+    (CI-lower-bound win rate + stored payoff percentiles; property-tested cap).</li>
+    <li>Forecast journal: probability + resolves_on on journal entries, resolved by
+    <code>resolve.py</code>, Brier-scored.</li>
+    <li>Track record completed: calibration scatter with per-bucket N, rolling Brier + “0.25 =
+    coin flip” caption, family-underperformance banner, user forecasts alongside app flags,
+    view-as-table toggle.</li>
+    <li>Quantile dotplots in the rail (per-occurrence forward returns, losing tail visible);
+    sector small multiples (module 07, identically scaled, desaturated); ⌘K palette (tickers,
+    lessons, routes — zone-badged results).</li>
+    <li>Dark Desk (tokens from §3.3 dark column; Academy stays light; toggle in settings,
+    <code>prefers-color-scheme</code> default; <code>viewport.themeColor</code> gains
+    <code>prefers-color-scheme: dark</code> media variants so the standalone status bar follows —
+    manifest theme_color stays light, install-time only); PWA final pass (§5.5 matrix, update-flow
+    drill, icon QA); performance pass to budgets; accessibility sweep incl. the §3.3 dark-value
+    contrast spot-checks.</li>
+  </ol>
+  <p><strong>Tests first:</strong> fill simulation math; cooling-off trigger (clock injected);
+  cost-mirror arithmetic on the seeded ledger; frequency mirror; half-Kelly property test; forecast
+  resolution + Brier; calibration bucketing; dark-mode visual baselines; e2e journey 7.</p>
+  <p><strong>Acceptance (= Blueprint P6):</strong> ≥30 resolved signals visible with misses;
+  cost mirror reproduces the arithmetic on the user’s ledger (fixture in tests); the interstitial
+  fires in e2e; sizing never exceeds half-Kelly; user forecasts Brier-score on the track record;
+  dark mode is Desk-only; Lighthouse ≥ 90 performance on <code>/</code> and the §5.5 PWA
+  assertions all green; the §3.10 checklist passes on every screen; the full §6.4 gate is
+  green.</p>
+
+  <h3>Post-P6 backlog (build nothing here without a logged decision)</h3>
+  <p>Curated top-news module · relative-strength comparison chart · ECharts sector heatmap ·
+  push notification for “briefing ready” (calm-tech review required first) · offline write queue ·
+  live-brokerage integration (fully available to a US resident — gated on the paper track record
+  demonstrating readiness, all friction mechanisms carried over) · Opus-class synthesis upgrade
+  (~$1.70/mo) · paid-data ladder steps (Blueprint §4.2 triggers).</p>
+</section>
+
+<!-- ================= PART 9 ================= -->
+<section class="part">
+  <div class="part-head">
+    <div class="kicker">Part 9</div>
+    <h2>Intelligence layer &amp; skills</h2>
+    <p class="dek">The scaffolding that makes you autonomous: five living documents, a session
+    ritual, and a rubric for minting reusable skills instead of re-deriving procedures.</p>
+  </div>
+
+  <h3>9.1 &nbsp;The five documents</h3>
+  <table class="rowhead">
+    <thead><tr><th style="width:34mm">File</th><th>Contract</th></tr></thead>
+    <tbody>
+      <tr><td>CLAUDE.md</td><td>The constitution (Appendix K template): non-negotiables, stack pins, commands, conventions, authority hierarchy, session ritual. Changes rarely; every change is itself a logged decision.</td></tr>
+      <tr><td>DECISIONS.md</td><td>Append-only log: <code>YYYY-MM-DD · [claude] · [local|structural] · decision · rationale (one line) · alternatives rejected</code>. Seeded at P0 with this plan’s pre-made decisions (§1.3 examples, §4.4 auth, Serwist, fonts, no-push-v1, npm/uv). Every entry you write carries the <code>[claude]</code> marker — any line without it is user-authored. User edits are vetoes at rank 2.5, detected by the session ritual’s diff (§9.2); honoring a veto becomes the session’s first task.</td></tr>
+      <tr><td>PATTERNS.md</td><td>Recurring code/design patterns worth copying: the adapter shape, the masthead composition, the server-action + zod + revalidate write pattern, chart hook lifecycle. Add when you catch yourself copying a second time; reference from code reviews.</td></tr>
+      <tr><td>LESSONS.md</td><td>Mistakes + resolutions: <code>symptom → root cause → fix → guard added</code>. Read at session start after CLAUDE.md. A lesson that repeats means the guard was inadequate — escalate to a test or a skill.</td></tr>
+      <tr><td>PROGRESS.md</td><td>Resumable state: current phase + checkpoint, last green gate (§6.4) with date, next three tasks, Blocked list (item · what unblocks · fallback in force). Update at every session end — a fresh session must be able to resume from this file alone.</td></tr>
+    </tbody>
+  </table>
+
+  <h3>9.2 &nbsp;Session ritual</h3>
+  <pre>START: git pull → read CLAUDE.md → PROGRESS.md → LESSONS.md (skim)
+       → diff DECISIONS.md since last session: any non-[claude] line or edit is a user
+         veto (rank 2.5) — honoring it becomes the session's FIRST task
+       → run: npm test && uv run pytest
+       → confirm green (if red: fixing red IS the session) → announce the checkpoint being built
+WORK:  TDD per §6.2 · commit small with conventional messages · log decisions as they happen
+END:   update PROGRESS.md (checkpoint, next-3) · append DECISIONS/LESSONS/PATTERNS entries
+       · push · if phase-complete: run the full §6.4 exit gate and tag</pre>
+
+  <h3>9.3 &nbsp;Skills — when to mint one</h3>
+  <p>A skill is a self-contained procedure at <code>.claude/skills/&lt;name&gt;/SKILL.md</code>:
+  name · when-to-use · exact steps · verification · one worked example. <strong>Mint when all four
+  hold:</strong> (1) the procedure has ≥ 3 non-obvious steps; (2) it will plausibly recur ≥ 3 times;
+  (3) its output is verifiable (a test, a checklist, a rendered page); (4) the procedure is stable
+  (you’d write the same steps tomorrow). <strong>Do not mint</strong> for one-offs, things an npm
+  script already encodes, or anything still churning. Update the skill when the procedure changes;
+  a stale skill is worse than none. <strong>Invoke the skill (follow its steps literally) whenever
+  the task recurs — re-deriving a minted procedure is a process violation.</strong></p>
+  <table>
+    <caption>Expected skills and their minting moments (mint on evidence, not in advance)</caption>
+    <thead><tr><th style="width:44mm">Skill</th><th style="width:22mm">Mint at</th><th>Covers</th></tr></thead>
+    <tbody>
+      <tr><td>new-provider-adapter</td><td>P1, after Alpaca</td><td>adapter interface, fixture recording, rate limiter, error isolation, tests, registration</td></tr>
+      <tr><td>new-indicator</td><td>P1, after the 2nd indicator</td><td>Polars expression shape, toy-series test, oracle cross-check entry, docs row</td></tr>
+      <tr><td>new-pattern-detector</td><td>P4, after the 2nd detector</td><td>definition → expression → shift guard → base-rate wiring → card copy → ledger grade (or, for un-graded patterns, the §1.5 t &gt; 3.0 admission hurdle)</td></tr>
+      <tr><td>new-desk-module</td><td>P2, after the calendar</td><td>masthead + data loader + module component + seed data + e2e hook + visual baseline</td></tr>
+      <tr><td>new-lesson</td><td>P5, after the 2nd lesson</td><td>frontmatter contract, voice rules, citation to RR ledger, retrieval questions, glossary links</td></tr>
+      <tr><td>pwa-audit</td><td>P1, first full audit</td><td>the §5.5 matrix as a repeatable procedure incl. commands and device checklist</td></tr>
+      <tr><td>release-phase</td><td>P0 exit</td><td>the §6.4 gate, tagging, PROGRESS/DECISIONS updates, deploy verification</td></tr>
+      <tr><td>visual-regression-update</td><td>first intentional baseline change</td><td>when a diff is legitimate, how to review, update, and log it</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- ================= PART 10 ================= -->
+<section class="part">
+  <div class="part-head">
+    <div class="kicker">Part 10</div>
+    <h2>Conflict &amp; stall protocol</h2>
+    <p class="dek">The complete algorithm for never needing the user. If you are about to type a
+    question to a human, you are in this part — re-read it instead.</p>
+  </div>
+  <ol>
+    <li><strong>Ambiguity about product behavior</strong> → grep rr-03/rr-04 (guardrails, product
+    spec) then bp-0* then this plan. The answer is almost always written down. Cite the source in
+    your commit message.</li>
+    <li><strong>Guardrail vs feature</strong> → the guardrail wins; redesign the feature within it
+    or move it to the backlog with a logged decision. No exceptions, no “temporary” violations.</li>
+    <li><strong>Design taste question</strong> → §3.10 checklist + the manifesto. If two options
+    both pass, pick the quieter one.</li>
+    <li><strong>External breakage</strong> (API change, package gone, provider refusal, price
+    change): apply the Blueprint’s pre-researched fallback (§4.2 ladder, §3.3 storage fallback,
+    alternatives lists); adapt the adapter behind its interface; log LESSONS + DECISIONS; the
+    contracts (tests) stay green. Never let a third party change what the user sees without a
+    provenance note.</li>
+    <li><strong>A test is hard to satisfy</strong> → the test is probably right (they encode the
+    guardrails). Only change a §6.2-listed test with a structural DECISIONS.md entry explaining why
+    the encoded rule itself was wrong — and never to weaken an honesty rule.</li>
+    <li><strong>Cost anomaly</strong> (Anthropic spend pacing above ~$0.60/night for two nights) →
+    investigate token counts in briefing.model_meta before optimizing; the spend cap is the
+    backstop, not the alarm.</li>
+    <li><strong>Two failed attempts at anything</strong> → smallest honest stub behind a named
+    degradation flag, Blocked entry in PROGRESS.md (what unblocks it), move on. Return on the next
+    phase boundary.</li>
+    <li><strong>Session context exhausted mid-task</strong> → commit WIP behind green unit tests
+    (or stash with a Blocked note), update PROGRESS.md checkpoint, end cleanly. The next session
+    resumes from files, not memory.</li>
+    <li><strong>You discover this plan is wrong somewhere</strong> (it will happen): if the fix is
+    local, do it and log it; if structural, choose the option preserving ranks 1–2, log it as
+    structural, and annotate DEVELOPMENT-PLAN.md with a dated correction block rather than silently
+    diverging from the printed contract.</li>
+  </ol>
+</section>

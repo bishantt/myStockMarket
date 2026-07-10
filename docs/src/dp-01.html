@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>myStockMarket — Development Plan</title>
+<link rel="stylesheet" href="print.css">
+</head>
+<body>
+
+<!-- ================= COVER ================= -->
+<div class="cover">
+  <div class="brand">
+    <svg class="tick" viewBox="0 0 20 20" aria-hidden="true">
+      <rect x="2.5" y="7" width="3.6" height="7.5" rx="1" fill="#2a78d6"/>
+      <line x1="4.3" y1="4.5" x2="4.3" y2="16.8" stroke="#2a78d6" stroke-width="1.1"/>
+      <rect x="8.2" y="4" width="3.6" height="8" rx="1" fill="#c3c2b7"/>
+      <line x1="10" y1="2" x2="10" y2="14.5" stroke="#c3c2b7" stroke-width="1.1"/>
+      <rect x="13.9" y="9" width="3.6" height="6.8" rx="1" fill="#2a78d6"/>
+      <line x1="15.7" y1="6.5" x2="15.7" y2="18" stroke="#2a78d6" stroke-width="1.1"/>
+    </svg>
+    <span class="doc-title-string">myStockMarket · Development Plan</span>
+  </div>
+
+  <div class="doc-kind">Development Plan · 3 of 3</div>
+  <h1>The Execution Contract</h1>
+  <p class="subtitle">A self-driving build plan for Claude Opus 4.8: front end and back end of
+  myStockMarket, end to end, phase by phase, with zero human input beyond the one scheduled
+  Session-0 checklist. Implements the Research Report and Build Blueprint faithfully — same stack,
+  same P0–P6 phasing, same guardrails, same data model — translated into ordered, testable steps.</p>
+
+  <p class="epigraph">“The evidence chapters win. When a tempting feature, a prettier component, or
+  a faster shortcut conflicts with the Research Report’s honesty rules or this plan’s design
+  system, the feature loses — every time, without asking.”
+  <span class="attr">— The one rule that outranks every other rule in this document</span></p>
+
+  <div class="meta">
+    <span><b>Executor</b> Claude Opus 4.8</span>
+    <span><b>Date</b> July 2026</span>
+    <span><b>Companions</b> Research-Report.pdf · Build-Blueprint.pdf</span>
+  </div>
+</div>
+
+<!-- ================= DECISIONS GATE (contractual: read first) ================= -->
+<section class="part">
+  <div class="part-head">
+    <div class="kicker">Before anything else</div>
+    <h2>Decisions I need from you</h2>
+    <p class="dek">The commissioning instruction: every decision that would cascade through the
+    build must surface here for an answer before the plan is final. Verdict below.</p>
+  </div>
+
+  <div class="callout">
+    <p><span class="co-label">None</span> There are no global decisions awaiting your answer. Every
+    choice that could cascade through cost, data, guardrails, or architecture was either already
+    fixed by the two source documents (which outrank this plan — §1.2) or resolvable within them.
+    The plan proceeds; the build can start at Session-0 whenever you are ready.</p>
+  </div>
+
+  <p>What remains are <strong>judgment calls I made and logged</strong> — each local in scope,
+  reversible, and recorded so you can veto asynchronously. The headline ones, so you never have to
+  hunt for them:</p>
+  <table class="rowhead">
+    <thead><tr><th style="width:52mm">Call</th><th>One-line rationale (full text at the cited section)</th></tr></thead>
+    <tbody>
+      <tr><td>Cookie-session login replaces Basic Auth</td><td>Basic-Auth 401s break installed PWAs; the Blueprint itself names this step-up. Declared deviation #1, §4.4.</td></tr>
+      <tr><td>“Broadsheet Terminal” design direction</td><td>The bold-but-honest aesthetic committed token-for-token so the executor cannot drift generic. Part 3 — my professional design judgment, owned.</td></tr>
+      <tr><td>Serwist for the service worker</td><td>Maintained Workbox successor with first-class Next.js wiring. Declared deviation #2, §5.</td></tr>
+      <tr><td>No push notifications, no offline write queue in v1</td><td>Calm-tech review required before push; write-queues risk silent divergence. Both on the logged backlog, Part 8.</td></tr>
+      <tr><td>Academy lessons as MDX files in git, not DB rows</td><td>Content belongs in version control. Declared deviation #4, Appendix B.</td></tr>
+      <tr><td>Refresh fades 160–200ms (RR says “~500ms”)</td><td>Same calm intent, no shimmer. Declared deviation #3, §3.5.</td></tr>
+    </tbody>
+  </table>
+  <p>Veto mechanics: edit <code>DECISIONS.md</code> in the repo (any line without a
+  <code>[claude]</code> marker is treated as your instruction, rank 2.5 — the session ritual reads
+  the diff first, §9.2), or simply tell the executor. Nothing above is load-bearing enough to
+  block on.</p>
+</section>
+
+<!-- ================= TOC ================= -->
+<section class="toc">
+  <h2 style="font-size:19pt; font-weight:750;">Contents</h2>
+  <ol>
+    <li>The contract <span class="toc-sub">authority hierarchy, decision protocol, Session-0 checklist, non-negotiables</span></li>
+    <li>System overview <span class="toc-sub">what is being built, in one self-contained recap</span></li>
+    <li>Design system — “Broadsheet Terminal” <span class="toc-sub">manifesto, tokens, type, color, motion, components, phone ritual</span></li>
+    <li>App architecture &amp; conventions <span class="toc-sub">routing, data flow, auth, fonts, performance budgets</span></li>
+    <li>PWA specification <span class="toc-sub">manifest, service worker, offline honesty, install UX, iOS</span></li>
+    <li>Testing &amp; TDD protocol <span class="toc-sub">what gets a failing test first, and the tooling for each layer</span></li>
+    <li>Phase playbooks P0–P3 <span class="toc-sub">scope, build order, tests-first, acceptance, self-verification</span></li>
+    <li>Phase playbooks P4–P6 + backlog <span class="toc-sub">the honesty engine, the Academy, the paper desk</span></li>
+    <li>Intelligence layer &amp; skills <span class="toc-sub">CLAUDE.md, DECISIONS/PATTERNS/LESSONS/PROGRESS, when to mint a skill</span></li>
+    <li>Conflict &amp; stall protocol <span class="toc-sub">how to never ask the user anything</span></li>
+    <li>Appendices <span class="toc-sub">Prisma schema, env matrix, pipeline contracts, prompts, patterns, lessons, copy deck, CLAUDE.md template</span></li>
+  </ol>
+</section>
+
+<!-- ================= PART 1 ================= -->
+<section class="part">
+  <div class="part-head">
+    <div class="kicker">Part 1</div>
+    <h2>The contract</h2>
+    <p class="dek">Read this part at the start of every session. It defines what outranks what, how
+    to decide without asking, and the only moment a human is ever required.</p>
+  </div>
+
+  <h3>1.1 &nbsp;What you are building, in one sentence</h3>
+  <p>A single-user, US-equities (NYSE/Nasdaq) market command center and learning hub — a calm,
+  editorial web app and installable mobile PWA whose after-close cloud pipeline has already
+  ingested, scanned, computed, and written a verified briefing by about 8:40pm Eastern the same
+  evening — the user lives on market time (Long Island, NY) — and which never, under any
+  circumstance, predicts direction.</p>
+
+  <h3>1.2 &nbsp;Authority hierarchy</h3>
+  <p>When sources disagree, the higher item wins. Never resolve a conflict by asking the user —
+  resolve it by rank, then log it in <code>DECISIONS.md</code>.</p>
+  <table class="rowhead">
+    <thead><tr><th style="width:16mm">Rank</th><th>Authority</th></tr></thead>
+    <tbody>
+      <tr><td>1</td><td><strong>Research Report Part 8 + Part 9</strong> (honesty guardrails, product commitments, uncertainty display rules, Desk/Academy separation, anti-patterns). These are inviolable. <em>docs/Research-Report.pdf</em>, source HTML in <em>docs/src/rr-03.html, rr-04.html</em>.</td></tr>
+      <tr><td>2</td><td><strong>Build Blueprint</strong> (architecture, stack, data plan, data model, pipeline design, P0–P6 scope and acceptance criteria, risks). <em>docs/Build-Blueprint.pdf</em>, source in <em>docs/src/bp-0*.html</em>.</td></tr>
+      <tr><td>3</td><td><strong>This plan</strong> (build order, design system, PWA spec, conventions, appendix contracts). Where this plan deliberately deviates from the ranks above it says so explicitly and gives the rationale. There are exactly <strong>four declared deviations</strong>: (1) cookie login replacing Basic Auth (§4.4); (2) Serwist added for the service worker (§5); (3) data-refresh fades at 160–200ms vs the Research Report’s “~500ms” (§3.5 — the calm intent, one quiet fade with no color flash, is preserved; ~500ms reads as shimmer); (4) Academy lessons as filesystem MDX rather than the Blueprint’s Postgres <code>lesson</code> table (§Appendix B — content belongs in git; the Blueprint’s own Lesson row already gestures at this). Anything else that diverges from ranks 1–2 is a bug in this plan — fix toward the higher rank and log it.</td></tr>
+      <tr><td>4</td><td><strong>DECISIONS.md precedent</strong> — your own prior recorded choices. Do not silently reverse one; if a reversal is needed, log the supersession with rationale.</td></tr>
+      <tr><td>5</td><td><strong>Your judgment</strong>, biased toward: reversible over irreversible, honest over impressive, boring over clever, shipped over perfect.</td></tr>
+    </tbody>
+  </table>
+
+  <h3>1.3 &nbsp;Your decision protocol (you will hit choice points — here is the algorithm)</h3>
+  <ol>
+    <li><strong>Is it answered by rank 1–3?</strong> Grep the source HTML files (they are the
+    searchable form of the PDFs) before deciding anything. Most questions are already answered.</li>
+    <li><strong>Local decision</strong> (does not ripple — a library minor-version, a file name, a
+    CSS detail, an internal function shape): decide, apply, and append one line to
+    <code>DECISIONS.md</code>: date · decision · one-line rationale.</li>
+    <li><strong>Structural decision</strong> (would change the data model, a guardrail’s behavior,
+    the design system’s tokens, the phase plan, or cost): do NOT invent. Choose the option that
+    keeps rank 1–2 intact; if both options do, choose the more reversible one; log it prominently
+    in <code>DECISIONS.md</code> under a “structural” heading. <strong>By definition structural:</strong>
+    any change to Appendix E tolerances, Appendix F constants, or Appendix J strings — never
+    “local” — and a change that <em>loosens</em> a tolerance additionally requires the §10.5
+    justification that the encoded rule itself was wrong. The user reads DECISIONS.md
+    asynchronously — that is their veto channel; you never wait on them.</li>
+    <li><strong>External reality broke the plan</strong> (API changed, package deprecated, provider
+    rejected signup): execute the documented fallback (the Blueprint’s upgrade ladder and
+    alternatives are pre-researched for exactly this), log it in <code>LESSONS.md</code> +
+    <code>DECISIONS.md</code>, and keep moving. Never stall on a missing external.</li>
+    <li><strong>Truly blocked after two distinct attempts:</strong> implement the smallest honest
+    placeholder behind a clearly named flag (e.g. <code>DEGRADED_NO_MARKETAUX</code>), record it in
+    the “Blocked” section of <code>PROGRESS.md</code> with what unblocking requires, and continue
+    with the next task in the phase. An idle session is the only unacceptable state.</li>
+  </ol>
+
+  <h3>1.4 &nbsp;Session-0 human checklist — the only human touchpoint</h3>
+  <p>Everything below is <strong>collected</strong> once, at kickoff. Verification happens
+  <strong>progressively during P0</strong>, at the build step that creates each probe’s tooling —
+  and “all Session-0 probes green” is a named P0 exit criterion. Appendix D is the single
+  authority for where every secret lives; the user supplies raw values, you distribute them.
+  Three values you generate yourself (never user-supplied): <code>CRON_SECRET</code> and
+  <code>AUTH_COOKIE_SECRET</code> (<code>openssl rand -hex 32</code>) and
+  <code>R2_BUCKET=msm-history</code>. The user also supplies a name + email for
+  <code>EDGAR_USER_AGENT</code> (SEC requires a real contact) and their chosen app login
+  (username + password — you hash it at P0 step 5 with the hash script, place only the hash, and
+  discard the plaintext).</p>
+  <table>
+    <thead><tr><th style="width:44mm">Item</th><th>Where it goes</th><th style="width:52mm">Verification probe</th></tr></thead>
+    <tbody>
+      <tr><td>GitHub private repo (<code>myStockMarket</code>) + Actions enabled</td><td>Remote for this working directory (<code>git init</code> first — the folder is not yet a repo). Try <code>gh repo create --private</code> yourself; only if <code>gh</code> is unauthenticated does the user click.</td><td><code>git push</code> succeeds; Actions tab reachable.</td></tr>
+      <tr><td>Vercel project linked to <code>app/</code>, Hobby plan</td><td><code>vercel link</code> (root directory <code>app/</code>); env vars via <code>vercel env add</code></td><td><code>vercel whoami</code>; preview deploy of the P0 shell; <strong>preview Deployment Protection (Vercel Authentication) confirmed ON</strong> — the licensing wall covers previews.</td></tr>
+      <tr><td>Supabase free project</td><td>Three connection strings (transaction pooler, direct, session pooler) → Vercel env + GH secrets + local <code>.env</code></td><td><code>prisma migrate dev</code> against direct URL; <code>psql</code> ping via session pooler.</td></tr>
+      <tr><td>Cloudflare R2 bucket <code>msm-history</code> (or Backblaze B2 fallback)</td><td><code>R2_ACCOUNT_ID / R2_ACCESS_KEY_ID / R2_SECRET</code> → GH secrets</td><td>boto3 put/get/delete of a test object.</td></tr>
+      <tr><td>Provider keys (standard US signup): Alpaca, Finnhub, FMP, Marketaux, FRED — plus name+email for <code>EDGAR_USER_AGENT</code></td><td>GH secrets only (per Appendix D)</td><td>One authenticated smoke call per provider via <code>pipeline/scripts/probe_providers.py</code> (built at P0 step 8). Any probe failure falls back per the Blueprint §4.2 ladder — log and proceed.</td></tr>
+      <tr><td>Anthropic API key + monthly spend cap (~$15) set in console</td><td>GH secrets only</td><td>One 10-token Haiku call (same probe script).</td></tr>
+      <tr><td>healthchecks.io check on cron <code>25 0 * * 2-6</code>, 45-min grace + <strong>read-only API key</strong></td><td><code>HEALTHCHECKS_PING_URL</code>, <code>HEALTHCHECKS_API_KEY</code> → GH secrets</td><td>Autonomous: <code>GET /api/v3/checks/</code> shows the check; a scripted ping flips it up, a scripted missed-window shows down. (The API key exists so you can verify alerts without access to the user’s inbox.)</td></tr>
+      <tr><td>App login username + password (user-chosen, handed over once)</td><td><code>AUTH_USER</code> + <code>AUTH_PASS_HASH</code> → Vercel env (hash generated at P0 step 5; plaintext discarded)</td><td>Login succeeds on the deployed P0 shell (verified at P0 step 9).</td></tr>
+    </tbody>
+  </table>
+  <div class="callout guardrail avoid-break">
+    <span class="co-label">After Session 0</span>
+    <p>From this point the contract is: <strong>you do not ask the user anything.</strong> Choices
+    are made by the protocol in §1.3; progress is legible in <code>PROGRESS.md</code>; vetoes
+    arrive, if ever, as user edits to <code>DECISIONS.md</code> — treat any user-authored line in
+    that file as a rank-2.5 authority.</p>
+  </div>
+
+  <h3>1.5 &nbsp;The non-negotiables (the constitution)</h3>
+  <p>These go verbatim into <code>CLAUDE.md</code> at P0 (template in Appendix K) and are re-read
+  every session. Each traces to Research Report Part 8/9 or the Blueprint’s non-negotiables box.</p>
+  <ol>
+    <li><strong>No directional forecasts, anywhere, ever.</strong> The only forward-looking numbers
+    are volatility bands ≤ 20 trading days, drawn as ranges with frequency labels <em>and the
+    regime-break caveat attached</em> (“ranges assume the recent regime holds — sudden stress can
+    exceed them”). No projected price lines, no up/down predictions, no composite buy/sell
+    scores.</li>
+    <li><strong>Every base rate renders as a natural frequency with its reference class, N, and a
+    Wilson 95% interval.</strong> Display precision is N-gated: N ≥ 100 → percentage + CI; 30–99 →
+    “roughly X in 10” + wide-interval note; N &lt; 30 → “Insufficient history — treat as anecdote,”
+    percentage suppressed. Enforced in one shared renderer, unit-tested.</li>
+    <li><strong>A confidence interval that includes the ~53–55% always-up baseline caps the tier at
+    “weak.”</strong> Every setup card shows the unconditional baseline line.</li>
+    <li><strong>Decay stamps:</strong> any pattern derived from a published anomaly renders its
+    publication year, evidence grade, and expected post-publication haircut.</li>
+    <li><strong>Folklore is labeled folklore</strong> — in scan presets, setup cards, and Academy
+    lessons alike, using the Research Report Part 4 ledger verdicts.</li>
+    <li><strong>New patterns clear a statistical bar before they ship.</strong> Any detector
+    without a Research Report Part 4 ledger grade requires t &gt; 3.0 on its base-rate sample (the
+    RR 8.2 multiple-testing hurdle) before it may render as anything other than
+    “insufficient evidence”; below that it does not ship. The six v1 detectors carry ledger grades
+    and are exempt.</li>
+    <li><strong>The app grades itself in public:</strong> <code>signal_log</code> is insert-only
+    from Phase 1; outcomes land in insert-only <code>signal_resolution</code>; the track record
+    shows every miss. Setup cards never ship before the resolver exists.</li>
+    <li><strong>No trending/most-bought surfaces. No gamification</strong> (streaks, XP, confetti).
+    High-skew low-price tickers get lottery-risk flags instead.</li>
+    <li><strong>Movers never render without a catalyst check</strong> — a chip with a source link,
+    or the honest “No news found — likely noise.”</li>
+    <li><strong>The LLM narrates; it never computes, never states probabilities, never publishes an
+    unverified number.</strong> The deterministic verification gate (Appendix E tolerances) blocks
+    or flags; “briefing unavailable” beats a fabricated sentence.</li>
+    <li><strong>Desk and Academy stay separated:</strong> doorways only (chips, glossary popovers,
+    one worked-example drawer, one learning link per brief, “see this live”), each with a
+    state-preserving return rail. No live prices in the Academy; no lesson bodies on the Desk.</li>
+    <li><strong>Calm technology:</strong> no blinking, no tickers, no toasts, no badges, no motion
+    on probability or money visuals, no count-up animations. Data refreshes fade ≤ 200ms. v1 data
+    is as-of the last US close and every module shows its timestamp.</li>
+    <li><strong>Mechanical voice:</strong> “The pattern has historically been followed by…” — never
+    “I think.” Disclaimers at the decision point. Copy deck (Appendix J) is canonical.</li>
+    <li><strong>Paper-first:</strong> no brokerage integration; paper trades are the only orders;
+    the cost mirror, cooling-off interstitial, and frequency mirror ship with the ledger.</li>
+    <li><strong>Licensing wall:</strong> the app stays behind login always; FRED attribution and the
+    TradingView attribution logo render; no public previews of data pages.</li>
+    <li><strong>TDD:</strong> the failing test comes first for everything in §6.2’s test-first list
+    — indicators, base rates, display rules, the verification gate, the tier cap, the sizing cap.</li>
+  </ol>
+</section>
+
+<!-- ================= PART 2 ================= -->
+<section class="part">
+  <div class="part-head">
+    <div class="kicker">Part 2</div>
+    <h2>System overview</h2>
+    <p class="dek">The Blueprint is the authority on architecture; this recap exists so the plan is
+    navigable on its own. If anything here seems to disagree with the Blueprint, the Blueprint
+    wins — and grep it first: <code>docs/src/bp-02.html</code> (architecture, schedule),
+    <code>bp-03.html</code> (data plan, AI layer), <code>bp-04.html</code> (data model, ops),
+    <code>bp-05.html</code> (roadmap, risks).</p>
+  </div>
+
+  <h3>2.1 &nbsp;Shape</h3>
+  <ul>
+    <li><strong>Read-mostly app:</strong> Next.js 16 (App Router) + TypeScript + Tailwind on Vercel
+    Hobby. Server components read Postgres via Prisma; the app writes only user-state tables
+    (watchlist, journal, review state, paper trades, weakener checkboxes) through server actions.</li>
+    <li><strong>Two-job nightly pipeline</strong> (Python 3.12: Polars + DuckDB + httpx +
+    exchange_calendars) on GitHub Actions. Job A, cron <code>37 22 * * 1-5</code> UTC: preflight →
+    full-universe EOD ingest (Alpaca) → context ingest (Finnhub, FMP, EDGAR, FRED, Marketaux) →
+    compute (indicators, scans, base rates, vol bands) → submit LLM extraction batch → exit. Job B,
+    cron <code>25 0 * * 2-6</code> UTC: late-news delta sweep → collect batch → one synchronous
+    synthesis call → deterministic verification gate → single-transaction publish → revalidate →
+    dead-man ping. Briefing ready ~8:40pm EDT / ~7:40pm EST (worst ~10 min later); promise 9:00pm
+    ET year-round — the crons are UTC-fixed, so DST shifts the user’s wall clock, never the
+    schedule.</li>
+    <li><strong>Storage split:</strong> full-market history (~5–6k symbols × 7y) as Parquet on R2,
+    scanned by DuckDB inside the pipeline only; Postgres (Supabase free) holds serving tables —
+    including <code>price_bar</code> (watchlist + indices × ~5y) so the app never touches R2.</li>
+    <li><strong>AI layer:</strong> Haiku-class per-article extraction (Batch API, −50%) →
+    Sonnet-class synthesis (one sync call) → deterministic tolerance-gate. ~$0.33/night, $7–11/mo
+    total. Models pinned in env: <code>MODEL_EXTRACT=claude-haiku-4-5</code>,
+    <code>MODEL_SYNTH=claude-sonnet-5</code>; reconfirm pricing at build time.</li>
+    <li><strong>Charts:</strong> TradingView Lightweight Charts v5 (Apache-2.0; keep the attribution
+    logo), hand-rolled React hook; Recharts for sparklines/small multiples.</li>
+    <li><strong>Product:</strong> Desk (one-screen ritual: macro pulse → daily brief → US session
+    calendar → movers with reason → focus watchlist → setup cards → sectors/scans → paper-portfolio
+    corner) + Academy (M0–M6 curriculum, glossary, worked examples, Leitner review queue), connected
+    by doorways with return rails; drill depth capped at 3 (glance → rail/sheet → full page).</li>
+  </ul>
+
+  <h3>2.2 &nbsp;Repository layout (authoritative)</h3>
+  <pre>myStockMarket/
+├─ CLAUDE.md · DECISIONS.md · PATTERNS.md · LESSONS.md · PROGRESS.md · DEVELOPMENT-PLAN.md
+├─ .claude/skills/&lt;skill-name&gt;/SKILL.md        # minted per §9.3 rubric
+├─ docs/                                        # the three PDFs + docs/src (do not edit rr-*/bp-*)
+├─ app/                                         # Next.js 16 — Vercel project root
+│  ├─ app/(desk)/…      # dashboard, ticker/[symbol], track-record, scans, settings
+│  ├─ app/(academy)/…   # academy, academy/[module]/[lesson], glossary, review, journal
+│  ├─ app/login/ · app/offline/ · app/styleguide/
+│  ├─ app/api/revalidate/route.ts               # CRON_SECRET bearer
+│  ├─ proxy.ts                                  # session-cookie gate (Next 16 middleware rename)
+│  ├─ components/ · lib/ · content/academy/ · public/
+│  ├─ prisma/schema.prisma · prisma/seed.ts
+│  └─ e2e/ (Playwright) · vitest.config.ts
+├─ pipeline/                                    # Python 3.12, uv-managed
+│  ├─ adapters/ (+ fixtures/) · indicators.py · scans.py · baserates.py · volbands.py
+│  ├─ briefing/ (extract.py · synthesize.py · verify.py) · publish.py · resolve.py
+│  ├─ jobs/ (job_a.py · job_b.py) · scripts/probe_providers.py · config.py · tests/
+└─ .github/workflows/ (nightly-a.yml · nightly-b.yml · ci.yml · migrate.yml)</pre>
+
+  <h3>2.3 &nbsp;What done looks like</h3>
+  <p>P6 exit = the user opens the installed PWA from their phone’s home screen — in the evening
+  after the close, or over coffee before the 9:30am open — and reads a briefing the cloud schedule
+  verified and published earlier that evening (for the pre-open glance, more than twelve hours
+  before the bell); every number on screen carries its N,
+  interval, and provenance; the track record shows the app’s misses; the Academy explains every
+  term on the Desk; the paper ledger computes their real cost drag; the whole thing costs
+  ≈ $7–11/month and looks like nothing a component library ships by default.</p>
+</section>

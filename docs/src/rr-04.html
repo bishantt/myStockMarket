@@ -1,0 +1,493 @@
+<!-- ================= PART 9 ================= -->
+<section class="part">
+  <div class="part-head">
+    <div class="kicker">Part 9</div>
+    <h2>The product: Desk &amp; Academy</h2>
+    <p class="dek">One product, two rooms. The <strong>Desk</strong> is a calm, one-screen command
+    center that runs the daily ritual over the US trading day. The <strong>Academy</strong> is a
+    prose-first learning hub. They are visually and structurally separate, connected only through
+    named doorways — and every element the evidence chapters demanded (base rates, decay stamps,
+    honest misses) has a specific home here.</p>
+  </div>
+
+  <h3>9.1 &nbsp;One product, two rooms</h3>
+  <p>The hard requirement — data experience and learning experience cleanly separated, neither
+  crowding the other — is solved with <strong>two distinct visual grammars under one shell</strong>,
+  so the user knows which mode they are in without reading a label<sup class="cite">[75,90]</sup>.
+  The Desk is dense and tabular: compact 13–14px type, cool neutral background, tabular lining
+  numerals, optional dark mode. The Academy is editorial: 16–18px prose at a ~65-character measure,
+  generous line height, warmer white, light-only (long-form comprehension favors positive
+  polarity<sup class="cite">[77]</sup>). Two content rules keep the wall solid: <em>the Desk hosts
+  doorways, not classrooms</em> — chips, glossary popovers, and one worked-example drawer, but never
+  full lesson bodies; and <em>the Academy contains no live prices</em>, so the monitoring mindset
+  and the learning mindset never compete for the same screen.</p>
+
+  <figure class="avoid-break">
+    <div class="fig-frame">
+    <svg viewBox="0 0 700 330" role="img" aria-label="Information architecture: Desk and Academy zones connected by five named doorways" font-family="-apple-system,'Segoe UI',sans-serif">
+      <!-- shell -->
+      <rect x="10" y="10" width="680" height="30" rx="6" fill="#f9f9f7" stroke="#e1e0d9"/>
+      <text x="24" y="29" font-size="12" font-weight="650" fill="#0b0b0b">myStockMarket</text>
+      <text x="140" y="29" font-size="11.5" fill="#2a78d6" font-weight="650">Desk</text>
+      <text x="185" y="29" font-size="11.5" fill="#52514e">Academy</text>
+      <text x="660" y="29" font-size="11" fill="#898781" text-anchor="end">⌘K</text>
+
+      <!-- Desk zone -->
+      <rect x="10" y="52" width="300" height="216" rx="8" fill="#fcfcfb" stroke="#2a78d6" stroke-width="1.4"/>
+      <text x="26" y="76" font-size="12.5" font-weight="700" fill="#0b0b0b">DESK — command center</text>
+      <text x="26" y="91" font-size="10" fill="#898781">dense · tabular · calm · one screen</text>
+      <g font-size="10.8" fill="#52514e">
+        <text x="26" y="112">1&nbsp;&nbsp;Macro pulse + breadth strip</text>
+        <text x="26" y="128">2&nbsp;&nbsp;Daily brief — AM plan / PM scorecard</text>
+        <text x="26" y="144">3&nbsp;&nbsp;Session calendar + if/then cards</text>
+        <text x="26" y="160">4&nbsp;&nbsp;Movers with reason (catalyst + RVOL)</text>
+        <text x="26" y="176">5&nbsp;&nbsp;Focus watchlist (max 3) + shelf</text>
+        <text x="26" y="192">6&nbsp;&nbsp;Setup cards (probabilistic)</text>
+        <text x="26" y="208">7&nbsp;&nbsp;Sector small multiples · scan presets</text>
+      </g>
+      <rect x="26" y="222" width="268" height="32" rx="5" fill="#f9f9f7" stroke="#e1e0d9"/>
+      <text x="40" y="235" font-size="10" font-weight="650" fill="#52514e">Track record — “How reliable are these signals?”</text>
+      <text x="40" y="247" font-size="9.5" fill="#898781">calibration curve · Brier · append-only log, misses included</text>
+
+      <!-- Academy zone -->
+      <rect x="390" y="52" width="300" height="216" rx="8" fill="#fcfcfb" stroke="#1baf7a" stroke-width="1.4"/>
+      <text x="406" y="76" font-size="12.5" font-weight="700" fill="#0b0b0b">ACADEMY — learning hub</text>
+      <text x="406" y="91" font-size="10" fill="#898781">prose · unhurried · no live prices</text>
+      <g font-size="10.8" fill="#52514e">
+        <text x="406" y="112">Curriculum M0–M6 (risk before patterns)</text>
+        <text x="406" y="128">~60 micro-lessons (3–5 min, single objective)</text>
+        <text x="406" y="144">Worked-example library (annotated charts)</text>
+        <text x="406" y="160">Review queue (max 5/day, no streaks)</text>
+        <text x="406" y="176">Glossary + probability lexicon</text>
+        <text x="406" y="192">Myth vs. evidence series (the ledger, taught)</text>
+        <text x="406" y="208">Journal (PM prompts file here)</text>
+      </g>
+
+      <!-- doorways -->
+      <g font-size="9.6" fill="#52514e">
+        <defs>
+          <marker id="arr" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="6" markerHeight="6" orient="auto">
+            <path d="M0 0 L8 4 L0 8 z" fill="#898781"/>
+          </marker>
+        </defs>
+        <line x1="312" y1="106" x2="388" y2="106" stroke="#898781" stroke-width="1.3" marker-end="url(#arr)"/>
+        <text x="350" y="100" text-anchor="middle">“Learn” chips on signals</text>
+        <line x1="312" y1="140" x2="388" y2="140" stroke="#898781" stroke-width="1.3" marker-end="url(#arr)"/>
+        <text x="350" y="134" text-anchor="middle">glossary → full lesson</text>
+        <line x1="312" y1="174" x2="388" y2="174" stroke="#898781" stroke-width="1.3" marker-end="url(#arr)"/>
+        <text x="350" y="168" text-anchor="middle">one learning link per brief</text>
+        <line x1="388" y1="212" x2="312" y2="212" stroke="#898781" stroke-width="1.3" marker-end="url(#arr)"/>
+        <text x="350" y="206" text-anchor="middle">“See this live”</text>
+        <line x1="388" y1="244" x2="312" y2="244" stroke="#898781" stroke-width="1.3" marker-end="url(#arr)"/>
+        <text x="350" y="238" text-anchor="middle">lexicon popovers on badges</text>
+      </g>
+
+      <!-- return rail -->
+      <rect x="10" y="284" width="680" height="34" rx="6" fill="#f9f9f7" stroke="#e1e0d9"/>
+      <text x="350" y="298" font-size="10.5" text-anchor="middle" font-weight="650" fill="#52514e">Every crossing carries a state-preserving return rail</text>
+      <text x="350" y="311" font-size="9.8" text-anchor="middle" fill="#898781">“You came from: AAPL signal, Jul 8 → Return” — scroll, filters, and selection restored exactly</text>
+    </svg>
+    </div>
+    <figcaption><b>Figure 9.1 — Information architecture.</b> Two zones with distinct visual
+    grammars; guaranteed clean return. Seven crossings share the return-rail contract: the five
+    doorway arrows shown, plus the worked-example drawer (disclosure level 2 of every signal,
+    §9.3) and the PM journal prompt, which files into the Academy journal. The behavior-mirror
+    prompts of §6.2 (cooling-off, frequency mirror) are the one sanctioned <em>push</em> channel —
+    rate-limited, dismissible, each carrying a single lesson link [79,80,94].</figcaption>
+  </figure>
+
+  <h3>9.2 &nbsp;The Desk and the daily ritual</h3>
+  <p><strong>Behind the ritual sits the after-close engine.</strong> Each trading evening — hours
+  after the 4:00pm ET close, entirely in the cloud — a pipeline ingests the day’s US closing data,
+  the earnings calendar and filings, macro releases and ticker-tagged news; scans the full US
+  market for pattern states; computes base rates with their intervals; and writes — then
+  deterministically verifies — the briefing. By roughly 8:40pm Eastern the Desk is already set for
+  tomorrow, whether it gets read that night or over pre-open coffee. (The engine’s full design is
+  Blueprint Parts 2 and 5; everything it publishes obeys the guardrails of Part 8.)</p>
+  <p>The Desk fits one screen without scrolling<sup class="cite">[75]</sup> at a reference viewport
+  of ≥1366×768; below that, modules 6–8 collapse to summary rows and the page scrolls <em>in ritual
+  order</em> — the order, not the single screen, is the invariant (on a phone, the Desk renders as
+  one ritual-ordered column). That fixed top-to-bottom order mirrors the documented professional
+  pre-market sequence — macro first, calendar, movers, then the plan — so the layout itself teaches
+  the routine<sup class="cite">[90,96]</sup>. Positions and P&amp;L are deliberately <em>not</em>
+  the hero: institutions never start the day with their book, because it anchors emotion before
+  context<sup class="cite">[96]</sup>.</p>
+  <p>The timing geometry is home-field: the user lives on market time. The regular session runs
+  9:30am–4:00pm ET with after-hours until 8:00pm ET; the verified briefing publishes by about
+  8:40pm the same evening (an hour earlier on the winter clock — the pipeline is UTC-fixed while
+  local time shifts with DST), hours after the close and more than twelve before the next open.
+  The ritual is therefore a <strong>review-and-prepare</strong> session — built strictly from
+  closed-session data, never a live feed — bookended by two fixed-format briefs<sup
+  class="cite">[91]</sup>: an AM plan of three to five word-capped items with labeled slots
+  (<em>What happened / Why it matters / By the numbers / Yes, but</em>) covering the completed US
+  session, and a PM scorecard that grades the prior brief’s flags against what actually happened,
+  misses included. That evening loop is the strongest anti-hype widget in the
+  product: the user watches base-rate intuition form against their own tool’s record. The brief’s
+  lead card — <em>Today’s focus</em> — together with any strong-tier setup cards is the explicit
+  answer to “what deserves a deeper look”; and “no clear edge today” renders as a first-class,
+  undecorated state, never an apology.</p>
+
+  <figure class="avoid-break">
+    <div class="fig-frame">
+    <svg viewBox="0 0 700 400" role="img" aria-label="Desk wireframe: eight modules in fixed ritual order with a slide-over rail" font-family="-apple-system,'Segoe UI',sans-serif">
+      <!-- canvas -->
+      <rect x="10" y="10" width="540" height="380" rx="8" fill="#fcfcfb" stroke="#c3c2b7"/>
+      <!-- 1 macro strip -->
+      <rect x="22" y="22" width="516" height="30" rx="4" fill="#f9f9f7" stroke="#e1e0d9"/>
+      <circle cx="38" cy="37" r="8" fill="#2a78d6"/><text x="38" y="40.5" font-size="10" fill="#fff" text-anchor="middle" font-weight="700">1</text>
+      <text x="54" y="41" font-size="10.5" fill="#52514e">US macro pulse — S&amp;P 500 · Nasdaq · 10-yr · VIX · oil &nbsp;|&nbsp; breadth: adv/dec · %&gt;50DMA</text>
+      <!-- 2 brief -->
+      <rect x="22" y="60" width="304" height="112" rx="4" fill="#fff" stroke="#e1e0d9"/>
+      <circle cx="38" cy="76" r="8" fill="#2a78d6"/><text x="38" y="79.5" font-size="10" fill="#fff" text-anchor="middle" font-weight="700">2</text>
+      <text x="54" y="80" font-size="11" font-weight="650" fill="#0b0b0b">Daily brief — AM plan · PM scorecard</text>
+      <text x="38" y="97" font-size="9.8" fill="#52514e">3–5 items · fixed slots: What happened / Why it</text>
+      <text x="38" y="109" font-size="9.8" fill="#52514e">matters / By the numbers / Yes, but</text>
+      <text x="38" y="124" font-size="9.8" fill="#898781">PM: flagged vs happened · honest misses · journal prompt</text>
+      <rect x="38" y="136" width="190" height="22" rx="4" fill="#f9f9f7" stroke="#e1e0d9"/>
+      <text x="46" y="150" font-size="9.5" fill="#52514e">Today’s focus · “no clear edge” is first-class</text>
+      <!-- 3 calendar -->
+      <rect x="338" y="60" width="200" height="112" rx="4" fill="#fff" stroke="#e1e0d9"/>
+      <circle cx="354" cy="76" r="8" fill="#2a78d6"/><text x="354" y="79.5" font-size="10" fill="#fff" text-anchor="middle" font-weight="700">3</text>
+      <text x="370" y="80" font-size="11" font-weight="650" fill="#0b0b0b">US session calendar</text>
+      <text x="354" y="96" font-size="9.8" fill="#52514e">CPI 8:30am ET · cons 0.3% · prior 0.4%</text>
+      <text x="354" y="110" font-size="9.8" fill="#52514e">NVDA earnings AMC · implied ±6.8%</text>
+      <text x="354" y="126" font-size="9.8" fill="#898781">if/then cards · per-branch base rates</text>
+      <text x="354" y="140" font-size="9.8" fill="#898781">“no clear edge” is a valid branch</text>
+      <!-- 4 movers -->
+      <rect x="22" y="180" width="304" height="96" rx="4" fill="#fff" stroke="#e1e0d9"/>
+      <circle cx="38" cy="196" r="8" fill="#2a78d6"/><text x="38" y="199.5" font-size="10" fill="#fff" text-anchor="middle" font-weight="700">4</text>
+      <text x="54" y="200" font-size="11" font-weight="650" fill="#0b0b0b">US movers with reason</text>
+      <text x="38" y="216" font-size="9.8" fill="#52514e">SMCI +8.2% · RVOL 3.1× · [earnings] beat + raised guide</text>
+      <text x="38" y="230" font-size="9.8" fill="#52514e">ABC −6.4% · RVOL 2.2× · [analyst] downgrade, PT cut</text>
+      <text x="38" y="244" font-size="9.8" fill="#898781">XYZ +5.1% · RVOL 0.8× · no news found — likely noise</text>
+      <text x="38" y="262" font-size="9.5" fill="#898781">catalyst chip + source link on every row</text>
+      <!-- 5 watchlist -->
+      <rect x="338" y="180" width="200" height="96" rx="4" fill="#fff" stroke="#e1e0d9"/>
+      <circle cx="354" cy="196" r="8" fill="#2a78d6"/><text x="354" y="199.5" font-size="10" fill="#fff" text-anchor="middle" font-weight="700">5</text>
+      <text x="370" y="200" font-size="11" font-weight="650" fill="#0b0b0b">Focus watchlist (max 3)</text>
+      <text x="354" y="216" font-size="9.8" fill="#52514e">AAPL · +0.4% · gap 0.2% · RVOL 1.1 ▁▂▃▅▄</text>
+      <text x="354" y="230" font-size="9.8" fill="#52514e">written reason required per name</text>
+      <text x="354" y="246" font-size="9.8" fill="#898781">secondary shelf one level deeper</text>
+      <text x="354" y="260" font-size="9.8" fill="#898781">“why the cap exists” explained in-UI</text>
+      <!-- 6 setup cards -->
+      <rect x="22" y="284" width="304" height="52" rx="4" fill="#fff" stroke="#e1e0d9"/>
+      <circle cx="38" cy="300" r="8" fill="#2a78d6"/><text x="38" y="303.5" font-size="10" fill="#fff" text-anchor="middle" font-weight="700">6</text>
+      <text x="54" y="304" font-size="11" font-weight="650" fill="#0b0b0b">Setup cards (summary rows)</text>
+      <text x="38" y="320" font-size="9.8" fill="#52514e">cause → pattern → base rate (N, CI) · full card in the rail — Fig 9.3</text>
+      <!-- 7 sectors/scans -->
+      <rect x="338" y="284" width="200" height="52" rx="4" fill="#fff" stroke="#e1e0d9"/>
+      <circle cx="354" cy="300" r="8" fill="#2a78d6"/><text x="354" y="303.5" font-size="10" fill="#fff" text-anchor="middle" font-weight="700">7</text>
+      <text x="370" y="304" font-size="11" font-weight="650" fill="#0b0b0b">Sectors · scan presets</text>
+      <text x="354" y="320" font-size="9.8" fill="#52514e">small multiples · visible criteria</text>
+      <!-- portfolio corner -->
+      <rect x="22" y="344" width="516" height="34" rx="4" fill="#f9f9f7" stroke="#e1e0d9"/>
+      <circle cx="38" cy="361" r="8" fill="#c3c2b7"/><text x="38" y="364.5" font-size="10" fill="#fff" text-anchor="middle" font-weight="700">8</text>
+      <text x="54" y="360" font-size="10" font-weight="650" fill="#52514e">Paper-portfolio state — “am I OK?” · never a P&amp;L hero</text>
+      <text x="54" y="372" font-size="9.5" fill="#898781">cost mirror: projected annual drag from your own paper turnover · cooling-off prompts</text>
+
+      <!-- slide-over rail ghost -->
+      <rect x="562" y="10" width="128" height="380" rx="8" fill="none" stroke="#898781" stroke-dasharray="5 4"/>
+      <text x="626" y="34" font-size="10.5" text-anchor="middle" fill="#52514e" font-weight="650">Slide-over rail</text>
+      <text x="626" y="48" font-size="9.5" text-anchor="middle" fill="#898781">drill level 2 of 3</text>
+      <text x="626" y="70" font-size="9.5" text-anchor="middle" fill="#898781">click any ticker →</text>
+      <text x="626" y="83" font-size="9.5" text-anchor="middle" fill="#898781">chart + full setup</text>
+      <text x="626" y="96" font-size="9.5" text-anchor="middle" fill="#898781">cards, no navigation</text>
+      <text x="626" y="118" font-size="9.5" text-anchor="middle" fill="#898781">“Open full view” →</text>
+      <text x="626" y="131" font-size="9.5" text-anchor="middle" fill="#898781">level 3 (route +</text>
+      <text x="626" y="144" font-size="9.5" text-anchor="middle" fill="#898781">breadcrumb + Back)</text>
+    </svg>
+    </div>
+    <figcaption><b>Figure 9.2 — The Desk, one screen.</b> Numbered in ritual order (macro → brief →
+    calendar → movers → watchlist → setups). Setup cards render as summary rows here; the full
+    template (Figure 9.3) lives in the slide-over rail — drill depth 2. A full ticker page with
+    breadcrumb is depth 3, the maximum [77,98].</figcaption>
+  </figure>
+
+  <table>
+    <caption>Widget catalog — every module earns its place or doesn’t ship</caption>
+    <thead><tr>
+      <th style="width:34mm">Widget</th><th style="width:14mm">Priority</th>
+      <th>Why it earns its place</th><th style="width:42mm">Explain-why hook</th>
+    </tr></thead>
+    <tbody>
+      <tr><td>US macro pulse + breadth strip</td><td><span class="chip neutral">Must</span></td>
+        <td>Every documented pro routine starts macro-first; breadth answers “broad or narrow?” — invisible in price-only views [90,96].</td>
+        <td>Every figure is a glossary term; popover explains disagreement cases.</td></tr>
+      <tr><td>Daily brief pair (AM/PM)</td><td><span class="chip neutral">Must</span></td>
+        <td>Fixed-count, fixed-order briefs readable in under 3 minutes are the proven ritual format; labeled slots separate fact from interpretation structurally [91].</td>
+        <td>The slot labels are the lesson; exactly one Academy link per brief.</td></tr>
+      <tr><td>Movers with reason (US session)</td><td><span class="chip neutral">Must</span></td>
+        <td>The highest-leverage terminal pattern for a beginner: why + relative volume on the same row; catalyst-less moves labeled “likely noise” [92].</td>
+        <td>Catalyst chip carries durability + continuation base rate; opens catalyst explainer.</td></tr>
+      <tr><td>US session calendar + if/then cards</td><td><span class="chip neutral">Must</span></td>
+        <td>Converts surprise volatility into anticipated events (earnings bmo/amc, CPI, jobs report, FOMC); scenario framing beats point forecasts, and “no edge” is a rendered branch [84].</td>
+        <td>Consensus/prior columns teach beat/miss; per-branch frequencies (suppressed honestly when branch N &lt; 30).</td></tr>
+      <tr><td>Focus watchlist (max 3 + shelf)</td><td><span class="chip neutral">Must</span></td>
+        <td>Pros cap attention deliberately; unbounded lists produce scattered emotional decisions [96]. RVOL is a base rate disguised as a column [99].</td>
+        <td>The cap itself is explained; headers are glossary terms.</td></tr>
+      <tr><td>Probabilistic setup card</td><td><span class="chip neutral">Must</span></td>
+        <td>The signature unit — see §9.3 and Figure 9.3.</td>
+        <td>Two-level disclosure: chip → worked-example drawer → Academy.</td></tr>
+      <tr><td>Track-record page</td><td><span class="chip neutral">Must</span></td>
+        <td>Grading itself in public — misses first-class — is the app’s structural advantage over hype [94,80]. Ships (in minimal form) with the first setup cards, never after them.</td>
+        <td>Companion lesson uses the live page as its worked example.</td></tr>
+      <tr><td>Sector small multiples</td><td><span class="chip neutral">Should</span></td>
+        <td>Identically scaled mini-charts make “broad or concentrated?” preattentive [76]; desaturated — the saturation-wall look is rejected as emotional wallpaper.</td>
+        <td>Tiles link to sector-rotation explainers.</td></tr>
+      <tr><td>Quantile dotplot (drill-down)</td><td><span class="chip neutral">Should</span></td>
+        <td>Each dot = one past occurrence’s forward return; the losing tail is visibly present. Measurably reduces lay estimation error vs point numbers [85].</td>
+        <td>One-time “how to read a dotplot” signpost, then silent.</td></tr>
+      <tr><td>Named scan presets, visible criteria</td><td><span class="chip neutral">Should</span></td>
+        <td>The visible recipe doubles as curriculum; hidden criteria turn a preset into an oracle [78].</td>
+        <td>Each filter line links to the lesson explaining it.</td></tr>
+      <tr><td>Curated top news (not a feed)</td><td><span class="chip neutral">Later</span></td>
+        <td>Curation works; a firehose is cognitively hostile and mostly duplicated by movers-with-reason.</td>
+        <td>Neutral declarative headlines; catalyst chips consistent with movers.</td></tr>
+      <tr><td>Relative-strength comparison chart</td><td><span class="chip neutral">Later</span></td>
+        <td>Good on the full ticker page; kept off the Desk to protect the widget budget [98].</td>
+        <td>“Relative strength” glossary chip.</td></tr>
+      <tr><td>⌘K command palette</td><td><span class="chip neutral">Later</span></td>
+        <td>Zero-chrome accelerator; zone badges on results reinforce the two-room model.</td>
+        <td>—</td></tr>
+    </tbody>
+  </table>
+
+  <h3>9.3 &nbsp;The setup card — the signature unit</h3>
+  <p>Wherever a signal fires, it renders in one fixed template. On the Desk itself a card appears as
+  a two-line summary row; the full template below is what the slide-over rail shows. The template is
+  the XAI research distilled<sup class="cite">[79,80]</sup>: an observable cause (never “our model
+  likes it”), a named pattern that links to its lesson, a base rate stated as a <strong>natural
+  frequency with an explicit reference class</strong><sup class="cite">[81,82]</sup>, the sample
+  size and interval, an explicit comparison to the unconditional baseline, a typical range instead
+  of a target, a mandatory “what would weaken this” list (explanations inflate trust even when
+  wrong — the falsifiers push back<sup class="cite">[80]</sup>), and a scope line. Verbal labels
+  come from a fixed lexicon<sup class="cite">[83]</sup> — “moderate tendency” always means the same
+  numeric band, documented once in the Academy.</p>
+
+  <figure class="avoid-break">
+    <div class="fig-frame">
+    <svg viewBox="0 0 700 340" role="img" aria-label="Anatomy of a probabilistic setup card" font-family="-apple-system,'Segoe UI',sans-serif">
+      <!-- card -->
+      <rect x="14" y="14" width="380" height="312" rx="10" fill="#fff" stroke="#c3c2b7"/>
+      <!-- header -->
+      <text x="30" y="42" font-size="14" font-weight="700" fill="#0b0b0b">AAPL · Golden cross (50/200)</text>
+      <rect x="300" y="27" width="80" height="20" rx="10" fill="#f9f9f7" stroke="#c3c2b7"/>
+      <circle cx="312" cy="37" r="3.4" fill="#898781"/>
+      <text x="320" y="41" font-size="9" font-weight="650" fill="#52514e">WEAK</text>
+      <!-- what fired -->
+      <text x="30" y="66" font-size="9.5" font-weight="700" fill="#898781" letter-spacing="1">WHAT FIRED</text>
+      <text x="30" y="81" font-size="11" fill="#0b0b0b">50-day average crossed above the 200-day</text>
+      <text x="30" y="95" font-size="11" fill="#0b0b0b">yesterday, on 2.1× average volume.</text>
+      <!-- base rate -->
+      <text x="30" y="119" font-size="9.5" font-weight="700" fill="#898781" letter-spacing="1">HISTORICAL BASE RATE</text>
+      <text x="30" y="134" font-size="11" fill="#0b0b0b">In 5 years, this appeared 110 times on similar</text>
+      <text x="30" y="148" font-size="11" fill="#0b0b0b">stocks. Higher 10 trading days later in</text>
+      <text x="30" y="162" font-size="11" font-weight="650" fill="#0b0b0b">62 of 110 cases (56%).</text>
+      <!-- icon array 20 squares, 11 filled -->
+      <g>
+        <g fill="#2a78d6">
+          <rect x="30" y="171" width="12" height="12" rx="2"/><rect x="46" y="171" width="12" height="12" rx="2"/>
+          <rect x="62" y="171" width="12" height="12" rx="2"/><rect x="78" y="171" width="12" height="12" rx="2"/>
+          <rect x="94" y="171" width="12" height="12" rx="2"/><rect x="110" y="171" width="12" height="12" rx="2"/>
+          <rect x="126" y="171" width="12" height="12" rx="2"/><rect x="142" y="171" width="12" height="12" rx="2"/>
+          <rect x="158" y="171" width="12" height="12" rx="2"/><rect x="174" y="171" width="12" height="12" rx="2"/>
+          <rect x="190" y="171" width="12" height="12" rx="2"/>
+        </g>
+        <g fill="none" stroke="#c3c2b7">
+          <rect x="206" y="171" width="12" height="12" rx="2"/><rect x="222" y="171" width="12" height="12" rx="2"/>
+          <rect x="238" y="171" width="12" height="12" rx="2"/><rect x="254" y="171" width="12" height="12" rx="2"/>
+          <rect x="270" y="171" width="12" height="12" rx="2"/><rect x="286" y="171" width="12" height="12" rx="2"/>
+          <rect x="302" y="171" width="12" height="12" rx="2"/><rect x="318" y="171" width="12" height="12" rx="2"/>
+          <rect x="334" y="171" width="12" height="12" rx="2"/>
+        </g>
+      </g>
+      <text x="30" y="196" font-size="9.5" fill="#898781">N = 110 · 95% CI 47–65% · ref class: US large caps · 2021–2026 · 10-day horizon</text>
+      <text x="30" y="208" font-size="9.5" fill="#52514e">Unconditional 10-day up-rate ≈ 55% — read this as near-baseline.</text>
+      <!-- typical range -->
+      <text x="30" y="228" font-size="9.5" font-weight="700" fill="#898781" letter-spacing="1">TYPICAL 10-DAY RANGE</text>
+      <text x="30" y="242" font-size="11" fill="#0b0b0b">−4.2% to +5.8% (middle 8 of 10 past cases)</text>
+      <!-- weakeners -->
+      <text x="30" y="262" font-size="9.5" font-weight="700" fill="#898781" letter-spacing="1">WHAT WOULD WEAKEN THIS</text>
+      <text x="30" y="276" font-size="10.5" fill="#52514e">☐ Close back below the 200-day average</text>
+      <text x="30" y="290" font-size="10.5" fill="#52514e">☑ Volume fades below average for 3 sessions</text>
+      <!-- scope + provenance -->
+      <line x1="30" y1="298" x2="378" y2="298" stroke="#e1e0d9"/>
+      <text x="30" y="311" font-size="9.5" font-style="italic" fill="#52514e">A tendency, not a prediction.</text>
+      <text x="30" y="321" font-size="8.5" fill="#898781">5y daily OHLCV · computed 6:47pm ET · sources [d41, d87] · Learn: golden cross →</text>
+
+      <!-- callouts -->
+      <g font-size="10" fill="#52514e">
+        <g font-weight="650" fill="#2a78d6">
+          <text x="420" y="42">1</text><text x="420" y="84">2</text><text x="420" y="140">3</text>
+          <text x="420" y="182">4</text><text x="420" y="222">5</text><text x="420" y="272">6</text>
+          <text x="420" y="304">7</text><text x="420" y="318">8</text>
+        </g>
+        <text x="432" y="42">Named pattern, linked to its Academy lesson;</text>
+        <text x="432" y="56">tier from the fixed lexicon [83] — a CI that spans</text>
+        <text x="432" y="70">the always-up baseline caps the tier at WEAK</text>
+        <text x="432" y="84">Observable cause — what fired, in data terms,</text>
+        <text x="432" y="98">never “the model likes it” [79]</text>
+        <text x="432" y="140">Natural frequency + explicit reference class —</text>
+        <text x="432" y="154">the best-evidenced lay probability format [81,82]</text>
+        <text x="432" y="182">Icon array makes the misses impossible</text>
+        <text x="432" y="196">to ignore (9 empty squares) [85]</text>
+        <text x="432" y="222">Sample size + Wilson CI, always; the baseline line</text>
+        <text x="432" y="236">names the ~55% unconditional up-rate; N &lt; 30</text>
+        <text x="432" y="250">suppresses the percentage entirely</text>
+        <text x="432" y="272">A range, never a target — distribution</text>
+        <text x="432" y="286">thinking from day one [84]</text>
+        <text x="432" y="304">Falsifiers with live check state [80]</text>
+        <text x="432" y="318">Scope line + provenance + doorway</text>
+      </g>
+    </svg>
+    </div>
+    <figcaption><b>Figure 9.3 — Anatomy of the probabilistic setup card.</b> The fixed template
+    renders identically for every signal; only the content varies. Note the example’s own honesty:
+    56% against a ~55% unconditional up-rate, with a CI touching the coin-flip line, earns only a
+    WEAK tier — the flagship illustration is deliberately a near-non-signal. Clicking “Why this
+    fired” opens a three-step worked-example drawer with the relevant candles annotated on the
+    chart itself — disclosure level 2 of a hard maximum of 2 overlays [78,86].</figcaption>
+  </figure>
+
+  <h3>9.4 &nbsp;The honest-uncertainty system</h3>
+  <ul>
+    <li><strong>The canonical sentence.</strong> Every base rate reads: <em>“In the past 5 years,
+    this pattern appeared N times on stocks like this. Price was higher H days later in W of N
+    cases (P%).”</em> Natural frequencies with a visible reference class — because 30–80% of
+    laypeople misread bare percentages by misattributing what they refer to<sup
+    class="cite">[81,82]</sup>.</li>
+    <li><strong>Sample-aware precision, enforced by the display engine.</strong> N ≥ 100 → percentage
+    with interval; 30–99 → “roughly 6 in 10” with a wide-interval note; N &lt; 30 → “insufficient
+    history — treat as anecdote,” percentage suppressed. Never “68.4%” from 12 occurrences.</li>
+    <li><strong>Words from a fixed lexicon.</strong> “Weak tendency” = 50–58%, “moderate” = 58–70%,
+    “strong” = &gt;70% — always rendered word <em>plus</em> frequency, because interpretations of a
+    bare “likely” span 40+ percentage points across readers<sup class="cite">[83]</sup>. One
+    override outranks the bands: <strong>a confidence interval that includes the ~53–55% always-up
+    baseline caps the tier at “weak”</strong> — no-edge never wears a stronger badge, whatever the
+    point estimate says.</li>
+    <li><strong>Distributions, never points.</strong> Quantile dotplots of historical forward
+    returns in drill-down<sup class="cite">[85]</sup>; fan charts with frequency-labeled bands
+    (“8 in 10 past paths stayed inside”) wherever anything forward-looking is drawn<sup
+    class="cite">[84]</sup>. No single projected line exists anywhere in the product.</li>
+    <li><strong>Confidence only where it changes behavior.</strong> Tier badges appear on actionable
+    setup cards only, each tier mapped to a stated, deliberately observational action — “strong →
+    worth a closer look; moderate → note it and check the weakeners; weak → watch only.” No tier
+    ever maps to an acquisitional verb, and no confidence chrome appears on quotes or static
+    facts — ubiquitous scores train score-chasing<sup class="cite">[79]</sup>.</li>
+    <li><strong>The system grades itself in public.</strong> Calibration curve with per-bucket
+    counts, rolling Brier score with a plain-language anchor (“0.25 = coin flip”), and a complete
+    append-only resolved log — every hit <em>and</em> miss, filterable by pattern, with a banner
+    when a signal family runs below its long-run rate<sup class="cite">[94]</sup>.</li>
+    <li><strong>Mechanical voice.</strong> “The pattern has historically been followed by…” — never
+    “I think this stock will…”. Anthropomorphic voice inflates trust; disclaimers sit at the
+    decision point, not the page footer<sup class="cite">[77,97]</sup>.</li>
+  </ul>
+
+  <h3>9.5 &nbsp;The Academy</h3>
+  <p>The Academy is a curriculum, not a content dump: seven modules of ~60 single-objective
+  micro-lessons (3–5 minutes, two or three retrieval questions, a quiet checkmark — chunking without
+  gamification). The ordering is deliberate: <strong>risk before patterns</strong>, with pattern
+  lessons soft-gated on the risk module — teaching pattern-spotting first manufactures overconfident
+  beginners, the exact failure mode this product exists to prevent.</p>
+  <table class="rowhead">
+    <caption>Curriculum map</caption>
+    <thead><tr><th style="width:40mm">Module</th><th>Contents</th></tr></thead>
+    <tbody>
+      <tr><td>M0 · Orientation</td><td>How this app explains itself: the probability lexicon, reading base-rate sentences and icon arrays, what the track-record page means (calibration, Brier as “coin flip = 0.25”).</td></tr>
+      <tr><td>M1 · US market mechanics</td><td>NYSE and Nasdaq; tickers; the US session structure (pre-market 4:00–9:30am, regular 9:30am–4:00pm, after-hours 4:00–8:00pm ET) and what trades when; order types; bid–ask spreads; what every number in the macro strip is.</td></tr>
+      <tr><td>M2 · Costs &amp; account math</td><td>Spreads, slippage, taxes, why frequent trading compounds costs — the arithmetic that precedes any strategy.</td></tr>
+      <tr><td>M3 · Risk before patterns</td><td>Position sizing, stops, expectancy, drawdown math, why base rates beat anecdotes. Gates the pattern modules.</td></tr>
+      <tr><td>M4 · Reading charts</td><td>Candles, support/resistance, volume and RVOL, gaps, sparklines and small multiples.</td></tr>
+      <tr><td>M5 · Indicators &amp; signals</td><td>Exactly and only what the Desk shows: each pattern’s evidence grade from Part 4, how each base rate is computed, every scan preset’s recipe. The “myth vs. evidence” series lives here.</td></tr>
+      <tr><td>M6 · Psychology &amp; biases</td><td>Base-rate neglect, chasing, disposition, overtrading, why the focus list is capped at 3; journaling practice — the PM prompts file here.</td></tr>
+    </tbody>
+  </table>
+  <p>Four mechanisms make it learning-in-context rather than a separate course. (1) <strong>Worked
+  examples</strong>: every signal’s “why this fired” drawer is a fixed three-step solved example —
+  novices learn far more from worked examples than raw data<sup class="cite">[86]</sup> — with
+  annotations drawn <em>on the live chart</em>, synced to the steps, because separating explanation
+  from chart splits attention<sup class="cite">[86]</sup>. (2) <strong>Pull, not push</strong>: no
+  tours, no onboarding wizard; the one push moment is a one-time first-encounter signpost per
+  concept<sup class="cite">[78]</sup> — plus the single named exception of §6.2’s behavior-mirror
+  prompts (cooling-off, frequency mirror), which are rate-limited, dismissible, and carry at most
+  one lesson link. (3) <strong>Spaced review</strong>: at most five daily retrieval prompts,
+  Leitner-scheduled, seeded only from concepts the user actually encountered on the Desk that
+  week — spacing is one of the largest replicated effects in learning science (d ≈ 0.6)<sup
+  class="cite">[88]</sup> — skippable, guilt-free, no streaks. (4) <strong>Adaptive fading</strong>:
+  mastered concepts collapse to terse pro-mode and worked examples flip into completion prompts —
+  permanent hand-holding measurably harms intermediates (the expertise-reversal effect<sup
+  class="cite">[87]</sup>), and a tool still explaining candlesticks in month six gets abandoned.
+  Inside the Academy, navigation stays shallow: curriculum map → lesson (breadcrumbed), glossary
+  entries open as popovers within a lesson, and the return rail renders whenever arrival was from
+  the Desk.</p>
+
+  <h3>9.6 &nbsp;Navigation</h3>
+  <ul>
+    <li><strong>Drill depth is capped at 3:</strong> glance (Desk) → slide-over rail (~420px,
+    in place, no navigation) → full page (own route, breadcrumb, fixed “Back to Desk”)<sup
+    class="cite">[77]</sup>.</li>
+    <li><strong>Return is guaranteed and stateful:</strong> scroll, filters, and selection restored
+    exactly; a beginner who gets lost twice stops drilling at all<sup class="cite">[78]</sup>.
+    Cross-zone jumps carry the persistent return rail (Figure 9.1). No modal stacks.</li>
+    <li><strong>High-scent labels only:</strong> every link states the question it answers (“Why is
+    NVDA moving?”), never “Details”<sup class="cite">[78]</sup>.</li>
+    <li><strong>Overlay budget:</strong> chips, tooltips, popovers, and the one slide-over drawer —
+    anything longer navigates to the Academy. Two disclosure levels, never three<sup
+    class="cite">[78]</sup>.</li>
+    <li><strong>Constrained customization:</strong> fixed zone skeleton with show/hide and reorder
+    within zones; no freeform drag-anywhere — it destroys the hierarchy the ritual depends
+    on<sup class="cite">[77]</sup>.</li>
+  </ul>
+
+  <h3>9.7 &nbsp;Visual language</h3>
+  <ul>
+    <li><strong>Data-ink maximalism:</strong> no card shadows, no decorative borders; hairline
+    dividers; if an element can disappear without losing data, it does<sup class="cite">[76,75]</sup>.</li>
+    <li><strong>One reserved attention color</strong> (amber) for active alerts — at most 2–3
+    visible before they aggregate into a count. Color communicates importance only when
+    scarce<sup class="cite">[75]</sup>. Setup-card tier badges do <em>not</em> draw from this
+    budget: tiers render as neutral chips (gray dot + lexicon word), so ten firing cards cannot
+    turn the Desk amber.</li>
+    <li><strong>Semantic-only, colorblind-safe gain/loss:</strong> blue #0072B2 / vermillion #D55E00
+    (Wong palette<sup class="cite">[93]</sup>), applied only to deltas and chart lines, always
+    redundantly encoded with sign and direction; banned from buttons, links, and decoration —
+    interactive elements use a distinct link color so a delta can never be mistaken for a
+    button.</li>
+    <li><strong>Tabular lining numerals</strong> (a UI sans with <code>tnum</code> support — Inter
+    or IBM Plex Sans class), right-aligned numeric columns, consistent decimals — aligned digits
+    scan instantly. Reference tokens for the coding phase: Desk background near-white cool neutral,
+    Academy warmer white, one hairline divider tone, a 4–5 step type scale per zone; exact values
+    are the first task of the build’s design pass, constrained by this section.</li>
+    <li><strong>Calm technology:</strong> no blinking, no ticker tape, no toasts, no badges; data
+    refreshes fade in over ~500ms with no color flash — and in v1 the data is as-of the last US
+    close, so the calm is structural, not just stylistic. Market open/closed (US session state) and
+    data freshness render as small static peripheral indicators<sup class="cite">[89]</sup>.
+    Probability visuals are motionless — the election-needle lesson.</li>
+    <li><strong>Position and length over angle and area:</strong> bars, lines, sparklines, small
+    multiples everywhere; gauges, donuts, and speedometers nowhere<sup class="cite">[77]</sup>.</li>
+    <li><strong>Dark mode is Desk-only</strong> (optional, for evening use); the Academy stays
+    light — long-form reading favors positive polarity<sup class="cite">[77]</sup>.</li>
+  </ul>
+
+  <h3>9.8 &nbsp;What we will not build</h3>
+  <table>
+    <thead><tr><th style="width:52mm">Anti-pattern</th><th>Why it is banned</th></tr></thead>
+    <tbody>
+      <tr><td>Composite buy/sell gauges (“Technical Rating: BUY”)</td><td>Unauditable aggregates that read as advice — the exact opposite of cause + pattern + base rate.</td></tr>
+      <tr><td>Ticker tape, flashing cells, jittery dials</td><td>Motion manufactures urgency with zero decision value [89].</td></tr>
+      <tr><td>News firehose / squawk as a primary module</td><td>Built for full-time scalpers; for one beginner it is ambient anxiety duplicating movers-with-reason.</td></tr>
+      <tr><td>Movers without catalyst + RVOL on the row</td><td>A bare +21% invites momentum-chasing; “no catalyst + no RVOL = ignore” is the pro rule the UI enforces [92].</td></tr>
+      <tr><td>P&amp;L as the first thing on screen</td><td>Anchors emotion before context [96].</td></tr>
+      <tr><td>Point predictions or single projected lines</td><td>Beginners read a line as a promise [84].</td></tr>
+      <tr><td>Bare percentages / decimal confidence scores</td><td>The chance-of-rain error plus false precision [82].</td></tr>
+      <tr><td>Win-only track records</td><td>Survivorship-filtered history is the core mechanism of trading hype; the log is append-only and complete [94].</td></tr>
+      <tr><td>Gamification: streaks, XP, confetti, leagues</td><td>Regulators linked these mechanics to harmful novice trading frequency [95]; pedagogy is fully separable from them.</td></tr>
+      <tr><td>Freeform drag-anywhere dashboard builder</td><td>Destroys the hierarchy and the zone separation [77].</td></tr>
+      <tr><td>Black-box scan presets</td><td>Hidden criteria turn a preset into an oracle; the visible recipe is the lesson.</td></tr>
+      <tr><td>Product tours; tooltips on everything; 3+ overlay levels</td><td>Forgotten teaching, tooltip blindness, disorientation [78].</td></tr>
+      <tr><td>Hype copy and anthropomorphic AI voice</td><td>Urgency theater and trust inflation; copy stays declarative, neutral, mechanical [77].</td></tr>
+      <tr><td>Permanent beginner explanations, no fading</td><td>Expertise reversal: what helps a novice measurably harms an intermediate [87].</td></tr>
+      <tr><td>Trending / most-bought discovery</td><td>Causally generates loss-making trades (−4.7%/20 days) [52] — see Part 8.</td></tr>
+    </tbody>
+  </table>
+</section>

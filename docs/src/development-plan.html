@@ -1,0 +1,1445 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>myStockMarket — Development Plan</title>
+<link rel="stylesheet" href="print.css">
+</head>
+<body>
+
+<!-- ================= COVER ================= -->
+<div class="cover">
+  <div class="brand">
+    <svg class="tick" viewBox="0 0 20 20" aria-hidden="true">
+      <rect x="2.5" y="7" width="3.6" height="7.5" rx="1" fill="#2a78d6"/>
+      <line x1="4.3" y1="4.5" x2="4.3" y2="16.8" stroke="#2a78d6" stroke-width="1.1"/>
+      <rect x="8.2" y="4" width="3.6" height="8" rx="1" fill="#c3c2b7"/>
+      <line x1="10" y1="2" x2="10" y2="14.5" stroke="#c3c2b7" stroke-width="1.1"/>
+      <rect x="13.9" y="9" width="3.6" height="6.8" rx="1" fill="#2a78d6"/>
+      <line x1="15.7" y1="6.5" x2="15.7" y2="18" stroke="#2a78d6" stroke-width="1.1"/>
+    </svg>
+    <span class="doc-title-string">myStockMarket · Development Plan</span>
+  </div>
+
+  <div class="doc-kind">Development Plan · 3 of 3</div>
+  <h1>The Execution Contract</h1>
+  <p class="subtitle">A self-driving build plan for Claude Opus 4.8: front end and back end of
+  myStockMarket, end to end, phase by phase, with zero human input beyond the one scheduled
+  Session-0 checklist. Implements the Research Report and Build Blueprint faithfully — same stack,
+  same P0–P6 phasing, same guardrails, same data model — translated into ordered, testable steps.</p>
+
+  <p class="epigraph">“The evidence chapters win. When a tempting feature, a prettier component, or
+  a faster shortcut conflicts with the Research Report’s honesty rules or this plan’s design
+  system, the feature loses — every time, without asking.”
+  <span class="attr">— The one rule that outranks every other rule in this document</span></p>
+
+  <div class="meta">
+    <span><b>Executor</b> Claude Opus 4.8</span>
+    <span><b>Date</b> July 2026</span>
+    <span><b>Companions</b> Research-Report.pdf · Build-Blueprint.pdf</span>
+  </div>
+</div>
+
+<!-- ================= DECISIONS GATE (contractual: read first) ================= -->
+<section class="part">
+  <div class="part-head">
+    <div class="kicker">Before anything else</div>
+    <h2>Decisions I need from you</h2>
+    <p class="dek">The commissioning instruction: every decision that would cascade through the
+    build must surface here for an answer before the plan is final. Verdict below.</p>
+  </div>
+
+  <div class="callout">
+    <p><span class="co-label">None</span> There are no global decisions awaiting your answer. Every
+    choice that could cascade through cost, data, guardrails, or architecture was either already
+    fixed by the two source documents (which outrank this plan — §1.2) or resolvable within them.
+    The plan proceeds; the build can start at Session-0 whenever you are ready.</p>
+  </div>
+
+  <p>What remains are <strong>judgment calls I made and logged</strong> — each local in scope,
+  reversible, and recorded so you can veto asynchronously. The headline ones, so you never have to
+  hunt for them:</p>
+  <table class="rowhead">
+    <thead><tr><th style="width:52mm">Call</th><th>One-line rationale (full text at the cited section)</th></tr></thead>
+    <tbody>
+      <tr><td>Cookie-session login replaces Basic Auth</td><td>Basic-Auth 401s break installed PWAs; the Blueprint itself names this step-up. Declared deviation #1, §4.4.</td></tr>
+      <tr><td>“Broadsheet Terminal” design direction</td><td>The bold-but-honest aesthetic committed token-for-token so the executor cannot drift generic. Part 3 — my professional design judgment, owned.</td></tr>
+      <tr><td>Serwist for the service worker</td><td>Maintained Workbox successor with first-class Next.js wiring. Declared deviation #2, §5.</td></tr>
+      <tr><td>No push notifications, no offline write queue in v1</td><td>Calm-tech review required before push; write-queues risk silent divergence. Both on the logged backlog, Part 8.</td></tr>
+      <tr><td>Academy lessons as MDX files in git, not DB rows</td><td>Content belongs in version control. Declared deviation #4, Appendix B.</td></tr>
+      <tr><td>Refresh fades 160–200ms (RR says “~500ms”)</td><td>Same calm intent, no shimmer. Declared deviation #3, §3.5.</td></tr>
+    </tbody>
+  </table>
+  <p>Veto mechanics: edit <code>DECISIONS.md</code> in the repo (any line without a
+  <code>[claude]</code> marker is treated as your instruction, rank 2.5 — the session ritual reads
+  the diff first, §9.2), or simply tell the executor. Nothing above is load-bearing enough to
+  block on.</p>
+</section>
+
+<!-- ================= TOC ================= -->
+<section class="toc">
+  <h2 style="font-size:19pt; font-weight:750;">Contents</h2>
+  <ol>
+    <li>The contract <span class="toc-sub">authority hierarchy, decision protocol, Session-0 checklist, non-negotiables</span></li>
+    <li>System overview <span class="toc-sub">what is being built, in one self-contained recap</span></li>
+    <li>Design system — “Broadsheet Terminal” <span class="toc-sub">manifesto, tokens, type, color, motion, components, phone ritual</span></li>
+    <li>App architecture &amp; conventions <span class="toc-sub">routing, data flow, auth, fonts, performance budgets</span></li>
+    <li>PWA specification <span class="toc-sub">manifest, service worker, offline honesty, install UX, iOS</span></li>
+    <li>Testing &amp; TDD protocol <span class="toc-sub">what gets a failing test first, and the tooling for each layer</span></li>
+    <li>Phase playbooks P0–P3 <span class="toc-sub">scope, build order, tests-first, acceptance, self-verification</span></li>
+    <li>Phase playbooks P4–P6 + backlog <span class="toc-sub">the honesty engine, the Academy, the paper desk</span></li>
+    <li>Intelligence layer &amp; skills <span class="toc-sub">CLAUDE.md, DECISIONS/PATTERNS/LESSONS/PROGRESS, when to mint a skill</span></li>
+    <li>Conflict &amp; stall protocol <span class="toc-sub">how to never ask the user anything</span></li>
+    <li>Appendices <span class="toc-sub">Prisma schema, env matrix, pipeline contracts, prompts, patterns, lessons, copy deck, CLAUDE.md template</span></li>
+  </ol>
+</section>
+
+<!-- ================= PART 1 ================= -->
+<section class="part">
+  <div class="part-head">
+    <div class="kicker">Part 1</div>
+    <h2>The contract</h2>
+    <p class="dek">Read this part at the start of every session. It defines what outranks what, how
+    to decide without asking, and the only moment a human is ever required.</p>
+  </div>
+
+  <h3>1.1 &nbsp;What you are building, in one sentence</h3>
+  <p>A single-user, US-equities (NYSE/Nasdaq) market command center and learning hub — a calm,
+  editorial web app and installable mobile PWA whose after-close cloud pipeline has already
+  ingested, scanned, computed, and written a verified briefing by about 8:40pm Eastern the same
+  evening — the user lives on market time (Long Island, NY) — and which never, under any
+  circumstance, predicts direction.</p>
+
+  <h3>1.2 &nbsp;Authority hierarchy</h3>
+  <p>When sources disagree, the higher item wins. Never resolve a conflict by asking the user —
+  resolve it by rank, then log it in <code>DECISIONS.md</code>.</p>
+  <table class="rowhead">
+    <thead><tr><th style="width:16mm">Rank</th><th>Authority</th></tr></thead>
+    <tbody>
+      <tr><td>1</td><td><strong>Research Report Part 8 + Part 9</strong> (honesty guardrails, product commitments, uncertainty display rules, Desk/Academy separation, anti-patterns). These are inviolable. <em>docs/Research-Report.pdf</em>, source HTML in <em>docs/src/rr-03.html, rr-04.html</em>.</td></tr>
+      <tr><td>2</td><td><strong>Build Blueprint</strong> (architecture, stack, data plan, data model, pipeline design, P0–P6 scope and acceptance criteria, risks). <em>docs/Build-Blueprint.pdf</em>, source in <em>docs/src/bp-0*.html</em>.</td></tr>
+      <tr><td>3</td><td><strong>This plan</strong> (build order, design system, PWA spec, conventions, appendix contracts). Where this plan deliberately deviates from the ranks above it says so explicitly and gives the rationale. There are exactly <strong>four declared deviations</strong>: (1) cookie login replacing Basic Auth (§4.4); (2) Serwist added for the service worker (§5); (3) data-refresh fades at 160–200ms vs the Research Report’s “~500ms” (§3.5 — the calm intent, one quiet fade with no color flash, is preserved; ~500ms reads as shimmer); (4) Academy lessons as filesystem MDX rather than the Blueprint’s Postgres <code>lesson</code> table (§Appendix B — content belongs in git; the Blueprint’s own Lesson row already gestures at this). Anything else that diverges from ranks 1–2 is a bug in this plan — fix toward the higher rank and log it.</td></tr>
+      <tr><td>4</td><td><strong>DECISIONS.md precedent</strong> — your own prior recorded choices. Do not silently reverse one; if a reversal is needed, log the supersession with rationale.</td></tr>
+      <tr><td>5</td><td><strong>Your judgment</strong>, biased toward: reversible over irreversible, honest over impressive, boring over clever, shipped over perfect.</td></tr>
+    </tbody>
+  </table>
+
+  <h3>1.3 &nbsp;Your decision protocol (you will hit choice points — here is the algorithm)</h3>
+  <ol>
+    <li><strong>Is it answered by rank 1–3?</strong> Grep the source HTML files (they are the
+    searchable form of the PDFs) before deciding anything. Most questions are already answered.</li>
+    <li><strong>Local decision</strong> (does not ripple — a library minor-version, a file name, a
+    CSS detail, an internal function shape): decide, apply, and append one line to
+    <code>DECISIONS.md</code>: date · decision · one-line rationale.</li>
+    <li><strong>Structural decision</strong> (would change the data model, a guardrail’s behavior,
+    the design system’s tokens, the phase plan, or cost): do NOT invent. Choose the option that
+    keeps rank 1–2 intact; if both options do, choose the more reversible one; log it prominently
+    in <code>DECISIONS.md</code> under a “structural” heading. <strong>By definition structural:</strong>
+    any change to Appendix E tolerances, Appendix F constants, or Appendix J strings — never
+    “local” — and a change that <em>loosens</em> a tolerance additionally requires the §10.5
+    justification that the encoded rule itself was wrong. The user reads DECISIONS.md
+    asynchronously — that is their veto channel; you never wait on them.</li>
+    <li><strong>External reality broke the plan</strong> (API changed, package deprecated, provider
+    rejected signup): execute the documented fallback (the Blueprint’s upgrade ladder and
+    alternatives are pre-researched for exactly this), log it in <code>LESSONS.md</code> +
+    <code>DECISIONS.md</code>, and keep moving. Never stall on a missing external.</li>
+    <li><strong>Truly blocked after two distinct attempts:</strong> implement the smallest honest
+    placeholder behind a clearly named flag (e.g. <code>DEGRADED_NO_MARKETAUX</code>), record it in
+    the “Blocked” section of <code>PROGRESS.md</code> with what unblocking requires, and continue
+    with the next task in the phase. An idle session is the only unacceptable state.</li>
+  </ol>
+
+  <h3>1.4 &nbsp;Session-0 human checklist — the only human touchpoint</h3>
+  <p>Everything below is <strong>collected</strong> once, at kickoff. Verification happens
+  <strong>progressively during P0</strong>, at the build step that creates each probe’s tooling —
+  and “all Session-0 probes green” is a named P0 exit criterion. Appendix D is the single
+  authority for where every secret lives; the user supplies raw values, you distribute them.
+  Three values you generate yourself (never user-supplied): <code>CRON_SECRET</code> and
+  <code>AUTH_COOKIE_SECRET</code> (<code>openssl rand -hex 32</code>) and
+  <code>R2_BUCKET=msm-history</code>. The user also supplies a name + email for
+  <code>EDGAR_USER_AGENT</code> (SEC requires a real contact) and their chosen app login
+  (username + password — you hash it at P0 step 5 with the hash script, place only the hash, and
+  discard the plaintext).</p>
+  <table>
+    <thead><tr><th style="width:44mm">Item</th><th>Where it goes</th><th style="width:52mm">Verification probe</th></tr></thead>
+    <tbody>
+      <tr><td>GitHub private repo (<code>myStockMarket</code>) + Actions enabled</td><td>Remote for this working directory (<code>git init</code> first — the folder is not yet a repo). Try <code>gh repo create --private</code> yourself; only if <code>gh</code> is unauthenticated does the user click.</td><td><code>git push</code> succeeds; Actions tab reachable.</td></tr>
+      <tr><td>Vercel project linked to <code>app/</code>, Hobby plan</td><td><code>vercel link</code> (root directory <code>app/</code>); env vars via <code>vercel env add</code></td><td><code>vercel whoami</code>; preview deploy of the P0 shell; <strong>preview Deployment Protection (Vercel Authentication) confirmed ON</strong> — the licensing wall covers previews.</td></tr>
+      <tr><td>Supabase free project</td><td>Three connection strings (transaction pooler, direct, session pooler) → Vercel env + GH secrets + local <code>.env</code></td><td><code>prisma migrate dev</code> against direct URL; <code>psql</code> ping via session pooler.</td></tr>
+      <tr><td>Cloudflare R2 bucket <code>msm-history</code> (or Backblaze B2 fallback)</td><td><code>R2_ACCOUNT_ID / R2_ACCESS_KEY_ID / R2_SECRET</code> → GH secrets</td><td>boto3 put/get/delete of a test object.</td></tr>
+      <tr><td>Provider keys (standard US signup): Alpaca, Finnhub, FMP, Marketaux, FRED — plus name+email for <code>EDGAR_USER_AGENT</code></td><td>GH secrets only (per Appendix D)</td><td>One authenticated smoke call per provider via <code>pipeline/scripts/probe_providers.py</code> (built at P0 step 8). Any probe failure falls back per the Blueprint §4.2 ladder — log and proceed.</td></tr>
+      <tr><td>Anthropic API key + monthly spend cap (~$15) set in console</td><td>GH secrets only</td><td>One 10-token Haiku call (same probe script).</td></tr>
+      <tr><td>healthchecks.io check on cron <code>25 0 * * 2-6</code>, 45-min grace + <strong>read-only API key</strong></td><td><code>HEALTHCHECKS_PING_URL</code>, <code>HEALTHCHECKS_API_KEY</code> → GH secrets</td><td>Autonomous: <code>GET /api/v3/checks/</code> shows the check; a scripted ping flips it up, a scripted missed-window shows down. (The API key exists so you can verify alerts without access to the user’s inbox.)</td></tr>
+      <tr><td>App login username + password (user-chosen, handed over once)</td><td><code>AUTH_USER</code> + <code>AUTH_PASS_HASH</code> → Vercel env (hash generated at P0 step 5; plaintext discarded)</td><td>Login succeeds on the deployed P0 shell (verified at P0 step 9).</td></tr>
+    </tbody>
+  </table>
+  <div class="callout guardrail avoid-break">
+    <span class="co-label">After Session 0</span>
+    <p>From this point the contract is: <strong>you do not ask the user anything.</strong> Choices
+    are made by the protocol in §1.3; progress is legible in <code>PROGRESS.md</code>; vetoes
+    arrive, if ever, as user edits to <code>DECISIONS.md</code> — treat any user-authored line in
+    that file as a rank-2.5 authority.</p>
+  </div>
+
+  <h3>1.5 &nbsp;The non-negotiables (the constitution)</h3>
+  <p>These go verbatim into <code>CLAUDE.md</code> at P0 (template in Appendix K) and are re-read
+  every session. Each traces to Research Report Part 8/9 or the Blueprint’s non-negotiables box.</p>
+  <ol>
+    <li><strong>No directional forecasts, anywhere, ever.</strong> The only forward-looking numbers
+    are volatility bands ≤ 20 trading days, drawn as ranges with frequency labels <em>and the
+    regime-break caveat attached</em> (“ranges assume the recent regime holds — sudden stress can
+    exceed them”). No projected price lines, no up/down predictions, no composite buy/sell
+    scores.</li>
+    <li><strong>Every base rate renders as a natural frequency with its reference class, N, and a
+    Wilson 95% interval.</strong> Display precision is N-gated: N ≥ 100 → percentage + CI; 30–99 →
+    “roughly X in 10” + wide-interval note; N &lt; 30 → “Insufficient history — treat as anecdote,”
+    percentage suppressed. Enforced in one shared renderer, unit-tested.</li>
+    <li><strong>A confidence interval that includes the ~53–55% always-up baseline caps the tier at
+    “weak.”</strong> Every setup card shows the unconditional baseline line.</li>
+    <li><strong>Decay stamps:</strong> any pattern derived from a published anomaly renders its
+    publication year, evidence grade, and expected post-publication haircut.</li>
+    <li><strong>Folklore is labeled folklore</strong> — in scan presets, setup cards, and Academy
+    lessons alike, using the Research Report Part 4 ledger verdicts.</li>
+    <li><strong>New patterns clear a statistical bar before they ship.</strong> Any detector
+    without a Research Report Part 4 ledger grade requires t &gt; 3.0 on its base-rate sample (the
+    RR 8.2 multiple-testing hurdle) before it may render as anything other than
+    “insufficient evidence”; below that it does not ship. The six v1 detectors carry ledger grades
+    and are exempt.</li>
+    <li><strong>The app grades itself in public:</strong> <code>signal_log</code> is insert-only
+    from Phase 1; outcomes land in insert-only <code>signal_resolution</code>; the track record
+    shows every miss. Setup cards never ship before the resolver exists.</li>
+    <li><strong>No trending/most-bought surfaces. No gamification</strong> (streaks, XP, confetti).
+    High-skew low-price tickers get lottery-risk flags instead.</li>
+    <li><strong>Movers never render without a catalyst check</strong> — a chip with a source link,
+    or the honest “No news found — likely noise.”</li>
+    <li><strong>The LLM narrates; it never computes, never states probabilities, never publishes an
+    unverified number.</strong> The deterministic verification gate (Appendix E tolerances) blocks
+    or flags; “briefing unavailable” beats a fabricated sentence.</li>
+    <li><strong>Desk and Academy stay separated:</strong> doorways only (chips, glossary popovers,
+    one worked-example drawer, one learning link per brief, “see this live”), each with a
+    state-preserving return rail. No live prices in the Academy; no lesson bodies on the Desk.</li>
+    <li><strong>Calm technology:</strong> no blinking, no tickers, no toasts, no badges, no motion
+    on probability or money visuals, no count-up animations. Data refreshes fade ≤ 200ms. v1 data
+    is as-of the last US close and every module shows its timestamp.</li>
+    <li><strong>Mechanical voice:</strong> “The pattern has historically been followed by…” — never
+    “I think.” Disclaimers at the decision point. Copy deck (Appendix J) is canonical.</li>
+    <li><strong>Paper-first:</strong> no brokerage integration; paper trades are the only orders;
+    the cost mirror, cooling-off interstitial, and frequency mirror ship with the ledger.</li>
+    <li><strong>Licensing wall:</strong> the app stays behind login always; FRED attribution and the
+    TradingView attribution logo render; no public previews of data pages.</li>
+    <li><strong>TDD:</strong> the failing test comes first for everything in §6.2’s test-first list
+    — indicators, base rates, display rules, the verification gate, the tier cap, the sizing cap.</li>
+  </ol>
+</section>
+
+<!-- ================= PART 2 ================= -->
+<section class="part">
+  <div class="part-head">
+    <div class="kicker">Part 2</div>
+    <h2>System overview</h2>
+    <p class="dek">The Blueprint is the authority on architecture; this recap exists so the plan is
+    navigable on its own. If anything here seems to disagree with the Blueprint, the Blueprint
+    wins — and grep it first: <code>docs/src/bp-02.html</code> (architecture, schedule),
+    <code>bp-03.html</code> (data plan, AI layer), <code>bp-04.html</code> (data model, ops),
+    <code>bp-05.html</code> (roadmap, risks).</p>
+  </div>
+
+  <h3>2.1 &nbsp;Shape</h3>
+  <ul>
+    <li><strong>Read-mostly app:</strong> Next.js 16 (App Router) + TypeScript + Tailwind on Vercel
+    Hobby. Server components read Postgres via Prisma; the app writes only user-state tables
+    (watchlist, journal, review state, paper trades, weakener checkboxes) through server actions.</li>
+    <li><strong>Two-job nightly pipeline</strong> (Python 3.12: Polars + DuckDB + httpx +
+    exchange_calendars) on GitHub Actions. Job A, cron <code>37 22 * * 1-5</code> UTC: preflight →
+    full-universe EOD ingest (Alpaca) → context ingest (Finnhub, FMP, EDGAR, FRED, Marketaux) →
+    compute (indicators, scans, base rates, vol bands) → submit LLM extraction batch → exit. Job B,
+    cron <code>25 0 * * 2-6</code> UTC: late-news delta sweep → collect batch → one synchronous
+    synthesis call → deterministic verification gate → single-transaction publish → revalidate →
+    dead-man ping. Briefing ready ~8:40pm EDT / ~7:40pm EST (worst ~10 min later); promise 9:00pm
+    ET year-round — the crons are UTC-fixed, so DST shifts the user’s wall clock, never the
+    schedule.</li>
+    <li><strong>Storage split:</strong> full-market history (~5–6k symbols × 7y) as Parquet on R2,
+    scanned by DuckDB inside the pipeline only; Postgres (Supabase free) holds serving tables —
+    including <code>price_bar</code> (watchlist + indices × ~5y) so the app never touches R2.</li>
+    <li><strong>AI layer:</strong> Haiku-class per-article extraction (Batch API, −50%) →
+    Sonnet-class synthesis (one sync call) → deterministic tolerance-gate. ~$0.33/night, $7–11/mo
+    total. Models pinned in env: <code>MODEL_EXTRACT=claude-haiku-4-5</code>,
+    <code>MODEL_SYNTH=claude-sonnet-5</code>; reconfirm pricing at build time.</li>
+    <li><strong>Charts:</strong> TradingView Lightweight Charts v5 (Apache-2.0; keep the attribution
+    logo), hand-rolled React hook; Recharts for sparklines/small multiples.</li>
+    <li><strong>Product:</strong> Desk (one-screen ritual: macro pulse → daily brief → US session
+    calendar → movers with reason → focus watchlist → setup cards → sectors/scans → paper-portfolio
+    corner) + Academy (M0–M6 curriculum, glossary, worked examples, Leitner review queue), connected
+    by doorways with return rails; drill depth capped at 3 (glance → rail/sheet → full page).</li>
+  </ul>
+
+  <h3>2.2 &nbsp;Repository layout (authoritative)</h3>
+  <pre>myStockMarket/
+├─ CLAUDE.md · DECISIONS.md · PATTERNS.md · LESSONS.md · PROGRESS.md · DEVELOPMENT-PLAN.md
+├─ .claude/skills/&lt;skill-name&gt;/SKILL.md        # minted per §9.3 rubric
+├─ docs/                                        # the three PDFs + docs/src (do not edit rr-*/bp-*)
+├─ app/                                         # Next.js 16 — Vercel project root
+│  ├─ app/(desk)/…      # dashboard, ticker/[symbol], track-record, scans, settings
+│  ├─ app/(academy)/…   # academy, academy/[module]/[lesson], glossary, review, journal
+│  ├─ app/login/ · app/offline/ · app/styleguide/
+│  ├─ app/api/revalidate/route.ts               # CRON_SECRET bearer
+│  ├─ proxy.ts                                  # session-cookie gate (Next 16 middleware rename)
+│  ├─ components/ · lib/ · content/academy/ · public/
+│  ├─ prisma/schema.prisma · prisma/seed.ts
+│  └─ e2e/ (Playwright) · vitest.config.ts
+├─ pipeline/                                    # Python 3.12, uv-managed
+│  ├─ adapters/ (+ fixtures/) · indicators.py · scans.py · baserates.py · volbands.py
+│  ├─ briefing/ (extract.py · synthesize.py · verify.py) · publish.py · resolve.py
+│  ├─ jobs/ (job_a.py · job_b.py) · scripts/probe_providers.py · config.py · tests/
+└─ .github/workflows/ (nightly-a.yml · nightly-b.yml · ci.yml · migrate.yml)</pre>
+
+  <h3>2.3 &nbsp;What done looks like</h3>
+  <p>P6 exit = the user opens the installed PWA from their phone’s home screen — in the evening
+  after the close, or over coffee before the 9:30am open — and reads a briefing the cloud schedule
+  verified and published earlier that evening (for the pre-open glance, more than twelve hours
+  before the bell); every number on screen carries its N,
+  interval, and provenance; the track record shows the app’s misses; the Academy explains every
+  term on the Desk; the paper ledger computes their real cost drag; the whole thing costs
+  ≈ $7–11/month and looks like nothing a component library ships by default.</p>
+</section>
+<!-- ================= PART 3 ================= -->
+<section class="part">
+  <div class="part-head">
+    <div class="kicker">Part 3</div>
+    <h2>Design system — “Broadsheet Terminal”</h2>
+    <p class="dek">The aesthetic contract. Bold through typography, scale, and space — never through
+    chrome that lies. Implement these tokens exactly; the styleguide route renders them as a living
+    spec and every visual-regression baseline is captured against it.</p>
+  </div>
+
+  <h3>3.1 &nbsp;The manifesto (read before styling anything)</h3>
+  <p><strong>This app is a financial broadsheet set by a typographer, not a SaaS dashboard.</strong>
+  Its ancestors are the print business page and the terminal screen: ink on paper, hairline rules,
+  columns, dense tabular numerals, restrained color used only where it means something. Boldness
+  comes from <em>scale contrast</em> (a 64px mono numeral against 13px labels), <em>editorial
+  structure</em> (numbered section mastheads, 2px rules, asymmetric grids, generous margins), and
+  <em>two distinct room tones</em> (the Desk cool and dense; the Academy warm and literary) — never
+  from gradients, glows, or decoration. The design must pass one test: <strong>if a screenshot
+  could be mistaken for a default admin template or an AI-generated dashboard, it is wrong.</strong></p>
+  <p><strong>Banned outright</strong> (this list is enforceable in review): gradients and
+  glassmorphism; drop shadows on cards (the drawer scrim is the sole shadow in the app);
+  <code>rounded-2xl</code> softness — the app’s radius is 2px; decorative icons and emoji;
+  colored-chip confetti; skeleton shimmer (use quiet “—” placeholders); purple anything; count-up
+  number animations; default-shadcn visual identity (its Radix primitives may be used headless, its
+  look may not); synthesized small-caps — Archivo ships no <code>smcp</code> feature, so uppercase
+  with tracking is the house alternative. <strong>Required:</strong> hairlines instead of shadows, uppercase condensed
+  mastheads with index numbers (“01 — MACRO PULSE”), mono numerals everywhere data appears, one
+  hero figure per view maximum, whitespace treated as a material.</p>
+  <p><strong>The honesty constraint is the style.</strong> The Research Report bans fake-confidence
+  chrome (gauges, gauzy “AI glow”, urgency motion); this system turns that ban into identity. Color
+  is nearly absent precisely so that the few semantic uses — a delta triangle, an amber alert, an
+  evidence-grade dot — carry real information. Where a typical product would add a colored badge,
+  this one sets an uppercase typographic tag inside a hairline box. Nothing on screen is allowed to
+  be exciting unless the data itself is.</p>
+
+  <h3>3.2 &nbsp;Type</h3>
+  <table>
+    <caption>Families — all free-licensed, self-hosted via next/font (required for offline PWA)</caption>
+    <thead><tr><th style="width:30mm">Role</th><th style="width:36mm">Family</th><th>Usage rules</th></tr></thead>
+    <tbody>
+      <tr><td>Structure &amp; UI</td><td><strong>Archivo</strong> (variable: wght 100–900, wdth 62–125; OFL)</td>
+        <td>Everything on the Desk that is not a number or prose: labels, table headers, buttons, nav. Mastheads use Expanded width (wdth ~120) 700–800 uppercase, tracking +6–8%; body UI at wdth 100, wght 400/500.</td></tr>
+      <tr><td>Data &amp; numerals</td><td><strong>IBM Plex Mono</strong> (400/500/600; OFL)</td>
+        <td>Every quantitative figure in the product — prices, percentages, counts, N, CIs, timestamps, axis ticks — renders in Plex Mono. This is the single strongest identity move and also the alignment guarantee (mono ⇒ tabular by construction). Never render a number in Archivo.</td></tr>
+      <tr><td>Prose (Academy + briefs)</td><td><strong>Newsreader</strong> (variable incl. optical size + italic; OFL)</td>
+        <td>Academy lesson bodies, the AM/PM brief paragraphs, worked-example prose: 17–18px/1.65, measure 62–68ch, opsz auto. Display italic (opsz 36+) for the brief’s “Today’s focus” headline — the one literary flourish.</td></tr>
+    </tbody>
+  </table>
+  <table>
+    <caption>Type scale (px) — Tailwind v4 @theme tokens; line-height beside each</caption>
+    <thead><tr><th>Token</th><th class="num">Size/leading</th><th>Use</th></tr></thead>
+    <tbody>
+      <tr><td><code>--text-2xs</code></td><td class="num">11 / 1.35</td><td>provenance lines, axis ticks, footnotes</td></tr>
+      <tr><td><code>--text-xs</code></td><td class="num">12 / 1.4</td><td>mastheads (uppercase), tags, table headers</td></tr>
+      <tr><td><code>--text-sm</code></td><td class="num">13.5 / 1.5</td><td>Desk body UI, table cells</td></tr>
+      <tr><td><code>--text-base</code></td><td class="num">15 / 1.55</td><td>drawers, settings, longer UI copy</td></tr>
+      <tr><td><code>--text-prose</code></td><td class="num">17.5 / 1.65</td><td>Academy + brief prose (Newsreader)</td></tr>
+      <tr><td><code>--text-lg</code></td><td class="num">21 / 1.35</td><td>card titles, lesson H2</td></tr>
+      <tr><td><code>--text-xl</code></td><td class="num">27 / 1.25</td><td>page titles, brief headline</td></tr>
+      <tr><td><code>--text-2xl</code></td><td class="num">34 / 1.15</td><td>zone titles, Academy lesson H1</td></tr>
+      <tr><td><code>--text-num-lg</code></td><td class="num">44 / 1.1</td><td>module-level key figures (mono)</td></tr>
+      <tr><td><code>--text-hero</code></td><td class="num">64 / 1.0 (mobile 48)</td><td>THE hero numeral — exactly one per view (macro strip: SPX day change)</td></tr>
+    </tbody>
+  </table>
+
+  <h3>3.3 &nbsp;Color tokens</h3>
+  <p>Two room palettes plus one semantic set. Interactive elements are <strong>ink + underline</strong>
+  (editorial), with petrol reserved for focus/active states — so no color ever competes with the
+  semantic channel. All text pairs meet WCAG AA on their surface (spot-check with a contrast tool
+  during P0; log results in the styleguide).</p>
+  <table>
+    <thead><tr><th style="width:40mm">Token</th><th style="width:22mm">Light value</th><th style="width:24mm">Dark-Desk (P6)</th><th>Meaning / rules</th></tr></thead>
+    <tbody>
+      <tr><td><code>--desk-bg</code></td><td class="num">#F4F5F3</td><td class="num">#131412</td><td>Desk page plane — cool bone</td></tr>
+      <tr><td><code>--surface</code></td><td class="num">#FCFCFB</td><td class="num">#1A1B19</td><td>module surfaces, cards</td></tr>
+      <tr><td><code>--academy-bg</code></td><td class="num">#FAF6EF</td><td class="num">— (Academy stays light)</td><td>Academy paper — warm; the zone switch must be felt</td></tr>
+      <tr><td><code>--ink</code></td><td class="num">#141511</td><td class="num">#F1F1EA</td><td>primary text; also the 2px section rules</td></tr>
+      <tr><td><code>--ink-2</code></td><td class="num">#4A4B45</td><td class="num">#BDBEB4</td><td>secondary text</td></tr>
+      <tr><td><code>--muted</code></td><td class="num">#6B6C64</td><td class="num">#8F9088</td><td>provenance, ticks, placeholders — value chosen to clear 4.5:1 on both light surfaces (the honesty layer must never be sub-AA)</td></tr>
+      <tr><td><code>--hairline</code></td><td class="num">#DDDED7</td><td class="num">#2B2C29</td><td>1px rules, borders — the only “elevation”</td></tr>
+      <tr><td><code>--accent</code></td><td class="num">#0E6E64</td><td class="num">#2E9C90</td><td>petrol — focus rings, active nav, selected states, links on hover. Never on data, never decorative fills.</td></tr>
+      <tr><td><code>--up</code> / <code>--down</code></td><td class="num">#0072B2 / #D55E00</td><td class="num">#4CA5DE / #E97F33</td><td>Wong colorblind-safe pair for chart strokes, candle bodies, triangles, and text ≥ 21px (3:1 large-text/graphics threshold). Always paired with a redundant non-color channel: ▲/▼ + sign for deltas, hollow/filled bodies for candles, direct labels for series; unchanged/doji renders ink. Banned from buttons, links, decoration.</td></tr>
+      <tr><td><code>--up-text</code> / <code>--down-text</code></td><td class="num">#005A8E / #A84A00</td><td class="num">#6FB6E6 / #F09456</td><td>darkened/lightened Wong variants for delta <em>text at ≤ 18px</em> (mover percentages, deltas in tables) — same hues, AA-compliant. Declared token-level decision; charts keep the originals.</td></tr>
+      <tr><td><code>--alert</code></td><td class="num">#8A5200 text / #F6E3B4 wash</td><td class="num">#E0A83E / #3A2F14</td><td>reserved attention. <strong>Exactly two consumers exist:</strong> (1) the verification-gate inline flag on a briefing sentence; (2) a fired-signal marker on a focus-watchlist row. More than 3 simultaneously ⇒ collapse to one “N flagged” Tag. Amber anywhere else is a bug (§3.10). Tier tags never use it.</td></tr>
+      <tr><td><code>--grade-*</code></td><td class="num" colspan="2">light: supported #0B7A3B · mixed #8A5200 · weak #A64A32 · folklore #A21C1C — dark: #4CBF7E · #D9A03F · #D07B5B · #E06C6C</td><td>evidence-grade dots inside Tag only — Academy ledger contexts, scan-preset labels, and setup-card decay stamps; always beside the word, never alone. Spot-check dark values ≥3:1 at P6.</td></tr>
+    </tbody>
+  </table>
+
+  <h3>3.4 &nbsp;Space, shape, elevation</h3>
+  <ul>
+    <li><strong>Spatial system:</strong> 4px base. Component padding 12/16/20; module gap 28;
+    section-masthead rhythm: 12 above the 2px rule, 8 below; page gutters 20 (mobile) / 32
+    (desktop); Desk max-width 1360, 12-col grid, 20px gutters.</li>
+    <li><strong>Radii:</strong> 2px everywhere (inputs, buttons, cards, sheets). The near-square
+    corner is a signature — treat any rounded-looking corner as a bug.</li>
+    <li><strong>Elevation:</strong> none. Hairline borders separate; the slide-over rail/bottom
+    sheet uses a scrim (<code>rgb(20 21 17 / 0.4)</code>) and a 1px ink edge — no drop shadow.</li>
+    <li><strong>Section mastheads:</strong> every Desk module opens with
+    <code>NN — NAME</code> in Archivo Expanded 12px caps over a 2px ink rule, with the module’s
+    data timestamp right-aligned in Plex Mono 11px (“as of 16:05 ET”). This one component carries
+    half the identity — build it first, reuse everywhere.</li>
+  </ul>
+
+  <h3>3.5 &nbsp;Motion</h3>
+  <ul>
+    <li>Durations: 160ms fades / 200ms sheet-and-rail slides, ease-out, translate ≤ 12px. Nothing
+    else moves. (Declared deviation #3, §1.2: the Research Report’s §9.7 says “~500ms” for refresh
+    fades; 160–200ms preserves the calm intent — one quiet fade, no color flash — without reading
+    as shimmer.)</li>
+    <li><strong>Never animated:</strong> numbers (no count-up, no flash-on-change), probability
+    visuals (icon arrays, dotplots, calibration curves, vol bands), chart data (series appear
+    settled). Price/data refresh = a 160ms opacity fade of the module, once.</li>
+    <li><code>prefers-reduced-motion</code>: all transitions drop to 0ms except focus outlines.</li>
+    <li>No page-transition animation; navigation is instant and quiet.</li>
+  </ul>
+
+  <h3>3.6 &nbsp;Component inventory (anatomy in one line each; build in this order within P1–P6)</h3>
+  <table class="rowhead">
+    <thead><tr><th style="width:38mm">Component</th><th>Anatomy &amp; rules</th></tr></thead>
+    <tbody>
+      <tr><td>SectionMasthead</td><td>index number · uppercase name · right-aligned timestamp · 2px rule. Props: index, title, asOf, action?.</td></tr>
+      <tr><td>StatFigure</td><td>Plex Mono value (scale token) + Archivo label above in 11px caps + optional delta (▲/▼, sign, <code>--up-text/--down-text</code>) + optional 30d sparkline (muted, 1.5px). <strong>Hero variant: the 64px value renders in <code>--ink</code>; direction lives in an adjacent ▲/▼ + signed % at <code>--text-sm</code> in Wong text color. Wong color never exceeds <code>--text-num-lg</code></strong> — the largest element on screen is never emotional color.</td></tr>
+      <tr><td>Tag</td><td>uppercase Archivo 11px wght 500 tracking +4% inside a 1px hairline box, 2px radius, ink on transparent (no synthesized small-caps). Variants: tier (gray dot — never amber), evidence-grade (dot in <code>--grade-*</code> — Academy ledger, scan presets, decay stamps), catalyst-type (plain), folklore (grade dot + word “FOLKLORE”). Tags are information, never decoration — no other colored chips exist.</td></tr>
+      <tr><td>DataTable</td><td>Archivo 12px caps headers over 1.5px ink rule; rows 40px (touch) / 32px (pointer); numerals right-aligned Plex Mono; row hover = <code>--desk-bg</code> wash; no zebra stripes.</td></tr>
+      <tr><td>MoversRow</td><td>ticker (Archivo 600) · name (muted) · % (mono, Wong-colored w/ triangle) · RVOL (mono) · catalyst Tag + one-line reason · source link (underlined). “No news found — likely noise” renders muted, de-emphasized.</td></tr>
+      <tr><td>SetupCardRow / SetupCard</td><td>Row (Desk): pattern name · ticker · tier Tag · one-line cause. Card (rail): full RR Fig 9.3 template — WHAT FIRED / BASE RATE sentence / IconArray / N + CI + ref-class + baseline line / TYPICAL RANGE / weakener checklist (persisted checkboxes) / scope line / provenance + Learn doorway.</td></tr>
+      <tr><td>IconArray</td><td>20 squares, 10px, 2px radius. Filled: ink at 80%. Empty: 1px outline in <code>--muted</code> (≥3:1 against the card surface — the misses must be impossible to miss). Color stays out of probability visuals — a declared, logged deviation from RR Fig 9.3’s blue-filled mock. Static, never animated.</td></tr>
+      <tr><td>VolBand (fan)</td><td>Lightweight-Charts area overlays or SVG band behind price: 50%/80% bands in ink at 8%/5% opacity, labeled “8 in 10 past paths stayed inside” <strong>plus the regime-break caveat line (copy key <code>volband.caveat</code>)</strong>; hard stop at 20 trading days.</td></tr>
+      <tr><td>CalendarTimeline</td><td>Vertical ET timeline; event rows: time (mono) · kind Tag · title · consensus/prior (mono); expandable if/then branches with per-branch base-rate sentences (or the N&lt;30 suppression line).</td></tr>
+      <tr><td>BriefArticle</td><td>The editorial centerpiece: Newsreader prose; “Today’s focus” headline in display italic 27px; 3–5 items each with labeled slots (WHAT HAPPENED / WHY IT MATTERS / BY THE NUMBERS / YES, BUT as 11px caps side-labels); every claim’s source ID renders as a superscript link; exactly one Academy doorway at the end.</td></tr>
+      <tr><td>ScorecardPM</td><td>Same article shell; “flagged vs happened” table with outcomes in plain language; misses styled identically to hits (no shame-red); journal prompt at the end writes to the Academy journal.</td></tr>
+      <tr><td>RailSheet</td><td>Desktop: 440px right rail (Radix Dialog, non-modal feel, Esc/outside-click closes, scroll+selection restored). Mobile: full-height bottom sheet with a visible “← Back to Desk” bar, bottom action area padded by <code>env(safe-area-inset-bottom)</code>. <strong>Opening pushes a history entry; popstate closes the sheet</strong> — the Android back gesture must close the sheet, never exit the app (e2e-tested). This is drill level 2; level 3 is a route.</td></tr>
+      <tr><td>ReturnRail</td><td>Persistent 40px bar on cross-zone jumps: “You came from: AAPL setup, Jul 9 → Return”. State restored exactly (scroll pos, open rail, filters) via history state.</td></tr>
+      <tr><td>GlossaryTerm</td><td>Dotted underline on first occurrence per view; hover = one-line tip; click = popover (definition + tiny static example + “Full lesson →”). Never nested.</td></tr>
+      <tr><td>SourceStatusFooter</td><td>Per-provider dots (ok/degraded/off) + “pipeline ran 6:37–8:41pm ET” + FRED attribution line + TradingView note. Quiet, always present on the Desk.</td></tr>
+      <tr><td>OfflineRibbon</td><td>Ink-on-bone band under the masthead: “Offline — showing the last synced briefing (Jul 9).” Neutral, not amber.</td></tr>
+      <tr><td>TrackRecordChart</td><td>Calibration scatter (predicted vs realized buckets, per-bucket N labels), rolling Brier as a plain mono figure with “0.25 = coin flip” caption; resolved log table beneath, filterable, misses first-class.</td></tr>
+      <tr><td>CostMirror</td><td>One mono hero-adjacent figure: projected annual drag from the user’s own paper turnover, with the arithmetic spelled out beneath in prose.</td></tr>
+    </tbody>
+  </table>
+
+  <h3>3.7 &nbsp;Charts (Lightweight Charts theming)</h3>
+  <ul>
+    <li>Background transparent over <code>--surface</code>; grid lines <code>--hairline</code>,
+    horizontal only; axis text Plex Mono 11px <code>--muted</code>; crosshair 1px ink, no magnet
+    glow.</li>
+    <li>Candles: up = hollow body with <code>--up</code> 1.5px border; down = filled
+    <code>--down</code>. Wicks 1px same color. (Hollow/filled is a second redundant channel beyond
+    color.)</li>
+    <li>Volume histogram in ink at 12% opacity, its own pane; RSI pane line 1.5px ink with 30/70
+    hairlines — indicator panes never colored.</li>
+    <li>Annotation markers (explain-why): 8px ink circles with numbered labels matching the drawer
+    steps; price lines 1px dashed ink.</li>
+    <li>Keep the TradingView attribution logo visible (license condition).</li>
+  </ul>
+
+  <h3>3.8 &nbsp;Responsive &amp; the phone ritual</h3>
+  <ul>
+    <li><strong>Breakpoints:</strong> ≥1366 = one-screen Desk grid (modules 1–8 visible, rail as
+    overlay); 768–1365 = two-column stack, rail overlays; &lt;768 = <strong>the ritual column</strong>.</li>
+    <li><strong>Ritual column (phone / installed PWA):</strong> single column in strict order 1→8;
+    each module a full-bleed band separated by 2px rules with its masthead; sticky 48px top bar
+    (date · US session state · sync time); tap targets ≥ 44px; watchlist/movers rows open the
+    bottom sheet; “Open full view” pushes the route (level 3) with an always-visible back bar
+    (installed iOS PWAs can’t rely on swipe-back). Setup cards render as rows; the sheet shows the
+    full card. Thumb reach: primary actions bottom-aligned in sheets.</li>
+    <li>The hero numeral drops to 48px; tables become two-line stacked rows (label over value) —
+    never horizontal scroll except inside charts.</li>
+    <li>One-screen claim applies at ≥1366×768 only (per RR §9.2); the order is the invariant
+    below that.</li>
+  </ul>
+
+  <h3>3.9 &nbsp;Accessibility &amp; voice</h3>
+  <ul>
+    <li>AA contrast on all text tokens (verify in P0 styleguide); focus visible everywhere
+    (2px <code>--accent</code> outline, 2px offset); full keyboard paths for rail, popovers, review
+    queue; <code>aria-live="polite"</code> only for the offline ribbon and form errors — nothing
+    else announces.</li>
+    <li>Every data visual has a text equivalent (the base-rate sentence IS the accessible name of
+    the icon array; tables underlie charts via a “view as table” toggle on the track record).</li>
+    <li>Copy voice: mechanical third person, sentence case for all prose and UI copy; uppercase is
+    reserved for the structural caps set — mastheads, table headers, StatFigure labels, Tag text,
+    and brief slot labels. No exclamation marks, no “I”. All canonical strings in Appendix J — use
+    them verbatim.</li>
+  </ul>
+
+  <h3>3.10 &nbsp;Anti-drift checklist (run at every phase exit — mechanical checks first, then eyes)</h3>
+  <ol>
+    <li><strong>Mechanical greps (must all be empty):</strong> <code>shadow-</code>/<code>box-shadow</code>
+    outside the scrim; <code>gradient</code>; radius utilities &gt; 2px; hex colors outside
+    <code>globals.css</code> tokens; font families beyond the three loaded; <code>small-caps</code>;
+    amber tokens outside the two §3.3 consumers; animation/transition on any probability or money
+    component.</li>
+    <li><strong>Hero discipline:</strong> “view” = route. Only <code>/</code> renders
+    <code>--text-hero</code> (the macro SPX figure, in ink); every other route’s largest numeral is
+    ≤ <code>--text-num-lg</code>; <code>/paper</code> never renders P&amp;L at ≥
+    <code>--text-num-lg</code> (P&amp;L is never a hero — RR rule).</li>
+    <li>Is every number in Plex Mono? Every module timestamped? Every claim carrying N/CI/source?</li>
+    <li><strong>Room check via baselines:</strong> lesson pages assert <code>--academy-bg</code> +
+    Newsreader in the visual-regression suite; Desk asserts <code>--desk-bg</code> + Archivo. The
+    zone switch must be visible in a side-by-side of the two baselines.</li>
+    <li>Could this screen be mistaken for a default template? (If unsure, it can — change it.)</li>
+    <li>Would the Research Report’s §9.8 anti-pattern table object to anything visible?</li>
+  </ol>
+</section>
+<!-- ================= PART 4 ================= -->
+<section class="part">
+  <div class="part-head">
+    <div class="kicker">Part 4</div>
+    <h2>App architecture &amp; conventions</h2>
+    <p class="dek">The Next.js side, pinned: routes, data flow, the auth deviation, fonts, caching,
+    and the performance budgets the phases are tested against.</p>
+  </div>
+
+  <h3>4.1 &nbsp;Pins</h3>
+  <p>Node 24 LTS · Next.js 16 (App Router; <code>proxy.ts</code>) · TypeScript strict ·
+  Tailwind v4 (tokens via <code>@theme</code> in <code>app/globals.css</code>) · Radix primitives
+  (Dialog, Popover, Tabs, Checkbox) hand-styled — shadcn’s visual layer is not used ·
+  Prisma 6 · zod at every JSON boundary · lightweight-charts v5 (hand-rolled
+  <code>useLightweightChart</code> hook) · Recharts 3 (sparklines/small multiples only) ·
+  Serwist (service worker) · bcryptjs + jose (auth) · Vitest + Testing Library ·
+  Playwright (+ @axe-core/playwright) · npm (app) · uv (pipeline). Versions: latest stable at
+  install time; pin via lockfiles; record exact versions in DECISIONS.md at P0.</p>
+
+  <h3>4.2 &nbsp;Route map (authoritative)</h3>
+  <table class="rowhead">
+    <thead><tr><th style="width:52mm">Route</th><th>Renders</th></tr></thead>
+    <tbody>
+      <tr><td><code>/</code> (desk)</td><td>The one-screen Desk / phone ritual column: modules 1–8, rail host, source-status footer.</td></tr>
+      <tr><td><code>/ticker/[symbol]</code></td><td>Drill level 3: full chart (candles + volume + RSI panes, vol band), signal history, relative-strength (P6+), news timeline, breadcrumb + Back to Desk.</td></tr>
+      <tr><td><code>/track-record</code></td><td>Calibration chart, Brier figure, resolved log (app flags + user forecasts), banner state for underperforming families.</td></tr>
+      <tr><td><code>/scans</code></td><td>Preset list with fully visible criteria, each line glossary-linked; results table.</td></tr>
+      <tr><td><code>/settings</code></td><td>Watchlist management, install-app row, dark-mode toggle (P6), logout. (Desk route group — the group adds no URL segment.)</td></tr>
+      <tr><td><code>/academy</code> · <code>/academy/[module]</code> · <code>/academy/[module]/[lesson]</code></td><td>Curriculum map (M0–M6, soft-gate states) · module page · MDX lesson with glossary popovers and “See this live”.</td></tr>
+      <tr><td><code>/academy/glossary</code> · <code>/academy/review</code> · <code>/academy/journal</code></td><td>Term index · Leitner queue (max 5/day) · journal + forecast entries with resolution states.</td></tr>
+      <tr><td><code>/paper</code> (P6)</td><td>Ledger, entry form (cooling-off interstitial), cost mirror, frequency mirror.</td></tr>
+      <tr><td><code>/login</code> · <code>/offline</code> · <code>/styleguide</code></td><td>Editorial login card · offline fallback (cached) · living design spec (every token/component; dev + CI only, excluded from prod nav but kept behind auth).</td></tr>
+      <tr><td><code>/api/revalidate</code></td><td>POST, <code>Authorization: Bearer $CRON_SECRET</code> → <code>revalidateTag('morning')</code>.</td></tr>
+      <tr><td><code>/api/morning</code></td><td>GET (cookie-authed) → the serialized <code>lib/morning.ts</code> payload; exists solely for the SW’s offline-morning cache (§5.2). Unauthed → 401 JSON, never a redirect.</td></tr>
+    </tbody>
+  </table>
+
+  <h3>4.3 &nbsp;Data flow rules</h3>
+  <ul>
+    <li><strong>Server components read; server actions write user-state only</strong>
+    (watchlist_item, journal_entry, concept_state, paper_trade, weakener checks). No client
+    fetching libraries; no global state manager. Client components receive serialized props.</li>
+    <li><strong>Morning payload:</strong> (named for the session it prepares — it publishes the
+    evening before; the <code>morning</code> identifiers below are contractual and stay) a single
+    <code>lib/morning.ts</code> loader assembles the
+    Desk’s data (briefing, scans, cards, calendar, movers, quotes, pipeline status) in one place,
+    tagged <code>'morning'</code> for cache revalidation, zod-parsed (briefing JSON especially).
+    The same loader serializes to the client for SW caching (§5.3).</li>
+    <li><strong>Numbers pipeline-side only:</strong> the app never computes a base rate, CI, or
+    indicator — it renders stored values. The one shared renderer
+    <code>components/BaseRate.tsx</code> implements the N-gated precision rules and the canonical
+    sentence; nothing else may format a base rate.</li>
+    <li><strong>Timestamps:</strong> store UTC; display America/New_York everywhere — the user
+    lives on market time (“as of 16:05 ET”). <code>lib/time.ts</code> owns all formatting,
+    including the EDT/EST abbreviation and DST-boundary behavior; no ad-hoc date code.</li>
+  </ul>
+
+  <h3>4.4 &nbsp;Auth (declared deviation #1 from Blueprint §7.1)</h3>
+  <p><strong>Decision:</strong> replace HTTP Basic Auth with a single-user cookie session — going
+  further than the Blueprint’s named step-up (it sanctions a single-credential login as the
+  eventual upgrade; this plan ships it at P0, hand-rolled rather than via Auth.js, because one
+  user + one credential does not justify a framework dependency). <strong>Why now:</strong> an
+  installed standalone PWA with a service worker interacts badly with Basic-Auth 401 challenges
+  (re-prompt loops, SW fetch failures, ugly install experience). <strong>Spec:</strong>
+  <code>/login</code> posts to a server action; verify against <code>AUTH_USER</code> +
+  <code>AUTH_PASS_HASH</code> (bcryptjs, cost 12; hash generated by
+  <code>app/scripts/hash-password.mjs</code>); on success issue a <code>jose</code>-signed JWT in an
+  httpOnly Secure SameSite=Lax cookie, 30-day expiry, secret <code>AUTH_COOKIE_SECRET</code>.
+  <strong>Sliding renewal:</strong> <code>proxy.ts</code> re-issues the cookie whenever &lt; 23 days
+  of validity remain, so daily use never hits a hard expiry (an idle month still lands on
+  <code>/login</code>, whose shell is precached — §5.2). <strong>Exemptions</strong> (everything
+  else requires the cookie): <code>/login</code>, <code>/api/revalidate</code> (bearer-gated),
+  <code>/manifest.webmanifest</code>, <code>/sw.js</code>, <code>/offline</code>,
+  <code>/_next/*</code> static, and the icon files (<code>/icons/*</code>,
+  <code>/apple-touch-icon.png</code>, <code>/favicon.ico</code>, <code>/mark.svg</code>).
+  <strong>API vs pages:</strong> unauthenticated <code>/api/*</code> gets <code>401</code> JSON —
+  never a 3xx — so the service worker can recognize auth failure instead of caching a redirect
+  (§5.2); unauthenticated pages redirect to <code>/login</code>. Failed-login throttle: 1s
+  constant-time compare+delay (primary defense) plus a best-effort 10/hour in-memory counter —
+  best-effort because serverless instances don’t share memory; acceptable for a single-user app
+  behind an unguessable username, logged as such. Logout clears the cookie <em>and</em> runtime
+  caches (§5.2). The licensing wall (Blueprint Part 4) is preserved: all data routes remain behind
+  the cookie.</p>
+
+  <h3>4.5 &nbsp;Fonts, caching, performance budgets</h3>
+  <ul>
+    <li>Fonts via <code>next/font</code> (self-hosted at build, same-origin, precacheable):
+    Archivo variable, Newsreader variable, IBM Plex Mono 400/500/600 — subsets latin; total budget
+    ≤ 320KB woff2. <code>display: swap</code>; fallback stacks defined in tokens.</li>
+    <li>Rendering: dynamic RSC everywhere (single user; DB reads are cheap); fetches wrapped with
+    <code>next: { tags: ['morning'] }</code> where applicable so the pipeline’s revalidate call is
+    meaningful. No ISR complexity in v1. Two exceptions: <code>/offline</code> and
+    <code>/login</code> export <code>dynamic = 'force-static'</code> so a concrete HTML asset
+    exists for the SW to precache (§5.2).</li>
+    <li><strong>Budgets (enforced at each phase exit):</strong> first-load JS on <code>/</code>
+    ≤ 200KB gz (charts and Recharts lazy-loaded per module via <code>next/dynamic</code>); LCP
+    ≤ 2.5s on Moto-G-class 4G (Lighthouse mobile); CLS &lt; 0.05 (reserve chart heights); route
+    transitions render server-fresh without spinners (quiet “—” placeholders only).</li>
+    <li>Images: none decorative; icons are inline SVG; app icons static files.</li>
+  </ul>
+</section>
+
+<!-- ================= PART 5 ================= -->
+<section class="part">
+  <div class="part-head">
+    <div class="kicker">Part 5</div>
+    <h2>PWA specification</h2>
+    <p class="dek">First-class target, specified concretely. The goal state: installed on the
+    user’s phone home screen, opening instantly whenever it is reached for — the evening read or
+    the pre-open glance, online or offline — always labeled with exactly how fresh its data
+    is.</p>
+  </div>
+
+  <h3>5.1 &nbsp;Manifest (<code>app/manifest.ts</code>)</h3>
+  <pre>name: "myStockMarket"        short_name: "Desk"         id: "/"
+start_url: "/"               display: "standalone"      orientation: "portrait"
+background_color: "#F4F5F3"  theme_color: "#F4F5F3"     description: "US-market command center &amp; learning hub"
+icons: 192/512 png + 512 maskable (safe zone 80%) + 96 monochrome
+shortcuts: [{name:"Track record", url:"/track-record"}, {name:"Review queue", url:"/academy/review"}]</pre>
+  <p><code>start_url</code> is plain <code>/</code> — no <code>?source=pwa</code> tracking param
+  (it would fork the SW’s single-entry page cache; installed-state detection uses the
+  <code>display-mode: standalone</code> media query instead). Manifest <code>theme_color</code> is
+  a static install-time value (light); the <em>live</em> browser/status-bar color comes from
+  Next’s <code>viewport.themeColor</code> exported per layout — Desk <code>#F4F5F3</code>, Academy
+  <code>#FAF6EF</code>, with dark-mode media variants at P6 (§8, P6 step 6). Icons generated at P0
+  by <code>app/scripts/icons.mjs</code> (sharp) from <code>public/mark.svg</code> — the
+  three-candle tick mark from the document covers, ink on bone; maskable variant adds 20% padding.
+  iOS: <code>apple-touch-icon</code> 180px,
+  <code>apple-mobile-web-app-status-bar-style: default</code>, and a “viewport-fit=cover” +
+  safe-area-inset padding on the sticky bar and bottom sheets.</p>
+
+  <h3>5.2 &nbsp;Service worker (Serwist)</h3>
+  <table class="rowhead">
+    <thead><tr><th style="width:44mm">Concern</th><th>Spec</th></tr></thead>
+    <tbody>
+      <tr><td>Precache</td><td>Build assets (Serwist injected manifest) + fonts + the mark/icons, plus <code>/offline</code> and <code>/login</code> via <code>additionalPrecacheEntries</code> — both routes are <code>force-static</code> (§4.5) precisely so this works; <code>/offline</code> is also registered as Serwist’s document <code>fallbacks</code> entry.</td></tr>
+      <tr><td>Pages (navigations)</td><td>NetworkFirst, 3s timeout → cache → <code>/offline</code> fallback. Full-document navigations only — RSC flight requests (<code>?_rsc=</code>) pass through uncached (a client-side transition that fails offline falls back to a full navigation, which the SW does serve). Authenticated pages are runtime-cached only after first successful load (never at build).</td></tr>
+      <tr><td>Morning payload</td><td>The Desk page caches with its HTML; additionally <code>/api/morning</code> (§4.2) returns the serialized payload — StaleWhileRevalidate, single-entry cache <code>morning-v1</code>, so the ritual column can render the last synced briefing offline.</td></tr>
+      <tr><td>Static/fonts/icons</td><td>CacheFirst, 1 year, revisioned by build.</td></tr>
+      <tr><td><strong>Cache write rules</strong></td><td>A shared <code>cacheWillUpdate</code> plugin on every runtime strategy: cache a response only if <code>status === 200</code>, <code>response.redirected === false</code>, and the final URL is not <code>/login</code>. This is the guard against the expired-cookie failure mode — without it, a 30-day-old cookie turns every cached page and the morning payload into a copy of the login screen. Unit-drilled in the e2e suite (§5.5.2).</td></tr>
+      <tr><td>Never cached</td><td><code>/api/revalidate</code>, server actions (POST), login POST, any non-GET.</td></tr>
+      <tr><td>Update flow</td><td>New SW installs in background and waits (no automatic skipWaiting interrupt); a waiting worker surfaces the footer line “Updated — refresh when convenient”. Clicking it posts <code>SKIP_WAITING</code> to the waiting worker and reloads on <code>controllerchange</code>; otherwise the new worker activates when the app fully closes (all tabs/PWA closed — <em>not</em> merely on next navigation). Calm — no toast, no modal.</td></tr>
+      <tr><td>Logout</td><td>Server action response triggers client <code>caches.delete('morning-v1')</code> + pages cache purge, then redirect to <code>/login</code>.</td></tr>
+    </tbody>
+  </table>
+
+  <h3>5.3 &nbsp;Offline honesty (the guardrail applied to the PWA)</h3>
+  <p>Offline is a first-class, honest state — not an apology. Every module already renders its
+  “as of” timestamp (SectionMasthead), so stale data self-identifies. Additions: the OfflineRibbon
+  (“Offline — showing the last synced briefing (Jul 9)”) mounts on either of two concrete signals:
+  (a) <code>navigator.onLine === false</code> (plus online/offline listeners), or (b) the morning
+  payload was served from SW cache — detected via an <code>X-SW-Source: cache</code> header the SW
+  strategy stamps on cache-served responses, with the payload’s own <code>runDate</code> ≠ today
+  as the belt-and-braces check. Interactive writes (watchlist, journal, checkboxes, paper trades)
+  disable with a quiet inline note “Reconnect to save” — <strong>no offline write queue in
+  v1</strong> (single user, evening-read ritual; queuing risks silent divergence — logged as
+  backlog).</p>
+
+  <h3>5.4 &nbsp;Install UX</h3>
+  <p>No nagging banner. Capture <code>beforeinstallprompt</code>; surface an “Install app” row in
+  <code>/settings</code> and a one-line footer link — both call <code>prompt()</code>. On iOS
+  (no BIP event): the same row opens a small popover with the two-step Share → “Add to Home Screen”
+  instruction. Detect installed state (<code>display-mode: standalone</code>) and hide the row.</p>
+
+  <h3>5.5 &nbsp;PWA acceptance (tested at P1, re-tested every phase exit)</h3>
+  <p class="mini" style="margin-bottom:2mm">Lighthouse dropped its PWA category in v12 (2024) —
+  installability and SW behavior are therefore asserted directly in Playwright, not scored.
+  Lighthouse remains in the gate for performance/a11y budgets only (§6.4).</p>
+  <ol>
+    <li><strong>Installability (Playwright):</strong> <code>/manifest.webmanifest</code> returns
+    200 with required members (name, id, start_url, standalone display, 192+512 icons, maskable);
+    icon URLs all resolve 200 <em>without</em> the auth cookie; SW registers on <code>/</code> and
+    on <code>/login</code> (pre-auth, so update checks run even when logged out) and reaches
+    <code>activated</code>; <code>/offline</code> and <code>/login</code> present in the precache
+    manifest.</li>
+    <li><strong>Offline behavior (Playwright, Chromium — the one engine whose SW+offline emulation
+    Playwright supports; note in the suite):</strong> <code>context.setOffline(true)</code> after a
+    logged-in Desk visit → reload → ritual column renders the last synced briefing + OfflineRibbon +
+    timestamps; a lesson visited before offline renders from cache (full <code>page.goto</code>,
+    not a client-side transition — §5.2 scopes offline pages to full documents);
+    <strong>expired-cookie drill:</strong> clear the cookie, load twice online (redirects land on
+    <code>/login</code>, uncached by the cacheWillUpdate guard), re-login, go offline → Desk still
+    renders the briefing, not a cached login page.</li>
+    <li>Manual device matrix (once per phase, logged in PROGRESS.md): Android Chrome install +
+    standalone auth + offline + <strong>back-gesture closes sheets without exiting</strong>; iOS
+    Safari A2HS + standalone auth persistence (cookie survives) + safe-area rendering. Emulator
+    acceptable when a device is unavailable; note which.</li>
+    <li>SW update drill: deploy a trivial change → footer “Updated — refresh when convenient”
+    appears → clicking it activates the new worker (SKIP_WAITING → controllerchange reload) →
+    new build serves.</li>
+  </ol>
+</section>
+
+<!-- ================= PART 6 ================= -->
+<section class="part">
+  <div class="part-head">
+    <div class="kicker">Part 6</div>
+    <h2>Testing &amp; TDD protocol</h2>
+    <p class="dek">The Blueprint commits to TDD; this part makes it mechanical: what always gets a
+    failing test first, which layer owns which test, and the commands that gate every phase exit.</p>
+  </div>
+
+  <h3>6.1 &nbsp;Tooling by layer</h3>
+  <table class="rowhead">
+    <thead><tr><th style="width:40mm">Layer</th><th>Tooling &amp; conventions</th></tr></thead>
+    <tbody>
+      <tr><td>Pipeline (Python)</td><td><code>uv run pytest</code>; fixtures = recorded JSON per adapter under <code>pipeline/adapters/fixtures/</code>, injected via <code>httpx.MockTransport</code> (no live keys in tests, ever); indicator tests vs the toy series (Appendix F) + weekly CI cross-check vs pandas-ta-classic as an independent oracle; base-rate lookahead guard = a test that FAILS if the one-bar shift is removed; publish tested against dockerized Postgres (compose file in repo).</td></tr>
+      <tr><td>App unit (Vitest)</td><td>Colocated <code>*.test.ts(x)</code>. Mandatory suites: BaseRate renderer (all three N regimes, CI text, baseline cap), tier-cap logic, Wilson CI (textbook cases: 62/110 → [47%, 65%]; 60/100 → [50.2%, 69.1%]), copy-deck strings render verbatim, time formatting (ET, including cases on both sides of the March/November DST transitions), zod parsers reject malformed briefing JSON.</td></tr>
+      <tr><td>E2E (Playwright)</td><td><code>app/e2e/</code>; runs against <code>next build + start</code> with the seeded database (<code>prisma/seed.ts</code> creates one deterministic synthetic morning — same seed drives local dev). Journeys listed in 6.3. Includes @axe-core scan of Desk, ticker, lesson, track record (no serious/critical violations).</td></tr>
+      <tr><td>Visual regression</td><td>Playwright screenshots of <code>/styleguide</code>, Desk (1366×768 + 390×844), one lesson, track record — compared with <code>maxDiffPixelRatio: 0.01</code>; update baselines only via the <code>visual-regression-update</code> skill with a logged reason.</td></tr>
+      <tr><td>CI (<code>ci.yml</code>)</td><td>On push: typecheck, lint, Vitest, pytest (fixtures), build; Playwright + Lighthouse CI on the P-exit tag. Red CI blocks phase exit — no exceptions.</td></tr>
+    </tbody>
+  </table>
+
+  <h3>6.2 &nbsp;The always-test-first list</h3>
+  <p>Write the failing test before the implementation for: every indicator; every pattern detector
+  (including its one-bar-shift guard); Wilson CI; the N-gated display rules; the tier cap; the
+  verification gate (seeded-fake-number test); the publish transaction (mid-publish read sees the
+  old generation); signal_log idempotency (rerun produces zero duplicates); the resolver; the
+  cooling-off trigger; the half-Kelly cap (property test: suggestion ≤ half-Kelly for random
+  inputs); auth (wrong password, cookie tamper, protected-route redirect); the offline briefing
+  render. UI layout/styling may be built visually against the styleguide — pixels are verified by
+  the visual-regression suite instead.</p>
+
+  <h3>6.3 &nbsp;E2E journeys (the product, as tests)</h3>
+  <ol>
+    <li><strong>The daily ritual:</strong> login → Desk renders modules 1–8 in order → every
+    module shows an “as of” timestamp → brief’s Today’s-focus present (“no clear edge” state also
+    covered by seed variant). <em>P1 variant</em> asserts the seeded scans/movers/calendar modules
+    plus placeholder mastheads (“—” bodies) for the not-yet-built ones; the full assertion set
+    lands with the briefing at P3.</li>
+    <li><strong>Drill &amp; return:</strong> click watchlist ticker → rail opens (no route change)
+    → Esc → scroll + selection restored; “Open full view” → ticker route → Back to Desk restores
+    state; phone viewport: same via bottom sheet.</li>
+    <li><strong>Doorways:</strong> setup card “Learn” → lesson with ReturnRail → Return restores
+    Desk exactly; lesson “See this live” → Desk anchored.</li>
+    <li><strong>Honesty rules:</strong> N&lt;30 card shows suppression text and no percentage;
+    CI-spanning-baseline card shows WEAK tier; mover without news shows the noise line; folklore
+    preset carries its label; brief with a gate-flagged line renders the flag.</li>
+    <li><strong>Offline PWA:</strong> per §5.5.</li>
+    <li><strong>Review queue:</strong> never exceeds 5; answering updates box/due date; pattern
+    lesson before M3 completion shows the soft gate.</li>
+    <li><strong>Paper desk (P6):</strong> order within X minutes of a signal → cooling-off
+    interstitial; cost mirror equals spread×turnover arithmetic on the seeded ledger; forecast
+    journal entry resolves and appears on the track record.</li>
+  </ol>
+
+  <h3>6.4 &nbsp;Phase-exit gate (run, in order, every phase)</h3>
+  <pre>1  npm run typecheck && npm run lint && npm test          # app unit
+2  uv run pytest                                          # pipeline
+3  npm run build && npx playwright test                   # e2e + axe + visual + PWA (§5.5)
+4  npx lhci autorun — mobile, / — perf+a11y budgets only; authenticated via a
+   CI-minted session cookie passed in lhci extraHeaders (PWA asserts live in step 3)
+5  Anti-drift checklist (§3.10) against fresh screenshots
+6  Update PROGRESS.md · append DECISIONS/LESSONS · git tag phase-N · push</pre>
+</section>
+<!-- ================= PART 7 ================= -->
+<section class="part">
+  <div class="part-head">
+    <div class="kicker">Part 7</div>
+    <h2>Phase playbooks — P0 to P3</h2>
+    <p class="dek">Each playbook: objective → ordered build steps with file paths → tests to write
+    first → acceptance (the Blueprint’s criteria plus this plan’s design/PWA additions) →
+    self-verification. Do not start a phase before the prior phase’s exit gate is green.</p>
+  </div>
+
+  <h3>P0 · Walking skeleton + intelligence layer <span class="chip neutral">1–2 sessions</span></h3>
+  <p><strong>Objective:</strong> the loop exists end to end — a cron writes a row in the cloud, an
+  authenticated, installable app shell renders it, and the project can be resumed by a fresh
+  session using only the repo.</p>
+  <p><strong>Build order:</strong></p>
+  <ol>
+    <li><code>git init</code>; commit the docs; create <code>CLAUDE.md</code> (Appendix K template),
+    <code>DECISIONS.md</code> (seed with this plan’s recorded decisions), <code>PATTERNS.md</code>,
+    <code>LESSONS.md</code>, <code>PROGRESS.md</code>, <code>.claude/skills/README.md</code>
+    (rubric from §9.3). Conventional commits from the first commit.</li>
+    <li>Run the <strong>Session-0 checklist</strong> (§1.4) with the user — <em>collect</em> every
+    value now; probes run progressively at the P0 step that builds their tooling (steps 5, 8, 9).
+    “All Session-0 probes green” is a named P0 exit criterion; record each in PROGRESS.md.</li>
+    <li>Scaffold <code>app/</code>: <code>npx create-next-app@latest app --ts --tailwind --app
+    --eslint --no-src-dir --import-alias "@/*"</code>; prune boilerplate; Tailwind v4
+    <code>@theme</code> tokens from §3.2–3.4 into <code>globals.css</code>; next/font setup
+    (Archivo, Newsreader, IBM Plex Mono).</li>
+    <li>Build the identity primitives: <code>SectionMasthead</code>, <code>Tag</code>,
+    <code>StatFigure</code>, base layout shell (Desk/Academy top nav, footer) — then
+    <code>/styleguide</code> rendering every token and primitive.</li>
+    <li>Auth per §4.4: <code>proxy.ts</code>, <code>/login</code>, hash script (hash the
+    user-supplied password here; discard the plaintext), logout action.</li>
+    <li>PWA seed: <code>manifest.ts</code>, icons script + generated set, Serwist wiring,
+    <code>/offline</code> route.</li>
+    <li>Prisma: schema v0 = <code>pipeline_run</code> only; <code>migrate dev</code>;
+    <code>lib/db.ts</code>.</li>
+    <li>Pipeline skeleton: <code>uv init</code>; <code>config.py</code> (pydantic settings, env
+    names per Appendix D); <code>scripts/probe_providers.py</code> (one authenticated smoke call
+    per provider + Anthropic — this runs the §1.4 key probes); <code>jobs/job_a.py</code> hello-run
+    writing a <code>pipeline_run</code> row; <code>jobs/job_b.py</code> stub that pings
+    healthchecks success — <strong>from P0 onward the 00:25 UTC check is fed on schedule by
+    nightly-b</strong>, so the dead-man never false-alarms while later phases build;
+    <code>nightly-a.yml</code> (cron + workflow_dispatch), <code>nightly-b.yml</code> (cron +
+    stub), <code>ci.yml</code>.</li>
+    <li>Desk placeholder: module 0 masthead showing last <code>pipeline_run</code> timestamp.
+    Deploy to Vercel; run one manual <code>workflow_dispatch</code>.</li>
+  </ol>
+  <p><strong>Tests first:</strong> auth unit tests (wrong password, tampered cookie, redirect);
+  pipeline config test (missing env fails loudly); one Playwright smoke (login → shell renders →
+  timestamp visible); healthchecks ping mocked test.</p>
+  <p><strong>Acceptance (= Blueprint P0 + additions):</strong> the deployed app shows the evening
+  run’s timestamp, produced entirely by the cloud schedule with nothing on the user’s hardware;
+  disabling nightly-b once makes
+  the healthchecks check go <em>down</em> (observed autonomously via the read-only API), then
+  recover; all Session-0 probes green — provider keys smoke-tested by
+  <code>probe_providers.py</code>, Vercel preview protection confirmed ON; the §5.5.1
+  installability assertions pass (manifest, icons unauthenticated, SW activated); login works
+  inside the installed standalone app (Android or emulator; iOS if available);
+  <code>/styleguide</code> passes the §3.10 checklist; CI green; intelligence files exist with
+  real content.</p>
+
+  <h3>P1 · Data spine + minimal Desk <span class="chip neutral">1–2 weeks of sessions</span></h3>
+  <p><strong>Objective:</strong> full-universe EOD data flows nightly into Parquet + Postgres; the
+  Desk’s skeleton modules (macro, movers, watchlist) render real data in the real design; drill
+  level 2 exists; the signal log starts recording.</p>
+  <p><strong>Build order:</strong></p>
+  <ol>
+    <li>Prisma schema v1 (Appendix B: instrument, price_bar, scan_result, signal_log,
+    watchlist_item + enums); migrate; <code>prisma/seed.ts</code> deterministic synthetic morning
+    (drives dev + e2e).</li>
+    <li><code>adapters/base.py</code> (repository interface + fixture loader + token-bucket rate
+    limiter) → <code>adapters/alpaca.py</code> (multi-symbol daily bars, corporate actions, universe
+    listing) with fixtures. <em>Mint the <code>new-provider-adapter</code> skill here</em> — the
+    next five adapters follow it.</li>
+    <li><code>indicators.py</code>: the v1 set (Appendix F list) as Polars expressions — toy-series
+    tests first; <em>mint <code>new-indicator</code> skill.</em></li>
+    <li>Parquet store module (year partitions on R2, current-year rewrite with a trailing
+    5-session re-pull each night to catch vendor restatements, adjustments table, corporate-action
+    full-rewrite path); DuckDB scan queries; <code>scans.py</code> — the five v1 presets exactly as
+    specced in Appendix F.</li>
+    <li><code>publish.py</code>: single-transaction refresh (staging swap or delete-and-insert per
+    Blueprint §7.3) for price_bar (watchlist + SPY/QQQ/DIA/IWM + sector ETFs), scan_result,
+    pipeline_run stages; a <code>workflow_dispatch</code> rerun consults <code>pipeline_run</code>
+    stages and skips completed ones (idempotent resume); signal_log inserts with
+    <code>ON CONFLICT DO NOTHING</code> (rate fields null until P4); wire into job_a.</li>
+    <li>Desk modules in design: 01 Macro pulse (StatFigure hero = SPX day %, in ink; index row;
+    breadth strip — advancers/decliners and %-above-50DMA computed from the ingested universe +
+    SMA50; VIX and 10-yr cells live via a <em>minimal</em> <code>fred.py</code> series adapter
+    pulled forward from P2 — VIXCLS + DGS10 only, ~40 lines against the existing adapter base,
+    keeping the Blueprint’s P1 scope intact), 04 Movers (MoversRow sans catalysts — “reasons
+    arrive in P2” note), 05 Watchlist (CRUD server actions, sparklines from price_bar). All eight
+    Desk mastheads mount now — unbuilt modules render their masthead over a quiet “—” placeholder
+    body, so the ritual’s shape is complete from P1.</li>
+    <li>RailSheet (desktop rail + mobile bottom sheet) + <code>/ticker/[symbol]</code> with the
+    Lightweight Charts hook (candles + volume pane, themed per §3.7).</li>
+    <li>SW runtime caching of the morning payload (<code>/api/morning</code>); OfflineRibbon.</li>
+    <li>Weekly <code>pg_dump</code> step (session pooler) in nightly-b.yml; restore test once.</li>
+  </ol>
+  <p><strong>Tests first:</strong> every indicator (toy series); adapter fixture tests incl.
+  rate-limit behavior; universe-validation hard-fail (&lt;95% symbols → job fails — test with a
+  truncated fixture); publish transaction isolation test (reader mid-publish sees old generation);
+  stage-skip rerun test (a rerun after a mid-stage failure skips completed stages, produces zero
+  duplicates); signal_log idempotency; watchlist server-action tests; e2e journeys 1 (P1 variant),
+  2, 5 (§6.3); visual baselines captured.</p>
+  <p><strong>Acceptance (= Blueprint P1 + additions):</strong> nightly Job A ingests the defined
+  universe in &lt; 30 min (observed in Actions logs); indicator suite green; hard-fail proven;
+  the five presets write signal_log rows with <code>resolves_on</code>; all eight mastheads render
+  (placeholders honest); macro module shows breadth + VIX/10-yr live; rail opens without route
+  change and Esc restores scroll + selection (desktop and phone viewports); candles render from
+  price_bar with the attribution logo visible; offline reload shows the last synced briefing; backup
+  restored once successfully; budgets met (≤200KB first-load, LCP ≤ 2.5s mobile).</p>
+
+  <h3>P2 · Catalyst &amp; context layer <span class="chip neutral">~1 week</span></h3>
+  <p><strong>Objective:</strong> the Desk explains — movers get reasons or the honest noise line;
+  the US session calendar exists; every source degrades independently and visibly.</p>
+  <p><strong>Build order:</strong></p>
+  <ol>
+    <li>Adapters via the skill: <code>finnhub.py</code> (metrics + company news — never candles),
+    <code>fmp.py</code> (earnings calendar bmo/amc), <code>edgar.py</code> (per-CIK submissions,
+    declared User-Agent), <code>fred.py</code> extended to full (release calendar — the minimal
+    VIXCLS/DGS10 series adapter shipped in P1), <code>marketaux.py</code> (tagged snippets — the
+    market-wide catalyst source).</li>
+    <li>Prisma v2: news_item, calendar_event; catalyst matcher (ticker + time-window join,
+    catalyst-type classification) in <code>scans.py</code>; per-source status into
+    pipeline_run.</li>
+    <li>Desk: 03 CalendarTimeline (events + consensus/prior; if/then branches render event-only
+    with “branch base rates attach in P4” state), 04 movers upgraded (catalyst Tag + reason +
+    source link, or noise line), SourceStatusFooter with FRED attribution.</li>
+    <li>Copy-deck states wired (Appendix J): degraded-source lines, empty states.</li>
+  </ol>
+  <p><strong>Tests first:</strong> each adapter’s fixtures incl. error/timeout paths (one provider
+  down ⇒ its section degrades, run succeeds — integration test); catalyst matcher (window edges,
+  multi-ticker articles, no-match ⇒ noise line); calendar bmo/amc rendering; EDGAR User-Agent
+  header assertion; FRED 2 req/s limiter.</p>
+  <p><strong>Acceptance (= Blueprint P2):</strong> every &gt;3% mover on the table shows a catalyst
+  chip with source link or the noise tag (market-wide coverage partial by design and saying so);
+  killing one provider key in a rehearsal run degrades one section, not the run; e2e journey 4
+  (partial) green.</p>
+
+  <h3>P3 · The briefing <span class="chip neutral">~1 week</span></h3>
+  <p><strong>Objective:</strong> the editorial heart ships — extract → synthesize → verify across
+  the two jobs, rendered as the BriefArticle, degradable, and offline-cached.</p>
+  <p><strong>Build order:</strong></p>
+  <ol>
+    <li><code>briefing/extract.py</code>: per-article Haiku calls with the Appendix G schema,
+    submitted via the Message Batches API in job_a; batch id persisted in pipeline_run.</li>
+    <li><code>jobs/job_b.py</code>: preflight (XNYS holiday / no-batch-submitted night → log,
+    exit 0, still ping success — the dead-man expects a ping every scheduled night) → ping
+    <code>/start</code> → late-news delta sweep → collect batch — if still incomplete at 00:40 UTC,
+    cancel it, keep the already-processed results (cancellation preserves and bills completed
+    items), sync-extract only the remainder → <code>synthesize.py</code> (one sync Sonnet call,
+    Appendix G prompt, structured output) → <code>verify.py</code> (deterministic gate, Appendix E
+    tolerances) → publish (briefing table) → revalidate → ping success.</li>
+    <li>Prisma v3: briefing (am/pm JSON, verification_json, model_meta).</li>
+    <li>UI: BriefArticle (module 02) with labeled slots, Today’s-focus headline, per-claim source
+    superscripts linking to news_item URLs; <code>learning_link_slug</code> values validated
+    against the Academy lesson manifest — unmatched slugs render no doorway and are recorded in
+    <code>verification_json</code> (the manifest is empty until P5, so briefs simply carry no
+    Learn links yet — by design, not by error); ScorecardPM shell (“grading begins in P4” state);
+    PM journal prompt → journal_entry write; “briefing unavailable” banner path; morning payload +
+    SW cache include the brief.</li>
+  </ol>
+  <p><strong>Tests first:</strong> the verification gate — seeded fake number, fake ticker, fake
+  date each caught (unit, with a fixture draft); tolerance table cases (8.2% matches 8.24%; $1.2B
+  matches 1,200M; ticker case-fold); extraction schema zod/pydantic round-trip; batch-cutoff logic
+  (clock injected); holiday/no-batch preflight (fixture night with no batch id ⇒ exit 0 + success
+  ping); slug-validation (unknown slug ⇒ no doorway + verification_json entry); job_b end-to-end
+  against fixtures with a mocked Anthropic transport; briefing-unavailable render test.</p>
+  <p><strong>Acceptance (= Blueprint P3):</strong> five consecutive nights of real briefings in
+  which every number/ticker/date passes the gate (observe the week; use workflow_dispatch reruns if
+  a night is missed); the seeded-fake test is part of CI permanently; the batch-cutoff fallback
+  drill exercised once for real; publish confirmed atomic under a mid-publish request; the brief
+  reads correctly on the phone ritual column and offline.</p>
+</section>
+<!-- ================= PART 8 ================= -->
+<section class="part">
+  <div class="part-head">
+    <div class="kicker">Part 8</div>
+    <h2>Phase playbooks — P4 to P6, and the backlog</h2>
+    <p class="dek">The honesty engine, the Academy, and the paper desk. Protection ships with — or
+    before — the features it protects; that ordering is contractual.</p>
+  </div>
+
+  <h3>P4 · Setup cards, base rates &amp; accountability <span class="chip neutral">~2 weeks</span></h3>
+  <p><strong>Objective:</strong> the signature unit ships honest-by-construction: pattern detectors,
+  base rates with intervals and decay stamps, vol bands, the resolver, and a visible resolved log —
+  in the same phase, inseparably.</p>
+  <p><strong>Build order:</strong></p>
+  <ol>
+    <li>Pattern detectors v1 (Appendix F definitions, exactly six): golden cross · 52-week-high
+    proximity · gap-with-catalyst · RSI extreme · unusual volume · breadth-regime cross — each a
+    Polars expression writing <code>signal_events</code> Parquet; one-bar-shift guard test per
+    detector. <em>Mint <code>new-pattern-detector</code> skill after the second one.</em></li>
+    <li><code>baserates.py</code>: DuckDB window queries → base_rate_stat rows (n, wins, Wilson CI,
+    fwd p10/50/90) per (pattern, universe bucket, horizon 5/10/20d, regime) + pattern_meta decay
+    fields (publication_year, evidence_grade, decay_note from the RR ledger — data table in
+    Appendix F); unconditional always-up baselines computed per universe bucket + horizon and
+    stored alongside. Universe bucket and regime are assigned <em>as of the event date</em>
+    (point-in-time cap/dollar-volume, per Appendix F) — classifying historical events by today’s
+    bucket is a lookahead bug, guarded by its own test.</li>
+    <li><code>volbands.py</code>: empirical-quantile expected ranges (5/10/20d) per watchlist
+    symbol → vol_band rows with frequency labels; nothing beyond 20 days by schema.</li>
+    <li>Lottery-risk flag computation (high-skew, low-price rule in Appendix F) → scan_result
+    metric.</li>
+    <li>Prisma v4: base_rate_stat, setup_card, vol_band, signal_resolution; <code>resolve.py</code>
+    nightly resolver (insert-only outcomes) wired into job_b; signal_log rate fields now stated at
+    fire time.</li>
+    <li>UI: SetupCardRow (Desk module 06) + full SetupCard in the rail (IconArray, BaseRate
+    renderer, baseline line, weakener checkboxes — per-pattern items from the Appendix F weakener
+    table — persisted via server action, decay stamp, provenance, Learn doorway); tier logic with
+    the Appendix F band constants and the CI-spans-baseline cap; scans page with fully visible
+    criteria + evidence-grade Tags + folklore labels; CalendarTimeline branches attach per-branch
+    base rates (or the N&lt;30 suppression line); VolBand on the ticker chart <em>with the
+    regime-break caveat line</em> (copy key <code>volband.caveat</code> — §1.5 rule 1); minimal
+    <code>/track-record</code>: resolved-log table (calibration chart arrives P6); ScorecardPM
+    grading goes live off signal_resolution.</li>
+  </ol>
+  <p><strong>Tests first:</strong> six detector tests + six shift-guard tests; bucket point-in-time
+  guard (an event whose symbol later changed bucket classifies by its event-date bucket); Wilson CI
+  textbook cases; baseline computation; tier bands (Appendix F constants) + tier cap (CI 47–65 vs
+  baseline 55 ⇒ WEAK — the RR Fig 9.3 case as a literal fixture); N-gate all three regimes;
+  resolver (horizon passes ⇒ one resolution row; rerun ⇒ still one); vol band never exceeds 20d
+  (property test) + caveat string renders; lottery flag rule; e2e journey 4 complete.</p>
+  <p><strong>Acceptance (= Blueprint P4):</strong> every card shows N + CI + baseline; the WEAK cap
+  proven by test and visible in the seeded morning; suppression rendering proven; lookahead guards
+  have failing-test proofs in git history (commit the red test first); every displayed card logged
+  at render-eligibility time; resolved log fills within a day of horizons passing; decay stamps
+  render on every published-anomaly pattern; anti-drift checklist passes on the card UI (this is
+  the screen most at risk of chip-confetti — the Tag component is the only color carrier).</p>
+
+  <h3>P5 · The Academy <span class="chip neutral">2–3 weeks, content-heavy</span></h3>
+  <p><strong>Objective:</strong> the second room — warm, literary, price-free — with 25 real
+  lessons, the glossary, worked-example drawers, and the review queue.</p>
+  <p><strong>Build order:</strong></p>
+  <ol>
+    <li>MDX infrastructure: <code>@next/mdx</code> + frontmatter loader
+    (<code>lib/academy.ts</code>), <code>content/academy/&lt;module&gt;/&lt;slug&gt;.mdx</code>;
+    Academy layout (warm tokens, Newsreader, 65ch measure); curriculum map with module states +
+    M3 soft gate.</li>
+    <li>Author the 25 launch lessons (Appendix H list — titles, one-line briefs, and which RR
+    ledger rows each cites). Source material: the Research Report itself — every myth-vs-evidence
+    lesson cites its Part 4 verdict and sources; write in the mechanical-honest voice; 3–5 minutes
+    each; 2–3 retrieval questions in frontmatter. <em>Mint <code>new-lesson</code> skill after the
+    second lesson; thereafter lessons are a production line.</em></li>
+    <li>Glossary: seed the 40 Appendix I terms; GlossaryTerm popover wired across the Desk
+    (first-occurrence-per-view discipline via a per-render registry).</li>
+    <li>Worked-example drawer: the fixed three-step template (what happened in the data → what
+    pattern this matches and why it is believed to matter → what happened the last N times, failure
+    count included) with numbered on-chart annotation markers synced to steps.</li>
+    <li>Review queue: Leitner boxes on concept_state (max 5/day, due-date scheduling, skip without
+    guilt); seeded only from concepts the user actually encountered (Desk render logs concept
+    exposures to concept_state).</li>
+    <li>Doorways completed: Learn chips, brief’s single learning link, “See this live” (find a
+    current watchlist instance, open Desk anchored with teaching annotations), ReturnRail on every
+    crossing; adaptive fading v1 (familiarity ≥ quizzed-correct ⇒ terse pro-mode card labels).</li>
+  </ol>
+  <p><strong>Tests first:</strong> loader (frontmatter contract, broken-MDX fails CI); soft-gate
+  logic; queue cap + Leitner scheduling math; first-occurrence glossary discipline (unit on the
+  registry); e2e journeys 3 and 6; visual baseline for a lesson page (the warm room must not drift
+  cool).</p>
+  <p><strong>Acceptance (= Blueprint P5):</strong> every term on the Desk has a glossary entry
+  (CI check: scan rendered Desk seed for dotted-underline coverage against the term list); drawer →
+  lesson → Return restores Desk state exactly; pattern lesson before M3 completion shows the gate;
+  queue never exceeds 5; Academy breadcrumbs present; no live prices anywhere under
+  <code>/academy</code> (e2e asserts absence of price elements).</p>
+
+  <h3>P6 · Paper desk, calibration &amp; polish <span class="chip neutral">~2 weeks + ongoing</span></h3>
+  <p><strong>Objective:</strong> the protective loop closes: paper trading with friction, the full
+  self-grading surface, the remaining should-widgets, dark Desk, and PWA/perf polish.</p>
+  <p><strong>Build order:</strong></p>
+  <ol>
+    <li>Prisma v5: paper_trade (+ journal_entry forecast fields); ledger CRUD with simulated fills
+    (next-open + half-spread + slippage per Appendix F constants); soft-gated on Academy M3.</li>
+    <li>Friction, wired to the ledger: cooling-off interstitial (paper order &lt; 30 min after a
+    signal fires on that symbol — constant in Appendix F), weekly frequency mirror, CostMirror
+    (spread × the user’s actual turnover, arithmetic spelled out); half-Kelly-capped sizing helper
+    (CI-lower-bound win rate + stored payoff percentiles; property-tested cap).</li>
+    <li>Forecast journal: probability + resolves_on on journal entries, resolved by
+    <code>resolve.py</code>, Brier-scored.</li>
+    <li>Track record completed: calibration scatter with per-bucket N, rolling Brier + “0.25 =
+    coin flip” caption, family-underperformance banner, user forecasts alongside app flags,
+    view-as-table toggle.</li>
+    <li>Quantile dotplots in the rail (per-occurrence forward returns, losing tail visible);
+    sector small multiples (module 07, identically scaled, desaturated); ⌘K palette (tickers,
+    lessons, routes — zone-badged results).</li>
+    <li>Dark Desk (tokens from §3.3 dark column; Academy stays light; toggle in settings,
+    <code>prefers-color-scheme</code> default; <code>viewport.themeColor</code> gains
+    <code>prefers-color-scheme: dark</code> media variants so the standalone status bar follows —
+    manifest theme_color stays light, install-time only); PWA final pass (§5.5 matrix, update-flow
+    drill, icon QA); performance pass to budgets; accessibility sweep incl. the §3.3 dark-value
+    contrast spot-checks.</li>
+  </ol>
+  <p><strong>Tests first:</strong> fill simulation math; cooling-off trigger (clock injected);
+  cost-mirror arithmetic on the seeded ledger; frequency mirror; half-Kelly property test; forecast
+  resolution + Brier; calibration bucketing; dark-mode visual baselines; e2e journey 7.</p>
+  <p><strong>Acceptance (= Blueprint P6):</strong> ≥30 resolved signals visible with misses;
+  cost mirror reproduces the arithmetic on the user’s ledger (fixture in tests); the interstitial
+  fires in e2e; sizing never exceeds half-Kelly; user forecasts Brier-score on the track record;
+  dark mode is Desk-only; Lighthouse ≥ 90 performance on <code>/</code> and the §5.5 PWA
+  assertions all green; the §3.10 checklist passes on every screen; the full §6.4 gate is
+  green.</p>
+
+  <h3>Post-P6 backlog (build nothing here without a logged decision)</h3>
+  <p>Curated top-news module · relative-strength comparison chart · ECharts sector heatmap ·
+  push notification for “briefing ready” (calm-tech review required first) · offline write queue ·
+  live-brokerage integration (fully available to a US resident — gated on the paper track record
+  demonstrating readiness, all friction mechanisms carried over) · Opus-class synthesis upgrade
+  (~$1.70/mo) · paid-data ladder steps (Blueprint §4.2 triggers).</p>
+</section>
+
+<!-- ================= PART 9 ================= -->
+<section class="part">
+  <div class="part-head">
+    <div class="kicker">Part 9</div>
+    <h2>Intelligence layer &amp; skills</h2>
+    <p class="dek">The scaffolding that makes you autonomous: five living documents, a session
+    ritual, and a rubric for minting reusable skills instead of re-deriving procedures.</p>
+  </div>
+
+  <h3>9.1 &nbsp;The five documents</h3>
+  <table class="rowhead">
+    <thead><tr><th style="width:34mm">File</th><th>Contract</th></tr></thead>
+    <tbody>
+      <tr><td>CLAUDE.md</td><td>The constitution (Appendix K template): non-negotiables, stack pins, commands, conventions, authority hierarchy, session ritual. Changes rarely; every change is itself a logged decision.</td></tr>
+      <tr><td>DECISIONS.md</td><td>Append-only log: <code>YYYY-MM-DD · [claude] · [local|structural] · decision · rationale (one line) · alternatives rejected</code>. Seeded at P0 with this plan’s pre-made decisions (§1.3 examples, §4.4 auth, Serwist, fonts, no-push-v1, npm/uv). Every entry you write carries the <code>[claude]</code> marker — any line without it is user-authored. User edits are vetoes at rank 2.5, detected by the session ritual’s diff (§9.2); honoring a veto becomes the session’s first task.</td></tr>
+      <tr><td>PATTERNS.md</td><td>Recurring code/design patterns worth copying: the adapter shape, the masthead composition, the server-action + zod + revalidate write pattern, chart hook lifecycle. Add when you catch yourself copying a second time; reference from code reviews.</td></tr>
+      <tr><td>LESSONS.md</td><td>Mistakes + resolutions: <code>symptom → root cause → fix → guard added</code>. Read at session start after CLAUDE.md. A lesson that repeats means the guard was inadequate — escalate to a test or a skill.</td></tr>
+      <tr><td>PROGRESS.md</td><td>Resumable state: current phase + checkpoint, last green gate (§6.4) with date, next three tasks, Blocked list (item · what unblocks · fallback in force). Update at every session end — a fresh session must be able to resume from this file alone.</td></tr>
+    </tbody>
+  </table>
+
+  <h3>9.2 &nbsp;Session ritual</h3>
+  <pre>START: git pull → read CLAUDE.md → PROGRESS.md → LESSONS.md (skim)
+       → diff DECISIONS.md since last session: any non-[claude] line or edit is a user
+         veto (rank 2.5) — honoring it becomes the session's FIRST task
+       → run: npm test && uv run pytest
+       → confirm green (if red: fixing red IS the session) → announce the checkpoint being built
+WORK:  TDD per §6.2 · commit small with conventional messages · log decisions as they happen
+END:   update PROGRESS.md (checkpoint, next-3) · append DECISIONS/LESSONS/PATTERNS entries
+       · push · if phase-complete: run the full §6.4 exit gate and tag</pre>
+
+  <h3>9.3 &nbsp;Skills — when to mint one</h3>
+  <p>A skill is a self-contained procedure at <code>.claude/skills/&lt;name&gt;/SKILL.md</code>:
+  name · when-to-use · exact steps · verification · one worked example. <strong>Mint when all four
+  hold:</strong> (1) the procedure has ≥ 3 non-obvious steps; (2) it will plausibly recur ≥ 3 times;
+  (3) its output is verifiable (a test, a checklist, a rendered page); (4) the procedure is stable
+  (you’d write the same steps tomorrow). <strong>Do not mint</strong> for one-offs, things an npm
+  script already encodes, or anything still churning. Update the skill when the procedure changes;
+  a stale skill is worse than none. <strong>Invoke the skill (follow its steps literally) whenever
+  the task recurs — re-deriving a minted procedure is a process violation.</strong></p>
+  <table>
+    <caption>Expected skills and their minting moments (mint on evidence, not in advance)</caption>
+    <thead><tr><th style="width:44mm">Skill</th><th style="width:22mm">Mint at</th><th>Covers</th></tr></thead>
+    <tbody>
+      <tr><td>new-provider-adapter</td><td>P1, after Alpaca</td><td>adapter interface, fixture recording, rate limiter, error isolation, tests, registration</td></tr>
+      <tr><td>new-indicator</td><td>P1, after the 2nd indicator</td><td>Polars expression shape, toy-series test, oracle cross-check entry, docs row</td></tr>
+      <tr><td>new-pattern-detector</td><td>P4, after the 2nd detector</td><td>definition → expression → shift guard → base-rate wiring → card copy → ledger grade (or, for un-graded patterns, the §1.5 t &gt; 3.0 admission hurdle)</td></tr>
+      <tr><td>new-desk-module</td><td>P2, after the calendar</td><td>masthead + data loader + module component + seed data + e2e hook + visual baseline</td></tr>
+      <tr><td>new-lesson</td><td>P5, after the 2nd lesson</td><td>frontmatter contract, voice rules, citation to RR ledger, retrieval questions, glossary links</td></tr>
+      <tr><td>pwa-audit</td><td>P1, first full audit</td><td>the §5.5 matrix as a repeatable procedure incl. commands and device checklist</td></tr>
+      <tr><td>release-phase</td><td>P0 exit</td><td>the §6.4 gate, tagging, PROGRESS/DECISIONS updates, deploy verification</td></tr>
+      <tr><td>visual-regression-update</td><td>first intentional baseline change</td><td>when a diff is legitimate, how to review, update, and log it</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- ================= PART 10 ================= -->
+<section class="part">
+  <div class="part-head">
+    <div class="kicker">Part 10</div>
+    <h2>Conflict &amp; stall protocol</h2>
+    <p class="dek">The complete algorithm for never needing the user. If you are about to type a
+    question to a human, you are in this part — re-read it instead.</p>
+  </div>
+  <ol>
+    <li><strong>Ambiguity about product behavior</strong> → grep rr-03/rr-04 (guardrails, product
+    spec) then bp-0* then this plan. The answer is almost always written down. Cite the source in
+    your commit message.</li>
+    <li><strong>Guardrail vs feature</strong> → the guardrail wins; redesign the feature within it
+    or move it to the backlog with a logged decision. No exceptions, no “temporary” violations.</li>
+    <li><strong>Design taste question</strong> → §3.10 checklist + the manifesto. If two options
+    both pass, pick the quieter one.</li>
+    <li><strong>External breakage</strong> (API change, package gone, provider refusal, price
+    change): apply the Blueprint’s pre-researched fallback (§4.2 ladder, §3.3 storage fallback,
+    alternatives lists); adapt the adapter behind its interface; log LESSONS + DECISIONS; the
+    contracts (tests) stay green. Never let a third party change what the user sees without a
+    provenance note.</li>
+    <li><strong>A test is hard to satisfy</strong> → the test is probably right (they encode the
+    guardrails). Only change a §6.2-listed test with a structural DECISIONS.md entry explaining why
+    the encoded rule itself was wrong — and never to weaken an honesty rule.</li>
+    <li><strong>Cost anomaly</strong> (Anthropic spend pacing above ~$0.60/night for two nights) →
+    investigate token counts in briefing.model_meta before optimizing; the spend cap is the
+    backstop, not the alarm.</li>
+    <li><strong>Two failed attempts at anything</strong> → smallest honest stub behind a named
+    degradation flag, Blocked entry in PROGRESS.md (what unblocks it), move on. Return on the next
+    phase boundary.</li>
+    <li><strong>Session context exhausted mid-task</strong> → commit WIP behind green unit tests
+    (or stash with a Blocked note), update PROGRESS.md checkpoint, end cleanly. The next session
+    resumes from files, not memory.</li>
+    <li><strong>You discover this plan is wrong somewhere</strong> (it will happen): if the fix is
+    local, do it and log it; if structural, choose the option preserving ranks 1–2, log it as
+    structural, and annotate DEVELOPMENT-PLAN.md with a dated correction block rather than silently
+    diverging from the printed contract.</li>
+  </ol>
+</section>
+<!-- ================= PART 11 — APPENDICES ================= -->
+<section class="part">
+  <div class="part-head">
+    <div class="kicker">Part 11</div>
+    <h2>Appendices — the contracts</h2>
+    <p class="dek">Typable specifications. Field names and constants here are authoritative; any
+    change to Appendix E, F, or J is a structural decision by definition (§1.3.3) — never a
+    silent local edit.</p>
+  </div>
+
+  <h3>A · Parquet &amp; storage layout (R2 bucket <code>msm-history</code>)</h3>
+  <pre>prices_daily/year=YYYY/part.parquet   symbol·date·open·high·low·close·adj_close·volume  (raw + adjusted)
+indicators_daily/year=YYYY/…          symbol·date·sma20/50/200·ema12/26·rsi14·macd·macd_sig·atr14·bb_up/lo·rvol20·dist_52w_high·gap_pct·ret_1/5/20
+signal_events/year=YYYY/…             symbol·date·pattern_key·direction·attrs(json)
+adjustments/adjustments.parquet       symbol·ex_date·factor·kind(split|div)      # audit trail
+Rules: current year rewritten nightly; corporate action ⇒ affected symbol rewritten across ALL years;
+bucket is a re-pullable cache — losing it costs one Alpaca re-pull. App never reads R2.</pre>
+
+  <h3>B · Prisma schema draft (serving + user state; ✎ = app-writable)</h3>
+  <pre>Instrument   symbol PK · name · exchange · sector · industry · cik? · isActive · delistedAt?
+PriceBar     [symbol,date] PK · o h l c adjC vol                       # watchlist+indices ×~5y
+WatchlistItem✎ id · symbol → Instrument · reason · isFocus · addedAt   # focus cap enforced in UI (3)
+CalendarEvent id · date idx · kind(earnings|macro|fed|div|other) · symbol? · timing(bmo|amc|time) ·
+             title · consensus? · prior? · importance
+NewsItem     id · publishedAt idx · provider · url · headline · snippet · tickers[] · eventType? ·
+             sentiment? · extract Json?
+ScanResult   id · runDate idx · presetKey · symbol · rank · metrics Json          # incl. lotteryFlag
+SetupCard    id · runDate idx · symbol · patternKey · tier · state Json ·
+             weakeners Json ✎(checkbox state) · baseRateId → BaseRateStat
+BaseRateStat id · patternKey · universe · horizonDays · regime · n · wins · winRate · ciLow · ciHigh ·
+             fwdP10 · fwdMedian · fwdP90 · baselineUpRate · publicationYear? · evidenceGrade ·
+             decayNote? · computedAt      @@unique([patternKey,universe,horizonDays,regime])
+VolBand      id · symbol · runDate · horizonDays(5|10|20) · lo · hi · coverage(0.5|0.8) · label
+             # rendered ALWAYS with copy keys volband.label + volband.caveat (regime-break line)
+SignalLog    id · firedDate · symbol · patternKey · horizonDays · statedWinRate? · statedN? ·
+             resolvesOn · @@unique([firedDate,patternKey,symbol,horizonDays])   # INSERT-ONLY (grant-revoked)
+SignalResolution id · signalId → SignalLog @@unique · outcome(hit|miss|na) · resolvedAt  # INSERT-ONLY
+Briefing     runDate PK · amJson · pmJson? · verificationJson · modelMeta Json · status
+PipelineRun  runDate PK · startedAt · finishedAt? · stageStatus Json · sourceStatus Json · batchId?
+PaperTrade ✎ id · symbol · side · qty · fillPrice · spreadEst · openedAt · closedAt? · closeFill? ·
+             thesis · signalId?
+JournalEntry✎ id · date · prompt · body · forecast? · probability? · resolvesOn? · outcome? · brier?
+Lesson       (filesystem MDX, not DB — declared deviation #4, §1.2) — frontmatter:
+             module·slug·title·minutes·concepts[]·questions[]
+ConceptState✎ conceptKey PK · familiarity(new|seen|reviewed|mastered) · box(1..3) · dueOn · lastSeenAt</pre>
+
+  <h3>C · Workflow skeletons (.github/workflows/)</h3>
+  <pre>nightly-a.yml  on: schedule "37 22 * * 1-5" + workflow_dispatch · concurrency msm-nightly
+  permissions: contents write (heartbeat commit)
+  steps: checkout → uv sync → python -m jobs.job_a → heartbeat commit ("chore: heartbeat")
+  Job A does NOT touch healthchecks — its failures surface as GitHub failure e-mails
+  (exit nonzero); its holiday preflight logs + exits 0.
+nightly-b.yml  on: schedule "25 0 * * 2-6" + workflow_dispatch · concurrency msm-nightly
+  steps: checkout → uv sync → ping $HEALTHCHECKS_PING_URL/start → python -m jobs.job_b
+         → weekly (Sat): pg_dump via SESSION_POOLER_URL → gzip → upload to R2 backups/
+         → monthly (1st Sat): Stooq spot-check — 10 random symbols × 20 recent closes vs
+           stored Parquet, &gt;0.5% divergence ⇒ LESSONS entry + investigation task
+         → ping $HEALTHCHECKS_PING_URL          # success ping — ONLY on success paths
+  Job B OWNS the dead-man check (its cron matches). Holiday / no-batch preflight: log,
+  exit 0, still ping success — the monitor expects a ping every scheduled night. The P0
+  stub already follows this contract, so the check never false-alarms during buildout.
+ci.yml         on: push — typecheck·lint·vitest·pytest·build; playwright+lighthouse on tags
+               phase-*; weekly cron — indicator suite vs live pandas-ta-classic oracle
+migrate.yml    workflow_dispatch only — prisma migrate deploy via SESSION_POOLER_URL</pre>
+
+  <h3>D · Environment variable matrix (single placement authority — §1.4 defers here)</h3>
+  <table>
+    <thead><tr><th style="width:44mm">Variable</th><th style="width:14mm">Local</th><th style="width:14mm">Vercel</th><th style="width:16mm">GH secrets</th><th>Used by</th></tr></thead>
+    <tbody>
+      <tr><td>DATABASE_URL (transaction pooler)</td><td>✓</td><td>✓</td><td>✓</td><td>Prisma app reads/writes; pipeline publish</td></tr>
+      <tr><td>DIRECT_URL</td><td>✓</td><td>✓</td><td>—</td><td>prisma migrate dev (local only)</td></tr>
+      <tr><td>SESSION_POOLER_URL</td><td>—</td><td>—</td><td>✓</td><td>CI pg_dump + migrate.yml (IPv4)</td></tr>
+      <tr><td>AUTH_USER · AUTH_PASS_HASH · AUTH_COOKIE_SECRET</td><td>✓</td><td>✓</td><td>—</td><td>login + proxy.ts</td></tr>
+      <tr><td>CRON_SECRET</td><td>✓</td><td>✓</td><td>✓</td><td>/api/revalidate (app) · job_b caller</td></tr>
+      <tr><td>ALPACA_KEY_ID · ALPACA_SECRET · FINNHUB_KEY · FMP_KEY · MARKETAUX_KEY · FRED_KEY</td><td>—</td><td>—</td><td>✓</td><td>adapters (tests use fixtures, never keys)</td></tr>
+      <tr><td>EDGAR_USER_AGENT ("Name email")</td><td>—</td><td>—</td><td>✓</td><td>edgar.py mandatory header</td></tr>
+      <tr><td>ANTHROPIC_API_KEY · MODEL_EXTRACT · MODEL_SYNTH</td><td>—</td><td>—</td><td>✓</td><td>briefing/* (defaults claude-haiku-4-5 / claude-sonnet-5)</td></tr>
+      <tr><td>R2_ACCOUNT_ID · R2_ACCESS_KEY_ID · R2_SECRET · R2_BUCKET</td><td>—</td><td>—</td><td>✓</td><td>parquet store + backups</td></tr>
+      <tr><td>HEALTHCHECKS_PING_URL</td><td>—</td><td>—</td><td>✓</td><td>nightly-b (start + success pings)</td></tr>
+      <tr><td>HEALTHCHECKS_API_KEY (read-only)</td><td>✓</td><td>—</td><td>✓</td><td>P0 probe + autonomous alert verification (§1.4)</td></tr>
+      <tr><td>APP_BASE_URL</td><td>✓</td><td>✓</td><td>✓</td><td>job_b revalidate call</td></tr>
+    </tbody>
+  </table>
+
+  <h3>E · Verification-gate tolerances (briefing/verify.py)</h3>
+  <table class="rowhead">
+    <thead><tr><th style="width:34mm">Entity</th><th>Match rule (draft value vs source set = extracts ∪ stats table)</th></tr></thead>
+    <tbody>
+      <tr><td>Percentages</td><td>parse to float; match within max(±0.05pp absolute, ±0.5% relative) — “8.2%” matches 8.24%.</td></tr>
+      <tr><td>Prices / plain numbers</td><td>±0.5% relative after thousands-separator strip.</td></tr>
+      <tr><td>Money with units</td><td>normalize $1.2B ≡ 1,200M ≡ 1.2e9, then ±1%.</td></tr>
+      <tr><td>Dates</td><td>exact after ISO normalization (“Jul 9” ⇒ runDate year assumed).</td></tr>
+      <tr><td>Tickers</td><td>exact after uppercase + $-strip; must exist in instrument.</td></tr>
+      <tr><td>Counts (N, “62 of 110”)</td><td>exact integers.</td></tr>
+      <tr><td>Verdict</td><td>each unmatched entity ⇒ inline flag on that sentence. Any flagged number in the Today’s-focus block, or &gt;2 flags total ⇒ briefing status “held”: publish scans with the “briefing unavailable” banner. All decisions recorded in verificationJson.</td></tr>
+    </tbody>
+  </table>
+
+  <h3>F · Quant definitions &amp; constants</h3>
+  <ul>
+    <li><strong>Universe:</strong> US common stocks + ETFs on NYSE/Nasdaq/AMEX, no OTC; active ≈5–6k
+    symbols; delisted retained. <strong>Buckets</strong> for reference classes: “US large/mid” = top
+    1,000 by 63-day median dollar volume; “US small” = rest with price ≥ $5; sub-$5 excluded from
+    cards (lottery flag territory). Bucket membership is <strong>point-in-time</strong>: computed
+    from the 63-day window ending on the event date, so historical signals classify by what the
+    symbol was <em>then</em> — never by today’s bucket (lookahead guard, P4 tests).</li>
+    <li><strong>Indicators v1</strong> (Polars expressions): SMA 20/50/200 · EMA 12/26 · RSI 14
+    (Wilder) · MACD 12-26-9 · ATR 14 · Bollinger 20/2 · RVOL 20 (volume ÷ 20-day mean) ·
+    52-week-high distance · gap % (open vs prior close) · returns 1/5/20d.
+    <strong>Test approach:</strong> a frozen 30-bar synthetic series checked into
+    <code>pipeline/tests/toy_series.py</code>; expected values generated ONCE via
+    pandas-ta-classic (the independent oracle), frozen into the test, and cross-checked weekly in
+    CI against the oracle — regression + independence, no hand arithmetic to get wrong.</li>
+    <li><strong>Detectors v1</strong> (all evaluated on adjusted daily bars; signal shifted +1 bar
+    before any forward-return join): golden-cross = SMA50 crosses above SMA200 (both defined ≥200
+    bars) · 52w-proximity = close enters within 2% of 252-day high · gap-with-catalyst = |gap| ≥ 3%
+    AND same-day catalyst match · RSI-extreme = RSI14 crosses 30 up or 70 down · unusual-volume =
+    RVOL ≥ 2.5 AND |ret_1| ≥ 2% · breadth-regime = %-above-50DMA (universe) crosses 50% either way
+    (market-level card). Horizons: 5/10/20 trading days. Ledger grades + decay stamps per
+    pattern_meta seed (golden-cross: weak, BLL 1992/STW 1999; 52w-high: mixed, George–Hwang 2004;
+    gap: folklore-adjacent “continuation, not fill”; RSI: weak; volume: mixed, GKM 2001; breadth:
+    context-only) — copy the wording from Research Report Part 4.</li>
+    <li><strong>Scan presets v1</strong> (P1; criteria strings render verbatim on <code>/scans</code>;
+    all five write signal_log with horizonDays 10 — stated rates stay null until P4):
+    <code>unusual-volume</code> RVOL20 ≥ 2.5 AND |1-day return| ≥ 2% [grade: mixed] ·
+    <code>near-52w-high</code> close within 2% of 252-day high, large/mid only [mixed] ·
+    <code>gap-3plus</code> |open gap| ≥ 3% vs prior close [folklore-adjacent — “continuation, not
+    fill”] · <code>golden-cross-fresh</code> SMA50 crossed above SMA200 within the last 2 sessions
+    [weak] · <code>rsi-extreme</code> RSI14 crossed 30↑ or 70↓ [weak]. Same keys and thresholds as
+    the P4 detectors — one definition, two consumers.</li>
+    <li><strong>Tier bands</strong> (tendency tiers, from the RR Part 9 lexicon): win rate
+    &lt; 50% or CI spanning the baseline ⇒ <strong>weak</strong> · 50–58% ⇒ weak · 58–70% ⇒
+    moderate · &gt; 70% ⇒ strong — and the cap rule: a CI that spans the always-up baseline caps
+    the tier at weak regardless of the point estimate. Constants in <code>lib/constants.ts</code>,
+    tested at P4.</li>
+    <li><strong>Weakener seeds</strong> (per-pattern checkboxes on SetupCard; 2–3 each, extend via
+    structural decision only): golden-cross — extended &gt; 15% above 200DMA · signal against the
+    breadth regime; 52w-high — low RVOL on the approach · earnings inside the horizon window;
+    gap-with-catalyst — gap already &gt; 8% (chase risk) · catalyst is analyst-note-only;
+    RSI-extreme — trend strongly against the reversion · earnings inside window; unusual-volume —
+    no catalyst matched · sub-$10 price (lottery adjacency); breadth-regime — whipsaw (3rd cross
+    in 20 sessions).</li>
+    <li><strong>Lottery flag:</strong> price &lt; $5 OR (top-decile 60-day skewness AND price &lt;
+    $10) ⇒ flag on movers/scans rows.</li>
+    <li><strong>Vol bands:</strong> empirical quantiles of overlapping h-day returns over the
+    trailing 500 sessions; bands at 50% (p25–p75) and 80% (p10–p90); label per copy deck; horizons
+    5/10/20 only.</li>
+    <li><strong>Paper fills:</strong> next-session open ± half of a per-bucket <em>at-open</em>
+    spread estimate (large/mid 20bp, small 60bp — seeded from the Research Report §6’s
+    at-the-open figures; the open is the ritual’s realistic fill window and is wider than
+    mid-session) + 5bp slippage; constants live in <code>lib/constants.ts</code> +
+    <code>pipeline/config.py</code>, single source each, documented in the UI’s arithmetic line;
+    changing them is structural.</li>
+    <li><strong>Cooling-off window:</strong> paper order on a symbol &lt; 30 minutes after viewing a
+    fired signal on it ⇒ interstitial (educational copy, proceed/cancel). Frequency mirror: &gt; 5
+    paper round-trips/week ⇒ weekly note with the cost arithmetic.</li>
+  </ul>
+
+  <h3>G · LLM prompts &amp; schemas (briefing/)</h3>
+  <pre># Stage A — extraction (per article; model MODEL_EXTRACT; Batch API; structured output)
+system: You extract facts from ONE news article for a financial briefing. Use ONLY the article
+  text. No outside knowledge. No opinions, no advice, no predictions. If the article states a
+  number, copy it exactly. Output must satisfy the JSON schema.
+schema: { doc_id, headline_neutral (≤120 chars, declarative), summary (≤250 tokens, mechanical
+  voice), tickers[], event_type (earnings|guidance|analyst|ma|fda|macro|legal|product|other),
+  sentiment (-1..1 by article language, not your view), key_numbers[{value_str, what}],
+  quote? (≤160 chars) } — every field grounded in the article; citations implicit via doc_id.
+
+# Stage B — synthesis (one call; model MODEL_SYNTH; sync; structured output)
+system: You write the evening briefing for ONE reader, a beginner, in mechanical third person.
+  Inputs: (1) structured extracts with doc_ids; (2) a computed-stats table. RULES: every claim
+  cites a doc_id or stat_id in its citations array; use provided numbers VERBATIM — never compute,
+  never round differently; no directional predictions; no advice verbs (buy/sell/should);
+  uncertainty language only from the provided lexicon; “no clear reason” is the required statement
+  when no catalyst was matched; ≤5 items; each item fills the labeled slots.
+schema: { today_focus {headline, body, citations[], no_edge_flag}, items[≤5]{what_happened,
+  why_it_matters, by_the_numbers, yes_but, citations[]}, calendar_notes[], learning_link_slug }
+Failure handling: schema violation ⇒ one retry with error appended; second failure ⇒ status
+"held". Verified by Appendix E gate AFTER generation regardless. learning_link_slug is
+validated against the Academy lesson manifest at publish — unmatched ⇒ doorway omitted +
+recorded in verificationJson (manifest empty until P5, so early briefs carry no link).</pre>
+
+  <h3>H · Academy launch lessons (25 — slugs are contractual)</h3>
+  <pre>M0 how-this-app-explains-itself · reading-a-base-rate-sentence · the-probability-lexicon ·
+   the-track-record-page
+M1 nyse-nasdaq-and-tickers · the-us-trading-day · order-types-and-the-spread · reading-the-macro-pulse
+M2 what-a-round-trip-costs · slippage-taxes-and-drag · the-cost-mirror
+M3 position-sizing-before-patterns · stops-and-invalidation · expectancy-and-drawdown-math ·
+   why-base-rates-beat-anecdotes            # completing M3 lifts the pattern-lesson soft gate
+M4 candles-honestly · support-resistance-and-round-numbers · volume-and-rvol · gaps-what-the-data-says
+M5 moving-averages-and-the-golden-cross · rsi-and-oscillators · the-myth-vs-evidence-ledger ·
+   how-our-base-rates-are-computed
+M6 the-four-behavioral-taxes · journaling-and-the-pm-scorecard
+Each lesson: 3–5 min · cites its Research Report Part 4/5/6 rows · evidence grade shown ·
+2–3 retrieval questions in frontmatter · mechanical-honest voice · no live prices.</pre>
+
+  <h3>I · Glossary seed terms (40)</h3>
+  <p>ticker · bid–ask spread · market order · limit order · pre-market · after-hours · gap · RVOL ·
+  breadth · advance/decline · 50-day average · 200-day average · golden cross · RSI · MACD · ATR ·
+  Bollinger bands · 52-week high · base rate · reference class · confidence interval · Wilson
+  interval · always-up baseline · tendency tiers · evidence grade · folklore · decay stamp ·
+  implied move · bmo/amc · FOMC · CPI · jobs report · VIX · drawdown · expectancy · half-Kelly ·
+  Brier score · calibration · paper trading · slippage.</p>
+
+  <h3>J · Copy deck (canonical strings — use verbatim; the full deck lives at <code>app/lib/copy.ts</code>)</h3>
+  <table class="rowhead">
+    <thead><tr><th style="width:40mm">Key</th><th>String</th></tr></thead>
+    <tbody>
+      <tr><td>baseRate.sentence</td><td>“In the past {years} years, this pattern appeared {n} times on {refClass}. Price was higher {h} trading days later in {wins} of {n} cases ({pct}).”</td></tr>
+      <tr><td>baseRate.insufficient</td><td>“Insufficient history (N = {n}) — treat as anecdote.”</td></tr>
+      <tr><td>baseRate.baseline</td><td>“Unconditional {h}-day up-rate ≈ {pct} — read this against that baseline.”</td></tr>
+      <tr><td>tier.actions</td><td>strong → “worth a closer look” · moderate → “note it; check the weakeners” · weak → “watch only” (bands: Appendix F)</td></tr>
+      <tr><td>volband.label</td><td>“In the past, 8 in 10 {h}-day paths from here stayed inside this range.”</td></tr>
+      <tr><td>volband.caveat</td><td>“Ranges assume the recent regime holds — sudden stress can exceed them.”</td></tr>
+      <tr><td>mover.noNews</td><td>“No news found — most moves this size have no identifiable cause; likely noise.”</td></tr>
+      <tr><td>calendar.noEdge</td><td>“No clear edge either way — that is a valid outcome.”</td></tr>
+      <tr><td>brief.unavailable</td><td>“Briefing unavailable tonight — scan results below are complete and verified.”</td></tr>
+      <tr><td>offline.ribbon</td><td>“Offline — showing the last synced briefing ({date}).”</td></tr>
+      <tr><td>scope.line</td><td>“A tendency, not a prediction.”</td></tr>
+      <tr><td>decision.disclaimer</td><td>“Historical tendency — verify before acting.”</td></tr>
+      <tr><td>coolingOff.body</td><td>“You are entering a paper trade within {min} minutes of seeing this signal. The historical base rate is {rate} with the interval shown; costs are certain. Proceed, or sit with it until tomorrow’s brief?”</td></tr>
+      <tr><td>brier.anchor</td><td>“0.25 = coin flip”</td></tr>
+      <tr><td>attribution.fred</td><td>“This product uses the FRED® API but is not endorsed or certified by the Federal Reserve Bank of St. Louis.”</td></tr>
+      <tr><td>degraded.source</td><td>“{source} unavailable tonight — this section is running without it.”</td></tr>
+      <tr><td>save.offline</td><td>“Reconnect to save.”</td></tr>
+      <tr><td>update.ready</td><td>“Updated — refresh when convenient.”</td></tr>
+    </tbody>
+  </table>
+
+  <h3>K · CLAUDE.md template (initialize verbatim at P0, then maintain)</h3>
+  <pre># myStockMarket — constitution
+Single-user US-equities command center + learning hub. Next.js 16 app (app/) + Python pipeline
+(pipeline/) + two GitHub Actions jobs. Executor: Claude Opus 4.8. Contract: DEVELOPMENT-PLAN.md.
+Authority: RR Part 8/9 &gt; Blueprint &gt; plan &gt; DECISIONS.md &gt; judgment. Evidence chapters win.
+
+## Non-negotiables (full list: plan §1.5 — re-read weekly)
+No directional forecasts; vol bands ≤ 20d + regime caveat · base rates = natural frequency + N +
+Wilson CI, N-gated display · CI spanning always-up baseline ⇒ tier weak · new patterns need
+t &gt; 3.0 or a ledger grade · decay stamps · folklore labeled · insert-only
+signal_log/resolution, misses public · no trending surfaces, no gamification · movers need a
+catalyst or the noise line · LLM narrates, never computes; deterministic gate blocks unverified
+numbers · Desk/Academy separated, doorways + return rails · calm tech: no motion on
+probability/money visuals, timestamps everywhere · mechanical voice (copy.ts) · paper-first ·
+login wall always (licensing) · TDD per plan §6.2.
+
+## Commands
+app:      npm run dev | test | typecheck | lint | build     e2e: npx playwright test
+pipeline: uv run pytest      jobs: uv run python -m jobs.job_a (fixtures: MSM_FIXTURES=1)
+db:       npx prisma migrate dev · npx prisma db seed        deploy: git push (Vercel auto)
+
+## Conventions
+Conventional commits · TDD-first list in plan §6.2 · numbers render ONLY via components/BaseRate
+and lib/format · all copy from lib/copy.ts · tokens from globals.css @theme (plan §3) — never
+ad-hoc hex · timestamps via lib/time.ts · adapters follow .claude/skills/new-provider-adapter.
+
+## Session ritual
+Start: git pull → read this + PROGRESS.md + LESSONS.md → diff DECISIONS.md (any non-[claude]
+line = user veto, rank 2.5 — honor it FIRST) → run tests → announce checkpoint.
+End: update PROGRESS.md → log DECISIONS/LESSONS ([claude]-marked) → push.
+Phase exit: plan §6.4 gate → tag.
+
+## Design one-liner
+“Broadsheet Terminal”: ink, hairlines, 2px radii, mono numerals, one hero figure, two rooms
+(cool Desk / warm Academy). If it could be a default template, it is wrong. Checklist: plan §3.10.</pre>
+
+  <p class="footnote">Development Plan compiled July 2026 for executor Claude Opus 4.8; revised
+  after a five-lens adversarial review (stall-hunter, hidden-global-decision, PWA, design-collision,
+  blueprint-fidelity). Companions: <em>Research-Report.pdf</em> (evidence + product) and
+  <em>Build-Blueprint.pdf</em> (architecture + roadmap). The markdown working copy at
+  <code>DEVELOPMENT-PLAN.md</code> is generated from these sources — regenerate with
+  <code>docs/src/build-plan-md.py</code> after edits.</p>
+</section>
+
+</body>
+</html>

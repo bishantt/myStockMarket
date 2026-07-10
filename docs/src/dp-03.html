@@ -1,0 +1,256 @@
+<!-- ================= PART 4 ================= -->
+<section class="part">
+  <div class="part-head">
+    <div class="kicker">Part 4</div>
+    <h2>App architecture &amp; conventions</h2>
+    <p class="dek">The Next.js side, pinned: routes, data flow, the auth deviation, fonts, caching,
+    and the performance budgets the phases are tested against.</p>
+  </div>
+
+  <h3>4.1 &nbsp;Pins</h3>
+  <p>Node 24 LTS · Next.js 16 (App Router; <code>proxy.ts</code>) · TypeScript strict ·
+  Tailwind v4 (tokens via <code>@theme</code> in <code>app/globals.css</code>) · Radix primitives
+  (Dialog, Popover, Tabs, Checkbox) hand-styled — shadcn’s visual layer is not used ·
+  Prisma 6 · zod at every JSON boundary · lightweight-charts v5 (hand-rolled
+  <code>useLightweightChart</code> hook) · Recharts 3 (sparklines/small multiples only) ·
+  Serwist (service worker) · bcryptjs + jose (auth) · Vitest + Testing Library ·
+  Playwright (+ @axe-core/playwright) · npm (app) · uv (pipeline). Versions: latest stable at
+  install time; pin via lockfiles; record exact versions in DECISIONS.md at P0.</p>
+
+  <h3>4.2 &nbsp;Route map (authoritative)</h3>
+  <table class="rowhead">
+    <thead><tr><th style="width:52mm">Route</th><th>Renders</th></tr></thead>
+    <tbody>
+      <tr><td><code>/</code> (desk)</td><td>The one-screen Desk / phone ritual column: modules 1–8, rail host, source-status footer.</td></tr>
+      <tr><td><code>/ticker/[symbol]</code></td><td>Drill level 3: full chart (candles + volume + RSI panes, vol band), signal history, relative-strength (P6+), news timeline, breadcrumb + Back to Desk.</td></tr>
+      <tr><td><code>/track-record</code></td><td>Calibration chart, Brier figure, resolved log (app flags + user forecasts), banner state for underperforming families.</td></tr>
+      <tr><td><code>/scans</code></td><td>Preset list with fully visible criteria, each line glossary-linked; results table.</td></tr>
+      <tr><td><code>/settings</code></td><td>Watchlist management, install-app row, dark-mode toggle (P6), logout. (Desk route group — the group adds no URL segment.)</td></tr>
+      <tr><td><code>/academy</code> · <code>/academy/[module]</code> · <code>/academy/[module]/[lesson]</code></td><td>Curriculum map (M0–M6, soft-gate states) · module page · MDX lesson with glossary popovers and “See this live”.</td></tr>
+      <tr><td><code>/academy/glossary</code> · <code>/academy/review</code> · <code>/academy/journal</code></td><td>Term index · Leitner queue (max 5/day) · journal + forecast entries with resolution states.</td></tr>
+      <tr><td><code>/paper</code> (P6)</td><td>Ledger, entry form (cooling-off interstitial), cost mirror, frequency mirror.</td></tr>
+      <tr><td><code>/login</code> · <code>/offline</code> · <code>/styleguide</code></td><td>Editorial login card · offline fallback (cached) · living design spec (every token/component; dev + CI only, excluded from prod nav but kept behind auth).</td></tr>
+      <tr><td><code>/api/revalidate</code></td><td>POST, <code>Authorization: Bearer $CRON_SECRET</code> → <code>revalidateTag('morning')</code>.</td></tr>
+      <tr><td><code>/api/morning</code></td><td>GET (cookie-authed) → the serialized <code>lib/morning.ts</code> payload; exists solely for the SW’s offline-morning cache (§5.2). Unauthed → 401 JSON, never a redirect.</td></tr>
+    </tbody>
+  </table>
+
+  <h3>4.3 &nbsp;Data flow rules</h3>
+  <ul>
+    <li><strong>Server components read; server actions write user-state only</strong>
+    (watchlist_item, journal_entry, concept_state, paper_trade, weakener checks). No client
+    fetching libraries; no global state manager. Client components receive serialized props.</li>
+    <li><strong>Morning payload:</strong> (named for the session it prepares — it publishes the
+    evening before; the <code>morning</code> identifiers below are contractual and stay) a single
+    <code>lib/morning.ts</code> loader assembles the
+    Desk’s data (briefing, scans, cards, calendar, movers, quotes, pipeline status) in one place,
+    tagged <code>'morning'</code> for cache revalidation, zod-parsed (briefing JSON especially).
+    The same loader serializes to the client for SW caching (§5.3).</li>
+    <li><strong>Numbers pipeline-side only:</strong> the app never computes a base rate, CI, or
+    indicator — it renders stored values. The one shared renderer
+    <code>components/BaseRate.tsx</code> implements the N-gated precision rules and the canonical
+    sentence; nothing else may format a base rate.</li>
+    <li><strong>Timestamps:</strong> store UTC; display America/New_York everywhere — the user
+    lives on market time (“as of 16:05 ET”). <code>lib/time.ts</code> owns all formatting,
+    including the EDT/EST abbreviation and DST-boundary behavior; no ad-hoc date code.</li>
+  </ul>
+
+  <h3>4.4 &nbsp;Auth (declared deviation #1 from Blueprint §7.1)</h3>
+  <p><strong>Decision:</strong> replace HTTP Basic Auth with a single-user cookie session — going
+  further than the Blueprint’s named step-up (it sanctions a single-credential login as the
+  eventual upgrade; this plan ships it at P0, hand-rolled rather than via Auth.js, because one
+  user + one credential does not justify a framework dependency). <strong>Why now:</strong> an
+  installed standalone PWA with a service worker interacts badly with Basic-Auth 401 challenges
+  (re-prompt loops, SW fetch failures, ugly install experience). <strong>Spec:</strong>
+  <code>/login</code> posts to a server action; verify against <code>AUTH_USER</code> +
+  <code>AUTH_PASS_HASH</code> (bcryptjs, cost 12; hash generated by
+  <code>app/scripts/hash-password.mjs</code>); on success issue a <code>jose</code>-signed JWT in an
+  httpOnly Secure SameSite=Lax cookie, 30-day expiry, secret <code>AUTH_COOKIE_SECRET</code>.
+  <strong>Sliding renewal:</strong> <code>proxy.ts</code> re-issues the cookie whenever &lt; 23 days
+  of validity remain, so daily use never hits a hard expiry (an idle month still lands on
+  <code>/login</code>, whose shell is precached — §5.2). <strong>Exemptions</strong> (everything
+  else requires the cookie): <code>/login</code>, <code>/api/revalidate</code> (bearer-gated),
+  <code>/manifest.webmanifest</code>, <code>/sw.js</code>, <code>/offline</code>,
+  <code>/_next/*</code> static, and the icon files (<code>/icons/*</code>,
+  <code>/apple-touch-icon.png</code>, <code>/favicon.ico</code>, <code>/mark.svg</code>).
+  <strong>API vs pages:</strong> unauthenticated <code>/api/*</code> gets <code>401</code> JSON —
+  never a 3xx — so the service worker can recognize auth failure instead of caching a redirect
+  (§5.2); unauthenticated pages redirect to <code>/login</code>. Failed-login throttle: 1s
+  constant-time compare+delay (primary defense) plus a best-effort 10/hour in-memory counter —
+  best-effort because serverless instances don’t share memory; acceptable for a single-user app
+  behind an unguessable username, logged as such. Logout clears the cookie <em>and</em> runtime
+  caches (§5.2). The licensing wall (Blueprint Part 4) is preserved: all data routes remain behind
+  the cookie.</p>
+
+  <h3>4.5 &nbsp;Fonts, caching, performance budgets</h3>
+  <ul>
+    <li>Fonts via <code>next/font</code> (self-hosted at build, same-origin, precacheable):
+    Archivo variable, Newsreader variable, IBM Plex Mono 400/500/600 — subsets latin; total budget
+    ≤ 320KB woff2. <code>display: swap</code>; fallback stacks defined in tokens.</li>
+    <li>Rendering: dynamic RSC everywhere (single user; DB reads are cheap); fetches wrapped with
+    <code>next: { tags: ['morning'] }</code> where applicable so the pipeline’s revalidate call is
+    meaningful. No ISR complexity in v1. Two exceptions: <code>/offline</code> and
+    <code>/login</code> export <code>dynamic = 'force-static'</code> so a concrete HTML asset
+    exists for the SW to precache (§5.2).</li>
+    <li><strong>Budgets (enforced at each phase exit):</strong> first-load JS on <code>/</code>
+    ≤ 200KB gz (charts and Recharts lazy-loaded per module via <code>next/dynamic</code>); LCP
+    ≤ 2.5s on Moto-G-class 4G (Lighthouse mobile); CLS &lt; 0.05 (reserve chart heights); route
+    transitions render server-fresh without spinners (quiet “—” placeholders only).</li>
+    <li>Images: none decorative; icons are inline SVG; app icons static files.</li>
+  </ul>
+</section>
+
+<!-- ================= PART 5 ================= -->
+<section class="part">
+  <div class="part-head">
+    <div class="kicker">Part 5</div>
+    <h2>PWA specification</h2>
+    <p class="dek">First-class target, specified concretely. The goal state: installed on the
+    user’s phone home screen, opening instantly whenever it is reached for — the evening read or
+    the pre-open glance, online or offline — always labeled with exactly how fresh its data
+    is.</p>
+  </div>
+
+  <h3>5.1 &nbsp;Manifest (<code>app/manifest.ts</code>)</h3>
+  <pre>name: "myStockMarket"        short_name: "Desk"         id: "/"
+start_url: "/"               display: "standalone"      orientation: "portrait"
+background_color: "#F4F5F3"  theme_color: "#F4F5F3"     description: "US-market command center &amp; learning hub"
+icons: 192/512 png + 512 maskable (safe zone 80%) + 96 monochrome
+shortcuts: [{name:"Track record", url:"/track-record"}, {name:"Review queue", url:"/academy/review"}]</pre>
+  <p><code>start_url</code> is plain <code>/</code> — no <code>?source=pwa</code> tracking param
+  (it would fork the SW’s single-entry page cache; installed-state detection uses the
+  <code>display-mode: standalone</code> media query instead). Manifest <code>theme_color</code> is
+  a static install-time value (light); the <em>live</em> browser/status-bar color comes from
+  Next’s <code>viewport.themeColor</code> exported per layout — Desk <code>#F4F5F3</code>, Academy
+  <code>#FAF6EF</code>, with dark-mode media variants at P6 (§8, P6 step 6). Icons generated at P0
+  by <code>app/scripts/icons.mjs</code> (sharp) from <code>public/mark.svg</code> — the
+  three-candle tick mark from the document covers, ink on bone; maskable variant adds 20% padding.
+  iOS: <code>apple-touch-icon</code> 180px,
+  <code>apple-mobile-web-app-status-bar-style: default</code>, and a “viewport-fit=cover” +
+  safe-area-inset padding on the sticky bar and bottom sheets.</p>
+
+  <h3>5.2 &nbsp;Service worker (Serwist)</h3>
+  <table class="rowhead">
+    <thead><tr><th style="width:44mm">Concern</th><th>Spec</th></tr></thead>
+    <tbody>
+      <tr><td>Precache</td><td>Build assets (Serwist injected manifest) + fonts + the mark/icons, plus <code>/offline</code> and <code>/login</code> via <code>additionalPrecacheEntries</code> — both routes are <code>force-static</code> (§4.5) precisely so this works; <code>/offline</code> is also registered as Serwist’s document <code>fallbacks</code> entry.</td></tr>
+      <tr><td>Pages (navigations)</td><td>NetworkFirst, 3s timeout → cache → <code>/offline</code> fallback. Full-document navigations only — RSC flight requests (<code>?_rsc=</code>) pass through uncached (a client-side transition that fails offline falls back to a full navigation, which the SW does serve). Authenticated pages are runtime-cached only after first successful load (never at build).</td></tr>
+      <tr><td>Morning payload</td><td>The Desk page caches with its HTML; additionally <code>/api/morning</code> (§4.2) returns the serialized payload — StaleWhileRevalidate, single-entry cache <code>morning-v1</code>, so the ritual column can render the last synced briefing offline.</td></tr>
+      <tr><td>Static/fonts/icons</td><td>CacheFirst, 1 year, revisioned by build.</td></tr>
+      <tr><td><strong>Cache write rules</strong></td><td>A shared <code>cacheWillUpdate</code> plugin on every runtime strategy: cache a response only if <code>status === 200</code>, <code>response.redirected === false</code>, and the final URL is not <code>/login</code>. This is the guard against the expired-cookie failure mode — without it, a 30-day-old cookie turns every cached page and the morning payload into a copy of the login screen. Unit-drilled in the e2e suite (§5.5.2).</td></tr>
+      <tr><td>Never cached</td><td><code>/api/revalidate</code>, server actions (POST), login POST, any non-GET.</td></tr>
+      <tr><td>Update flow</td><td>New SW installs in background and waits (no automatic skipWaiting interrupt); a waiting worker surfaces the footer line “Updated — refresh when convenient”. Clicking it posts <code>SKIP_WAITING</code> to the waiting worker and reloads on <code>controllerchange</code>; otherwise the new worker activates when the app fully closes (all tabs/PWA closed — <em>not</em> merely on next navigation). Calm — no toast, no modal.</td></tr>
+      <tr><td>Logout</td><td>Server action response triggers client <code>caches.delete('morning-v1')</code> + pages cache purge, then redirect to <code>/login</code>.</td></tr>
+    </tbody>
+  </table>
+
+  <h3>5.3 &nbsp;Offline honesty (the guardrail applied to the PWA)</h3>
+  <p>Offline is a first-class, honest state — not an apology. Every module already renders its
+  “as of” timestamp (SectionMasthead), so stale data self-identifies. Additions: the OfflineRibbon
+  (“Offline — showing the last synced briefing (Jul 9)”) mounts on either of two concrete signals:
+  (a) <code>navigator.onLine === false</code> (plus online/offline listeners), or (b) the morning
+  payload was served from SW cache — detected via an <code>X-SW-Source: cache</code> header the SW
+  strategy stamps on cache-served responses, with the payload’s own <code>runDate</code> ≠ today
+  as the belt-and-braces check. Interactive writes (watchlist, journal, checkboxes, paper trades)
+  disable with a quiet inline note “Reconnect to save” — <strong>no offline write queue in
+  v1</strong> (single user, evening-read ritual; queuing risks silent divergence — logged as
+  backlog).</p>
+
+  <h3>5.4 &nbsp;Install UX</h3>
+  <p>No nagging banner. Capture <code>beforeinstallprompt</code>; surface an “Install app” row in
+  <code>/settings</code> and a one-line footer link — both call <code>prompt()</code>. On iOS
+  (no BIP event): the same row opens a small popover with the two-step Share → “Add to Home Screen”
+  instruction. Detect installed state (<code>display-mode: standalone</code>) and hide the row.</p>
+
+  <h3>5.5 &nbsp;PWA acceptance (tested at P1, re-tested every phase exit)</h3>
+  <p class="mini" style="margin-bottom:2mm">Lighthouse dropped its PWA category in v12 (2024) —
+  installability and SW behavior are therefore asserted directly in Playwright, not scored.
+  Lighthouse remains in the gate for performance/a11y budgets only (§6.4).</p>
+  <ol>
+    <li><strong>Installability (Playwright):</strong> <code>/manifest.webmanifest</code> returns
+    200 with required members (name, id, start_url, standalone display, 192+512 icons, maskable);
+    icon URLs all resolve 200 <em>without</em> the auth cookie; SW registers on <code>/</code> and
+    on <code>/login</code> (pre-auth, so update checks run even when logged out) and reaches
+    <code>activated</code>; <code>/offline</code> and <code>/login</code> present in the precache
+    manifest.</li>
+    <li><strong>Offline behavior (Playwright, Chromium — the one engine whose SW+offline emulation
+    Playwright supports; note in the suite):</strong> <code>context.setOffline(true)</code> after a
+    logged-in Desk visit → reload → ritual column renders the last synced briefing + OfflineRibbon +
+    timestamps; a lesson visited before offline renders from cache (full <code>page.goto</code>,
+    not a client-side transition — §5.2 scopes offline pages to full documents);
+    <strong>expired-cookie drill:</strong> clear the cookie, load twice online (redirects land on
+    <code>/login</code>, uncached by the cacheWillUpdate guard), re-login, go offline → Desk still
+    renders the briefing, not a cached login page.</li>
+    <li>Manual device matrix (once per phase, logged in PROGRESS.md): Android Chrome install +
+    standalone auth + offline + <strong>back-gesture closes sheets without exiting</strong>; iOS
+    Safari A2HS + standalone auth persistence (cookie survives) + safe-area rendering. Emulator
+    acceptable when a device is unavailable; note which.</li>
+    <li>SW update drill: deploy a trivial change → footer “Updated — refresh when convenient”
+    appears → clicking it activates the new worker (SKIP_WAITING → controllerchange reload) →
+    new build serves.</li>
+  </ol>
+</section>
+
+<!-- ================= PART 6 ================= -->
+<section class="part">
+  <div class="part-head">
+    <div class="kicker">Part 6</div>
+    <h2>Testing &amp; TDD protocol</h2>
+    <p class="dek">The Blueprint commits to TDD; this part makes it mechanical: what always gets a
+    failing test first, which layer owns which test, and the commands that gate every phase exit.</p>
+  </div>
+
+  <h3>6.1 &nbsp;Tooling by layer</h3>
+  <table class="rowhead">
+    <thead><tr><th style="width:40mm">Layer</th><th>Tooling &amp; conventions</th></tr></thead>
+    <tbody>
+      <tr><td>Pipeline (Python)</td><td><code>uv run pytest</code>; fixtures = recorded JSON per adapter under <code>pipeline/adapters/fixtures/</code>, injected via <code>httpx.MockTransport</code> (no live keys in tests, ever); indicator tests vs the toy series (Appendix F) + weekly CI cross-check vs pandas-ta-classic as an independent oracle; base-rate lookahead guard = a test that FAILS if the one-bar shift is removed; publish tested against dockerized Postgres (compose file in repo).</td></tr>
+      <tr><td>App unit (Vitest)</td><td>Colocated <code>*.test.ts(x)</code>. Mandatory suites: BaseRate renderer (all three N regimes, CI text, baseline cap), tier-cap logic, Wilson CI (textbook cases: 62/110 → [47%, 65%]; 60/100 → [50.2%, 69.1%]), copy-deck strings render verbatim, time formatting (ET, including cases on both sides of the March/November DST transitions), zod parsers reject malformed briefing JSON.</td></tr>
+      <tr><td>E2E (Playwright)</td><td><code>app/e2e/</code>; runs against <code>next build + start</code> with the seeded database (<code>prisma/seed.ts</code> creates one deterministic synthetic morning — same seed drives local dev). Journeys listed in 6.3. Includes @axe-core scan of Desk, ticker, lesson, track record (no serious/critical violations).</td></tr>
+      <tr><td>Visual regression</td><td>Playwright screenshots of <code>/styleguide</code>, Desk (1366×768 + 390×844), one lesson, track record — compared with <code>maxDiffPixelRatio: 0.01</code>; update baselines only via the <code>visual-regression-update</code> skill with a logged reason.</td></tr>
+      <tr><td>CI (<code>ci.yml</code>)</td><td>On push: typecheck, lint, Vitest, pytest (fixtures), build; Playwright + Lighthouse CI on the P-exit tag. Red CI blocks phase exit — no exceptions.</td></tr>
+    </tbody>
+  </table>
+
+  <h3>6.2 &nbsp;The always-test-first list</h3>
+  <p>Write the failing test before the implementation for: every indicator; every pattern detector
+  (including its one-bar-shift guard); Wilson CI; the N-gated display rules; the tier cap; the
+  verification gate (seeded-fake-number test); the publish transaction (mid-publish read sees the
+  old generation); signal_log idempotency (rerun produces zero duplicates); the resolver; the
+  cooling-off trigger; the half-Kelly cap (property test: suggestion ≤ half-Kelly for random
+  inputs); auth (wrong password, cookie tamper, protected-route redirect); the offline briefing
+  render. UI layout/styling may be built visually against the styleguide — pixels are verified by
+  the visual-regression suite instead.</p>
+
+  <h3>6.3 &nbsp;E2E journeys (the product, as tests)</h3>
+  <ol>
+    <li><strong>The daily ritual:</strong> login → Desk renders modules 1–8 in order → every
+    module shows an “as of” timestamp → brief’s Today’s-focus present (“no clear edge” state also
+    covered by seed variant). <em>P1 variant</em> asserts the seeded scans/movers/calendar modules
+    plus placeholder mastheads (“—” bodies) for the not-yet-built ones; the full assertion set
+    lands with the briefing at P3.</li>
+    <li><strong>Drill &amp; return:</strong> click watchlist ticker → rail opens (no route change)
+    → Esc → scroll + selection restored; “Open full view” → ticker route → Back to Desk restores
+    state; phone viewport: same via bottom sheet.</li>
+    <li><strong>Doorways:</strong> setup card “Learn” → lesson with ReturnRail → Return restores
+    Desk exactly; lesson “See this live” → Desk anchored.</li>
+    <li><strong>Honesty rules:</strong> N&lt;30 card shows suppression text and no percentage;
+    CI-spanning-baseline card shows WEAK tier; mover without news shows the noise line; folklore
+    preset carries its label; brief with a gate-flagged line renders the flag.</li>
+    <li><strong>Offline PWA:</strong> per §5.5.</li>
+    <li><strong>Review queue:</strong> never exceeds 5; answering updates box/due date; pattern
+    lesson before M3 completion shows the soft gate.</li>
+    <li><strong>Paper desk (P6):</strong> order within X minutes of a signal → cooling-off
+    interstitial; cost mirror equals spread×turnover arithmetic on the seeded ledger; forecast
+    journal entry resolves and appears on the track record.</li>
+  </ol>
+
+  <h3>6.4 &nbsp;Phase-exit gate (run, in order, every phase)</h3>
+  <pre>1  npm run typecheck && npm run lint && npm test          # app unit
+2  uv run pytest                                          # pipeline
+3  npm run build && npx playwright test                   # e2e + axe + visual + PWA (§5.5)
+4  npx lhci autorun — mobile, / — perf+a11y budgets only; authenticated via a
+   CI-minted session cookie passed in lhci extraHeaders (PWA asserts live in step 3)
+5  Anti-drift checklist (§3.10) against fresh screenshots
+6  Update PROGRESS.md · append DECISIONS/LESSONS · git tag phase-N · push</pre>
+</section>

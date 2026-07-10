@@ -1,0 +1,1394 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>myStockMarket — Research Report</title>
+<link rel="stylesheet" href="print.css">
+</head>
+<body>
+
+<!-- ================= COVER ================= -->
+<div class="cover">
+  <div class="brand">
+    <svg class="tick" viewBox="0 0 20 20" aria-hidden="true">
+      <rect x="2.5" y="7" width="3.6" height="7.5" rx="1" fill="#2a78d6"/>
+      <line x1="4.3" y1="4.5" x2="4.3" y2="16.8" stroke="#2a78d6" stroke-width="1.1"/>
+      <rect x="8.2" y="4" width="3.6" height="8" rx="1" fill="#c3c2b7"/>
+      <line x1="10" y1="2" x2="10" y2="14.5" stroke="#c3c2b7" stroke-width="1.1"/>
+      <rect x="13.9" y="9" width="3.6" height="6.8" rx="1" fill="#2a78d6"/>
+      <line x1="15.7" y1="6.5" x2="15.7" y2="18" stroke="#2a78d6" stroke-width="1.1"/>
+    </svg>
+    <span class="doc-title-string">myStockMarket · Research Report</span>
+  </div>
+
+  <div class="doc-kind">Research Report · 1 of 2</div>
+  <h1>What Markets Allow —<br>and What to Build Inside Those Limits</h1>
+  <p class="subtitle">The domain evidence and product design behind a personal command center and
+  learning hub for US equities — NYSE &amp; Nasdaq. What is genuinely knowable, what is folklore,
+  and how to build a daily briefing that respects the difference.</p>
+
+  <p class="epigraph">“What is genuinely knowable is risk, not direction. The honest product is a
+  risk-and-context command center: calibrated base rates with confidence intervals, decay stamps on
+  every published pattern, and a firm refusal to play oracle.”
+  <span class="attr">— The one-paragraph conclusion of this report</span></p>
+
+  <div class="meta">
+    <span><b>Prepared for</b> Bishant · myStockMarket</span>
+    <span><b>Date</b> July 2026</span>
+    <span><b>Companion volume</b> Build Blueprint</span>
+  </div>
+</div>
+
+<!-- ================= TOC ================= -->
+<section class="toc">
+  <h2 style="font-size:19pt; font-weight:750;">Contents</h2>
+  <ol>
+    <li>How to read this report <span class="toc-sub">method, grading language, what was verified</span></li>
+    <li>How markets actually move <span class="toc-sub">efficiency, fat tails, the cost arithmetic, the decay law</span></li>
+    <li>What is knowable — and what is not <span class="toc-sub">the dividing line the whole product is built on</span></li>
+    <li>The evidence ledger <span class="toc-sub">eighteen techniques, graded: supported / mixed / weak / folklore</span></li>
+    <li>The catalyst playbook <span class="toc-sub">earnings, guidance, macro prints, FDA, attention — with base rates</span></li>
+    <li>The retail reality <span class="toc-sub">census-grade outcome statistics, execution mechanics, the paper-first rationale</span></li>
+    <li>What ML and LLMs genuinely add <span class="toc-sub">and the failure modes that rule them out as oracles</span></li>
+    <li>From evidence to design <span class="toc-sub">implications and the statistical guardrails the software must enforce</span></li>
+    <li>The product: Desk &amp; Academy <span class="toc-sub">information architecture, the daily ritual, setup cards, the learning layer</span></li>
+    <li>Candid uncertainties <span class="toc-sub">what this report itself is not sure about</span></li>
+    <li>Sources <span class="toc-sub">numbered references cited throughout</span></li>
+  </ol>
+</section>
+
+<!-- ================= PART 1 ================= -->
+<section class="part">
+  <div class="part-head">
+    <div class="kicker">Part 1</div>
+    <h2>How to read this report</h2>
+    <p class="dek">This document exists to answer one question honestly: <em>what can a personal
+    market app actually know?</em> Everything else — the dashboard, the signals, the learning hub —
+    is designed downstream of that answer.</p>
+  </div>
+
+  <h3>1.1 &nbsp;What this is</h3>
+  <p>This is the first of two volumes. It covers the <strong>domain research</strong> (Parts 2–7):
+  how equity markets move, which analytical techniques have empirical support, how news and events
+  drive prices, and what the record says about retail trading outcomes. It then converts that
+  evidence into <strong>product design</strong> (Parts 8–9): the information architecture, the
+  daily-briefing experience, and the learning system. The second volume — the
+  <em>Build Blueprint</em> — covers architecture, the technology stack, data sources with verified
+  pricing, data models, the implementation roadmap, and risks.</p>
+  <p><strong>Scope: US equities, explicitly.</strong> Everything in both volumes is anchored to the
+  US market — NYSE and Nasdaq listings; US session structure (pre-market 4:00–9:30am ET, regular
+  session 9:30am–4:00pm ET, after-hours 4:00–8:00pm ET); the US earnings calendar with its
+  before-open/after-close timing; and US macro catalysts (FOMC, CPI, the jobs report). The evidence
+  in Parts 2–7 is drawn from US data unless a study is explicitly labeled otherwise; the retail
+  statistics include the major non-US censuses (Taiwan, Brazil) precisely because they are the
+  best-evidenced numbers anywhere, applied here to a US-market product. Non-US markets are future
+  extensions, not part of this design. The user is US-based — Long Island, New York — so the
+  product runs on market time (America/New_York) end to end.</p>
+
+  <h3>1.2 &nbsp;How the research was produced and checked</h3>
+  <p>The findings here were assembled by parallel research passes across six domains (market
+  efficiency, technical-analysis evidence, catalysts, microstructure and retail outcomes,
+  quantitative methods, and machine learning), each required to chase primary sources — peer-reviewed
+  journals, SSRN/NBER working papers, and regulator publications — and to report effect sizes and
+  post-publication decay, not just directions. Eighty-four falsifiable claims were extracted; the
+  twelve most load-bearing were then <strong>adversarially cross-examined</strong> by independent
+  review passes explicitly instructed to refute them. Several were narrowed as a result, and the
+  corrected versions are what appear in this report. Where a correction matters, the text says so
+  plainly (for example, candlestick patterns are reported as <em>contested-negative</em>, not
+  “cleanly debunked”). Claims that rest on industry data rather than peer review are labeled as
+  such. What the report is still unsure about is collected in Part 10 rather than hidden.</p>
+
+  <h3>1.3 &nbsp;The grading language</h3>
+  <p>Every technique in the evidence ledger carries one of four verdicts. They are used
+  consistently across both volumes and — by design — in the app itself:</p>
+  <table class="rowhead">
+    <thead><tr><th style="width:26mm">Verdict</th><th>Meaning</th></tr></thead>
+    <tbody>
+      <tr><td><span class="chip supported">Supported</span></td>
+          <td>Replicated in credible out-of-sample tests; the effect is real, though usually smaller
+          than advertised and often hard for an individual to capture after costs.</td></tr>
+      <tr><td><span class="chip mixed">Mixed</span></td>
+          <td>Real statistical content, but contested, decayed, horizon-limited, or captured mainly
+          by institutions. Useful as context; unreliable as a personal edge.</td></tr>
+      <tr><td><span class="chip weak">Weak</span></td>
+          <td>Occasional positive findings that fail under data-snooping corrections, out-of-sample
+          tests, or realistic costs.</td></tr>
+      <tr><td><span class="chip folklore">Folklore</span></td>
+          <td>No credible supporting evidence, or the careful evidence points the other way.</td></tr>
+    </tbody>
+  </table>
+
+  <div class="callout guardrail avoid-break">
+    <span class="co-label">Standing commitment</span>
+    <p>Numbers in this report carry their context: sample sizes, confidence intervals, whether the
+    figure is gross or net of costs, and whether the effect decayed after publication. The app this
+    report designs makes the same commitment in its interface — that is the point.</p>
+  </div>
+</section>
+
+<!-- ================= PART 2 ================= -->
+<section class="part">
+  <div class="part-head">
+    <div class="kicker">Part 2</div>
+    <h2>How markets actually move</h2>
+    <p class="dek">Four facts carry almost all the weight: markets are nearly efficient, returns are
+    violently non-Gaussian, published edges decay, and costs are the only guaranteed prediction.
+    Everything in this product follows from them.</p>
+  </div>
+
+  <h3>2.1 &nbsp;Nearly efficient — and why “nearly” doesn’t help you</h3>
+  <p>The efficient-markets baseline<sup class="cite">[1]</sup> says prices already reflect available
+  information, so price changes come mostly from <em>new</em> information — which is unpredictable
+  by definition. The refinement that matters is Grossman &amp; Stiglitz’s
+  impossibility result<sup class="cite">[2]</sup>: perfectly efficient markets are impossible,
+  because if prices reflected everything, nobody would be paid to do the reflecting. Markets
+  therefore stay <em>almost</em> efficient, with a residual inefficiency just large enough to
+  compensate professionals for the cost of information gathering.</p>
+  <p>That residual is not free money lying around; it is a <strong>wage</strong> — and it is
+  collected by the people with the lowest costs and fastest information. When a beginner buys a
+  stock because it looks like it will bounce, the counterparty is not another beginner. It is a
+  market-making algorithm or an institutional desk whose effective trading costs are roughly
+  <strong>1.5 basis points</strong> per trade, against a realistic retail cost of
+  <strong>20–57 basis points</strong> once spreads and slippage are counted
+  honestly<sup class="cite">[3]</sup>. The same anomaly can be simultaneously real for them and a
+  losing trade for you. This asymmetry, more than any single study, is why so many “documented”
+  effects in Part 4 are graded <em>mixed</em>: real, but not yours to harvest.</p>
+
+  <h3>2.2 &nbsp;The arithmetic nobody escapes</h3>
+  <p>Sharpe’s 1991 argument<sup class="cite">[4]</sup> is close to accounting: the market return is
+  the average of all investors’ returns, so after costs the average actively managed dollar must
+  underperform the passive dollar. (Pedersen<sup class="cite">[5]</sup> showed the identity relies
+  on simplifying assumptions — index reconstitution, IPOs and buybacks force even “passive” money to
+  trade — so it is a strong approximation rather than a law.) The empirical record matches the
+  approximation: in the SPIVA scorecards, roughly <strong>93% of all active US equity funds
+  underperformed their benchmark over the trailing 15 years</strong>, and no US category out of 22
+  shows majority outperformance at that horizon<sup class="cite">[6]</sup>. The figure counts funds
+  equally; weighted by assets the shortfall is smaller (critics estimate nearer 55%<sup
+  class="cite">[5]</sup>) — but the direction is unambiguous.</p>
+  <p><strong>Design consequence:</strong> if full-time professionals with research staffs net-lose
+  to the index, the honest baseline expectation for a beginner picking stocks is underperformance.
+  The app treats a low-cost index position as the default benchmark against which every idea,
+  signal, and paper trade is scored.</p>
+
+  <div class="stat-row">
+    <div class="stat-tile"><div class="st-label">Active US equity funds trailing their benchmark, 15&nbsp;yrs</div>
+      <div class="st-value">~93%</div><div class="st-note">SPIVA, equal-weighted fund count [6]</div></div>
+    <div class="stat-tile"><div class="st-label">Average anomaly return lost after publication</div>
+      <div class="st-value">−58%</div><div class="st-note">McLean &amp; Pontiff, 97 US predictors [8]</div></div>
+    <div class="stat-tile"><div class="st-label">Out-of-sample daily-direction hit rate (ML)</div>
+      <div class="st-value">50–55%</div><div class="st-note">vs. “always up” baseline of ~53–55% [24]</div></div>
+    <div class="stat-tile"><div class="st-label">Out-of-sample R² of volatility forecasts</div>
+      <div class="st-value">~0.5</div><div class="st-note">HAR/GARCH vs. realized-vol proxies [12]</div></div>
+  </div>
+
+  <h3>2.3 &nbsp;Returns are not Gaussian — and your risk display must not be either</h3>
+  <p>Cont’s canonical “stylized facts”<sup class="cite">[7]</sup> — confirmed again in 2023–2025
+  replications on modern data — establish three properties of equity returns: heavy tails,
+  near-zero autocorrelation of returns themselves, and strong autocorrelation of return
+  <em>magnitudes</em> (volatility clustering). The practical meaning of heavy tails: under a
+  Gaussian model, the October 1987 one-day crash of −20.5% was a roughly <strong>20–25 sigma</strong>
+  event — probability on the order of 10<sup>−89</sup>, effectively “cannot happen in the life of the
+  universe.” Yet five-plus-sigma days recur every few years. Any interface that draws “expected
+  range” bands from a normal distribution quietly teaches its user that crashes are impossible.
+  The app draws risk bands from fat-tailed or empirical distributions, always.</p>
+  <p>Volatility clustering has a happier consequence: <strong>the magnitude of moves is genuinely
+  forecastable at short horizons</strong>, even though their direction is not. Daily
+  realized-variance series show first-order autocorrelations around 0.6–0.86, and standard
+  HAR/GARCH models retain out-of-sample R² near 0.5 against realized-volatility proxies, one day to
+  one month ahead — with no post-publication decay in nearly two decades, because knowing tomorrow
+  will be turbulent does not tell you which way it breaks<sup class="cite">[12]</sup>. Two honest
+  caveats ride along: forecast power fades beyond roughly 15–20 trading days, and models understate
+  risk around sudden regime breaks. This is the single most important asymmetry in the report:
+  <em>the app may forecast bumpiness; it may never forecast direction.</em></p>
+
+  <h3>2.4 &nbsp;The decay law: published edges are already half-eaten</h3>
+  <p>McLean &amp; Pontiff tracked 97 published return predictors and found returns
+  <strong>26% lower out-of-sample</strong> (bounding how much was data-mining all along) and
+  <strong>58% lower post-publication</strong>, with the ~32-point difference attributed to informed
+  traders acting on the paper<sup class="cite">[8]</sup>. Decay is partial, not total — about 40% of
+  the average premium persists — but it concentrates in illiquid, costly-to-trade stocks, exactly
+  where retail execution is worst. Two companion facts sharpen the lesson. First, the multiple-testing
+  problem: with thousands of researchers mining the same data, Harvey, Liu &amp; Zhu argue a newly
+  “discovered” factor should clear a t-statistic of 3.0, not 2.0, before being believed<sup
+  class="cite">[9]</sup>. Second, the replication debate resolved into a both-things-are-true
+  synthesis: most factor <em>themes</em> replicate across 93 countries<sup class="cite">[10]</sup>,
+  <em>and</em> their tradable returns shrink materially after discovery. (A caveat recorded in
+  Part 10: the post-publication decay finding is essentially a US result — it does not reliably
+  replicate across 38 non-US markets<sup class="cite">[11]</sup>.)</p>
+
+  <figure class="avoid-break">
+    <div class="fig-frame">
+    <svg viewBox="0 0 640 150" role="img" aria-label="Average published anomaly return: in-sample 100 percent, out-of-sample 74 percent, post-publication 42 percent">
+      <!-- bars: sequential blue ordinal ramp, 4px rounded data-end, baseline square -->
+      <g font-family="-apple-system, 'Segoe UI', sans-serif">
+        <!-- baseline -->
+        <line x1="150" y1="18" x2="150" y2="132" stroke="#c3c2b7" stroke-width="1"/>
+        <!-- row 1 -->
+        <text x="140" y="37" text-anchor="end" font-size="12" fill="#52514e">In-sample (as published)</text>
+        <path d="M150 26 H564 a4 4 0 0 1 4 4 v6 a4 4 0 0 1 -4 4 H150 Z" fill="#86b6ef"/>
+        <text x="576" y="37" font-size="12" font-weight="600" fill="#0b0b0b">100%</text>
+        <!-- row 2 -->
+        <text x="140" y="77" text-anchor="end" font-size="12" fill="#52514e">Out-of-sample</text>
+        <path d="M150 66 H456.4 a4 4 0 0 1 4 4 v6 a4 4 0 0 1 -4 4 H150 Z" fill="#3987e5"/>
+        <text x="472" y="77" font-size="12" font-weight="600" fill="#0b0b0b">74%</text>
+        <!-- row 3 -->
+        <text x="140" y="117" text-anchor="end" font-size="12" fill="#52514e">Post-publication</text>
+        <path d="M150 106 H323.9 a4 4 0 0 1 4 4 v6 a4 4 0 0 1 -4 4 H150 Z" fill="#1c5cab"/>
+        <text x="340" y="117" font-size="12" font-weight="600" fill="#0b0b0b">42%</text>
+      </g>
+    </svg>
+    </div>
+    <figcaption><b>Figure 2.1 — The decay law.</b> Average return of 97 published US stock-market
+    anomalies, relative to their in-sample size: 26% evaporates out-of-sample (it was data-mining),
+    a further 32 points after publication (it was traded away). McLean &amp; Pontiff, Journal of
+    Finance 2016 [8]. The app stamps every published pattern with its publication date and this
+    expected haircut.</figcaption>
+  </figure>
+
+  <h3>2.5 &nbsp;The one perfect forecast: your own costs</h3>
+  <p>Every round-trip trade pays the effective spread plus slippage — a few basis points on
+  mega-caps, several <em>percent</em> on small, low-priced names — plus taxes. Multiply by turnover
+  and you have the only prediction in this domain with no error bars: a frequent trader’s cost drag
+  is exact arithmetic and guaranteed negative. For the most active retail households in the
+  classic Barber–Odean sample, it summed to about <strong>6.5 percentage points of underperformance
+  per year</strong><sup class="cite">[26]</sup>. The app makes this arithmetic a first-class
+  display — a “cost mirror” computed from the user’s own paper-trading turnover — because it is the
+  most useful honest forecast available to a beginner.</p>
+
+  <div class="callout implication avoid-break">
+    <span class="co-label">Where this leaves us</span>
+    <p>Markets are a hostile environment for prediction and a workable environment for
+    <strong>preparation</strong>: knowing what is scheduled, how large moves typically are, how
+    turbulent the next weeks are likely to be, what a pattern’s real base rate is, and exactly what
+    trading costs. That reframing — from oracle to preparation — is the product thesis.</p>
+  </div>
+</section>
+<!-- ================= PART 3 ================= -->
+<section class="part">
+  <div class="part-head">
+    <div class="kicker">Part 3</div>
+    <h2>What is knowable — and what is not</h2>
+    <p class="dek">The dividing line below is the most important content in this report. Everything
+    on the left can appear in the app as a computed, confidence-intervalled display. Everything on
+    the right is either excluded or shown only with an explicit “this is not predictable” frame.</p>
+  </div>
+
+  <h3>3.1 &nbsp;Genuinely knowable</h3>
+  <ul>
+    <li><strong>Volatility, one day to ~one month out.</strong> Realized-variance persistence is high
+    and HAR/GARCH forecasts hold out-of-sample R² near 0.5 against realized-vol proxies, with no
+    post-publication decay in ~two decades<sup class="cite">[12]</sup>. Fades beyond ~15–20 trading
+    days; understates risk at regime breaks. This powers honest “expected range” bands.</li>
+    <li><strong>Fat-tailed crash risk.</strong> A distributional fact at all horizons, immune to
+    costs<sup class="cite">[7]</sup>. Risk displays must be non-Gaussian.</li>
+    <li><strong>Monthly-horizon factor tilts</strong> (value, momentum, quality, low-vol) — real
+    across 93 countries<sup class="cite">[10]</sup>, but expect a 30–60% haircut from published
+    numbers<sup class="cite">[8]</sup>, and an individual realistically captures them through
+    low-cost factor funds, not a personal scanner.</li>
+    <li><strong>The likely <em>size</em> of an event move.</strong> The options-implied straddle is
+    a roughly unbiased ex-ante estimate of earnings-day move magnitude<sup class="cite">[39]</sup> —
+    honest context for “what to watch,” with no claim about direction.</li>
+    <li><strong>Your own cost drag.</strong> Effective spread × turnover, plus slippage and taxes,
+    is exact arithmetic — the single most reliable forecast the app can ship, and it is a
+    guaranteed negative<sup class="cite">[3]</sup>.</li>
+    <li><strong>Execution timing mechanics.</strong> Spreads are widest in the first ~30 minutes
+    (&gt;20bp on S&amp;P 500 names at the open vs &lt;5bp late day); the closing auction is the
+    deepest liquidity window of the US trading day (industry-measured figures)<sup class="cite">[66]</sup>. Free, capturable knowledge.</li>
+    <li><strong>Base rates of retail outcomes.</strong> Census-grade statistics (Part 6) —
+    displayable as facts, not opinions.</li>
+    <li><strong>The decay law itself.</strong> Published US anomalies lose ~26% out-of-sample, ~58%
+    post-publication on average<sup class="cite">[8]</sup> — so every “proven strategy” can be
+    stamped with an expected haircut.</li>
+  </ul>
+
+  <h3>3.2 &nbsp;Not knowable (by this app, or by anyone selling you a course)</h3>
+  <ul>
+    <li><strong>Next-day direction of a stock or index, net of costs.</strong> Methodologically
+    sound out-of-sample tests cluster at 50–55% hit rates on modern liquid markets — against a naive
+    “always up” baseline of ~53–55%<sup class="cite">[24]</sup>. Pre-2010 edges existed and decayed
+    after costs<sup class="cite">[69]</sup>, so this is an empirical regularity about today’s
+    markets, not a theorem — but no persistent, cost-surviving retail edge is demonstrated today.
+    Published 60%+ accuracies typically reflect leakage or denoising artifacts.</li>
+    <li><strong>Market timing from valuation dials.</strong> Dividend yields, P/E ratios and rate
+    spreads fail to beat the naive historical-mean forecast out-of-sample; over a third of newer
+    predictors lost even in-sample significance on re-testing<sup class="cite">[35]</sup>.</li>
+    <li><strong>The direction of an earnings, FOMC, or macro reaction.</strong> Implied moves
+    forecast size, not sign; guidance routinely dominates the EPS print<sup class="cite">[41]</sup>.</li>
+    <li><strong>Which regime comes next.</strong> Calm/crisis regimes are identifiable after the
+    fact; real-time regime timing has weak out-of-sample support.</li>
+    <li><strong>Why the market moved today</strong> — often. Half to two-thirds of large daily moves
+    lack a cleanly identifiable news cause<sup class="cite">[55,56]</sup>; most morning-after
+    narratives are invented. The app must be willing to say “no clear reason.”</li>
+    <li><strong>Whether a small-sample pattern is real.</strong> 60 wins in 100 has a 95% confidence
+    interval of roughly [50%, 69%] — indistinguishable from a coin flip at realistic edge sizes.
+    About 1,000 independent observations are needed for a ±3-point interval.</li>
+    <li><strong>A teachable path to day-trading profitability.</strong> Full-population data show no
+    learning-by-experience (Brazil, 300+ sessions<sup class="cite">[58]</sup>); the tiny profitable
+    minority reflects rare pre-existing skill (Taiwan<sup class="cite">[57]</sup>).</li>
+    <li><strong>Calibrated probabilities from a language model.</strong> Verbalized LLM confidences
+    are systematically overconfident across model families<sup class="cite">[74]</sup> — they are
+    suppressed in this product, never displayed as market probabilities.</li>
+    <li><strong>Institutional edges at retail costs.</strong> Effects that are real at 1.5bp
+    institutional execution do not transfer to 20–57bp retail costs<sup class="cite">[3]</sup>.
+    “The anomaly survives costs” conclusions do not apply to a scanner user.</li>
+  </ul>
+
+  <div class="callout implication avoid-break">
+    <span class="co-label">Design consequence</span>
+    <p>The app is a <strong>risk-and-context engine with a memory</strong>, not a prediction engine.
+    It forecasts volatility bands and event magnitudes, computes base rates with confidence
+    intervals and decay stamps, explains catalysts with citations, refuses direction, and keeps an
+    append-only public record of how its own flags resolved. Anything that would require the
+    right-hand list is out of scope — permanently.</p>
+  </div>
+</section>
+
+<!-- ================= PART 4 ================= -->
+<section class="part">
+  <div class="part-head">
+    <div class="kicker">Part 4</div>
+    <h2>The evidence ledger</h2>
+    <p class="dek">Eighteen techniques a beginner will encounter in the first month of reading about
+    trading, graded against the peer-reviewed record. “Retail capture” asks the question that
+    matters: even if real, can an individual harvest it after costs?</p>
+  </div>
+
+  <table>
+    <caption>Ledger — technical &amp; quantitative techniques, as of July 2026</caption>
+    <thead><tr>
+      <th style="width:31mm">Technique</th>
+      <th style="width:20mm">Verdict</th>
+      <th>What the careful evidence shows</th>
+      <th style="width:30mm">Retail capture?</th>
+      <th style="width:12mm">Refs</th>
+    </tr></thead>
+    <tbody>
+      <tr><td>Cross-sectional momentum (3–12&nbsp;mo winners)</td><td><span class="chip supported">Supported</span></td>
+        <td>~1%/month gross long-short historically; replicates across eight asset classes and two centuries. Apply the ~58% post-publication haircut. Suffers rare multi-month crashes: −73% (Mar–May 2009), −91% (Jul–Aug 1932), gross of costs.</td>
+        <td>Via low-cost momentum funds; not via a personal scanner</td><td class="num">[13,14]</td></tr>
+      <tr><td>Volatility forecasting (GARCH/HAR)</td><td><span class="chip supported">Supported</span></td>
+        <td>The robust one: OOS R² ≈ 0.5 vs realized-vol proxies at 1-day–1-month horizons; no decay in ~17 years. Fades past ~15–20 days; understates regime breaks.</td>
+        <td>Yes — as risk bands and position sizing, not as trades</td><td class="num">[12]</td></tr>
+      <tr><td>52-week-high proximity</td><td><span class="chip mixed">Mixed</span></td>
+        <td>~0.45%/mo in-sample 1963–2001; fails in Japan; weakened post-publication. Note the direction: new highs historically predicted <em>continuation</em> — “new highs are bearish” is backwards.</td>
+        <td>Context signal only</td><td class="num">[15]</td></tr>
+      <tr><td>High-volume return premium</td><td><span class="chip mixed">Mixed</span></td>
+        <td>Unusual volume carries information (~0.5%/mo strongest deciles, 1963–96); concentrated in small caps with the widest spreads.</td>
+        <td>As information, not as a strategy</td><td class="num">[16]</td></tr>
+      <tr><td>Short-term reversal (buy recent losers)</td><td><span class="chip mixed">Mixed</span></td>
+        <td>Huge gross returns (~2.5%/mo, 1934–87) that are really the market makers’ wage for liquidity provision. Naive versions die after costs; cost-aware large-cap versions earn 30–50bp/week — with institutional execution.</td>
+        <td>No — you are the counterparty, not the market maker</td><td class="num">[17,18,19]</td></tr>
+      <tr><td>Classic chart patterns (H&amp;S, double bottoms)</td><td><span class="chip mixed">Mixed</span></td>
+        <td>Kernel-regression tests find some patterns shift the return distribution — genuine but faint informational content; no profitable strategy demonstrated. Frequently miscited as proof charting “works.”</td>
+        <td>No demonstrated net edge</td><td class="num">[20]</td></tr>
+      <tr><td>Support/resistance at round numbers</td><td><span class="chip mixed">Mixed</span></td>
+        <td>Best mechanism in TA: real order clustering at round numbers produces bounces ~4.6pp more often than arbitrary levels — but the horizon is intraday and no cost-surviving strategy is documented.</td>
+        <td>Explains “levels”; not tradable</td><td class="num">[21]</td></tr>
+      <tr><td>Index moving-average / range-break rules</td><td><span class="chip weak">Weak</span></td>
+        <td>Beat the Dow in-sample 1897–1986; the best of 7,846 rules showed nothing out-of-sample 1987–96 after data-snooping correction; nothing net of costs through 2011 in any ex-ante-selectable period.</td>
+        <td>No</td><td class="num">[22,23,25]</td></tr>
+      <tr><td>Faber 10-month MA trend filter</td><td><span class="chip mixed">Mixed</span></td>
+        <td>A drawdown-reduction tool, not a return enhancer: historically cut max drawdowns roughly in half, lagged buy-and-hold post-2008, loses to whipsaws in V-recoveries. Honest frame: crash insurance paid for in return.</td>
+        <td>Yes, as insurance — if the premium is understood</td><td class="num">[27,28]</td></tr>
+      <tr><td>RSI and standard oscillators</td><td><span class="chip weak">Weak</span></td>
+        <td>No significant net profits at standard settings in developed markets; positive findings come from parameter tuning that invites snooping.</td>
+        <td>No</td><td class="num">[29]</td></tr>
+      <tr><td>Candlestick patterns</td><td><span class="chip weak">Weak</span></td>
+        <td>28 patterns on DJIA stocks 1992–2002: no value before costs; Japan replication negative. Contested-negative, not unanimous: some three-day patterns show profits under alternative exit rules — small, specification-sensitive, unlikely to survive retail costs.</td>
+        <td>No</td><td class="num">[30,31,32]</td></tr>
+      <tr><td>Fibonacci retracements / Elliott Wave</td><td><span class="chip folklore">Folklore</span></td>
+        <td>Bounce rates at Fibonacci zones statistically indistinguishable from arbitrary zones; Elliott counts revisable after the fact are largely unfalsifiable. Round-number clustering explains apparent “levels.”</td>
+        <td>—</td><td class="num">[33,21]</td></tr>
+      <tr><td>“Gaps always fill”</td><td><span class="chip folklore">Folklore</span></td>
+        <td>The main peer-reviewed gap study finds momentum in the gap’s direction, not reversal. The “70–90% fill” statistic has no traceable source; eventual fills are a base-rate artifact.</td>
+        <td>—</td><td class="num">[34]</td></tr>
+      <tr><td>Daily-direction prediction (ML / signals)</td><td><span class="chip weak">Weak</span></td>
+        <td>Sound out-of-sample tests: 50–55% vs an always-up baseline of ~53–55%. A “58%-accurate” signal can literally be worse than always guessing up. Pre-2010 edges decayed.</td>
+        <td>Treat every daily prediction as entertainment</td><td class="num">[24,69]</td></tr>
+      <tr><td>Index timing via valuation/macro dials</td><td><span class="chip folklore">Folklore</span></td>
+        <td>Fails against the naive historical mean out-of-sample; a slow valuation signal exists at decade horizons but cannot time entries.</td>
+        <td>—</td><td class="num">[35]</td></tr>
+      <tr><td>Volatility-managed portfolios</td><td><span class="chip mixed">Mixed</span></td>
+        <td>Headline Sharpe gains failed direct out-of-sample tests across 103 strategies; the risk-stabilization benefit (steadier ride, tamer left tail) is real because volatility is forecastable.</td>
+        <td>As risk control, not return booster</td><td class="num">[36]</td></tr>
+      <tr><td>Factor tilts via low-cost funds</td><td><span class="chip mixed">Mixed</span></td>
+        <td>Most factor themes replicate globally <em>and</em> decay 30–60% post-publication; most published factors fail the t&gt;3.0 hurdle. Expect a fraction of advertised returns.</td>
+        <td>Yes — through cheap funds</td><td class="num">[10,8,9]</td></tr>
+      <tr><td>Overnight-vs-intraday return split</td><td><span class="chip mixed">Mixed</span></td>
+        <td>Statistically robust (the equity premium historically accrued close-to-open) and a failed product: the NightShares ETFs underperformed by ~29pp and liquidated within 13 months.</td>
+        <td>Object lesson: significance ≠ exploitability</td><td class="num">[37,38]</td></tr>
+      <tr><td>Volume/attention spikes as buy signals</td><td><span class="chip weak">Weak</span></td>
+        <td>Attention is a hazard: the stocks retail crowds bought most intensely earned −4.7% abnormal returns over the following 20 days; search spikes pop then revert.</td>
+        <td>Inverted, if anything — the app flags these as risk</td><td class="num">[50,51,52]</td></tr>
+    </tbody>
+  </table>
+
+  <h3>4.1 &nbsp;Notes on the rows that matter most</h3>
+  <p><strong>Momentum is the honest poster child.</strong> The strongest TA-adjacent effect in the
+  literature also carries the ugliest tail: two-to-three-month drawdowns of −73% to −91% (gross),
+  short-side-driven, clustered in rebounds after high-volatility bear markets<sup
+  class="cite">[14]</sup>. Any presentation of momentum without its crash profile is marketing. The
+  app pairs them permanently.</p>
+  <p><strong>The moving-average lesson generalizes.</strong> The Brock–Lakonishok–LeBaron rules are
+  the canonical demonstration of why in-sample success means little: honest re-testing across the
+  full universe of 7,846 rule variants erased the edge the moment the sample ended<sup
+  class="cite">[23]</sup>. This is why every base rate in the app carries a trial-count correction
+  (Part 8) — with five years of daily data, trying ~45 configurations essentially guarantees an
+  impressive, worthless in-sample winner.</p>
+  <p><strong>Candlesticks illustrate calibrated honesty.</strong> The cross-examination pass in this
+  project’s research flagged that “cleanest folklore verdict” overstated the record: one credible
+  study finds some three-day patterns profitable under different exit rules<sup
+  class="cite">[32]</sup>. The accurate label is <em>contested-negative</em> — and that is exactly
+  how the app’s Academy teaches it, because modeling honest gradation is part of the curriculum.</p>
+  <p><strong>“Gaps always fill” is the archetypal folklore trap:</strong> intuitive, everywhere on
+  YouTube, and pointing the wrong way — the one serious study finds continuation, not fill<sup
+  class="cite">[34]</sup>. The Academy uses it as the worked example for “how to check a claim
+  against a base rate.”</p>
+</section>
+
+<!-- ================= PART 5 ================= -->
+<section class="part">
+  <div class="part-head">
+    <div class="kicker">Part 5</div>
+    <h2>The catalyst playbook</h2>
+    <p class="dek">Catalysts are where preparation beats prediction. The app cannot know which way
+    an event breaks — but it can know the event is scheduled, how large the move typically is, and
+    which patterns around it are real versus invented.</p>
+  </div>
+
+  <table>
+    <caption>Catalyst behavior — what is estimable, and the trap to avoid</caption>
+    <thead><tr>
+      <th style="width:30mm">Catalyst</th>
+      <th>Typical behavior (with base rates where known)</th>
+      <th style="width:44mm">The trap</th>
+      <th style="width:12mm">Refs</th>
+    </tr></thead>
+    <tbody>
+      <tr><td>Earnings announcement</td>
+        <td>Mega-caps typically move 3–6% absolute on earnings day, small caps more. Reactions are asymmetric: negative surprises punished far harder than positive ones are rewarded — worst for high-expectation growth names (the “torpedo effect”).</td>
+        <td>Betting the direction of the reaction; it is not predictable from the setup</td><td class="num">[39,40]</td></tr>
+      <tr><td>Forward guidance</td>
+        <td>Guidance frequently dominates the EPS print: mean reaction ≈ −10% to a cut vs only ≈ +2% to a raise. A company can beat and still fall hard.</td>
+        <td>Reading the headline beat/miss as the story</td><td class="num">[41]</td></tr>
+      <tr><td>Options-implied move</td>
+        <td>The ATM straddle is a roughly unbiased estimate of move <em>size</em>. Pricing is name- and regime-dependent: realized falls short of implied 40–75% of the time depending on the name — above half (modestly rich) for many mega-caps, the reverse for several high-volatility names.</td>
+        <td>Blindly buying <em>or</em> selling options into earnings — neither survives retail spreads reliably</td><td class="num">[39,42]</td></tr>
+      <tr><td>Post-earnings drift (PEAD)</td>
+        <td>Historically ~4% top-minus-bottom spread over 60 days; essentially zero in large caps since ~2006 as prices adjust on announcement day. Survives mainly in microcaps where costs consume it. (2025 papers contest the obituary — see Part 10.)</td>
+        <td>Expecting exploitable drift in liquid names</td><td class="num">[43]</td></tr>
+      <tr><td>FOMC meetings</td>
+        <td>The famous pre-FOMC drift (+49bp in the 24h before announcements, ~80% of the annual equity premium 1994–2011) vanished after ~2015, post-publication.</td>
+        <td>Trading a decayed anomaly still circulating in blog posts</td><td class="num">[44,45]</td></tr>
+      <tr><td>Macro prints (CPI, NFP, GDP)</td>
+        <td>Intraday volatility spikes ~3–6× normal in the minutes around release; full-day vol only modestly elevated. Markets react to revisions, composition, and policy implications — not the headline alone.</td>
+        <td>Predicting direction from the headline surprise</td><td class="num">[46]</td></tr>
+      <tr><td>Analyst rating changes</td>
+        <td>≈ +3.0% (upgrades) and −4.7% (downgrades) over three days at announcement; the jump happens within minutes.</td>
+        <td>Chasing the news after the move — nets retail little or nothing</td><td class="num">[47]</td></tr>
+      <tr><td>M&amp;A announcement</td>
+        <td>Target premiums average ~20–30%, captured almost entirely in the instantaneous gap; the residual spread is professional deal-risk compensation.</td>
+        <td>“Merger arbitrage” as a beginner opportunity</td><td class="num">[48]</td></tr>
+      <tr><td>FDA / biotech binaries</td>
+        <td>Single-asset small caps move 40%+ either way on PDUFA outcomes; large pharma barely moves on the same news. A genuine coin flip to outsiders.</td>
+        <td>Confusing high volatility with high opportunity</td><td class="num">[49]</td></tr>
+      <tr><td>Attention spikes / trending lists</td>
+        <td>The most intensely crowd-bought stocks earned −4.7% abnormal returns over the following 20 days; search spikes pop ~2 weeks then revert within the year.</td>
+        <td>Treating “most bought” lists as discovery — the app deliberately has none</td><td class="num">[50,51,52]</td></tr>
+      <tr><td>News sentiment / LLM headline scores</td>
+        <td>Statistically real but tiny and concentrated in small/illiquid names and the short leg; excludes costs; decaying as adoption spreads — a live decay experiment.</td>
+        <td>Using sentiment as a trade signal rather than context</td><td class="num">[53,54]</td></tr>
+      <tr><td>No news at all</td>
+        <td>Half to two-thirds of large daily moves have no cleanly identifiable cause: even modern text methods tie only ~33% of return variance to news days vs 16% on no-news days.</td>
+        <td>Inventing a narrative anyway — the app must say “no clear catalyst found; likely noise”</td><td class="num">[55,56]</td></tr>
+    </tbody>
+  </table>
+
+  <div class="callout reality avoid-break">
+    <span class="co-label">Reality check</span>
+    <p>The single most protective row is the last one. Financial media produces an explanation for
+    every move by 9:00 the next morning; the evidence says most of those explanations are
+    invented after the fact. An app that is willing to display <em>“no clear reason — most moves
+    this size have none”</em> is teaching its user something most professionals never say out
+    loud.</p>
+  </div>
+</section>
+<!-- ================= PART 6 ================= -->
+<section class="part">
+  <div class="part-head">
+    <div class="kicker">Part 6</div>
+    <h2>The retail reality</h2>
+    <p class="dek">These are not anecdotes or survivor stories — several are full-population
+    censuses, which makes “most day traders lose” one of the best-evidenced facts in all of
+    finance. The app is designed to keep its user out of these statistics.</p>
+  </div>
+
+  <div class="stat-row">
+    <div class="stat-tile"><div class="st-label">Underperformance of the most active retail households</div>
+      <div class="st-value">−6.5 pp/yr</div><div class="st-note">Barber &amp; Odean, 66k accounts [26]</div></div>
+    <div class="stat-tile"><div class="st-label">Taiwan day traders persistently profitable, net of fees</div>
+      <div class="st-value">&lt;1%</div><div class="st-note">full-population census [57]</div></div>
+    <div class="stat-tile"><div class="st-label">Brazilians who day-traded 300+ sessions and lost money</div>
+      <div class="st-value">97%</div><div class="st-note">no learning-by-experience found [58]</div></div>
+    <div class="stat-tile"><div class="st-label">Return after a stock hits the “most bought” list</div>
+      <div class="st-value">−4.7%</div><div class="st-note">next 20 days, abnormal [52]</div></div>
+  </div>
+
+  <h3>6.1 &nbsp;The census numbers</h3>
+  <p>Three studies anchor everything. Barber &amp; Odean’s analysis of 66,000 US brokerage
+  households found the quintile that traded most underperformed by about 6.5 percentage points per
+  year — the drag almost exactly equal to their trading costs<sup class="cite">[26]</sup>. The
+  Taiwan census — every day trader in an entire national market over 15 years — found fewer than 1%
+  persistently profitable net of fees; the winners showed <em>pre-existing</em> skill, not learned
+  skill<sup class="cite">[57]</sup>. The Brazil census of futures day traders found 97% of those who
+  persisted 300+ sessions lost money, with no evidence that experience improved outcomes<sup
+  class="cite">[58]</sup> — directly contradicting the education industry’s core promise that
+  day-trading profitability is a learnable craft.</p>
+
+  <h3>6.2 &nbsp;The behavioral taxes</h3>
+  <ul>
+    <li><strong>Disposition effect:</strong> investors sell winners and keep losers; the winners
+    they sold went on to beat the losers they kept by 3.4pp over the following year<sup
+    class="cite">[61]</sup>.</li>
+    <li><strong>Lottery preference:</strong> the tilt toward cheap, high-skew “jackpot” stocks costs
+    roughly 2–3pp per year<sup class="cite">[63]</sup>.</li>
+    <li><strong>Overconfidence:</strong> men trade 45% more than women and pay roughly 0.9pp/yr
+    more in trading drag for it (single men vs single women: 67% more trading, ~1.4pp)<sup class="cite">[62]</sup>.</li>
+    <li><strong>Attention herding:</strong> buying what is trending is reliably value-destroying
+    (−4.7% over 20 days for the most crowd-bought names<sup class="cite">[52]</sup>).</li>
+  </ul>
+  <p>None of these are exotic; all four will knock on this user’s door in month one. The Academy
+  teaches each one <em>through the friction surfaces that detect it</em> — the cost mirror, the
+  trade-frequency mirror, and the cooling-off prompts on the paper-trade ledger — a named exception
+  to the Academy’s pull-only rule (§9.5), rate-limited and dismissible. That pairing is a core
+  product mechanic, not a nice-to-have.</p>
+
+  <h3>6.3 &nbsp;Microstructure a small investor can actually use</h3>
+  <p>Three pieces of execution knowledge are free money relative to ignorance: (1) spreads are
+  widest in the first ~30 minutes — over 20bp on S&amp;P 500 names at the open versus under 5bp late
+  in the day, per industry measurement — so avoid market orders at the US open; (2) prefer limit orders as a default; (3) the
+  closing auction concentrates 10%+ of daily volume and is the deepest window of the day<sup
+  class="cite">[66]</sup>. This is the rare category where knowledge converts directly into saved
+  basis points.</p>
+
+  <h3>6.4 &nbsp;The regulatory ground shifted in 2025–26</h3>
+  <p>Two recent changes matter to the design. First, FINRA eliminated the pattern-day-trader $25,000
+  rule effective June 4, 2026, replacing it with broker-set intraday margin<sup
+  class="cite">[59]</sup> — most web content still describes the old rule as law; the app must not
+  repeat it, and more importantly, <strong>the last external brake on beginner overtrading is gone,
+  so the app supplies its own friction</strong> (trade-frequency mirror, cooling-off prompts, cost
+  projections). Second, the SEC withdrew the Order Competition Rule and Reg Best Execution in June
+  2025<sup class="cite">[60]</sup>: payment for order flow remains legal and disclosure-based, and
+  “price improvement” claims should be read against the midpoint, skeptically.</p>
+
+  <div class="callout assumption avoid-break">
+    <span class="co-label">Assumption &amp; posture — the user</span>
+    <p>The user is a US resident (Long Island, New York — Eastern Time, the market’s own clock).
+    Nothing restricts their access to US equities; any retail brokerage would take the account
+    tomorrow. The design nonetheless <strong>defaults to paper-trading and watchlist mode and
+    ships no brokerage onboarding in v1 — a purely pedagogical stance</strong>: the censuses above
+    price the tuition of learning with real dollars, the last external brake on beginner
+    overtrading (the PDT rule) was removed in June 2026, and every honesty mechanism in this
+    product — the graded track record, the cost mirror, the calibration score — works identically
+    on paper. Live-brokerage integration is therefore a legitimate <em>later</em> extension,
+    gated on the paper record demonstrating readiness — an execution decision, not a legal
+    question.</p>
+  </div>
+
+  <h3>6.5 &nbsp;Free data has a survivorship problem</h3>
+  <p>One quieter trap belongs in this part because it corrupts self-run research: free price
+  datasets typically include only currently listed companies. Missing performance-delisting returns
+  average about −30%<sup class="cite">[65]</sup>, so backtests on survivor-only universes flatter
+  every strategy — by 1.5+ pp/year in small caps. The app warns whenever a backtest universe
+  excludes delisted names, and the Blueprint’s data model carries delisting status for exactly this
+  reason.</p>
+</section>
+
+<!-- ================= PART 7 ================= -->
+<section class="part">
+  <div class="part-head">
+    <div class="kicker">Part 7</div>
+    <h2>What ML and LLMs genuinely add</h2>
+    <p class="dek">The after-close pipeline uses machine intelligence heavily — but in exactly one
+    role: a grounded reader, summarizer, and explainer of things that already happened. Here is the
+    evidence for why the line is drawn there.</p>
+  </div>
+
+  <h3>7.1 &nbsp;The ceiling on ML prediction, measured</h3>
+  <p>The best-in-class academic result — Gu, Kelly &amp; Xiu’s neural networks over decades of US
+  data — achieves an out-of-sample R² of about <strong>0.4% per month per stock</strong><sup
+  class="cite">[67]</sup>. Read that carefully: 99.6% of monthly variation remains unpredictable,
+  and the economic value of the predictable sliver materializes only in institution-scale,
+  diversified long-short portfolios heavy in microcaps. Follow-up work imposing economic
+  restrictions (exclude microcaps and distressed names, apply realistic costs) cuts the
+  risk-adjusted gains by more than half and erodes the rest<sup class="cite">[68]</sup> — the
+  retail-tradable residual is approximately zero. The celebrated deep-learning daily-direction
+  papers fare worse: the documented pre-2010 LSTM edge decayed to roughly zero after costs
+  post-2010<sup class="cite">[69]</sup>, and high-accuracy claims typically dissolve into leakage,
+  lookahead bias, or denoising artifacts on inspection<sup class="cite">[24]</sup>.</p>
+
+  <h3>7.2 &nbsp;Where LLMs are strong — and where they fail in ways that matter here</h3>
+  <table class="rowhead">
+    <thead><tr><th style="width:44mm">Capability</th><th>Evidence &amp; consequence for this product</th></tr></thead>
+    <tbody>
+      <tr><td>Summarizing filings &amp; calls <span class="chip supported" style="margin-left:2mm">Strong</span></td>
+        <td>Model-written summaries of disclosures explain market reactions <em>better</em> than the original documents<sup class="cite">[71]</sup>. This is the pipeline’s core LLM job.</td></tr>
+      <tr><td>Sentiment classification <span class="chip mixed" style="margin-left:2mm">Careful</span></td>
+        <td>Competitive with specialized models when prompts are engineered; naive prompting can score below logistic regression. Anonymizing entity names <em>improved</em> live performance by removing memorized associations<sup class="cite">[70]</sup>.</td></tr>
+      <tr><td>Numeric work <span class="chip folklore" style="margin-left:2mm">Fails</span></td>
+        <td>Models collapse from ~95% accuracy on simple financial lookups to near 0% on multivariate calculations<sup class="cite">[73]</sup>. Consequence: <strong>the pipeline computes every number; the LLM narrates them verbatim</strong> and a deterministic gate verifies each one appears in the sources.</td></tr>
+      <tr><td>Verbalized probabilities <span class="chip folklore" style="margin-left:2mm">Suppressed</span></td>
+        <td>LLM-stated confidences are systematically overconfident across model families<sup class="cite">[74]</sup>. The app never displays a model’s own probability as a market probability; all probabilities on screen are frequency counts from historical data.</td></tr>
+      <tr><td>Backtesting LLM signals <span class="chip weak" style="margin-left:2mm">Trap</span></td>
+        <td>Training-corpus memorization is a leakage channel unique to LLMs: any backtest on pre-cutoff data is untrustworthy<sup class="cite">[70]</sup>. Post-cutoff evaluation is the minimum standard; the headline-sentiment edge is itself decaying as adoption spreads<sup class="cite">[54]</sup>.</td></tr>
+      <tr><td>Autonomous trading agents <span class="chip weak" style="margin-left:2mm">Ruled out</span></td>
+        <td>Published agentic-trading frameworks show single-regime evaluations, leakage, and pathological overtrading; no credible durable alpha. Legitimate for research automation only.</td></tr>
+    </tbody>
+  </table>
+
+  <div class="callout guardrail avoid-break">
+    <span class="co-label">The role, stated once</span>
+    <p>The LLM in this product is a <strong>grounded explainer, disclosure summarizer, and
+    screener-narrator</strong> — with retrieval grounding, forced per-claim citations, deterministic
+    numeric verification, and suppressed verbalized probabilities. It is never a price or direction
+    oracle. The Blueprint implements this as a three-stage pipeline with a hard publish gate.</p>
+  </div>
+</section>
+
+<!-- ================= PART 8 ================= -->
+<section class="part">
+  <div class="part-head">
+    <div class="kicker">Part 8</div>
+    <h2>From evidence to design</h2>
+    <p class="dek">Everything above compresses into two lists: product commitments (what the app
+    does and refuses to do) and statistical guardrails (rules the software enforces mechanically,
+    so honesty doesn’t depend on daily discipline).</p>
+  </div>
+
+  <h3>8.1 &nbsp;Product commitments</h3>
+  <ul>
+    <li><strong>Never ship a directional forecast.</strong> The only quantitative prediction is a
+    short-horizon volatility band (≤ ~1 month), drawn from fat-tailed distributions and labeled as a
+    conditional estimate that can understate sudden stress.</li>
+    <li><strong>Every base rate carries its sample size and a Wilson confidence interval.</strong>
+    “62 of 110 cases” with an interval — never a bare “56%”.</li>
+    <li><strong>Every published pattern carries a decay stamp:</strong> publication date plus the
+    expected post-publication haircut, so “proven strategies” arrive pre-shrunk.</li>
+    <li><strong>Movers never appear without a catalyst check.</strong> If no catalyst is found, the
+    row says so — “no clear reason; most moves this size have none” — instead of inventing one.</li>
+    <li><strong>No trending/most-bought discovery surfaces, ever.</strong> That feature causally
+    generates losses<sup class="cite">[52]</sup>. High-skew, low-price tickers get lottery-risk
+    flags instead.</li>
+    <li><strong>The cost mirror is a first-class widget:</strong> projected annual drag = effective
+    spread × the user’s own turnover, plus a trade-frequency mirror and cooling-off prompts — the
+    app’s replacement for the abolished PDT brake.</li>
+    <li><strong>Position-size suggestions (paper portfolio only) are capped at half-Kelly</strong>,
+    computed from the confidence-interval <em>lower bound</em> of the win rate together with the
+    stored payoff distribution (forward p10/median/p90) — a teaching device for sizing arithmetic
+    on paper, never a conviction dial, and it inherits every cost caveat on the card.</li>
+    <li><strong>The app grades itself in public.</strong> Every flagged setup is logged append-only
+    and scored after resolution; the track-record page shows hits, misses, and calibration — misses
+    first-class.</li>
+    <li><strong>Folklore is labeled folklore</strong> — Fibonacci, Elliott Wave, gap-fill lore, and
+    indicator-based market timing are taught with their evidence grade, not silently omitted.</li>
+    <li><strong>Every real effect names who can capture it</strong> (institutions at scale vs
+    individual via funds) and at what horizon — the “real but not yours” frame from Part 2.</li>
+    <li><strong>Paper-first by default</strong> — a pedagogical stance, not a legal one (§6.4); no
+    brokerage integration in v1, revisited only after the paper track record earns it.</li>
+  </ul>
+
+  <h3>8.2 &nbsp;Statistical guardrails (enforced in code)</h3>
+  <table class="rowhead">
+    <thead><tr><th style="width:52mm">Rule</th><th>Rationale</th></tr></thead>
+    <tbody>
+      <tr><td>t &gt; 3.0 before any new pattern is labeled better than noise</td>
+        <td>Multiple-testing hurdle for a mined field<sup class="cite">[9]</sup>.</td></tr>
+      <tr><td>Trial counting on every user experiment (Deflated Sharpe, PBO)</td>
+        <td>~45 tried configurations on 5 years of daily data guarantee an impressive in-sample mirage<sup class="cite">[72]</sup>.</td></tr>
+      <tr><td>Sample-size display rules: N ≥ 100 → % + CI; 30–99 → “roughly 6 in 10” + wide-interval note; N &lt; 30 → “insufficient history — treat as anecdote,” percentage suppressed</td>
+        <td>60/100 wins spans [50%, 69%] at 95% confidence — visibly near a coin flip; false precision is the enemy.</td></tr>
+      <tr><td>Direction benchmarks use the always-up baseline (~53–55%), never 50%; anything above ~55% OOS is flagged as presumptive overfitting</td>
+        <td>US equities drift upward; a “58% accurate” signal can be worse than “always up”<sup class="cite">[24]</sup>.</td></tr>
+      <tr><td>Decay haircuts auto-applied to published anomalies (−26% OOS / −58% post-publication, US)</td>
+        <td>McLean–Pontiff averages<sup class="cite">[8]</sup>; haircut noted as US-calibrated.</td></tr>
+      <tr><td>Survivorship warnings when a backtest universe lacks delisted names</td>
+        <td>Missing delisting returns average ~−30%<sup class="cite">[65]</sup>.</td></tr>
+      <tr><td>Retail cost assumptions (20–57bp/trade) in every net-of-cost figure; strategies above ~50% monthly turnover presumptively die</td>
+        <td>Institutional cost assumptions are the standard silent lie in backtests<sup class="cite">[3]</sup>.</td></tr>
+      <tr><td>Volatility forecasts only at ≤ 15–20 trading days, with regime-break caveat attached</td>
+        <td>That is where the evidence ends<sup class="cite">[12]</sup>.</td></tr>
+      <tr><td>Regime-sliced statistics get wider bands or are blocked below minimum N</td>
+        <td>Conditioning multiplies implicit tests while shrinking samples.</td></tr>
+      <tr><td>The app’s own flags are Brier-scored; the forecast journal anchors user predictions on displayed base rates</td>
+        <td>Calibration feedback is the best-evidenced debiasing intervention available.</td></tr>
+    </tbody>
+  </table>
+</section>
+<!-- ================= PART 9 ================= -->
+<section class="part">
+  <div class="part-head">
+    <div class="kicker">Part 9</div>
+    <h2>The product: Desk &amp; Academy</h2>
+    <p class="dek">One product, two rooms. The <strong>Desk</strong> is a calm, one-screen command
+    center that runs the daily ritual over the US trading day. The <strong>Academy</strong> is a
+    prose-first learning hub. They are visually and structurally separate, connected only through
+    named doorways — and every element the evidence chapters demanded (base rates, decay stamps,
+    honest misses) has a specific home here.</p>
+  </div>
+
+  <h3>9.1 &nbsp;One product, two rooms</h3>
+  <p>The hard requirement — data experience and learning experience cleanly separated, neither
+  crowding the other — is solved with <strong>two distinct visual grammars under one shell</strong>,
+  so the user knows which mode they are in without reading a label<sup class="cite">[75,90]</sup>.
+  The Desk is dense and tabular: compact 13–14px type, cool neutral background, tabular lining
+  numerals, optional dark mode. The Academy is editorial: 16–18px prose at a ~65-character measure,
+  generous line height, warmer white, light-only (long-form comprehension favors positive
+  polarity<sup class="cite">[77]</sup>). Two content rules keep the wall solid: <em>the Desk hosts
+  doorways, not classrooms</em> — chips, glossary popovers, and one worked-example drawer, but never
+  full lesson bodies; and <em>the Academy contains no live prices</em>, so the monitoring mindset
+  and the learning mindset never compete for the same screen.</p>
+
+  <figure class="avoid-break">
+    <div class="fig-frame">
+    <svg viewBox="0 0 700 330" role="img" aria-label="Information architecture: Desk and Academy zones connected by five named doorways" font-family="-apple-system,'Segoe UI',sans-serif">
+      <!-- shell -->
+      <rect x="10" y="10" width="680" height="30" rx="6" fill="#f9f9f7" stroke="#e1e0d9"/>
+      <text x="24" y="29" font-size="12" font-weight="650" fill="#0b0b0b">myStockMarket</text>
+      <text x="140" y="29" font-size="11.5" fill="#2a78d6" font-weight="650">Desk</text>
+      <text x="185" y="29" font-size="11.5" fill="#52514e">Academy</text>
+      <text x="660" y="29" font-size="11" fill="#898781" text-anchor="end">⌘K</text>
+
+      <!-- Desk zone -->
+      <rect x="10" y="52" width="300" height="216" rx="8" fill="#fcfcfb" stroke="#2a78d6" stroke-width="1.4"/>
+      <text x="26" y="76" font-size="12.5" font-weight="700" fill="#0b0b0b">DESK — command center</text>
+      <text x="26" y="91" font-size="10" fill="#898781">dense · tabular · calm · one screen</text>
+      <g font-size="10.8" fill="#52514e">
+        <text x="26" y="112">1&nbsp;&nbsp;Macro pulse + breadth strip</text>
+        <text x="26" y="128">2&nbsp;&nbsp;Daily brief — AM plan / PM scorecard</text>
+        <text x="26" y="144">3&nbsp;&nbsp;Session calendar + if/then cards</text>
+        <text x="26" y="160">4&nbsp;&nbsp;Movers with reason (catalyst + RVOL)</text>
+        <text x="26" y="176">5&nbsp;&nbsp;Focus watchlist (max 3) + shelf</text>
+        <text x="26" y="192">6&nbsp;&nbsp;Setup cards (probabilistic)</text>
+        <text x="26" y="208">7&nbsp;&nbsp;Sector small multiples · scan presets</text>
+      </g>
+      <rect x="26" y="222" width="268" height="32" rx="5" fill="#f9f9f7" stroke="#e1e0d9"/>
+      <text x="40" y="235" font-size="10" font-weight="650" fill="#52514e">Track record — “How reliable are these signals?”</text>
+      <text x="40" y="247" font-size="9.5" fill="#898781">calibration curve · Brier · append-only log, misses included</text>
+
+      <!-- Academy zone -->
+      <rect x="390" y="52" width="300" height="216" rx="8" fill="#fcfcfb" stroke="#1baf7a" stroke-width="1.4"/>
+      <text x="406" y="76" font-size="12.5" font-weight="700" fill="#0b0b0b">ACADEMY — learning hub</text>
+      <text x="406" y="91" font-size="10" fill="#898781">prose · unhurried · no live prices</text>
+      <g font-size="10.8" fill="#52514e">
+        <text x="406" y="112">Curriculum M0–M6 (risk before patterns)</text>
+        <text x="406" y="128">~60 micro-lessons (3–5 min, single objective)</text>
+        <text x="406" y="144">Worked-example library (annotated charts)</text>
+        <text x="406" y="160">Review queue (max 5/day, no streaks)</text>
+        <text x="406" y="176">Glossary + probability lexicon</text>
+        <text x="406" y="192">Myth vs. evidence series (the ledger, taught)</text>
+        <text x="406" y="208">Journal (PM prompts file here)</text>
+      </g>
+
+      <!-- doorways -->
+      <g font-size="9.6" fill="#52514e">
+        <defs>
+          <marker id="arr" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="6" markerHeight="6" orient="auto">
+            <path d="M0 0 L8 4 L0 8 z" fill="#898781"/>
+          </marker>
+        </defs>
+        <line x1="312" y1="106" x2="388" y2="106" stroke="#898781" stroke-width="1.3" marker-end="url(#arr)"/>
+        <text x="350" y="100" text-anchor="middle">“Learn” chips on signals</text>
+        <line x1="312" y1="140" x2="388" y2="140" stroke="#898781" stroke-width="1.3" marker-end="url(#arr)"/>
+        <text x="350" y="134" text-anchor="middle">glossary → full lesson</text>
+        <line x1="312" y1="174" x2="388" y2="174" stroke="#898781" stroke-width="1.3" marker-end="url(#arr)"/>
+        <text x="350" y="168" text-anchor="middle">one learning link per brief</text>
+        <line x1="388" y1="212" x2="312" y2="212" stroke="#898781" stroke-width="1.3" marker-end="url(#arr)"/>
+        <text x="350" y="206" text-anchor="middle">“See this live”</text>
+        <line x1="388" y1="244" x2="312" y2="244" stroke="#898781" stroke-width="1.3" marker-end="url(#arr)"/>
+        <text x="350" y="238" text-anchor="middle">lexicon popovers on badges</text>
+      </g>
+
+      <!-- return rail -->
+      <rect x="10" y="284" width="680" height="34" rx="6" fill="#f9f9f7" stroke="#e1e0d9"/>
+      <text x="350" y="298" font-size="10.5" text-anchor="middle" font-weight="650" fill="#52514e">Every crossing carries a state-preserving return rail</text>
+      <text x="350" y="311" font-size="9.8" text-anchor="middle" fill="#898781">“You came from: AAPL signal, Jul 8 → Return” — scroll, filters, and selection restored exactly</text>
+    </svg>
+    </div>
+    <figcaption><b>Figure 9.1 — Information architecture.</b> Two zones with distinct visual
+    grammars; guaranteed clean return. Seven crossings share the return-rail contract: the five
+    doorway arrows shown, plus the worked-example drawer (disclosure level 2 of every signal,
+    §9.3) and the PM journal prompt, which files into the Academy journal. The behavior-mirror
+    prompts of §6.2 (cooling-off, frequency mirror) are the one sanctioned <em>push</em> channel —
+    rate-limited, dismissible, each carrying a single lesson link [79,80,94].</figcaption>
+  </figure>
+
+  <h3>9.2 &nbsp;The Desk and the daily ritual</h3>
+  <p><strong>Behind the ritual sits the after-close engine.</strong> Each trading evening — hours
+  after the 4:00pm ET close, entirely in the cloud — a pipeline ingests the day’s US closing data,
+  the earnings calendar and filings, macro releases and ticker-tagged news; scans the full US
+  market for pattern states; computes base rates with their intervals; and writes — then
+  deterministically verifies — the briefing. By roughly 8:40pm Eastern the Desk is already set for
+  tomorrow, whether it gets read that night or over pre-open coffee. (The engine’s full design is
+  Blueprint Parts 2 and 5; everything it publishes obeys the guardrails of Part 8.)</p>
+  <p>The Desk fits one screen without scrolling<sup class="cite">[75]</sup> at a reference viewport
+  of ≥1366×768; below that, modules 6–8 collapse to summary rows and the page scrolls <em>in ritual
+  order</em> — the order, not the single screen, is the invariant (on a phone, the Desk renders as
+  one ritual-ordered column). That fixed top-to-bottom order mirrors the documented professional
+  pre-market sequence — macro first, calendar, movers, then the plan — so the layout itself teaches
+  the routine<sup class="cite">[90,96]</sup>. Positions and P&amp;L are deliberately <em>not</em>
+  the hero: institutions never start the day with their book, because it anchors emotion before
+  context<sup class="cite">[96]</sup>.</p>
+  <p>The timing geometry is home-field: the user lives on market time. The regular session runs
+  9:30am–4:00pm ET with after-hours until 8:00pm ET; the verified briefing publishes by about
+  8:40pm the same evening (an hour earlier on the winter clock — the pipeline is UTC-fixed while
+  local time shifts with DST), hours after the close and more than twelve before the next open.
+  The ritual is therefore a <strong>review-and-prepare</strong> session — built strictly from
+  closed-session data, never a live feed — bookended by two fixed-format briefs<sup
+  class="cite">[91]</sup>: an AM plan of three to five word-capped items with labeled slots
+  (<em>What happened / Why it matters / By the numbers / Yes, but</em>) covering the completed US
+  session, and a PM scorecard that grades the prior brief’s flags against what actually happened,
+  misses included. That evening loop is the strongest anti-hype widget in the
+  product: the user watches base-rate intuition form against their own tool’s record. The brief’s
+  lead card — <em>Today’s focus</em> — together with any strong-tier setup cards is the explicit
+  answer to “what deserves a deeper look”; and “no clear edge today” renders as a first-class,
+  undecorated state, never an apology.</p>
+
+  <figure class="avoid-break">
+    <div class="fig-frame">
+    <svg viewBox="0 0 700 400" role="img" aria-label="Desk wireframe: eight modules in fixed ritual order with a slide-over rail" font-family="-apple-system,'Segoe UI',sans-serif">
+      <!-- canvas -->
+      <rect x="10" y="10" width="540" height="380" rx="8" fill="#fcfcfb" stroke="#c3c2b7"/>
+      <!-- 1 macro strip -->
+      <rect x="22" y="22" width="516" height="30" rx="4" fill="#f9f9f7" stroke="#e1e0d9"/>
+      <circle cx="38" cy="37" r="8" fill="#2a78d6"/><text x="38" y="40.5" font-size="10" fill="#fff" text-anchor="middle" font-weight="700">1</text>
+      <text x="54" y="41" font-size="10.5" fill="#52514e">US macro pulse — S&amp;P 500 · Nasdaq · 10-yr · VIX · oil &nbsp;|&nbsp; breadth: adv/dec · %&gt;50DMA</text>
+      <!-- 2 brief -->
+      <rect x="22" y="60" width="304" height="112" rx="4" fill="#fff" stroke="#e1e0d9"/>
+      <circle cx="38" cy="76" r="8" fill="#2a78d6"/><text x="38" y="79.5" font-size="10" fill="#fff" text-anchor="middle" font-weight="700">2</text>
+      <text x="54" y="80" font-size="11" font-weight="650" fill="#0b0b0b">Daily brief — AM plan · PM scorecard</text>
+      <text x="38" y="97" font-size="9.8" fill="#52514e">3–5 items · fixed slots: What happened / Why it</text>
+      <text x="38" y="109" font-size="9.8" fill="#52514e">matters / By the numbers / Yes, but</text>
+      <text x="38" y="124" font-size="9.8" fill="#898781">PM: flagged vs happened · honest misses · journal prompt</text>
+      <rect x="38" y="136" width="190" height="22" rx="4" fill="#f9f9f7" stroke="#e1e0d9"/>
+      <text x="46" y="150" font-size="9.5" fill="#52514e">Today’s focus · “no clear edge” is first-class</text>
+      <!-- 3 calendar -->
+      <rect x="338" y="60" width="200" height="112" rx="4" fill="#fff" stroke="#e1e0d9"/>
+      <circle cx="354" cy="76" r="8" fill="#2a78d6"/><text x="354" y="79.5" font-size="10" fill="#fff" text-anchor="middle" font-weight="700">3</text>
+      <text x="370" y="80" font-size="11" font-weight="650" fill="#0b0b0b">US session calendar</text>
+      <text x="354" y="96" font-size="9.8" fill="#52514e">CPI 8:30am ET · cons 0.3% · prior 0.4%</text>
+      <text x="354" y="110" font-size="9.8" fill="#52514e">NVDA earnings AMC · implied ±6.8%</text>
+      <text x="354" y="126" font-size="9.8" fill="#898781">if/then cards · per-branch base rates</text>
+      <text x="354" y="140" font-size="9.8" fill="#898781">“no clear edge” is a valid branch</text>
+      <!-- 4 movers -->
+      <rect x="22" y="180" width="304" height="96" rx="4" fill="#fff" stroke="#e1e0d9"/>
+      <circle cx="38" cy="196" r="8" fill="#2a78d6"/><text x="38" y="199.5" font-size="10" fill="#fff" text-anchor="middle" font-weight="700">4</text>
+      <text x="54" y="200" font-size="11" font-weight="650" fill="#0b0b0b">US movers with reason</text>
+      <text x="38" y="216" font-size="9.8" fill="#52514e">SMCI +8.2% · RVOL 3.1× · [earnings] beat + raised guide</text>
+      <text x="38" y="230" font-size="9.8" fill="#52514e">ABC −6.4% · RVOL 2.2× · [analyst] downgrade, PT cut</text>
+      <text x="38" y="244" font-size="9.8" fill="#898781">XYZ +5.1% · RVOL 0.8× · no news found — likely noise</text>
+      <text x="38" y="262" font-size="9.5" fill="#898781">catalyst chip + source link on every row</text>
+      <!-- 5 watchlist -->
+      <rect x="338" y="180" width="200" height="96" rx="4" fill="#fff" stroke="#e1e0d9"/>
+      <circle cx="354" cy="196" r="8" fill="#2a78d6"/><text x="354" y="199.5" font-size="10" fill="#fff" text-anchor="middle" font-weight="700">5</text>
+      <text x="370" y="200" font-size="11" font-weight="650" fill="#0b0b0b">Focus watchlist (max 3)</text>
+      <text x="354" y="216" font-size="9.8" fill="#52514e">AAPL · +0.4% · gap 0.2% · RVOL 1.1 ▁▂▃▅▄</text>
+      <text x="354" y="230" font-size="9.8" fill="#52514e">written reason required per name</text>
+      <text x="354" y="246" font-size="9.8" fill="#898781">secondary shelf one level deeper</text>
+      <text x="354" y="260" font-size="9.8" fill="#898781">“why the cap exists” explained in-UI</text>
+      <!-- 6 setup cards -->
+      <rect x="22" y="284" width="304" height="52" rx="4" fill="#fff" stroke="#e1e0d9"/>
+      <circle cx="38" cy="300" r="8" fill="#2a78d6"/><text x="38" y="303.5" font-size="10" fill="#fff" text-anchor="middle" font-weight="700">6</text>
+      <text x="54" y="304" font-size="11" font-weight="650" fill="#0b0b0b">Setup cards (summary rows)</text>
+      <text x="38" y="320" font-size="9.8" fill="#52514e">cause → pattern → base rate (N, CI) · full card in the rail — Fig 9.3</text>
+      <!-- 7 sectors/scans -->
+      <rect x="338" y="284" width="200" height="52" rx="4" fill="#fff" stroke="#e1e0d9"/>
+      <circle cx="354" cy="300" r="8" fill="#2a78d6"/><text x="354" y="303.5" font-size="10" fill="#fff" text-anchor="middle" font-weight="700">7</text>
+      <text x="370" y="304" font-size="11" font-weight="650" fill="#0b0b0b">Sectors · scan presets</text>
+      <text x="354" y="320" font-size="9.8" fill="#52514e">small multiples · visible criteria</text>
+      <!-- portfolio corner -->
+      <rect x="22" y="344" width="516" height="34" rx="4" fill="#f9f9f7" stroke="#e1e0d9"/>
+      <circle cx="38" cy="361" r="8" fill="#c3c2b7"/><text x="38" y="364.5" font-size="10" fill="#fff" text-anchor="middle" font-weight="700">8</text>
+      <text x="54" y="360" font-size="10" font-weight="650" fill="#52514e">Paper-portfolio state — “am I OK?” · never a P&amp;L hero</text>
+      <text x="54" y="372" font-size="9.5" fill="#898781">cost mirror: projected annual drag from your own paper turnover · cooling-off prompts</text>
+
+      <!-- slide-over rail ghost -->
+      <rect x="562" y="10" width="128" height="380" rx="8" fill="none" stroke="#898781" stroke-dasharray="5 4"/>
+      <text x="626" y="34" font-size="10.5" text-anchor="middle" fill="#52514e" font-weight="650">Slide-over rail</text>
+      <text x="626" y="48" font-size="9.5" text-anchor="middle" fill="#898781">drill level 2 of 3</text>
+      <text x="626" y="70" font-size="9.5" text-anchor="middle" fill="#898781">click any ticker →</text>
+      <text x="626" y="83" font-size="9.5" text-anchor="middle" fill="#898781">chart + full setup</text>
+      <text x="626" y="96" font-size="9.5" text-anchor="middle" fill="#898781">cards, no navigation</text>
+      <text x="626" y="118" font-size="9.5" text-anchor="middle" fill="#898781">“Open full view” →</text>
+      <text x="626" y="131" font-size="9.5" text-anchor="middle" fill="#898781">level 3 (route +</text>
+      <text x="626" y="144" font-size="9.5" text-anchor="middle" fill="#898781">breadcrumb + Back)</text>
+    </svg>
+    </div>
+    <figcaption><b>Figure 9.2 — The Desk, one screen.</b> Numbered in ritual order (macro → brief →
+    calendar → movers → watchlist → setups). Setup cards render as summary rows here; the full
+    template (Figure 9.3) lives in the slide-over rail — drill depth 2. A full ticker page with
+    breadcrumb is depth 3, the maximum [77,98].</figcaption>
+  </figure>
+
+  <table>
+    <caption>Widget catalog — every module earns its place or doesn’t ship</caption>
+    <thead><tr>
+      <th style="width:34mm">Widget</th><th style="width:14mm">Priority</th>
+      <th>Why it earns its place</th><th style="width:42mm">Explain-why hook</th>
+    </tr></thead>
+    <tbody>
+      <tr><td>US macro pulse + breadth strip</td><td><span class="chip neutral">Must</span></td>
+        <td>Every documented pro routine starts macro-first; breadth answers “broad or narrow?” — invisible in price-only views [90,96].</td>
+        <td>Every figure is a glossary term; popover explains disagreement cases.</td></tr>
+      <tr><td>Daily brief pair (AM/PM)</td><td><span class="chip neutral">Must</span></td>
+        <td>Fixed-count, fixed-order briefs readable in under 3 minutes are the proven ritual format; labeled slots separate fact from interpretation structurally [91].</td>
+        <td>The slot labels are the lesson; exactly one Academy link per brief.</td></tr>
+      <tr><td>Movers with reason (US session)</td><td><span class="chip neutral">Must</span></td>
+        <td>The highest-leverage terminal pattern for a beginner: why + relative volume on the same row; catalyst-less moves labeled “likely noise” [92].</td>
+        <td>Catalyst chip carries durability + continuation base rate; opens catalyst explainer.</td></tr>
+      <tr><td>US session calendar + if/then cards</td><td><span class="chip neutral">Must</span></td>
+        <td>Converts surprise volatility into anticipated events (earnings bmo/amc, CPI, jobs report, FOMC); scenario framing beats point forecasts, and “no edge” is a rendered branch [84].</td>
+        <td>Consensus/prior columns teach beat/miss; per-branch frequencies (suppressed honestly when branch N &lt; 30).</td></tr>
+      <tr><td>Focus watchlist (max 3 + shelf)</td><td><span class="chip neutral">Must</span></td>
+        <td>Pros cap attention deliberately; unbounded lists produce scattered emotional decisions [96]. RVOL is a base rate disguised as a column [99].</td>
+        <td>The cap itself is explained; headers are glossary terms.</td></tr>
+      <tr><td>Probabilistic setup card</td><td><span class="chip neutral">Must</span></td>
+        <td>The signature unit — see §9.3 and Figure 9.3.</td>
+        <td>Two-level disclosure: chip → worked-example drawer → Academy.</td></tr>
+      <tr><td>Track-record page</td><td><span class="chip neutral">Must</span></td>
+        <td>Grading itself in public — misses first-class — is the app’s structural advantage over hype [94,80]. Ships (in minimal form) with the first setup cards, never after them.</td>
+        <td>Companion lesson uses the live page as its worked example.</td></tr>
+      <tr><td>Sector small multiples</td><td><span class="chip neutral">Should</span></td>
+        <td>Identically scaled mini-charts make “broad or concentrated?” preattentive [76]; desaturated — the saturation-wall look is rejected as emotional wallpaper.</td>
+        <td>Tiles link to sector-rotation explainers.</td></tr>
+      <tr><td>Quantile dotplot (drill-down)</td><td><span class="chip neutral">Should</span></td>
+        <td>Each dot = one past occurrence’s forward return; the losing tail is visibly present. Measurably reduces lay estimation error vs point numbers [85].</td>
+        <td>One-time “how to read a dotplot” signpost, then silent.</td></tr>
+      <tr><td>Named scan presets, visible criteria</td><td><span class="chip neutral">Should</span></td>
+        <td>The visible recipe doubles as curriculum; hidden criteria turn a preset into an oracle [78].</td>
+        <td>Each filter line links to the lesson explaining it.</td></tr>
+      <tr><td>Curated top news (not a feed)</td><td><span class="chip neutral">Later</span></td>
+        <td>Curation works; a firehose is cognitively hostile and mostly duplicated by movers-with-reason.</td>
+        <td>Neutral declarative headlines; catalyst chips consistent with movers.</td></tr>
+      <tr><td>Relative-strength comparison chart</td><td><span class="chip neutral">Later</span></td>
+        <td>Good on the full ticker page; kept off the Desk to protect the widget budget [98].</td>
+        <td>“Relative strength” glossary chip.</td></tr>
+      <tr><td>⌘K command palette</td><td><span class="chip neutral">Later</span></td>
+        <td>Zero-chrome accelerator; zone badges on results reinforce the two-room model.</td>
+        <td>—</td></tr>
+    </tbody>
+  </table>
+
+  <h3>9.3 &nbsp;The setup card — the signature unit</h3>
+  <p>Wherever a signal fires, it renders in one fixed template. On the Desk itself a card appears as
+  a two-line summary row; the full template below is what the slide-over rail shows. The template is
+  the XAI research distilled<sup class="cite">[79,80]</sup>: an observable cause (never “our model
+  likes it”), a named pattern that links to its lesson, a base rate stated as a <strong>natural
+  frequency with an explicit reference class</strong><sup class="cite">[81,82]</sup>, the sample
+  size and interval, an explicit comparison to the unconditional baseline, a typical range instead
+  of a target, a mandatory “what would weaken this” list (explanations inflate trust even when
+  wrong — the falsifiers push back<sup class="cite">[80]</sup>), and a scope line. Verbal labels
+  come from a fixed lexicon<sup class="cite">[83]</sup> — “moderate tendency” always means the same
+  numeric band, documented once in the Academy.</p>
+
+  <figure class="avoid-break">
+    <div class="fig-frame">
+    <svg viewBox="0 0 700 340" role="img" aria-label="Anatomy of a probabilistic setup card" font-family="-apple-system,'Segoe UI',sans-serif">
+      <!-- card -->
+      <rect x="14" y="14" width="380" height="312" rx="10" fill="#fff" stroke="#c3c2b7"/>
+      <!-- header -->
+      <text x="30" y="42" font-size="14" font-weight="700" fill="#0b0b0b">AAPL · Golden cross (50/200)</text>
+      <rect x="300" y="27" width="80" height="20" rx="10" fill="#f9f9f7" stroke="#c3c2b7"/>
+      <circle cx="312" cy="37" r="3.4" fill="#898781"/>
+      <text x="320" y="41" font-size="9" font-weight="650" fill="#52514e">WEAK</text>
+      <!-- what fired -->
+      <text x="30" y="66" font-size="9.5" font-weight="700" fill="#898781" letter-spacing="1">WHAT FIRED</text>
+      <text x="30" y="81" font-size="11" fill="#0b0b0b">50-day average crossed above the 200-day</text>
+      <text x="30" y="95" font-size="11" fill="#0b0b0b">yesterday, on 2.1× average volume.</text>
+      <!-- base rate -->
+      <text x="30" y="119" font-size="9.5" font-weight="700" fill="#898781" letter-spacing="1">HISTORICAL BASE RATE</text>
+      <text x="30" y="134" font-size="11" fill="#0b0b0b">In 5 years, this appeared 110 times on similar</text>
+      <text x="30" y="148" font-size="11" fill="#0b0b0b">stocks. Higher 10 trading days later in</text>
+      <text x="30" y="162" font-size="11" font-weight="650" fill="#0b0b0b">62 of 110 cases (56%).</text>
+      <!-- icon array 20 squares, 11 filled -->
+      <g>
+        <g fill="#2a78d6">
+          <rect x="30" y="171" width="12" height="12" rx="2"/><rect x="46" y="171" width="12" height="12" rx="2"/>
+          <rect x="62" y="171" width="12" height="12" rx="2"/><rect x="78" y="171" width="12" height="12" rx="2"/>
+          <rect x="94" y="171" width="12" height="12" rx="2"/><rect x="110" y="171" width="12" height="12" rx="2"/>
+          <rect x="126" y="171" width="12" height="12" rx="2"/><rect x="142" y="171" width="12" height="12" rx="2"/>
+          <rect x="158" y="171" width="12" height="12" rx="2"/><rect x="174" y="171" width="12" height="12" rx="2"/>
+          <rect x="190" y="171" width="12" height="12" rx="2"/>
+        </g>
+        <g fill="none" stroke="#c3c2b7">
+          <rect x="206" y="171" width="12" height="12" rx="2"/><rect x="222" y="171" width="12" height="12" rx="2"/>
+          <rect x="238" y="171" width="12" height="12" rx="2"/><rect x="254" y="171" width="12" height="12" rx="2"/>
+          <rect x="270" y="171" width="12" height="12" rx="2"/><rect x="286" y="171" width="12" height="12" rx="2"/>
+          <rect x="302" y="171" width="12" height="12" rx="2"/><rect x="318" y="171" width="12" height="12" rx="2"/>
+          <rect x="334" y="171" width="12" height="12" rx="2"/>
+        </g>
+      </g>
+      <text x="30" y="196" font-size="9.5" fill="#898781">N = 110 · 95% CI 47–65% · ref class: US large caps · 2021–2026 · 10-day horizon</text>
+      <text x="30" y="208" font-size="9.5" fill="#52514e">Unconditional 10-day up-rate ≈ 55% — read this as near-baseline.</text>
+      <!-- typical range -->
+      <text x="30" y="228" font-size="9.5" font-weight="700" fill="#898781" letter-spacing="1">TYPICAL 10-DAY RANGE</text>
+      <text x="30" y="242" font-size="11" fill="#0b0b0b">−4.2% to +5.8% (middle 8 of 10 past cases)</text>
+      <!-- weakeners -->
+      <text x="30" y="262" font-size="9.5" font-weight="700" fill="#898781" letter-spacing="1">WHAT WOULD WEAKEN THIS</text>
+      <text x="30" y="276" font-size="10.5" fill="#52514e">☐ Close back below the 200-day average</text>
+      <text x="30" y="290" font-size="10.5" fill="#52514e">☑ Volume fades below average for 3 sessions</text>
+      <!-- scope + provenance -->
+      <line x1="30" y1="298" x2="378" y2="298" stroke="#e1e0d9"/>
+      <text x="30" y="311" font-size="9.5" font-style="italic" fill="#52514e">A tendency, not a prediction.</text>
+      <text x="30" y="321" font-size="8.5" fill="#898781">5y daily OHLCV · computed 6:47pm ET · sources [d41, d87] · Learn: golden cross →</text>
+
+      <!-- callouts -->
+      <g font-size="10" fill="#52514e">
+        <g font-weight="650" fill="#2a78d6">
+          <text x="420" y="42">1</text><text x="420" y="84">2</text><text x="420" y="140">3</text>
+          <text x="420" y="182">4</text><text x="420" y="222">5</text><text x="420" y="272">6</text>
+          <text x="420" y="304">7</text><text x="420" y="318">8</text>
+        </g>
+        <text x="432" y="42">Named pattern, linked to its Academy lesson;</text>
+        <text x="432" y="56">tier from the fixed lexicon [83] — a CI that spans</text>
+        <text x="432" y="70">the always-up baseline caps the tier at WEAK</text>
+        <text x="432" y="84">Observable cause — what fired, in data terms,</text>
+        <text x="432" y="98">never “the model likes it” [79]</text>
+        <text x="432" y="140">Natural frequency + explicit reference class —</text>
+        <text x="432" y="154">the best-evidenced lay probability format [81,82]</text>
+        <text x="432" y="182">Icon array makes the misses impossible</text>
+        <text x="432" y="196">to ignore (9 empty squares) [85]</text>
+        <text x="432" y="222">Sample size + Wilson CI, always; the baseline line</text>
+        <text x="432" y="236">names the ~55% unconditional up-rate; N &lt; 30</text>
+        <text x="432" y="250">suppresses the percentage entirely</text>
+        <text x="432" y="272">A range, never a target — distribution</text>
+        <text x="432" y="286">thinking from day one [84]</text>
+        <text x="432" y="304">Falsifiers with live check state [80]</text>
+        <text x="432" y="318">Scope line + provenance + doorway</text>
+      </g>
+    </svg>
+    </div>
+    <figcaption><b>Figure 9.3 — Anatomy of the probabilistic setup card.</b> The fixed template
+    renders identically for every signal; only the content varies. Note the example’s own honesty:
+    56% against a ~55% unconditional up-rate, with a CI touching the coin-flip line, earns only a
+    WEAK tier — the flagship illustration is deliberately a near-non-signal. Clicking “Why this
+    fired” opens a three-step worked-example drawer with the relevant candles annotated on the
+    chart itself — disclosure level 2 of a hard maximum of 2 overlays [78,86].</figcaption>
+  </figure>
+
+  <h3>9.4 &nbsp;The honest-uncertainty system</h3>
+  <ul>
+    <li><strong>The canonical sentence.</strong> Every base rate reads: <em>“In the past 5 years,
+    this pattern appeared N times on stocks like this. Price was higher H days later in W of N
+    cases (P%).”</em> Natural frequencies with a visible reference class — because 30–80% of
+    laypeople misread bare percentages by misattributing what they refer to<sup
+    class="cite">[81,82]</sup>.</li>
+    <li><strong>Sample-aware precision, enforced by the display engine.</strong> N ≥ 100 → percentage
+    with interval; 30–99 → “roughly 6 in 10” with a wide-interval note; N &lt; 30 → “insufficient
+    history — treat as anecdote,” percentage suppressed. Never “68.4%” from 12 occurrences.</li>
+    <li><strong>Words from a fixed lexicon.</strong> “Weak tendency” = 50–58%, “moderate” = 58–70%,
+    “strong” = &gt;70% — always rendered word <em>plus</em> frequency, because interpretations of a
+    bare “likely” span 40+ percentage points across readers<sup class="cite">[83]</sup>. One
+    override outranks the bands: <strong>a confidence interval that includes the ~53–55% always-up
+    baseline caps the tier at “weak”</strong> — no-edge never wears a stronger badge, whatever the
+    point estimate says.</li>
+    <li><strong>Distributions, never points.</strong> Quantile dotplots of historical forward
+    returns in drill-down<sup class="cite">[85]</sup>; fan charts with frequency-labeled bands
+    (“8 in 10 past paths stayed inside”) wherever anything forward-looking is drawn<sup
+    class="cite">[84]</sup>. No single projected line exists anywhere in the product.</li>
+    <li><strong>Confidence only where it changes behavior.</strong> Tier badges appear on actionable
+    setup cards only, each tier mapped to a stated, deliberately observational action — “strong →
+    worth a closer look; moderate → note it and check the weakeners; weak → watch only.” No tier
+    ever maps to an acquisitional verb, and no confidence chrome appears on quotes or static
+    facts — ubiquitous scores train score-chasing<sup class="cite">[79]</sup>.</li>
+    <li><strong>The system grades itself in public.</strong> Calibration curve with per-bucket
+    counts, rolling Brier score with a plain-language anchor (“0.25 = coin flip”), and a complete
+    append-only resolved log — every hit <em>and</em> miss, filterable by pattern, with a banner
+    when a signal family runs below its long-run rate<sup class="cite">[94]</sup>.</li>
+    <li><strong>Mechanical voice.</strong> “The pattern has historically been followed by…” — never
+    “I think this stock will…”. Anthropomorphic voice inflates trust; disclaimers sit at the
+    decision point, not the page footer<sup class="cite">[77,97]</sup>.</li>
+  </ul>
+
+  <h3>9.5 &nbsp;The Academy</h3>
+  <p>The Academy is a curriculum, not a content dump: seven modules of ~60 single-objective
+  micro-lessons (3–5 minutes, two or three retrieval questions, a quiet checkmark — chunking without
+  gamification). The ordering is deliberate: <strong>risk before patterns</strong>, with pattern
+  lessons soft-gated on the risk module — teaching pattern-spotting first manufactures overconfident
+  beginners, the exact failure mode this product exists to prevent.</p>
+  <table class="rowhead">
+    <caption>Curriculum map</caption>
+    <thead><tr><th style="width:40mm">Module</th><th>Contents</th></tr></thead>
+    <tbody>
+      <tr><td>M0 · Orientation</td><td>How this app explains itself: the probability lexicon, reading base-rate sentences and icon arrays, what the track-record page means (calibration, Brier as “coin flip = 0.25”).</td></tr>
+      <tr><td>M1 · US market mechanics</td><td>NYSE and Nasdaq; tickers; the US session structure (pre-market 4:00–9:30am, regular 9:30am–4:00pm, after-hours 4:00–8:00pm ET) and what trades when; order types; bid–ask spreads; what every number in the macro strip is.</td></tr>
+      <tr><td>M2 · Costs &amp; account math</td><td>Spreads, slippage, taxes, why frequent trading compounds costs — the arithmetic that precedes any strategy.</td></tr>
+      <tr><td>M3 · Risk before patterns</td><td>Position sizing, stops, expectancy, drawdown math, why base rates beat anecdotes. Gates the pattern modules.</td></tr>
+      <tr><td>M4 · Reading charts</td><td>Candles, support/resistance, volume and RVOL, gaps, sparklines and small multiples.</td></tr>
+      <tr><td>M5 · Indicators &amp; signals</td><td>Exactly and only what the Desk shows: each pattern’s evidence grade from Part 4, how each base rate is computed, every scan preset’s recipe. The “myth vs. evidence” series lives here.</td></tr>
+      <tr><td>M6 · Psychology &amp; biases</td><td>Base-rate neglect, chasing, disposition, overtrading, why the focus list is capped at 3; journaling practice — the PM prompts file here.</td></tr>
+    </tbody>
+  </table>
+  <p>Four mechanisms make it learning-in-context rather than a separate course. (1) <strong>Worked
+  examples</strong>: every signal’s “why this fired” drawer is a fixed three-step solved example —
+  novices learn far more from worked examples than raw data<sup class="cite">[86]</sup> — with
+  annotations drawn <em>on the live chart</em>, synced to the steps, because separating explanation
+  from chart splits attention<sup class="cite">[86]</sup>. (2) <strong>Pull, not push</strong>: no
+  tours, no onboarding wizard; the one push moment is a one-time first-encounter signpost per
+  concept<sup class="cite">[78]</sup> — plus the single named exception of §6.2’s behavior-mirror
+  prompts (cooling-off, frequency mirror), which are rate-limited, dismissible, and carry at most
+  one lesson link. (3) <strong>Spaced review</strong>: at most five daily retrieval prompts,
+  Leitner-scheduled, seeded only from concepts the user actually encountered on the Desk that
+  week — spacing is one of the largest replicated effects in learning science (d ≈ 0.6)<sup
+  class="cite">[88]</sup> — skippable, guilt-free, no streaks. (4) <strong>Adaptive fading</strong>:
+  mastered concepts collapse to terse pro-mode and worked examples flip into completion prompts —
+  permanent hand-holding measurably harms intermediates (the expertise-reversal effect<sup
+  class="cite">[87]</sup>), and a tool still explaining candlesticks in month six gets abandoned.
+  Inside the Academy, navigation stays shallow: curriculum map → lesson (breadcrumbed), glossary
+  entries open as popovers within a lesson, and the return rail renders whenever arrival was from
+  the Desk.</p>
+
+  <h3>9.6 &nbsp;Navigation</h3>
+  <ul>
+    <li><strong>Drill depth is capped at 3:</strong> glance (Desk) → slide-over rail (~420px,
+    in place, no navigation) → full page (own route, breadcrumb, fixed “Back to Desk”)<sup
+    class="cite">[77]</sup>.</li>
+    <li><strong>Return is guaranteed and stateful:</strong> scroll, filters, and selection restored
+    exactly; a beginner who gets lost twice stops drilling at all<sup class="cite">[78]</sup>.
+    Cross-zone jumps carry the persistent return rail (Figure 9.1). No modal stacks.</li>
+    <li><strong>High-scent labels only:</strong> every link states the question it answers (“Why is
+    NVDA moving?”), never “Details”<sup class="cite">[78]</sup>.</li>
+    <li><strong>Overlay budget:</strong> chips, tooltips, popovers, and the one slide-over drawer —
+    anything longer navigates to the Academy. Two disclosure levels, never three<sup
+    class="cite">[78]</sup>.</li>
+    <li><strong>Constrained customization:</strong> fixed zone skeleton with show/hide and reorder
+    within zones; no freeform drag-anywhere — it destroys the hierarchy the ritual depends
+    on<sup class="cite">[77]</sup>.</li>
+  </ul>
+
+  <h3>9.7 &nbsp;Visual language</h3>
+  <ul>
+    <li><strong>Data-ink maximalism:</strong> no card shadows, no decorative borders; hairline
+    dividers; if an element can disappear without losing data, it does<sup class="cite">[76,75]</sup>.</li>
+    <li><strong>One reserved attention color</strong> (amber) for active alerts — at most 2–3
+    visible before they aggregate into a count. Color communicates importance only when
+    scarce<sup class="cite">[75]</sup>. Setup-card tier badges do <em>not</em> draw from this
+    budget: tiers render as neutral chips (gray dot + lexicon word), so ten firing cards cannot
+    turn the Desk amber.</li>
+    <li><strong>Semantic-only, colorblind-safe gain/loss:</strong> blue #0072B2 / vermillion #D55E00
+    (Wong palette<sup class="cite">[93]</sup>), applied only to deltas and chart lines, always
+    redundantly encoded with sign and direction; banned from buttons, links, and decoration —
+    interactive elements use a distinct link color so a delta can never be mistaken for a
+    button.</li>
+    <li><strong>Tabular lining numerals</strong> (a UI sans with <code>tnum</code> support — Inter
+    or IBM Plex Sans class), right-aligned numeric columns, consistent decimals — aligned digits
+    scan instantly. Reference tokens for the coding phase: Desk background near-white cool neutral,
+    Academy warmer white, one hairline divider tone, a 4–5 step type scale per zone; exact values
+    are the first task of the build’s design pass, constrained by this section.</li>
+    <li><strong>Calm technology:</strong> no blinking, no ticker tape, no toasts, no badges; data
+    refreshes fade in over ~500ms with no color flash — and in v1 the data is as-of the last US
+    close, so the calm is structural, not just stylistic. Market open/closed (US session state) and
+    data freshness render as small static peripheral indicators<sup class="cite">[89]</sup>.
+    Probability visuals are motionless — the election-needle lesson.</li>
+    <li><strong>Position and length over angle and area:</strong> bars, lines, sparklines, small
+    multiples everywhere; gauges, donuts, and speedometers nowhere<sup class="cite">[77]</sup>.</li>
+    <li><strong>Dark mode is Desk-only</strong> (optional, for evening use); the Academy stays
+    light — long-form reading favors positive polarity<sup class="cite">[77]</sup>.</li>
+  </ul>
+
+  <h3>9.8 &nbsp;What we will not build</h3>
+  <table>
+    <thead><tr><th style="width:52mm">Anti-pattern</th><th>Why it is banned</th></tr></thead>
+    <tbody>
+      <tr><td>Composite buy/sell gauges (“Technical Rating: BUY”)</td><td>Unauditable aggregates that read as advice — the exact opposite of cause + pattern + base rate.</td></tr>
+      <tr><td>Ticker tape, flashing cells, jittery dials</td><td>Motion manufactures urgency with zero decision value [89].</td></tr>
+      <tr><td>News firehose / squawk as a primary module</td><td>Built for full-time scalpers; for one beginner it is ambient anxiety duplicating movers-with-reason.</td></tr>
+      <tr><td>Movers without catalyst + RVOL on the row</td><td>A bare +21% invites momentum-chasing; “no catalyst + no RVOL = ignore” is the pro rule the UI enforces [92].</td></tr>
+      <tr><td>P&amp;L as the first thing on screen</td><td>Anchors emotion before context [96].</td></tr>
+      <tr><td>Point predictions or single projected lines</td><td>Beginners read a line as a promise [84].</td></tr>
+      <tr><td>Bare percentages / decimal confidence scores</td><td>The chance-of-rain error plus false precision [82].</td></tr>
+      <tr><td>Win-only track records</td><td>Survivorship-filtered history is the core mechanism of trading hype; the log is append-only and complete [94].</td></tr>
+      <tr><td>Gamification: streaks, XP, confetti, leagues</td><td>Regulators linked these mechanics to harmful novice trading frequency [95]; pedagogy is fully separable from them.</td></tr>
+      <tr><td>Freeform drag-anywhere dashboard builder</td><td>Destroys the hierarchy and the zone separation [77].</td></tr>
+      <tr><td>Black-box scan presets</td><td>Hidden criteria turn a preset into an oracle; the visible recipe is the lesson.</td></tr>
+      <tr><td>Product tours; tooltips on everything; 3+ overlay levels</td><td>Forgotten teaching, tooltip blindness, disorientation [78].</td></tr>
+      <tr><td>Hype copy and anthropomorphic AI voice</td><td>Urgency theater and trust inflation; copy stays declarative, neutral, mechanical [77].</td></tr>
+      <tr><td>Permanent beginner explanations, no fading</td><td>Expertise reversal: what helps a novice measurably harms an intermediate [87].</td></tr>
+      <tr><td>Trending / most-bought discovery</td><td>Causally generates loss-making trades (−4.7%/20 days) [52] — see Part 8.</td></tr>
+    </tbody>
+  </table>
+</section>
+<!-- ================= PART 10 ================= -->
+<section class="part">
+  <div class="part-head">
+    <div class="kicker">Part 10</div>
+    <h2>Candid uncertainties</h2>
+    <p class="dek">A report that demands calibrated honesty from an app owes the same about itself.
+    These are the places where this document’s own claims are contested, thinly sourced, or still
+    moving.</p>
+  </div>
+  <ul>
+    <li><strong>PEAD’s obituary is contested.</strong> “Dead in large caps since ~2006” is the
+    consensus reading, but 2025 papers dispute it — even “settled” decay claims remain live
+    debates<sup class="cite">[43]</sup>.</li>
+    <li><strong>The candlestick verdict is method-dependent.</strong> The zero-value result holds
+    under the original exit rules; alternative holding strategies produce contested positive
+    findings<sup class="cite">[32]</sup>. “Contested-negative” is the honest label, and small edges
+    would still be unlikely to survive retail costs.</li>
+    <li><strong>Post-publication decay may be largely a US phenomenon.</strong> No reliable decline
+    appears across 38 non-US markets<sup class="cite">[11]</sup>, so decay haircuts calibrated on US
+    data may not transfer elsewhere.</li>
+    <li><strong>The options-implied-move “richness” is small and conditional</strong> — name- and
+    regime-dependent, with the academic straddle literature split<sup class="cite">[42]</sup>. The
+    safe claim is only that no blind buy-or-sell strategy survives retail costs.</li>
+    <li><strong>SPIVA’s ~93% is an equal-weighted fund count.</strong> Asset-weighted shortfalls are
+    smaller (~55% by one critique), and Sharpe’s arithmetic is a strong approximation rather than a
+    literal identity<sup class="cite">[5]</sup>.</li>
+    <li><strong>Daily-direction unpredictability is a regularity, not a theorem.</strong> Small
+    cost-surviving edges existed pre-2010 and may exist in less efficient markets<sup
+    class="cite">[69]</sup>; the protective claim is “no demonstrated persistent retail edge
+    today.”</li>
+    <li><strong>A residency correction was applied in revision.</strong> Earlier drafts assumed a
+    Nepal-based user and analyzed that country’s outbound-investment restrictions<sup
+    class="cite">[64]</sup>; the user is in fact a US (New York) resident, for whom no such
+    restriction exists. §6.4 now carries the corrected posture — paper-first on purely pedagogical
+    grounds — and source [64] is retained only for citation-numbering stability.</li>
+    <li><strong>Several load-bearing magnitudes are industry data, not peer review:</strong>
+    implied-move beat rates, biotech PDUFA move sizes, and the “most academic strategies fail live”
+    figure<sup class="cite">[39,49,73]</sup>. They are used as context, never as precision inputs.</li>
+    <li><strong>Volatility-persistence figures vary by asset, sample, and estimator.</strong> The
+    settled fact is qualitative — high, durable persistence — not any single autocorrelation
+    number<sup class="cite">[12]</sup>.</li>
+    <li><strong>The LLM-headline edge is a live decay experiment.</strong> Whether it has fully
+    decayed is not yet measured; the original authors document decline with adoption<sup
+    class="cite">[54]</sup>.</li>
+  </ul>
+
+  <div class="callout guardrail avoid-break">
+    <span class="co-label">What would change this report</span>
+    <p>Three findings would force a revision: credible out-of-sample evidence of a cost-surviving
+    retail directional edge; a replication showing volatility forecastability failing at short
+    horizons; or evidence that calibrated base-rate displays worsen rather than improve beginner
+    decisions. Each is monitored by the app’s own design — the track-record page is, in effect, a
+    standing experiment on the third.</p>
+  </div>
+</section>
+
+<!-- ================= SOURCES ================= -->
+<section class="part bib">
+  <div class="part-head">
+    <div class="kicker">Part 11</div>
+    <h2>Sources</h2>
+    <p class="dek">Numbered as cited. Journal abbreviations: JF = Journal of Finance, JFE = Journal
+    of Financial Economics, RFS = Review of Financial Studies, JBF = Journal of Banking &amp;
+    Finance, QJE = Quarterly Journal of Economics, FAJ = Financial Analysts Journal.</p>
+  </div>
+  <ol>
+    <li>Fama (1991), “Efficient Capital Markets: II,” JF.<span class="src-url">onlinelibrary.wiley.com/doi/full/10.1111/j.1540-6261.1991.tb04636.x</span></li>
+    <li>Grossman &amp; Stiglitz (1980), “On the Impossibility of Informationally Efficient Markets,” American Economic Review.<span class="src-url">aeaweb.org/aer/top20/70.3.393-408.pdf</span></li>
+    <li>Novy-Marx &amp; Velikov (2016), “A Taxonomy of Anomalies and Their Trading Costs,” RFS — retail-relevant cost estimates (20–57bp); institutional ~1.5bp per Frazzini, Israel &amp; Moskowitz.<span class="src-url">papers.ssrn.com/sol3/papers.cfm?abstract_id=2535173</span></li>
+    <li>Sharpe (1991), “The Arithmetic of Active Management,” FAJ.<span class="src-url">web.stanford.edu/~wfsharpe/art/active/active.htm</span></li>
+    <li>Pedersen (2018), “Sharpening the Arithmetic of Active Management,” FAJ; asset-weighted critique: Cremers, Fulkerson &amp; Riley (2019).</li>
+    <li>SPIVA U.S. Scorecard (year-end 2025), S&amp;P Dow Jones Indices; and U.S. Persistence Scorecard.<span class="src-url">spglobal.com/spdji/en/spiva/article/spiva-us/</span></li>
+    <li>Cont (2001), “Empirical Properties of Asset Returns: Stylized Facts and Statistical Issues,” Quantitative Finance; 2023–25 replications confirm 8 of 11 facts.<span class="src-url">researchgate.net/publication/227623841</span></li>
+    <li>McLean &amp; Pontiff (2016), “Does Academic Research Destroy Stock Return Predictability?,” JF.<span class="src-url">onlinelibrary.wiley.com/doi/abs/10.1111/jofi.12365</span></li>
+    <li>Harvey, Liu &amp; Zhu (2016), “…and the Cross-Section of Expected Returns,” RFS.<span class="src-url">academic.oup.com/rfs/article/29/1/5/1843824</span></li>
+    <li>Jensen, Kelly &amp; Pedersen (2023), “Is There a Replication Crisis in Finance?,” JF.<span class="src-url">onlinelibrary.wiley.com/doi/abs/10.1111/jofi.13249</span></li>
+    <li>Jacobs &amp; Müller (2020), “Anomalies across the globe: Once public, no longer existent?,” JFE.</li>
+    <li>Corsi (2009), HAR-RV, and the realized-volatility forecasting literature; out-of-sample durability per “Can Anything Beat the Benchmark?” (2025) and Financial Innovation (2025).<span class="src-url">link.springer.com/article/10.1186/s40854-025-00809-5</span></li>
+    <li>Asness, Moskowitz &amp; Pedersen (2013), “Value and Momentum Everywhere,” JF.<span class="src-url">onlinelibrary.wiley.com/doi/10.1111/jofi.12021</span></li>
+    <li>Daniel &amp; Moskowitz (2016), “Momentum Crashes,” JFE 122(2), 221–247.<span class="src-url">kentdaniel.net/papers/published/jfe_16.pdf</span></li>
+    <li>George &amp; Hwang (2004), “The 52-Week High and Momentum Investing,” JF.<span class="src-url">onlinelibrary.wiley.com/doi/abs/10.1111/j.1540-6261.2004.00695.x</span></li>
+    <li>Gervais, Kaniel &amp; Mingelgrin (2001), “The High-Volume Return Premium,” JF.<span class="src-url">onlinelibrary.wiley.com/doi/abs/10.1111/0022-1082.00349</span></li>
+    <li>Jegadeesh (1990), “Evidence of Predictable Behavior of Security Returns,” JF; Lehmann (1990), “Fads, Martingales, and Market Efficiency,” QJE.</li>
+    <li>Avramov, Chordia &amp; Goyal (2006), “Liquidity and Autocorrelations in Individual Stock Returns,” JF.</li>
+    <li>De Groot, Huij &amp; Zhou (2012), “Another Look at Trading Costs and Short-Term Reversal Profits,” JBF.</li>
+    <li>Lo, Mamaysky &amp; Wang (2000), “Foundations of Technical Analysis,” JF.<span class="src-url">onlinelibrary.wiley.com/doi/abs/10.1111/0022-1082.00265</span></li>
+    <li>Osler (2000/2003), “Support for Resistance” and “Currency Orders and Exchange Rate Dynamics,” Federal Reserve Bank of New York.<span class="src-url">newyorkfed.org/research/epr/00v06n2/0007osle.html</span></li>
+    <li>Brock, Lakonishok &amp; LeBaron (1992), “Simple Technical Trading Rules and the Stochastic Properties of Stock Returns,” JF.<span class="src-url">onlinelibrary.wiley.com/doi/abs/10.1111/j.1540-6261.1992.tb04681.x</span></li>
+    <li>Sullivan, Timmermann &amp; White (1999), “Data-Snooping, Technical Trading Rule Performance, and the Bootstrap,” JF.<span class="src-url">onlinelibrary.wiley.com/doi/10.1111/0022-1082.00163</span></li>
+    <li>Out-of-sample daily-direction benchmarks: International Journal of Data Science &amp; Analytics (2025); International Journal of Forecasting (2023).<span class="src-url">link.springer.com/article/10.1007/s41060-025-00854-4</span></li>
+    <li>Bajgrowicz &amp; Scaillet (2012), “Technical Trading Revisited: False Discoveries, Persistence Tests, and Transaction Costs,” JFE.</li>
+    <li>Barber &amp; Odean (2000), “Trading Is Hazardous to Your Wealth,” JF.<span class="src-url">papers.ssrn.com/sol3/papers.cfm?abstract_id=219228</span></li>
+    <li>Faber (2007; upd. 2013), “A Quantitative Approach to Tactical Asset Allocation,” Journal of Wealth Management.<span class="src-url">papers.ssrn.com/sol3/papers.cfm?abstract_id=962461</span></li>
+    <li>Zakamulin (2014), “The Real-Life Performance of Market Timing with Moving Average and Time-Series Momentum Rules,” Journal of Asset Management.<span class="src-url">link.springer.com/article/10.1057/jam.2014.25</span></li>
+    <li>RSI/oscillator profitability tests net of costs — representative studies and surveys.<span class="src-url">core.ac.uk/download/pdf/197964347.pdf</span></li>
+    <li>Marshall, Young &amp; Rose (2006), “Candlestick technical trading strategies: Can they create value for investors?,” JBF 30(8).<span class="src-url">sciencedirect.com/science/article/abs/pii/S0378426605002116</span></li>
+    <li>Marshall, Young &amp; Cahan (2008), “Are candlestick technical trading strategies profitable in the Japanese equity market?,” Review of Quantitative Finance &amp; Accounting.<span class="src-url">papers.ssrn.com/sol3/papers.cfm?abstract_id=980583</span></li>
+    <li>Lu, Chen &amp; Hsu (2015), “Trend definition or holding strategy: What determines the profitability of candlestick charting?,” JBF 61.</li>
+    <li>Fibonacci retracement tests: Expert Systems with Applications (2021) bounce-zone study; Batchelor &amp; Ramyar, “Magic Numbers in the Dow.”<span class="src-url">sciencedirect.com/science/article/abs/pii/S0957417421012495</span></li>
+    <li>US price-gap behavior — continuation, not fill: North American Journal of Economics and Finance (2020).<span class="src-url">sciencedirect.com/science/article/abs/pii/S1062940820300747</span></li>
+    <li>Goyal &amp; Welch (2008), RFS; Goyal, Welch &amp; Zafirov (2024), “A Comprehensive 2022 Look at the Empirical Performance of Equity Premium Prediction,” RFS.<span class="src-url">academic.oup.com/rfs/article/37/11/3490/7749383</span></li>
+    <li>Cederburg, O’Doherty, Wang &amp; Yan (2020), “On the performance of volatility-managed portfolios,” JFE.<span class="src-url">sciencedirect.com/science/article/abs/pii/S0304405X2030132X</span></li>
+    <li>Cooper, Cliff &amp; Gulen (2008), “Return Differences between Trading and Non-Trading Hours”; Lou, Polk &amp; Skouras (2019), “A Tug of War: Overnight versus Intraday Expected Returns,” JFE.<span class="src-url">personal.lse.ac.uk/polk/research/TugOfWar.pdf</span></li>
+    <li>“‘Night Effect’ Funds to Shut Down With Overnight Returns Elusive,” Bloomberg, Jul 19, 2023 (NightShares closure).</li>
+    <li>Options-implied earnings moves — industry trackers and analyses (Earnings Watcher; ORATS; Quantcha; Resonanz).<span class="src-url">earnings-watcher.com/wiki/earnings-expected-moves</span></li>
+    <li>Skinner &amp; Sloan (2002), “Earnings Surprises, Growth Expectations, and Stock Returns” (the torpedo effect).<span class="src-url">webuser.bus.umich.edu/tradingfloor/earningstorpedo/research/torpedoreportbysloan.pdf</span></li>
+    <li>Downward-guidance vs. beat reactions (≈ −10% vs +2%): earnings-guidance reaction literature.<span class="src-url">researchgate.net/publication/228171297</span></li>
+    <li>Gao, Xing &amp; Zhang (2018), “Anticipating Uncertainty: Straddles around Earnings Announcements,” JFQA.</li>
+    <li>Martineau (2022), “Rest in Peace Post-Earnings Announcement Drift,” Critical Finance Review; 2025 counter-papers per UCLA Anderson Review.<span class="src-url">papers.ssrn.com/sol3/papers.cfm?abstract_id=3111607</span></li>
+    <li>Lucca &amp; Moench (2015), “The Pre-FOMC Announcement Drift,” JF.<span class="src-url">papers.ssrn.com/sol3/papers.cfm?abstract_id=1923197</span></li>
+    <li>Kurov, Wolfe &amp; Gilbert (2021), “The disappearing pre-FOMC announcement drift.”<span class="src-url">ssrn.com/abstract=3134546</span></li>
+    <li>Macro-release event volatility: Capstone, “Examining Market Volatility Around Economic Data Releases”; NBER w25817.<span class="src-url">capstoneco.com/insights/examining-market-volatility-around-economic-data-releases-and-recessions/</span></li>
+    <li>Womack (1996), “Do Brokerage Analysts’ Recommendations Have Investment Value?,” JF.</li>
+    <li>M&amp;A premiums-paid ranges — Wall Street Prep; Deloitte industry analyses.<span class="src-url">wallstreetprep.com/knowledge/premiums-in-ma/</span></li>
+    <li>FDA/PDUFA binary-event move sizes — industry data (Dansfera; Earnings Watcher).<span class="src-url">dansfera.com/pdufa-explained</span></li>
+    <li>Barber &amp; Odean (2008), “All That Glitters: The Effect of Attention and News on the Buying Behavior of Individual and Institutional Investors,” RFS.<span class="src-url">faculty.haas.berkeley.edu/odean/papers current versions/allthatglitters_rfs_2008.pdf</span></li>
+    <li>Da, Engelberg &amp; Gao (2011), “In Search of Attention,” JF.<span class="src-url">papers.ssrn.com/sol3/papers.cfm?abstract_id=1364209</span></li>
+    <li>Barber, Huang, Odean &amp; Schwarz (2022), “Attention-Induced Trading and Returns: Evidence from Robinhood Users,” JF.<span class="src-url">onlinelibrary.wiley.com/doi/abs/10.1111/jofi.13183</span></li>
+    <li>Tetlock (2007), “Giving Content to Investor Sentiment: The Role of Media in the Stock Market,” JF.<span class="src-url">business.columbia.edu/sites/default/files-efs/pubfiles/3097/Tetlock_Media_Sentiment_JF.pdf</span></li>
+    <li>Lopez-Lira &amp; Tang (2023), “Can ChatGPT Forecast Stock Price Movements?”<span class="src-url">papers.ssrn.com/sol3/papers.cfm?abstract_id=4412788</span></li>
+    <li>Cutler, Poterba &amp; Summers (1989), “What Moves Stock Prices?,” Journal of Portfolio Management.<span class="src-url">nber.org/papers/w2538</span></li>
+    <li>Boudoukh, Feldman, Kogan &amp; Richardson (2013), “Which News Moves Stock Prices?,” NBER w18725.<span class="src-url">nber.org/system/files/working_papers/w18725/w18725.pdf</span></li>
+    <li>Barber, Lee, Liu &amp; Odean — Taiwan day-trading census series (“Just How Much Do Individual Investors Lose by Trading?”; “The Cross-Section of Speculator Skill”).</li>
+    <li>Chague, De-Losso &amp; Giovannetti (2020), “Day Trading for a Living?” (Brazil census).<span class="src-url">papers.ssrn.com/sol3/papers.cfm?abstract_id=3423101</span></li>
+    <li>FINRA Regulatory Notice 26-10 — elimination of the pattern-day-trader rule, effective June 4, 2026.<span class="src-url">finra.org/rules-guidance/notices/26-10</span></li>
+    <li>SEC — withdrawal of the Order Competition Rule and Regulation Best Execution (June 2025).<span class="src-url">sec.gov/rules-regulations/2025/06/order-competition-rule</span></li>
+    <li>Odean (1998), “Are Investors Reluctant to Realize Their Losses?,” JF.</li>
+    <li>Barber &amp; Odean (2001), “Boys Will Be Boys: Gender, Overconfidence, and Common Stock Investment,” QJE.</li>
+    <li>Kumar (2009), “Who Gambles in the Stock Market?,” JF.</li>
+    <li>US State Department, 2025 Investment Climate Statement: Nepal (Act Restricting Investment Abroad 1964; March 2025 reform scope). <em>Superseded — the Nepal-residency assumption was corrected in the July 2026 revision (see Part 10); entry retained for numbering stability.</em><span class="src-url">state.gov/reports/2025-investment-climate-statements/nepal</span></li>
+    <li>Shumway (1997), “The Delisting Bias in CRSP Data,” JF.<span class="src-url">tylergshumway.org/Shumway-DelistingBiasCRSP-1997.pdf</span></li>
+    <li>Intraday spread patterns and closing-auction depth — US market-microstructure literature, exchange auction statistics, and industry transaction-cost measurements. Figures are industry-reported orders of magnitude, not point estimates.</li>
+    <li>Gu, Kelly &amp; Xiu (2020), “Empirical Asset Pricing via Machine Learning,” RFS.<span class="src-url">academic.oup.com/rfs/article/33/5/2223/5758276</span></li>
+    <li>Avramov, Cheng &amp; Metzker (2023), “Machine Learning versus Economic Restrictions: Evidence from Stock Return Predictability,” Management Science.<span class="src-url">pubsonline.informs.org/doi/abs/10.1287/mnsc.2022.4449</span></li>
+    <li>Fischer &amp; Krauss (2018), “Deep learning with long short-term memory networks for financial market predictions,” European Journal of Operational Research.</li>
+    <li>Glasserman &amp; Lin (2023), “Assessing Look-Ahead Bias in Stock Return Predictions Generated by GPT Sentiment Analysis.”<span class="src-url">arxiv.org/abs/2309.17322</span></li>
+    <li>Kim, Muhn &amp; Nikolaev (2023), “Bloated Disclosures: Can ChatGPT Help Investors Process Information?”<span class="src-url">arxiv.org/abs/2306.10224</span></li>
+    <li>Bailey &amp; López de Prado (2014), “The Deflated Sharpe Ratio,” Journal of Portfolio Management; with Borwein &amp; Zhu, “Probability of Backtest Overfitting.”<span class="src-url">davidhbailey.com/dhbpapers/deflated-sharpe.pdf</span></li>
+    <li>FAITH financial-hallucination benchmark; FinGround and FinVerBench atomic-claim verification frameworks (arXiv, 2025–26); grounded-summarization hallucination leaderboards (0.7–1.5% for top models). The multivariate-calculation collapse figure is from FAITH-style evaluations; industry-run, flagged as such where cited.</li>
+    <li>Verbalized-confidence calibration literature — e.g., Xiong et al. (2023), “Can LLMs Express Their Uncertainty?”, and successor studies (2024–26): LLM-stated probabilities systematically overconfident across model families.</li>
+    <li>Few, S., <em>Information Dashboard Design</em>; “Common Pitfalls in Dashboard Design.”<span class="src-url">perceptualedge.com/articles/Whitepapers/Common_Pitfalls.pdf</span></li>
+    <li>Tufte, E. — sparkline theory and data-ink principles.<span class="src-url">edwardtufte.com/notebook/sparkline-theory-and-practice-edward-tufte/</span></li>
+    <li>Nielsen Norman Group — Complex Application Design; Dashboards: Preattentive Attributes; Explainable AI; Dark Mode.<span class="src-url">nngroup.com/articles/complex-application-design/</span></li>
+    <li>Nielsen Norman Group — Progressive Disclosure; Tooltip Guidelines; Information Scent; Onboarding Tutorials vs. Contextual Help.<span class="src-url">nngroup.com/articles/progressive-disclosure/</span></li>
+    <li>Google PAIR — People + AI Guidebook: Explainability + Trust.<span class="src-url">pair.withgoogle.com/chapter/explainability-trust/</span></li>
+    <li>Microsoft HAX Toolkit — Guidelines G2 (“Make clear how well the system can do what it can do”) and G11 (“Make clear why the system did what it did”).<span class="src-url">microsoft.com/en-us/haxtoolkit/</span></li>
+    <li>Gigerenzer (2011), “What Are Natural Frequencies?,” BMJ.<span class="src-url">library.mpib-berlin.mpg.de/ft/gg/gg_what_2011.pdf</span></li>
+    <li>“Probability of Precipitation: End-User Understanding,” Bulletin of the American Meteorological Society.<span class="src-url">journals.ametsoc.org/view/journals/bams/90/2/2008bams2509_1.xml</span></li>
+    <li>Kent, S., “Words of Estimative Probability,” CIA Studies in Intelligence.</li>
+    <li>Spiegelhalter (2017), “Risk and Uncertainty Communication,” Annual Review of Statistics and Its Application; Bank of England fan-chart practice.<span class="src-url">regulation.org.uk/library/2017-Spiegelhalter-Risk_and_Uncertainty_Communication.pdf</span></li>
+    <li>Kay, Kola, Hullman &amp; Munson — “When(ish) Is My Bus?” and the quantile-dotplot research program.</li>
+    <li>Sweller (1988), “Cognitive Load During Problem Solving” — worked-example and split-attention effects.<span class="src-url">onlinelibrary.wiley.com/doi/10.1207/s15516709cog1202_4</span></li>
+    <li>Kalyuga (2007), “The Expertise Reversal Effect and Its Implications.”<span class="src-url">uky.edu/~gmswan3/EDC608/Kalyuga2007_Article_ExpertiseReversalEffect.pdf</span></li>
+    <li>Cepeda, Pashler, Vul, Wixted &amp; Rohrer (2006), “Distributed practice in verbal recall tasks: A review and quantitative synthesis” (254 studies).</li>
+    <li>Case, A., <em>Calm Technology</em> — principles after Weiser &amp; Brown.<span class="src-url">caseorganic.com/post/principles-of-calm-technology</span></li>
+    <li>Bloomberg — “How Bloomberg Terminal UX designers conceal complexity”; terminal morning-stack conventions (WEI/GMM/ECO/MOST/TOP).<span class="src-url">bloomberg.com/company/stories/how-bloomberg-terminal-ux-designers-conceal-complexity/</span></li>
+    <li>Daily-brief formats — Bloomberg “Five Things You Need to Know to Start Your Day”; Axios Smart Brevity checklist.<span class="src-url">axioshq.com/research/smart-brevity-communication-checklist</span></li>
+    <li>Benzinga Pro — “Why Is It Moving” (WIIM) and Movers tooling.<span class="src-url">benzinga.com/pro/blog/why-is-a-stock-moving-how-to-find-the-real-answer</span></li>
+    <li>Wong (2011), “Points of View: Color Blindness,” Nature Methods — the Wong colorblind-safe palette.<span class="src-url">davidmathlogic.com/colorblind</span></li>
+    <li>Metaculus — public track record: calibration curves, Brier scores, and complete resolution logs as a disclosure norm.</li>
+    <li>Massachusetts Securities Division enforcement action re: Robinhood’s gamification (2021), and subsequent regulatory attention to game-like trading UX.</li>
+    <li>Professional premarket-routine documentation — SMB Training game-planning (top-3 rule); Stockships premarket routine; end-of-day review practice.<span class="src-url">smbtraining.com/blog/stock-selection-and-game-planning</span></li>
+    <li>IBM Carbon for AI — AI label and explainability popover patterns.<span class="src-url">carbondesignsystem.com/components/ai-label/usage/</span></li>
+    <li>Koyfin — My Dashboards documentation (widget grouping and symbol linking).<span class="src-url">koyfin.com/help/mydashboards-myd/</span></li>
+    <li>thinkorswim Learning Center — Sizzle Index (relative-volume construction).<span class="src-url">toslc.thinkorswim.com/center/howToTos/thinkManual/Scan/Stock-Hacker/Sizzle-Index</span></li>
+  </ol>
+
+  <p class="footnote">Research compiled July 2026 by parallel research passes with adversarial
+  cross-examination; twelve load-bearing claims independently challenged and corrected where
+  needed. Provider pricing and platform facts are covered — with per-source verification dates —
+  in the companion volume, <em>myStockMarket — Build Blueprint</em>.</p>
+</section>
+
+</body>
+</html>

@@ -1,0 +1,29 @@
+# secrets — never commit real env values (.env.example is the documented inventory)
+.env
+.env.*
+!.env.example
+
+# node / next (app/)
+node_modules/
+.next/
+out/
+next-env.d.ts
+*.tsbuildinfo
+
+# python / uv (pipeline/)
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+.ruff_cache/
+
+# test & build artifacts
+coverage/
+playwright-report/
+test-results/
+.lighthouseci/
+
+# tooling / OS
+.vercel/
+.DS_Store
+*.log

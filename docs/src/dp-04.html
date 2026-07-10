@@ -1,0 +1,174 @@
+<!-- ================= PART 7 ================= -->
+<section class="part">
+  <div class="part-head">
+    <div class="kicker">Part 7</div>
+    <h2>Phase playbooks — P0 to P3</h2>
+    <p class="dek">Each playbook: objective → ordered build steps with file paths → tests to write
+    first → acceptance (the Blueprint’s criteria plus this plan’s design/PWA additions) →
+    self-verification. Do not start a phase before the prior phase’s exit gate is green.</p>
+  </div>
+
+  <h3>P0 · Walking skeleton + intelligence layer <span class="chip neutral">1–2 sessions</span></h3>
+  <p><strong>Objective:</strong> the loop exists end to end — a cron writes a row in the cloud, an
+  authenticated, installable app shell renders it, and the project can be resumed by a fresh
+  session using only the repo.</p>
+  <p><strong>Build order:</strong></p>
+  <ol>
+    <li><code>git init</code>; commit the docs; create <code>CLAUDE.md</code> (Appendix K template),
+    <code>DECISIONS.md</code> (seed with this plan’s recorded decisions), <code>PATTERNS.md</code>,
+    <code>LESSONS.md</code>, <code>PROGRESS.md</code>, <code>.claude/skills/README.md</code>
+    (rubric from §9.3). Conventional commits from the first commit.</li>
+    <li>Run the <strong>Session-0 checklist</strong> (§1.4) with the user — <em>collect</em> every
+    value now; probes run progressively at the P0 step that builds their tooling (steps 5, 8, 9).
+    “All Session-0 probes green” is a named P0 exit criterion; record each in PROGRESS.md.</li>
+    <li>Scaffold <code>app/</code>: <code>npx create-next-app@latest app --ts --tailwind --app
+    --eslint --no-src-dir --import-alias "@/*"</code>; prune boilerplate; Tailwind v4
+    <code>@theme</code> tokens from §3.2–3.4 into <code>globals.css</code>; next/font setup
+    (Archivo, Newsreader, IBM Plex Mono).</li>
+    <li>Build the identity primitives: <code>SectionMasthead</code>, <code>Tag</code>,
+    <code>StatFigure</code>, base layout shell (Desk/Academy top nav, footer) — then
+    <code>/styleguide</code> rendering every token and primitive.</li>
+    <li>Auth per §4.4: <code>proxy.ts</code>, <code>/login</code>, hash script (hash the
+    user-supplied password here; discard the plaintext), logout action.</li>
+    <li>PWA seed: <code>manifest.ts</code>, icons script + generated set, Serwist wiring,
+    <code>/offline</code> route.</li>
+    <li>Prisma: schema v0 = <code>pipeline_run</code> only; <code>migrate dev</code>;
+    <code>lib/db.ts</code>.</li>
+    <li>Pipeline skeleton: <code>uv init</code>; <code>config.py</code> (pydantic settings, env
+    names per Appendix D); <code>scripts/probe_providers.py</code> (one authenticated smoke call
+    per provider + Anthropic — this runs the §1.4 key probes); <code>jobs/job_a.py</code> hello-run
+    writing a <code>pipeline_run</code> row; <code>jobs/job_b.py</code> stub that pings
+    healthchecks success — <strong>from P0 onward the 00:25 UTC check is fed on schedule by
+    nightly-b</strong>, so the dead-man never false-alarms while later phases build;
+    <code>nightly-a.yml</code> (cron + workflow_dispatch), <code>nightly-b.yml</code> (cron +
+    stub), <code>ci.yml</code>.</li>
+    <li>Desk placeholder: module 0 masthead showing last <code>pipeline_run</code> timestamp.
+    Deploy to Vercel; run one manual <code>workflow_dispatch</code>.</li>
+  </ol>
+  <p><strong>Tests first:</strong> auth unit tests (wrong password, tampered cookie, redirect);
+  pipeline config test (missing env fails loudly); one Playwright smoke (login → shell renders →
+  timestamp visible); healthchecks ping mocked test.</p>
+  <p><strong>Acceptance (= Blueprint P0 + additions):</strong> the deployed app shows the evening
+  run’s timestamp, produced entirely by the cloud schedule with nothing on the user’s hardware;
+  disabling nightly-b once makes
+  the healthchecks check go <em>down</em> (observed autonomously via the read-only API), then
+  recover; all Session-0 probes green — provider keys smoke-tested by
+  <code>probe_providers.py</code>, Vercel preview protection confirmed ON; the §5.5.1
+  installability assertions pass (manifest, icons unauthenticated, SW activated); login works
+  inside the installed standalone app (Android or emulator; iOS if available);
+  <code>/styleguide</code> passes the §3.10 checklist; CI green; intelligence files exist with
+  real content.</p>
+
+  <h3>P1 · Data spine + minimal Desk <span class="chip neutral">1–2 weeks of sessions</span></h3>
+  <p><strong>Objective:</strong> full-universe EOD data flows nightly into Parquet + Postgres; the
+  Desk’s skeleton modules (macro, movers, watchlist) render real data in the real design; drill
+  level 2 exists; the signal log starts recording.</p>
+  <p><strong>Build order:</strong></p>
+  <ol>
+    <li>Prisma schema v1 (Appendix B: instrument, price_bar, scan_result, signal_log,
+    watchlist_item + enums); migrate; <code>prisma/seed.ts</code> deterministic synthetic morning
+    (drives dev + e2e).</li>
+    <li><code>adapters/base.py</code> (repository interface + fixture loader + token-bucket rate
+    limiter) → <code>adapters/alpaca.py</code> (multi-symbol daily bars, corporate actions, universe
+    listing) with fixtures. <em>Mint the <code>new-provider-adapter</code> skill here</em> — the
+    next five adapters follow it.</li>
+    <li><code>indicators.py</code>: the v1 set (Appendix F list) as Polars expressions — toy-series
+    tests first; <em>mint <code>new-indicator</code> skill.</em></li>
+    <li>Parquet store module (year partitions on R2, current-year rewrite with a trailing
+    5-session re-pull each night to catch vendor restatements, adjustments table, corporate-action
+    full-rewrite path); DuckDB scan queries; <code>scans.py</code> — the five v1 presets exactly as
+    specced in Appendix F.</li>
+    <li><code>publish.py</code>: single-transaction refresh (staging swap or delete-and-insert per
+    Blueprint §7.3) for price_bar (watchlist + SPY/QQQ/DIA/IWM + sector ETFs), scan_result,
+    pipeline_run stages; a <code>workflow_dispatch</code> rerun consults <code>pipeline_run</code>
+    stages and skips completed ones (idempotent resume); signal_log inserts with
+    <code>ON CONFLICT DO NOTHING</code> (rate fields null until P4); wire into job_a.</li>
+    <li>Desk modules in design: 01 Macro pulse (StatFigure hero = SPX day %, in ink; index row;
+    breadth strip — advancers/decliners and %-above-50DMA computed from the ingested universe +
+    SMA50; VIX and 10-yr cells live via a <em>minimal</em> <code>fred.py</code> series adapter
+    pulled forward from P2 — VIXCLS + DGS10 only, ~40 lines against the existing adapter base,
+    keeping the Blueprint’s P1 scope intact), 04 Movers (MoversRow sans catalysts — “reasons
+    arrive in P2” note), 05 Watchlist (CRUD server actions, sparklines from price_bar). All eight
+    Desk mastheads mount now — unbuilt modules render their masthead over a quiet “—” placeholder
+    body, so the ritual’s shape is complete from P1.</li>
+    <li>RailSheet (desktop rail + mobile bottom sheet) + <code>/ticker/[symbol]</code> with the
+    Lightweight Charts hook (candles + volume pane, themed per §3.7).</li>
+    <li>SW runtime caching of the morning payload (<code>/api/morning</code>); OfflineRibbon.</li>
+    <li>Weekly <code>pg_dump</code> step (session pooler) in nightly-b.yml; restore test once.</li>
+  </ol>
+  <p><strong>Tests first:</strong> every indicator (toy series); adapter fixture tests incl.
+  rate-limit behavior; universe-validation hard-fail (&lt;95% symbols → job fails — test with a
+  truncated fixture); publish transaction isolation test (reader mid-publish sees old generation);
+  stage-skip rerun test (a rerun after a mid-stage failure skips completed stages, produces zero
+  duplicates); signal_log idempotency; watchlist server-action tests; e2e journeys 1 (P1 variant),
+  2, 5 (§6.3); visual baselines captured.</p>
+  <p><strong>Acceptance (= Blueprint P1 + additions):</strong> nightly Job A ingests the defined
+  universe in &lt; 30 min (observed in Actions logs); indicator suite green; hard-fail proven;
+  the five presets write signal_log rows with <code>resolves_on</code>; all eight mastheads render
+  (placeholders honest); macro module shows breadth + VIX/10-yr live; rail opens without route
+  change and Esc restores scroll + selection (desktop and phone viewports); candles render from
+  price_bar with the attribution logo visible; offline reload shows the last synced briefing; backup
+  restored once successfully; budgets met (≤200KB first-load, LCP ≤ 2.5s mobile).</p>
+
+  <h3>P2 · Catalyst &amp; context layer <span class="chip neutral">~1 week</span></h3>
+  <p><strong>Objective:</strong> the Desk explains — movers get reasons or the honest noise line;
+  the US session calendar exists; every source degrades independently and visibly.</p>
+  <p><strong>Build order:</strong></p>
+  <ol>
+    <li>Adapters via the skill: <code>finnhub.py</code> (metrics + company news — never candles),
+    <code>fmp.py</code> (earnings calendar bmo/amc), <code>edgar.py</code> (per-CIK submissions,
+    declared User-Agent), <code>fred.py</code> extended to full (release calendar — the minimal
+    VIXCLS/DGS10 series adapter shipped in P1), <code>marketaux.py</code> (tagged snippets — the
+    market-wide catalyst source).</li>
+    <li>Prisma v2: news_item, calendar_event; catalyst matcher (ticker + time-window join,
+    catalyst-type classification) in <code>scans.py</code>; per-source status into
+    pipeline_run.</li>
+    <li>Desk: 03 CalendarTimeline (events + consensus/prior; if/then branches render event-only
+    with “branch base rates attach in P4” state), 04 movers upgraded (catalyst Tag + reason +
+    source link, or noise line), SourceStatusFooter with FRED attribution.</li>
+    <li>Copy-deck states wired (Appendix J): degraded-source lines, empty states.</li>
+  </ol>
+  <p><strong>Tests first:</strong> each adapter’s fixtures incl. error/timeout paths (one provider
+  down ⇒ its section degrades, run succeeds — integration test); catalyst matcher (window edges,
+  multi-ticker articles, no-match ⇒ noise line); calendar bmo/amc rendering; EDGAR User-Agent
+  header assertion; FRED 2 req/s limiter.</p>
+  <p><strong>Acceptance (= Blueprint P2):</strong> every &gt;3% mover on the table shows a catalyst
+  chip with source link or the noise tag (market-wide coverage partial by design and saying so);
+  killing one provider key in a rehearsal run degrades one section, not the run; e2e journey 4
+  (partial) green.</p>
+
+  <h3>P3 · The briefing <span class="chip neutral">~1 week</span></h3>
+  <p><strong>Objective:</strong> the editorial heart ships — extract → synthesize → verify across
+  the two jobs, rendered as the BriefArticle, degradable, and offline-cached.</p>
+  <p><strong>Build order:</strong></p>
+  <ol>
+    <li><code>briefing/extract.py</code>: per-article Haiku calls with the Appendix G schema,
+    submitted via the Message Batches API in job_a; batch id persisted in pipeline_run.</li>
+    <li><code>jobs/job_b.py</code>: preflight (XNYS holiday / no-batch-submitted night → log,
+    exit 0, still ping success — the dead-man expects a ping every scheduled night) → ping
+    <code>/start</code> → late-news delta sweep → collect batch — if still incomplete at 00:40 UTC,
+    cancel it, keep the already-processed results (cancellation preserves and bills completed
+    items), sync-extract only the remainder → <code>synthesize.py</code> (one sync Sonnet call,
+    Appendix G prompt, structured output) → <code>verify.py</code> (deterministic gate, Appendix E
+    tolerances) → publish (briefing table) → revalidate → ping success.</li>
+    <li>Prisma v3: briefing (am/pm JSON, verification_json, model_meta).</li>
+    <li>UI: BriefArticle (module 02) with labeled slots, Today’s-focus headline, per-claim source
+    superscripts linking to news_item URLs; <code>learning_link_slug</code> values validated
+    against the Academy lesson manifest — unmatched slugs render no doorway and are recorded in
+    <code>verification_json</code> (the manifest is empty until P5, so briefs simply carry no
+    Learn links yet — by design, not by error); ScorecardPM shell (“grading begins in P4” state);
+    PM journal prompt → journal_entry write; “briefing unavailable” banner path; morning payload +
+    SW cache include the brief.</li>
+  </ol>
+  <p><strong>Tests first:</strong> the verification gate — seeded fake number, fake ticker, fake
+  date each caught (unit, with a fixture draft); tolerance table cases (8.2% matches 8.24%; $1.2B
+  matches 1,200M; ticker case-fold); extraction schema zod/pydantic round-trip; batch-cutoff logic
+  (clock injected); holiday/no-batch preflight (fixture night with no batch id ⇒ exit 0 + success
+  ping); slug-validation (unknown slug ⇒ no doorway + verification_json entry); job_b end-to-end
+  against fixtures with a mocked Anthropic transport; briefing-unavailable render test.</p>
+  <p><strong>Acceptance (= Blueprint P3):</strong> five consecutive nights of real briefings in
+  which every number/ticker/date passes the gate (observe the week; use workflow_dispatch reruns if
+  a night is missed); the seeded-fake test is part of CI permanently; the batch-cutoff fallback
+  drill exercised once for real; publish confirmed atomic under a mid-publish request; the brief
+  reads correctly on the phone ritual column and offline.</p>
+</section>

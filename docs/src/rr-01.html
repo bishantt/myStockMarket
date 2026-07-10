@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>myStockMarket — Research Report</title>
+<link rel="stylesheet" href="print.css">
+</head>
+<body>
+
+<!-- ================= COVER ================= -->
+<div class="cover">
+  <div class="brand">
+    <svg class="tick" viewBox="0 0 20 20" aria-hidden="true">
+      <rect x="2.5" y="7" width="3.6" height="7.5" rx="1" fill="#2a78d6"/>
+      <line x1="4.3" y1="4.5" x2="4.3" y2="16.8" stroke="#2a78d6" stroke-width="1.1"/>
+      <rect x="8.2" y="4" width="3.6" height="8" rx="1" fill="#c3c2b7"/>
+      <line x1="10" y1="2" x2="10" y2="14.5" stroke="#c3c2b7" stroke-width="1.1"/>
+      <rect x="13.9" y="9" width="3.6" height="6.8" rx="1" fill="#2a78d6"/>
+      <line x1="15.7" y1="6.5" x2="15.7" y2="18" stroke="#2a78d6" stroke-width="1.1"/>
+    </svg>
+    <span class="doc-title-string">myStockMarket · Research Report</span>
+  </div>
+
+  <div class="doc-kind">Research Report · 1 of 2</div>
+  <h1>What Markets Allow —<br>and What to Build Inside Those Limits</h1>
+  <p class="subtitle">The domain evidence and product design behind a personal command center and
+  learning hub for US equities — NYSE &amp; Nasdaq. What is genuinely knowable, what is folklore,
+  and how to build a daily briefing that respects the difference.</p>
+
+  <p class="epigraph">“What is genuinely knowable is risk, not direction. The honest product is a
+  risk-and-context command center: calibrated base rates with confidence intervals, decay stamps on
+  every published pattern, and a firm refusal to play oracle.”
+  <span class="attr">— The one-paragraph conclusion of this report</span></p>
+
+  <div class="meta">
+    <span><b>Prepared for</b> Bishant · myStockMarket</span>
+    <span><b>Date</b> July 2026</span>
+    <span><b>Companion volume</b> Build Blueprint</span>
+  </div>
+</div>
+
+<!-- ================= TOC ================= -->
+<section class="toc">
+  <h2 style="font-size:19pt; font-weight:750;">Contents</h2>
+  <ol>
+    <li>How to read this report <span class="toc-sub">method, grading language, what was verified</span></li>
+    <li>How markets actually move <span class="toc-sub">efficiency, fat tails, the cost arithmetic, the decay law</span></li>
+    <li>What is knowable — and what is not <span class="toc-sub">the dividing line the whole product is built on</span></li>
+    <li>The evidence ledger <span class="toc-sub">eighteen techniques, graded: supported / mixed / weak / folklore</span></li>
+    <li>The catalyst playbook <span class="toc-sub">earnings, guidance, macro prints, FDA, attention — with base rates</span></li>
+    <li>The retail reality <span class="toc-sub">census-grade outcome statistics, execution mechanics, the paper-first rationale</span></li>
+    <li>What ML and LLMs genuinely add <span class="toc-sub">and the failure modes that rule them out as oracles</span></li>
+    <li>From evidence to design <span class="toc-sub">implications and the statistical guardrails the software must enforce</span></li>
+    <li>The product: Desk &amp; Academy <span class="toc-sub">information architecture, the daily ritual, setup cards, the learning layer</span></li>
+    <li>Candid uncertainties <span class="toc-sub">what this report itself is not sure about</span></li>
+    <li>Sources <span class="toc-sub">numbered references cited throughout</span></li>
+  </ol>
+</section>
+
+<!-- ================= PART 1 ================= -->
+<section class="part">
+  <div class="part-head">
+    <div class="kicker">Part 1</div>
+    <h2>How to read this report</h2>
+    <p class="dek">This document exists to answer one question honestly: <em>what can a personal
+    market app actually know?</em> Everything else — the dashboard, the signals, the learning hub —
+    is designed downstream of that answer.</p>
+  </div>
+
+  <h3>1.1 &nbsp;What this is</h3>
+  <p>This is the first of two volumes. It covers the <strong>domain research</strong> (Parts 2–7):
+  how equity markets move, which analytical techniques have empirical support, how news and events
+  drive prices, and what the record says about retail trading outcomes. It then converts that
+  evidence into <strong>product design</strong> (Parts 8–9): the information architecture, the
+  daily-briefing experience, and the learning system. The second volume — the
+  <em>Build Blueprint</em> — covers architecture, the technology stack, data sources with verified
+  pricing, data models, the implementation roadmap, and risks.</p>
+  <p><strong>Scope: US equities, explicitly.</strong> Everything in both volumes is anchored to the
+  US market — NYSE and Nasdaq listings; US session structure (pre-market 4:00–9:30am ET, regular
+  session 9:30am–4:00pm ET, after-hours 4:00–8:00pm ET); the US earnings calendar with its
+  before-open/after-close timing; and US macro catalysts (FOMC, CPI, the jobs report). The evidence
+  in Parts 2–7 is drawn from US data unless a study is explicitly labeled otherwise; the retail
+  statistics include the major non-US censuses (Taiwan, Brazil) precisely because they are the
+  best-evidenced numbers anywhere, applied here to a US-market product. Non-US markets are future
+  extensions, not part of this design. The user is US-based — Long Island, New York — so the
+  product runs on market time (America/New_York) end to end.</p>
+
+  <h3>1.2 &nbsp;How the research was produced and checked</h3>
+  <p>The findings here were assembled by parallel research passes across six domains (market
+  efficiency, technical-analysis evidence, catalysts, microstructure and retail outcomes,
+  quantitative methods, and machine learning), each required to chase primary sources — peer-reviewed
+  journals, SSRN/NBER working papers, and regulator publications — and to report effect sizes and
+  post-publication decay, not just directions. Eighty-four falsifiable claims were extracted; the
+  twelve most load-bearing were then <strong>adversarially cross-examined</strong> by independent
+  review passes explicitly instructed to refute them. Several were narrowed as a result, and the
+  corrected versions are what appear in this report. Where a correction matters, the text says so
+  plainly (for example, candlestick patterns are reported as <em>contested-negative</em>, not
+  “cleanly debunked”). Claims that rest on industry data rather than peer review are labeled as
+  such. What the report is still unsure about is collected in Part 10 rather than hidden.</p>
+
+  <h3>1.3 &nbsp;The grading language</h3>
+  <p>Every technique in the evidence ledger carries one of four verdicts. They are used
+  consistently across both volumes and — by design — in the app itself:</p>
+  <table class="rowhead">
+    <thead><tr><th style="width:26mm">Verdict</th><th>Meaning</th></tr></thead>
+    <tbody>
+      <tr><td><span class="chip supported">Supported</span></td>
+          <td>Replicated in credible out-of-sample tests; the effect is real, though usually smaller
+          than advertised and often hard for an individual to capture after costs.</td></tr>
+      <tr><td><span class="chip mixed">Mixed</span></td>
+          <td>Real statistical content, but contested, decayed, horizon-limited, or captured mainly
+          by institutions. Useful as context; unreliable as a personal edge.</td></tr>
+      <tr><td><span class="chip weak">Weak</span></td>
+          <td>Occasional positive findings that fail under data-snooping corrections, out-of-sample
+          tests, or realistic costs.</td></tr>
+      <tr><td><span class="chip folklore">Folklore</span></td>
+          <td>No credible supporting evidence, or the careful evidence points the other way.</td></tr>
+    </tbody>
+  </table>
+
+  <div class="callout guardrail avoid-break">
+    <span class="co-label">Standing commitment</span>
+    <p>Numbers in this report carry their context: sample sizes, confidence intervals, whether the
+    figure is gross or net of costs, and whether the effect decayed after publication. The app this
+    report designs makes the same commitment in its interface — that is the point.</p>
+  </div>
+</section>
+
+<!-- ================= PART 2 ================= -->
+<section class="part">
+  <div class="part-head">
+    <div class="kicker">Part 2</div>
+    <h2>How markets actually move</h2>
+    <p class="dek">Four facts carry almost all the weight: markets are nearly efficient, returns are
+    violently non-Gaussian, published edges decay, and costs are the only guaranteed prediction.
+    Everything in this product follows from them.</p>
+  </div>
+
+  <h3>2.1 &nbsp;Nearly efficient — and why “nearly” doesn’t help you</h3>
+  <p>The efficient-markets baseline<sup class="cite">[1]</sup> says prices already reflect available
+  information, so price changes come mostly from <em>new</em> information — which is unpredictable
+  by definition. The refinement that matters is Grossman &amp; Stiglitz’s
+  impossibility result<sup class="cite">[2]</sup>: perfectly efficient markets are impossible,
+  because if prices reflected everything, nobody would be paid to do the reflecting. Markets
+  therefore stay <em>almost</em> efficient, with a residual inefficiency just large enough to
+  compensate professionals for the cost of information gathering.</p>
+  <p>That residual is not free money lying around; it is a <strong>wage</strong> — and it is
+  collected by the people with the lowest costs and fastest information. When a beginner buys a
+  stock because it looks like it will bounce, the counterparty is not another beginner. It is a
+  market-making algorithm or an institutional desk whose effective trading costs are roughly
+  <strong>1.5 basis points</strong> per trade, against a realistic retail cost of
+  <strong>20–57 basis points</strong> once spreads and slippage are counted
+  honestly<sup class="cite">[3]</sup>. The same anomaly can be simultaneously real for them and a
+  losing trade for you. This asymmetry, more than any single study, is why so many “documented”
+  effects in Part 4 are graded <em>mixed</em>: real, but not yours to harvest.</p>
+
+  <h3>2.2 &nbsp;The arithmetic nobody escapes</h3>
+  <p>Sharpe’s 1991 argument<sup class="cite">[4]</sup> is close to accounting: the market return is
+  the average of all investors’ returns, so after costs the average actively managed dollar must
+  underperform the passive dollar. (Pedersen<sup class="cite">[5]</sup> showed the identity relies
+  on simplifying assumptions — index reconstitution, IPOs and buybacks force even “passive” money to
+  trade — so it is a strong approximation rather than a law.) The empirical record matches the
+  approximation: in the SPIVA scorecards, roughly <strong>93% of all active US equity funds
+  underperformed their benchmark over the trailing 15 years</strong>, and no US category out of 22
+  shows majority outperformance at that horizon<sup class="cite">[6]</sup>. The figure counts funds
+  equally; weighted by assets the shortfall is smaller (critics estimate nearer 55%<sup
+  class="cite">[5]</sup>) — but the direction is unambiguous.</p>
+  <p><strong>Design consequence:</strong> if full-time professionals with research staffs net-lose
+  to the index, the honest baseline expectation for a beginner picking stocks is underperformance.
+  The app treats a low-cost index position as the default benchmark against which every idea,
+  signal, and paper trade is scored.</p>
+
+  <div class="stat-row">
+    <div class="stat-tile"><div class="st-label">Active US equity funds trailing their benchmark, 15&nbsp;yrs</div>
+      <div class="st-value">~93%</div><div class="st-note">SPIVA, equal-weighted fund count [6]</div></div>
+    <div class="stat-tile"><div class="st-label">Average anomaly return lost after publication</div>
+      <div class="st-value">−58%</div><div class="st-note">McLean &amp; Pontiff, 97 US predictors [8]</div></div>
+    <div class="stat-tile"><div class="st-label">Out-of-sample daily-direction hit rate (ML)</div>
+      <div class="st-value">50–55%</div><div class="st-note">vs. “always up” baseline of ~53–55% [24]</div></div>
+    <div class="stat-tile"><div class="st-label">Out-of-sample R² of volatility forecasts</div>
+      <div class="st-value">~0.5</div><div class="st-note">HAR/GARCH vs. realized-vol proxies [12]</div></div>
+  </div>
+
+  <h3>2.3 &nbsp;Returns are not Gaussian — and your risk display must not be either</h3>
+  <p>Cont’s canonical “stylized facts”<sup class="cite">[7]</sup> — confirmed again in 2023–2025
+  replications on modern data — establish three properties of equity returns: heavy tails,
+  near-zero autocorrelation of returns themselves, and strong autocorrelation of return
+  <em>magnitudes</em> (volatility clustering). The practical meaning of heavy tails: under a
+  Gaussian model, the October 1987 one-day crash of −20.5% was a roughly <strong>20–25 sigma</strong>
+  event — probability on the order of 10<sup>−89</sup>, effectively “cannot happen in the life of the
+  universe.” Yet five-plus-sigma days recur every few years. Any interface that draws “expected
+  range” bands from a normal distribution quietly teaches its user that crashes are impossible.
+  The app draws risk bands from fat-tailed or empirical distributions, always.</p>
+  <p>Volatility clustering has a happier consequence: <strong>the magnitude of moves is genuinely
+  forecastable at short horizons</strong>, even though their direction is not. Daily
+  realized-variance series show first-order autocorrelations around 0.6–0.86, and standard
+  HAR/GARCH models retain out-of-sample R² near 0.5 against realized-volatility proxies, one day to
+  one month ahead — with no post-publication decay in nearly two decades, because knowing tomorrow
+  will be turbulent does not tell you which way it breaks<sup class="cite">[12]</sup>. Two honest
+  caveats ride along: forecast power fades beyond roughly 15–20 trading days, and models understate
+  risk around sudden regime breaks. This is the single most important asymmetry in the report:
+  <em>the app may forecast bumpiness; it may never forecast direction.</em></p>
+
+  <h3>2.4 &nbsp;The decay law: published edges are already half-eaten</h3>
+  <p>McLean &amp; Pontiff tracked 97 published return predictors and found returns
+  <strong>26% lower out-of-sample</strong> (bounding how much was data-mining all along) and
+  <strong>58% lower post-publication</strong>, with the ~32-point difference attributed to informed
+  traders acting on the paper<sup class="cite">[8]</sup>. Decay is partial, not total — about 40% of
+  the average premium persists — but it concentrates in illiquid, costly-to-trade stocks, exactly
+  where retail execution is worst. Two companion facts sharpen the lesson. First, the multiple-testing
+  problem: with thousands of researchers mining the same data, Harvey, Liu &amp; Zhu argue a newly
+  “discovered” factor should clear a t-statistic of 3.0, not 2.0, before being believed<sup
+  class="cite">[9]</sup>. Second, the replication debate resolved into a both-things-are-true
+  synthesis: most factor <em>themes</em> replicate across 93 countries<sup class="cite">[10]</sup>,
+  <em>and</em> their tradable returns shrink materially after discovery. (A caveat recorded in
+  Part 10: the post-publication decay finding is essentially a US result — it does not reliably
+  replicate across 38 non-US markets<sup class="cite">[11]</sup>.)</p>
+
+  <figure class="avoid-break">
+    <div class="fig-frame">
+    <svg viewBox="0 0 640 150" role="img" aria-label="Average published anomaly return: in-sample 100 percent, out-of-sample 74 percent, post-publication 42 percent">
+      <!-- bars: sequential blue ordinal ramp, 4px rounded data-end, baseline square -->
+      <g font-family="-apple-system, 'Segoe UI', sans-serif">
+        <!-- baseline -->
+        <line x1="150" y1="18" x2="150" y2="132" stroke="#c3c2b7" stroke-width="1"/>
+        <!-- row 1 -->
+        <text x="140" y="37" text-anchor="end" font-size="12" fill="#52514e">In-sample (as published)</text>
+        <path d="M150 26 H564 a4 4 0 0 1 4 4 v6 a4 4 0 0 1 -4 4 H150 Z" fill="#86b6ef"/>
+        <text x="576" y="37" font-size="12" font-weight="600" fill="#0b0b0b">100%</text>
+        <!-- row 2 -->
+        <text x="140" y="77" text-anchor="end" font-size="12" fill="#52514e">Out-of-sample</text>
+        <path d="M150 66 H456.4 a4 4 0 0 1 4 4 v6 a4 4 0 0 1 -4 4 H150 Z" fill="#3987e5"/>
+        <text x="472" y="77" font-size="12" font-weight="600" fill="#0b0b0b">74%</text>
+        <!-- row 3 -->
+        <text x="140" y="117" text-anchor="end" font-size="12" fill="#52514e">Post-publication</text>
+        <path d="M150 106 H323.9 a4 4 0 0 1 4 4 v6 a4 4 0 0 1 -4 4 H150 Z" fill="#1c5cab"/>
+        <text x="340" y="117" font-size="12" font-weight="600" fill="#0b0b0b">42%</text>
+      </g>
+    </svg>
+    </div>
+    <figcaption><b>Figure 2.1 — The decay law.</b> Average return of 97 published US stock-market
+    anomalies, relative to their in-sample size: 26% evaporates out-of-sample (it was data-mining),
+    a further 32 points after publication (it was traded away). McLean &amp; Pontiff, Journal of
+    Finance 2016 [8]. The app stamps every published pattern with its publication date and this
+    expected haircut.</figcaption>
+  </figure>
+
+  <h3>2.5 &nbsp;The one perfect forecast: your own costs</h3>
+  <p>Every round-trip trade pays the effective spread plus slippage — a few basis points on
+  mega-caps, several <em>percent</em> on small, low-priced names — plus taxes. Multiply by turnover
+  and you have the only prediction in this domain with no error bars: a frequent trader’s cost drag
+  is exact arithmetic and guaranteed negative. For the most active retail households in the
+  classic Barber–Odean sample, it summed to about <strong>6.5 percentage points of underperformance
+  per year</strong><sup class="cite">[26]</sup>. The app makes this arithmetic a first-class
+  display — a “cost mirror” computed from the user’s own paper-trading turnover — because it is the
+  most useful honest forecast available to a beginner.</p>
+
+  <div class="callout implication avoid-break">
+    <span class="co-label">Where this leaves us</span>
+    <p>Markets are a hostile environment for prediction and a workable environment for
+    <strong>preparation</strong>: knowing what is scheduled, how large moves typically are, how
+    turbulent the next weeks are likely to be, what a pattern’s real base rate is, and exactly what
+    trading costs. That reframing — from oracle to preparation — is the product thesis.</p>
+  </div>
+</section>

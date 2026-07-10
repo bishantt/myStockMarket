@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>myStockMarket — Build Blueprint</title>
+<link rel="stylesheet" href="print.css">
+</head>
+<body>
+
+<!-- ================= COVER ================= -->
+<div class="cover">
+  <div class="brand">
+    <svg class="tick" viewBox="0 0 20 20" aria-hidden="true">
+      <rect x="2.5" y="7" width="3.6" height="7.5" rx="1" fill="#2a78d6"/>
+      <line x1="4.3" y1="4.5" x2="4.3" y2="16.8" stroke="#2a78d6" stroke-width="1.1"/>
+      <rect x="8.2" y="4" width="3.6" height="8" rx="1" fill="#c3c2b7"/>
+      <line x1="10" y1="2" x2="10" y2="14.5" stroke="#c3c2b7" stroke-width="1.1"/>
+      <rect x="13.9" y="9" width="3.6" height="6.8" rx="1" fill="#2a78d6"/>
+      <line x1="15.7" y1="6.5" x2="15.7" y2="18" stroke="#2a78d6" stroke-width="1.1"/>
+    </svg>
+    <span class="doc-title-string">myStockMarket · Build Blueprint</span>
+  </div>
+
+  <div class="doc-kind">Build Blueprint · 2 of 2</div>
+  <h1>Architecture, Stack,<br>and Roadmap</h1>
+  <p class="subtitle">The complete technical plan for the myStockMarket command center: system
+  architecture, a justified technology stack, data sources with independently verified pricing, the
+  after-close pipeline, data models, a phased roadmap, and risks. Companion to the Research Report,
+  whose evidence constraints this design implements.</p>
+
+  <p class="epigraph">“Build the whole thing on the stack you already know, with one deliberate
+  departure: the nightly pipeline runs as a scheduled GitHub Actions workflow, not on Vercel.
+  Expected all-in cost: a couple of coffees a month — all of it LLM tokens.”
+  <span class="attr">— The one-paragraph conclusion of this blueprint</span></p>
+
+  <div class="meta">
+    <span><b>Prepared for</b> Bishant · myStockMarket</span>
+    <span><b>Date</b> July 2026 · pricing verified 8–9 Jul 2026</span>
+    <span><b>Companion volume</b> Research Report</span>
+  </div>
+</div>
+
+<!-- ================= TOC ================= -->
+<section class="toc">
+  <h2 style="font-size:19pt; font-weight:750;">Contents</h2>
+  <ol>
+    <li>Decisions at a glance <span class="toc-sub">the whole stack on one page, plus the assumptions it rests on</span></li>
+    <li>System architecture <span class="toc-sub">the seven boxes, the nightly flow, and the timezone math</span></li>
+    <li>Stack decisions in detail <span class="toc-sub">every layer: choice, why, alternatives, tradeoffs</span></li>
+    <li>The data plan <span class="toc-sub">a verified $0 baseline and a pre-researched paid upgrade ladder</span></li>
+    <li>The AI layer <span class="toc-sub">extract → synthesize → verify, with cost math and hallucination gates</span></li>
+    <li>Data model <span class="toc-sub">serving tables in Postgres, history in Parquet</span></li>
+    <li>Security, operations &amp; cost <span class="toc-sub">auth, secrets, monitoring, and the monthly bill</span></li>
+    <li>Implementation roadmap <span class="toc-sub">seven phases with acceptance criteria</span></li>
+    <li>Risks &amp; mitigations <span class="toc-sub">what breaks, how you find out, what you do</span></li>
+    <li>Sources <span class="toc-sub">official pages used for verification, with dates</span></li>
+  </ol>
+</section>
+
+<!-- ================= PART 1 ================= -->
+<section class="part">
+  <div class="part-head">
+    <div class="kicker">Part 1</div>
+    <h2>Decisions at a glance</h2>
+    <p class="dek">One deliberate departure from the familiar path, one architectural split, and a
+    bill that rounds to a coffee. Everything else is the stack you already ship with.</p>
+  </div>
+
+  <h3>1.1 &nbsp;The shape of the system</h3>
+  <p>The app is <strong>read-mostly by construction</strong>: a Python pipeline does all the work
+  in the cloud each evening after the close — ingest, scan, compute base rates, write the
+  briefing — and the web app just renders the results. That single decision collapses most
+  architectural questions: no always-on backend, no queues, no websockets on day one, no server
+  for you to babysit. The one departure from your Vercel-native habits is forced by physics:
+  Vercel Hobby caps every function at 300 seconds and fights pandas-sized Python bundles, while a
+  scheduled <strong>GitHub Actions</strong> workflow in a private repo gives a full Python
+  environment, 6-hour job limits, and free minutes — and the wide after-close window (the pipeline
+  needs barely an hour of it before your evening read) absorbs its cron jitter with room to
+  spare.</p>
+
+  <table class="rowhead">
+    <caption>Stack at a glance</caption>
+    <thead><tr><th style="width:30mm">Layer</th><th style="width:52mm">Choice</th><th>One-line why</th><th style="width:16mm">Cost</th></tr></thead>
+    <tbody>
+      <tr><td>Frontend</td><td>Next.js (App Router) + TypeScript + Tailwind + shadcn/ui</td><td>Your core skill set; server components read serving tables directly.</td><td class="num">$0</td></tr>
+      <tr><td>Backend</td><td>None — thin route handlers only</td><td>The pipeline pre-computes everything; a separate API is pure ops overhead for one user.</td><td class="num">$0</td></tr>
+      <tr><td>Serving DB</td><td>Supabase free Postgres (500MB) via Prisma</td><td>You know it; nightly pipeline writes double as the anti-pause heartbeat. Neon is the drop-in alternative.</td><td class="num">$0</td></tr>
+      <tr><td>History store</td><td>Parquet on Cloudflare R2, queried by DuckDB/Polars</td><td>~12.6M rows ≈ 150–400MB scans in seconds; Postgres adds ceremony for zero benefit. R2 is a cache, not a system of record.</td><td class="num">$0</td></tr>
+      <tr><td>Pipeline</td><td>Python 3.12 · Polars + DuckDB + exchange_calendars + httpx</td><td>The right tool for columnar scans; indicators hand-rolled as ~200 lines of tested Polars expressions.</td><td class="num">$0</td></tr>
+      <tr><td>Scheduler</td><td>GitHub Actions cron <code>37 22 * * 1-5</code> + manual dispatch</td><td>Full Python env, 6h limit, free private-repo minutes; jitter is irrelevant in a multi-hour window.</td><td class="num">$0</td></tr>
+      <tr><td>Charts</td><td>TradingView Lightweight Charts v5 (Apache-2.0)</td><td>Purpose-built candlestick engine; panes, markers, price lines for explain-why annotations. Keep the attribution logo.</td><td class="num">$0</td></tr>
+      <tr><td>General viz</td><td>Recharts 3 (shadcn charts); tree-shaken ECharts 6 later if a heatmap is needed</td><td>Idiomatic JSX for sparklines/small multiples; defer the heatmap engine until the need is real.</td><td class="num">$0</td></tr>
+      <tr><td>AI</td><td>Anthropic API — Haiku-class extract → Sonnet-class synthesize → deterministic verify; Batch API by default</td><td>The pipeline computes all numbers; the LLM narrates them verbatim under a deterministic publish gate.</td><td class="num">~$7–11/mo</td></tr>
+      <tr><td>Hosting</td><td>Vercel Hobby</td><td>Thin read layer; non-commercial personal use is exactly what Hobby is for.</td><td class="num">$0</td></tr>
+      <tr><td>Auth</td><td>HTTP Basic Auth in middleware (proxy) + CRON_SECRET bearer on pipeline routes</td><td>One user over HTTPS; also the licensing compliance mechanism (data stays private to you).</td><td class="num">$0</td></tr>
+      <tr><td>Monitoring</td><td>Actions failure emails + healthchecks.io dead-man ping</td><td>The catastrophic failure is a silently dead cron; absence-of-success must itself alert.</td><td class="num">$0</td></tr>
+    </tbody>
+  </table>
+
+  <div class="stat-row">
+    <div class="stat-tile"><div class="st-label">Expected monthly cost</div><div class="st-value">$7–11</div><div class="st-note">entirely LLM tokens; ~$7 typical</div></div>
+    <div class="stat-tile"><div class="st-label">Nightly LLM spend</div><div class="st-value">$0.33</div><div class="st-note">extraction batched; $0.51 if the all-sync fallback fires</div></div>
+    <div class="stat-tile"><div class="st-label">Briefing ready by</div><div class="st-value">~8:40pm</div><div class="st-note">EDT typical (7:40pm EST) · promise 9:00pm ET year-round · &gt;12h before the next open</div></div>
+    <div class="stat-tile"><div class="st-label">Paid services required</div><div class="st-value">0</div><div class="st-note">every non-LLM tier verified free, Jul 2026</div></div>
+  </div>
+
+  <h3>1.2 &nbsp;Assumptions this blueprint rests on</h3>
+  <table class="rowhead">
+    <thead><tr><th style="width:52mm">Assumption</th><th>Consequence if it changes</th></tr></thead>
+    <tbody>
+      <tr><td>US equities — NYSE &amp; Nasdaq — are the market</td><td>US coverage drives every provider choice, and all timing anchors to the US session: pre-market 4:00–9:30am ET, regular 9:30am–4:00pm ET, after-hours 4:00–8:00pm ET; catalysts are the US earnings calendar and US macro prints (FOMC, CPI, jobs report). Any other market would be a separate ingest adapter behind the same repository interface — none is planned.</td></tr>
+      <tr><td>Single user (you), single household, non-commercial</td><td>Every data license and the Vercel Hobby terms depend on this. Showing the dashboard to others breaches provider ToS — the Basic Auth wall is the compliance mechanism.</td></tr>
+      <tr><td>You live on market time — Long Island, NY (America/New_York, DST observed); nothing runs on your hardware</td><td>The pipeline runs in the cloud on UTC-fixed crons — deliberately DST-proof: your wall clock shifts twice a year, the triggers never do. 22:37 UTC lands 6:37pm EDT / 5:37pm EST — comfortably after the 4:00pm close in both regimes, so the schedule needs no seasonal edit, ever.</td></tr>
+      <tr><td>Watch/paper-first; no brokerage integration in v1</td><td>A pedagogical stance (Research Report §6.4) — build a graded paper track record before real dollars — that also removes an entire class of security risk from v1. As a US resident you have full brokerage access, so live integration is a legitimate later phase, gated on the paper record, not on legal review.</td></tr>
+      <tr><td>Free-first data; pay only when specific friction appears</td><td>The upgrade ladder in Part 4 is pre-researched so a paid migration is a same-week move, not a scramble.</td></tr>
+      <tr><td>Daily bars are sufficient for v1 (no intraday history)</td><td>Minute bars multiply storage ~400× and change the Parquet layout; the design isolates that decision behind the ingest adapter.</td></tr>
+      <tr><td>Budget tolerance ≈ $15/mo now, ~$50–75/mo if upgrades fire</td><td>Cost table in Part 7; each upgrade is adopted singly, triggered by named friction.</td></tr>
+    </tbody>
+  </table>
+
+  <div class="callout guardrail avoid-break">
+    <span class="co-label">Non-negotiables inherited from the Research Report</span>
+    <p>No directional forecasts anywhere in the system. Every base rate ships with sample size and a
+    Wilson interval, computed in the pipeline — never by the LLM. The LLM narrates pre-computed
+    numbers verbatim behind a deterministic verification gate. Signals are logged append-only from
+    the first phase so the track record is real. No trending/most-bought surfaces. Paper-first.</p>
+  </div>
+</section>

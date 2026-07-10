@@ -1,0 +1,205 @@
+<!-- ================= PART 3 ================= -->
+<section class="part">
+  <div class="part-head">
+    <div class="kicker">Part 3</div>
+    <h2>Design system — “Broadsheet Terminal”</h2>
+    <p class="dek">The aesthetic contract. Bold through typography, scale, and space — never through
+    chrome that lies. Implement these tokens exactly; the styleguide route renders them as a living
+    spec and every visual-regression baseline is captured against it.</p>
+  </div>
+
+  <h3>3.1 &nbsp;The manifesto (read before styling anything)</h3>
+  <p><strong>This app is a financial broadsheet set by a typographer, not a SaaS dashboard.</strong>
+  Its ancestors are the print business page and the terminal screen: ink on paper, hairline rules,
+  columns, dense tabular numerals, restrained color used only where it means something. Boldness
+  comes from <em>scale contrast</em> (a 64px mono numeral against 13px labels), <em>editorial
+  structure</em> (numbered section mastheads, 2px rules, asymmetric grids, generous margins), and
+  <em>two distinct room tones</em> (the Desk cool and dense; the Academy warm and literary) — never
+  from gradients, glows, or decoration. The design must pass one test: <strong>if a screenshot
+  could be mistaken for a default admin template or an AI-generated dashboard, it is wrong.</strong></p>
+  <p><strong>Banned outright</strong> (this list is enforceable in review): gradients and
+  glassmorphism; drop shadows on cards (the drawer scrim is the sole shadow in the app);
+  <code>rounded-2xl</code> softness — the app’s radius is 2px; decorative icons and emoji;
+  colored-chip confetti; skeleton shimmer (use quiet “—” placeholders); purple anything; count-up
+  number animations; default-shadcn visual identity (its Radix primitives may be used headless, its
+  look may not); synthesized small-caps — Archivo ships no <code>smcp</code> feature, so uppercase
+  with tracking is the house alternative. <strong>Required:</strong> hairlines instead of shadows, uppercase condensed
+  mastheads with index numbers (“01 — MACRO PULSE”), mono numerals everywhere data appears, one
+  hero figure per view maximum, whitespace treated as a material.</p>
+  <p><strong>The honesty constraint is the style.</strong> The Research Report bans fake-confidence
+  chrome (gauges, gauzy “AI glow”, urgency motion); this system turns that ban into identity. Color
+  is nearly absent precisely so that the few semantic uses — a delta triangle, an amber alert, an
+  evidence-grade dot — carry real information. Where a typical product would add a colored badge,
+  this one sets an uppercase typographic tag inside a hairline box. Nothing on screen is allowed to
+  be exciting unless the data itself is.</p>
+
+  <h3>3.2 &nbsp;Type</h3>
+  <table>
+    <caption>Families — all free-licensed, self-hosted via next/font (required for offline PWA)</caption>
+    <thead><tr><th style="width:30mm">Role</th><th style="width:36mm">Family</th><th>Usage rules</th></tr></thead>
+    <tbody>
+      <tr><td>Structure &amp; UI</td><td><strong>Archivo</strong> (variable: wght 100–900, wdth 62–125; OFL)</td>
+        <td>Everything on the Desk that is not a number or prose: labels, table headers, buttons, nav. Mastheads use Expanded width (wdth ~120) 700–800 uppercase, tracking +6–8%; body UI at wdth 100, wght 400/500.</td></tr>
+      <tr><td>Data &amp; numerals</td><td><strong>IBM Plex Mono</strong> (400/500/600; OFL)</td>
+        <td>Every quantitative figure in the product — prices, percentages, counts, N, CIs, timestamps, axis ticks — renders in Plex Mono. This is the single strongest identity move and also the alignment guarantee (mono ⇒ tabular by construction). Never render a number in Archivo.</td></tr>
+      <tr><td>Prose (Academy + briefs)</td><td><strong>Newsreader</strong> (variable incl. optical size + italic; OFL)</td>
+        <td>Academy lesson bodies, the AM/PM brief paragraphs, worked-example prose: 17–18px/1.65, measure 62–68ch, opsz auto. Display italic (opsz 36+) for the brief’s “Today’s focus” headline — the one literary flourish.</td></tr>
+    </tbody>
+  </table>
+  <table>
+    <caption>Type scale (px) — Tailwind v4 @theme tokens; line-height beside each</caption>
+    <thead><tr><th>Token</th><th class="num">Size/leading</th><th>Use</th></tr></thead>
+    <tbody>
+      <tr><td><code>--text-2xs</code></td><td class="num">11 / 1.35</td><td>provenance lines, axis ticks, footnotes</td></tr>
+      <tr><td><code>--text-xs</code></td><td class="num">12 / 1.4</td><td>mastheads (uppercase), tags, table headers</td></tr>
+      <tr><td><code>--text-sm</code></td><td class="num">13.5 / 1.5</td><td>Desk body UI, table cells</td></tr>
+      <tr><td><code>--text-base</code></td><td class="num">15 / 1.55</td><td>drawers, settings, longer UI copy</td></tr>
+      <tr><td><code>--text-prose</code></td><td class="num">17.5 / 1.65</td><td>Academy + brief prose (Newsreader)</td></tr>
+      <tr><td><code>--text-lg</code></td><td class="num">21 / 1.35</td><td>card titles, lesson H2</td></tr>
+      <tr><td><code>--text-xl</code></td><td class="num">27 / 1.25</td><td>page titles, brief headline</td></tr>
+      <tr><td><code>--text-2xl</code></td><td class="num">34 / 1.15</td><td>zone titles, Academy lesson H1</td></tr>
+      <tr><td><code>--text-num-lg</code></td><td class="num">44 / 1.1</td><td>module-level key figures (mono)</td></tr>
+      <tr><td><code>--text-hero</code></td><td class="num">64 / 1.0 (mobile 48)</td><td>THE hero numeral — exactly one per view (macro strip: SPX day change)</td></tr>
+    </tbody>
+  </table>
+
+  <h3>3.3 &nbsp;Color tokens</h3>
+  <p>Two room palettes plus one semantic set. Interactive elements are <strong>ink + underline</strong>
+  (editorial), with petrol reserved for focus/active states — so no color ever competes with the
+  semantic channel. All text pairs meet WCAG AA on their surface (spot-check with a contrast tool
+  during P0; log results in the styleguide).</p>
+  <table>
+    <thead><tr><th style="width:40mm">Token</th><th style="width:22mm">Light value</th><th style="width:24mm">Dark-Desk (P6)</th><th>Meaning / rules</th></tr></thead>
+    <tbody>
+      <tr><td><code>--desk-bg</code></td><td class="num">#F4F5F3</td><td class="num">#131412</td><td>Desk page plane — cool bone</td></tr>
+      <tr><td><code>--surface</code></td><td class="num">#FCFCFB</td><td class="num">#1A1B19</td><td>module surfaces, cards</td></tr>
+      <tr><td><code>--academy-bg</code></td><td class="num">#FAF6EF</td><td class="num">— (Academy stays light)</td><td>Academy paper — warm; the zone switch must be felt</td></tr>
+      <tr><td><code>--ink</code></td><td class="num">#141511</td><td class="num">#F1F1EA</td><td>primary text; also the 2px section rules</td></tr>
+      <tr><td><code>--ink-2</code></td><td class="num">#4A4B45</td><td class="num">#BDBEB4</td><td>secondary text</td></tr>
+      <tr><td><code>--muted</code></td><td class="num">#6B6C64</td><td class="num">#8F9088</td><td>provenance, ticks, placeholders — value chosen to clear 4.5:1 on both light surfaces (the honesty layer must never be sub-AA)</td></tr>
+      <tr><td><code>--hairline</code></td><td class="num">#DDDED7</td><td class="num">#2B2C29</td><td>1px rules, borders — the only “elevation”</td></tr>
+      <tr><td><code>--accent</code></td><td class="num">#0E6E64</td><td class="num">#2E9C90</td><td>petrol — focus rings, active nav, selected states, links on hover. Never on data, never decorative fills.</td></tr>
+      <tr><td><code>--up</code> / <code>--down</code></td><td class="num">#0072B2 / #D55E00</td><td class="num">#4CA5DE / #E97F33</td><td>Wong colorblind-safe pair for chart strokes, candle bodies, triangles, and text ≥ 21px (3:1 large-text/graphics threshold). Always paired with a redundant non-color channel: ▲/▼ + sign for deltas, hollow/filled bodies for candles, direct labels for series; unchanged/doji renders ink. Banned from buttons, links, decoration.</td></tr>
+      <tr><td><code>--up-text</code> / <code>--down-text</code></td><td class="num">#005A8E / #A84A00</td><td class="num">#6FB6E6 / #F09456</td><td>darkened/lightened Wong variants for delta <em>text at ≤ 18px</em> (mover percentages, deltas in tables) — same hues, AA-compliant. Declared token-level decision; charts keep the originals.</td></tr>
+      <tr><td><code>--alert</code></td><td class="num">#8A5200 text / #F6E3B4 wash</td><td class="num">#E0A83E / #3A2F14</td><td>reserved attention. <strong>Exactly two consumers exist:</strong> (1) the verification-gate inline flag on a briefing sentence; (2) a fired-signal marker on a focus-watchlist row. More than 3 simultaneously ⇒ collapse to one “N flagged” Tag. Amber anywhere else is a bug (§3.10). Tier tags never use it.</td></tr>
+      <tr><td><code>--grade-*</code></td><td class="num" colspan="2">light: supported #0B7A3B · mixed #8A5200 · weak #A64A32 · folklore #A21C1C — dark: #4CBF7E · #D9A03F · #D07B5B · #E06C6C</td><td>evidence-grade dots inside Tag only — Academy ledger contexts, scan-preset labels, and setup-card decay stamps; always beside the word, never alone. Spot-check dark values ≥3:1 at P6.</td></tr>
+    </tbody>
+  </table>
+
+  <h3>3.4 &nbsp;Space, shape, elevation</h3>
+  <ul>
+    <li><strong>Spatial system:</strong> 4px base. Component padding 12/16/20; module gap 28;
+    section-masthead rhythm: 12 above the 2px rule, 8 below; page gutters 20 (mobile) / 32
+    (desktop); Desk max-width 1360, 12-col grid, 20px gutters.</li>
+    <li><strong>Radii:</strong> 2px everywhere (inputs, buttons, cards, sheets). The near-square
+    corner is a signature — treat any rounded-looking corner as a bug.</li>
+    <li><strong>Elevation:</strong> none. Hairline borders separate; the slide-over rail/bottom
+    sheet uses a scrim (<code>rgb(20 21 17 / 0.4)</code>) and a 1px ink edge — no drop shadow.</li>
+    <li><strong>Section mastheads:</strong> every Desk module opens with
+    <code>NN — NAME</code> in Archivo Expanded 12px caps over a 2px ink rule, with the module’s
+    data timestamp right-aligned in Plex Mono 11px (“as of 16:05 ET”). This one component carries
+    half the identity — build it first, reuse everywhere.</li>
+  </ul>
+
+  <h3>3.5 &nbsp;Motion</h3>
+  <ul>
+    <li>Durations: 160ms fades / 200ms sheet-and-rail slides, ease-out, translate ≤ 12px. Nothing
+    else moves. (Declared deviation #3, §1.2: the Research Report’s §9.7 says “~500ms” for refresh
+    fades; 160–200ms preserves the calm intent — one quiet fade, no color flash — without reading
+    as shimmer.)</li>
+    <li><strong>Never animated:</strong> numbers (no count-up, no flash-on-change), probability
+    visuals (icon arrays, dotplots, calibration curves, vol bands), chart data (series appear
+    settled). Price/data refresh = a 160ms opacity fade of the module, once.</li>
+    <li><code>prefers-reduced-motion</code>: all transitions drop to 0ms except focus outlines.</li>
+    <li>No page-transition animation; navigation is instant and quiet.</li>
+  </ul>
+
+  <h3>3.6 &nbsp;Component inventory (anatomy in one line each; build in this order within P1–P6)</h3>
+  <table class="rowhead">
+    <thead><tr><th style="width:38mm">Component</th><th>Anatomy &amp; rules</th></tr></thead>
+    <tbody>
+      <tr><td>SectionMasthead</td><td>index number · uppercase name · right-aligned timestamp · 2px rule. Props: index, title, asOf, action?.</td></tr>
+      <tr><td>StatFigure</td><td>Plex Mono value (scale token) + Archivo label above in 11px caps + optional delta (▲/▼, sign, <code>--up-text/--down-text</code>) + optional 30d sparkline (muted, 1.5px). <strong>Hero variant: the 64px value renders in <code>--ink</code>; direction lives in an adjacent ▲/▼ + signed % at <code>--text-sm</code> in Wong text color. Wong color never exceeds <code>--text-num-lg</code></strong> — the largest element on screen is never emotional color.</td></tr>
+      <tr><td>Tag</td><td>uppercase Archivo 11px wght 500 tracking +4% inside a 1px hairline box, 2px radius, ink on transparent (no synthesized small-caps). Variants: tier (gray dot — never amber), evidence-grade (dot in <code>--grade-*</code> — Academy ledger, scan presets, decay stamps), catalyst-type (plain), folklore (grade dot + word “FOLKLORE”). Tags are information, never decoration — no other colored chips exist.</td></tr>
+      <tr><td>DataTable</td><td>Archivo 12px caps headers over 1.5px ink rule; rows 40px (touch) / 32px (pointer); numerals right-aligned Plex Mono; row hover = <code>--desk-bg</code> wash; no zebra stripes.</td></tr>
+      <tr><td>MoversRow</td><td>ticker (Archivo 600) · name (muted) · % (mono, Wong-colored w/ triangle) · RVOL (mono) · catalyst Tag + one-line reason · source link (underlined). “No news found — likely noise” renders muted, de-emphasized.</td></tr>
+      <tr><td>SetupCardRow / SetupCard</td><td>Row (Desk): pattern name · ticker · tier Tag · one-line cause. Card (rail): full RR Fig 9.3 template — WHAT FIRED / BASE RATE sentence / IconArray / N + CI + ref-class + baseline line / TYPICAL RANGE / weakener checklist (persisted checkboxes) / scope line / provenance + Learn doorway.</td></tr>
+      <tr><td>IconArray</td><td>20 squares, 10px, 2px radius. Filled: ink at 80%. Empty: 1px outline in <code>--muted</code> (≥3:1 against the card surface — the misses must be impossible to miss). Color stays out of probability visuals — a declared, logged deviation from RR Fig 9.3’s blue-filled mock. Static, never animated.</td></tr>
+      <tr><td>VolBand (fan)</td><td>Lightweight-Charts area overlays or SVG band behind price: 50%/80% bands in ink at 8%/5% opacity, labeled “8 in 10 past paths stayed inside” <strong>plus the regime-break caveat line (copy key <code>volband.caveat</code>)</strong>; hard stop at 20 trading days.</td></tr>
+      <tr><td>CalendarTimeline</td><td>Vertical ET timeline; event rows: time (mono) · kind Tag · title · consensus/prior (mono); expandable if/then branches with per-branch base-rate sentences (or the N&lt;30 suppression line).</td></tr>
+      <tr><td>BriefArticle</td><td>The editorial centerpiece: Newsreader prose; “Today’s focus” headline in display italic 27px; 3–5 items each with labeled slots (WHAT HAPPENED / WHY IT MATTERS / BY THE NUMBERS / YES, BUT as 11px caps side-labels); every claim’s source ID renders as a superscript link; exactly one Academy doorway at the end.</td></tr>
+      <tr><td>ScorecardPM</td><td>Same article shell; “flagged vs happened” table with outcomes in plain language; misses styled identically to hits (no shame-red); journal prompt at the end writes to the Academy journal.</td></tr>
+      <tr><td>RailSheet</td><td>Desktop: 440px right rail (Radix Dialog, non-modal feel, Esc/outside-click closes, scroll+selection restored). Mobile: full-height bottom sheet with a visible “← Back to Desk” bar, bottom action area padded by <code>env(safe-area-inset-bottom)</code>. <strong>Opening pushes a history entry; popstate closes the sheet</strong> — the Android back gesture must close the sheet, never exit the app (e2e-tested). This is drill level 2; level 3 is a route.</td></tr>
+      <tr><td>ReturnRail</td><td>Persistent 40px bar on cross-zone jumps: “You came from: AAPL setup, Jul 9 → Return”. State restored exactly (scroll pos, open rail, filters) via history state.</td></tr>
+      <tr><td>GlossaryTerm</td><td>Dotted underline on first occurrence per view; hover = one-line tip; click = popover (definition + tiny static example + “Full lesson →”). Never nested.</td></tr>
+      <tr><td>SourceStatusFooter</td><td>Per-provider dots (ok/degraded/off) + “pipeline ran 6:37–8:41pm ET” + FRED attribution line + TradingView note. Quiet, always present on the Desk.</td></tr>
+      <tr><td>OfflineRibbon</td><td>Ink-on-bone band under the masthead: “Offline — showing the last synced briefing (Jul 9).” Neutral, not amber.</td></tr>
+      <tr><td>TrackRecordChart</td><td>Calibration scatter (predicted vs realized buckets, per-bucket N labels), rolling Brier as a plain mono figure with “0.25 = coin flip” caption; resolved log table beneath, filterable, misses first-class.</td></tr>
+      <tr><td>CostMirror</td><td>One mono hero-adjacent figure: projected annual drag from the user’s own paper turnover, with the arithmetic spelled out beneath in prose.</td></tr>
+    </tbody>
+  </table>
+
+  <h3>3.7 &nbsp;Charts (Lightweight Charts theming)</h3>
+  <ul>
+    <li>Background transparent over <code>--surface</code>; grid lines <code>--hairline</code>,
+    horizontal only; axis text Plex Mono 11px <code>--muted</code>; crosshair 1px ink, no magnet
+    glow.</li>
+    <li>Candles: up = hollow body with <code>--up</code> 1.5px border; down = filled
+    <code>--down</code>. Wicks 1px same color. (Hollow/filled is a second redundant channel beyond
+    color.)</li>
+    <li>Volume histogram in ink at 12% opacity, its own pane; RSI pane line 1.5px ink with 30/70
+    hairlines — indicator panes never colored.</li>
+    <li>Annotation markers (explain-why): 8px ink circles with numbered labels matching the drawer
+    steps; price lines 1px dashed ink.</li>
+    <li>Keep the TradingView attribution logo visible (license condition).</li>
+  </ul>
+
+  <h3>3.8 &nbsp;Responsive &amp; the phone ritual</h3>
+  <ul>
+    <li><strong>Breakpoints:</strong> ≥1366 = one-screen Desk grid (modules 1–8 visible, rail as
+    overlay); 768–1365 = two-column stack, rail overlays; &lt;768 = <strong>the ritual column</strong>.</li>
+    <li><strong>Ritual column (phone / installed PWA):</strong> single column in strict order 1→8;
+    each module a full-bleed band separated by 2px rules with its masthead; sticky 48px top bar
+    (date · US session state · sync time); tap targets ≥ 44px; watchlist/movers rows open the
+    bottom sheet; “Open full view” pushes the route (level 3) with an always-visible back bar
+    (installed iOS PWAs can’t rely on swipe-back). Setup cards render as rows; the sheet shows the
+    full card. Thumb reach: primary actions bottom-aligned in sheets.</li>
+    <li>The hero numeral drops to 48px; tables become two-line stacked rows (label over value) —
+    never horizontal scroll except inside charts.</li>
+    <li>One-screen claim applies at ≥1366×768 only (per RR §9.2); the order is the invariant
+    below that.</li>
+  </ul>
+
+  <h3>3.9 &nbsp;Accessibility &amp; voice</h3>
+  <ul>
+    <li>AA contrast on all text tokens (verify in P0 styleguide); focus visible everywhere
+    (2px <code>--accent</code> outline, 2px offset); full keyboard paths for rail, popovers, review
+    queue; <code>aria-live="polite"</code> only for the offline ribbon and form errors — nothing
+    else announces.</li>
+    <li>Every data visual has a text equivalent (the base-rate sentence IS the accessible name of
+    the icon array; tables underlie charts via a “view as table” toggle on the track record).</li>
+    <li>Copy voice: mechanical third person, sentence case for all prose and UI copy; uppercase is
+    reserved for the structural caps set — mastheads, table headers, StatFigure labels, Tag text,
+    and brief slot labels. No exclamation marks, no “I”. All canonical strings in Appendix J — use
+    them verbatim.</li>
+  </ul>
+
+  <h3>3.10 &nbsp;Anti-drift checklist (run at every phase exit — mechanical checks first, then eyes)</h3>
+  <ol>
+    <li><strong>Mechanical greps (must all be empty):</strong> <code>shadow-</code>/<code>box-shadow</code>
+    outside the scrim; <code>gradient</code>; radius utilities &gt; 2px; hex colors outside
+    <code>globals.css</code> tokens; font families beyond the three loaded; <code>small-caps</code>;
+    amber tokens outside the two §3.3 consumers; animation/transition on any probability or money
+    component.</li>
+    <li><strong>Hero discipline:</strong> “view” = route. Only <code>/</code> renders
+    <code>--text-hero</code> (the macro SPX figure, in ink); every other route’s largest numeral is
+    ≤ <code>--text-num-lg</code>; <code>/paper</code> never renders P&amp;L at ≥
+    <code>--text-num-lg</code> (P&amp;L is never a hero — RR rule).</li>
+    <li>Is every number in Plex Mono? Every module timestamped? Every claim carrying N/CI/source?</li>
+    <li><strong>Room check via baselines:</strong> lesson pages assert <code>--academy-bg</code> +
+    Newsreader in the visual-regression suite; Desk asserts <code>--desk-bg</code> + Archivo. The
+    zone switch must be visible in a side-by-side of the two baselines.</li>
+    <li>Could this screen be mistaken for a default template? (If unsure, it can — change it.)</li>
+    <li>Would the Research Report’s §9.8 anti-pattern table object to anything visible?</li>
+  </ol>
+</section>

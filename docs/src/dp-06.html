@@ -1,0 +1,275 @@
+<!-- ================= PART 11 — APPENDICES ================= -->
+<section class="part">
+  <div class="part-head">
+    <div class="kicker">Part 11</div>
+    <h2>Appendices — the contracts</h2>
+    <p class="dek">Typable specifications. Field names and constants here are authoritative; any
+    change to Appendix E, F, or J is a structural decision by definition (§1.3.3) — never a
+    silent local edit.</p>
+  </div>
+
+  <h3>A · Parquet &amp; storage layout (R2 bucket <code>msm-history</code>)</h3>
+  <pre>prices_daily/year=YYYY/part.parquet   symbol·date·open·high·low·close·adj_close·volume  (raw + adjusted)
+indicators_daily/year=YYYY/…          symbol·date·sma20/50/200·ema12/26·rsi14·macd·macd_sig·atr14·bb_up/lo·rvol20·dist_52w_high·gap_pct·ret_1/5/20
+signal_events/year=YYYY/…             symbol·date·pattern_key·direction·attrs(json)
+adjustments/adjustments.parquet       symbol·ex_date·factor·kind(split|div)      # audit trail
+Rules: current year rewritten nightly; corporate action ⇒ affected symbol rewritten across ALL years;
+bucket is a re-pullable cache — losing it costs one Alpaca re-pull. App never reads R2.</pre>
+
+  <h3>B · Prisma schema draft (serving + user state; ✎ = app-writable)</h3>
+  <pre>Instrument   symbol PK · name · exchange · sector · industry · cik? · isActive · delistedAt?
+PriceBar     [symbol,date] PK · o h l c adjC vol                       # watchlist+indices ×~5y
+WatchlistItem✎ id · symbol → Instrument · reason · isFocus · addedAt   # focus cap enforced in UI (3)
+CalendarEvent id · date idx · kind(earnings|macro|fed|div|other) · symbol? · timing(bmo|amc|time) ·
+             title · consensus? · prior? · importance
+NewsItem     id · publishedAt idx · provider · url · headline · snippet · tickers[] · eventType? ·
+             sentiment? · extract Json?
+ScanResult   id · runDate idx · presetKey · symbol · rank · metrics Json          # incl. lotteryFlag
+SetupCard    id · runDate idx · symbol · patternKey · tier · state Json ·
+             weakeners Json ✎(checkbox state) · baseRateId → BaseRateStat
+BaseRateStat id · patternKey · universe · horizonDays · regime · n · wins · winRate · ciLow · ciHigh ·
+             fwdP10 · fwdMedian · fwdP90 · baselineUpRate · publicationYear? · evidenceGrade ·
+             decayNote? · computedAt      @@unique([patternKey,universe,horizonDays,regime])
+VolBand      id · symbol · runDate · horizonDays(5|10|20) · lo · hi · coverage(0.5|0.8) · label
+             # rendered ALWAYS with copy keys volband.label + volband.caveat (regime-break line)
+SignalLog    id · firedDate · symbol · patternKey · horizonDays · statedWinRate? · statedN? ·
+             resolvesOn · @@unique([firedDate,patternKey,symbol,horizonDays])   # INSERT-ONLY (grant-revoked)
+SignalResolution id · signalId → SignalLog @@unique · outcome(hit|miss|na) · resolvedAt  # INSERT-ONLY
+Briefing     runDate PK · amJson · pmJson? · verificationJson · modelMeta Json · status
+PipelineRun  runDate PK · startedAt · finishedAt? · stageStatus Json · sourceStatus Json · batchId?
+PaperTrade ✎ id · symbol · side · qty · fillPrice · spreadEst · openedAt · closedAt? · closeFill? ·
+             thesis · signalId?
+JournalEntry✎ id · date · prompt · body · forecast? · probability? · resolvesOn? · outcome? · brier?
+Lesson       (filesystem MDX, not DB — declared deviation #4, §1.2) — frontmatter:
+             module·slug·title·minutes·concepts[]·questions[]
+ConceptState✎ conceptKey PK · familiarity(new|seen|reviewed|mastered) · box(1..3) · dueOn · lastSeenAt</pre>
+
+  <h3>C · Workflow skeletons (.github/workflows/)</h3>
+  <pre>nightly-a.yml  on: schedule "37 22 * * 1-5" + workflow_dispatch · concurrency msm-nightly
+  permissions: contents write (heartbeat commit)
+  steps: checkout → uv sync → python -m jobs.job_a → heartbeat commit ("chore: heartbeat")
+  Job A does NOT touch healthchecks — its failures surface as GitHub failure e-mails
+  (exit nonzero); its holiday preflight logs + exits 0.
+nightly-b.yml  on: schedule "25 0 * * 2-6" + workflow_dispatch · concurrency msm-nightly
+  steps: checkout → uv sync → ping $HEALTHCHECKS_PING_URL/start → python -m jobs.job_b
+         → weekly (Sat): pg_dump via SESSION_POOLER_URL → gzip → upload to R2 backups/
+         → monthly (1st Sat): Stooq spot-check — 10 random symbols × 20 recent closes vs
+           stored Parquet, &gt;0.5% divergence ⇒ LESSONS entry + investigation task
+         → ping $HEALTHCHECKS_PING_URL          # success ping — ONLY on success paths
+  Job B OWNS the dead-man check (its cron matches). Holiday / no-batch preflight: log,
+  exit 0, still ping success — the monitor expects a ping every scheduled night. The P0
+  stub already follows this contract, so the check never false-alarms during buildout.
+ci.yml         on: push — typecheck·lint·vitest·pytest·build; playwright+lighthouse on tags
+               phase-*; weekly cron — indicator suite vs live pandas-ta-classic oracle
+migrate.yml    workflow_dispatch only — prisma migrate deploy via SESSION_POOLER_URL</pre>
+
+  <h3>D · Environment variable matrix (single placement authority — §1.4 defers here)</h3>
+  <table>
+    <thead><tr><th style="width:44mm">Variable</th><th style="width:14mm">Local</th><th style="width:14mm">Vercel</th><th style="width:16mm">GH secrets</th><th>Used by</th></tr></thead>
+    <tbody>
+      <tr><td>DATABASE_URL (transaction pooler)</td><td>✓</td><td>✓</td><td>✓</td><td>Prisma app reads/writes; pipeline publish</td></tr>
+      <tr><td>DIRECT_URL</td><td>✓</td><td>✓</td><td>—</td><td>prisma migrate dev (local only)</td></tr>
+      <tr><td>SESSION_POOLER_URL</td><td>—</td><td>—</td><td>✓</td><td>CI pg_dump + migrate.yml (IPv4)</td></tr>
+      <tr><td>AUTH_USER · AUTH_PASS_HASH · AUTH_COOKIE_SECRET</td><td>✓</td><td>✓</td><td>—</td><td>login + proxy.ts</td></tr>
+      <tr><td>CRON_SECRET</td><td>✓</td><td>✓</td><td>✓</td><td>/api/revalidate (app) · job_b caller</td></tr>
+      <tr><td>ALPACA_KEY_ID · ALPACA_SECRET · FINNHUB_KEY · FMP_KEY · MARKETAUX_KEY · FRED_KEY</td><td>—</td><td>—</td><td>✓</td><td>adapters (tests use fixtures, never keys)</td></tr>
+      <tr><td>EDGAR_USER_AGENT ("Name email")</td><td>—</td><td>—</td><td>✓</td><td>edgar.py mandatory header</td></tr>
+      <tr><td>ANTHROPIC_API_KEY · MODEL_EXTRACT · MODEL_SYNTH</td><td>—</td><td>—</td><td>✓</td><td>briefing/* (defaults claude-haiku-4-5 / claude-sonnet-5)</td></tr>
+      <tr><td>R2_ACCOUNT_ID · R2_ACCESS_KEY_ID · R2_SECRET · R2_BUCKET</td><td>—</td><td>—</td><td>✓</td><td>parquet store + backups</td></tr>
+      <tr><td>HEALTHCHECKS_PING_URL</td><td>—</td><td>—</td><td>✓</td><td>nightly-b (start + success pings)</td></tr>
+      <tr><td>HEALTHCHECKS_API_KEY (read-only)</td><td>✓</td><td>—</td><td>✓</td><td>P0 probe + autonomous alert verification (§1.4)</td></tr>
+      <tr><td>APP_BASE_URL</td><td>✓</td><td>✓</td><td>✓</td><td>job_b revalidate call</td></tr>
+    </tbody>
+  </table>
+
+  <h3>E · Verification-gate tolerances (briefing/verify.py)</h3>
+  <table class="rowhead">
+    <thead><tr><th style="width:34mm">Entity</th><th>Match rule (draft value vs source set = extracts ∪ stats table)</th></tr></thead>
+    <tbody>
+      <tr><td>Percentages</td><td>parse to float; match within max(±0.05pp absolute, ±0.5% relative) — “8.2%” matches 8.24%.</td></tr>
+      <tr><td>Prices / plain numbers</td><td>±0.5% relative after thousands-separator strip.</td></tr>
+      <tr><td>Money with units</td><td>normalize $1.2B ≡ 1,200M ≡ 1.2e9, then ±1%.</td></tr>
+      <tr><td>Dates</td><td>exact after ISO normalization (“Jul 9” ⇒ runDate year assumed).</td></tr>
+      <tr><td>Tickers</td><td>exact after uppercase + $-strip; must exist in instrument.</td></tr>
+      <tr><td>Counts (N, “62 of 110”)</td><td>exact integers.</td></tr>
+      <tr><td>Verdict</td><td>each unmatched entity ⇒ inline flag on that sentence. Any flagged number in the Today’s-focus block, or &gt;2 flags total ⇒ briefing status “held”: publish scans with the “briefing unavailable” banner. All decisions recorded in verificationJson.</td></tr>
+    </tbody>
+  </table>
+
+  <h3>F · Quant definitions &amp; constants</h3>
+  <ul>
+    <li><strong>Universe:</strong> US common stocks + ETFs on NYSE/Nasdaq/AMEX, no OTC; active ≈5–6k
+    symbols; delisted retained. <strong>Buckets</strong> for reference classes: “US large/mid” = top
+    1,000 by 63-day median dollar volume; “US small” = rest with price ≥ $5; sub-$5 excluded from
+    cards (lottery flag territory). Bucket membership is <strong>point-in-time</strong>: computed
+    from the 63-day window ending on the event date, so historical signals classify by what the
+    symbol was <em>then</em> — never by today’s bucket (lookahead guard, P4 tests).</li>
+    <li><strong>Indicators v1</strong> (Polars expressions): SMA 20/50/200 · EMA 12/26 · RSI 14
+    (Wilder) · MACD 12-26-9 · ATR 14 · Bollinger 20/2 · RVOL 20 (volume ÷ 20-day mean) ·
+    52-week-high distance · gap % (open vs prior close) · returns 1/5/20d.
+    <strong>Test approach:</strong> a frozen 30-bar synthetic series checked into
+    <code>pipeline/tests/toy_series.py</code>; expected values generated ONCE via
+    pandas-ta-classic (the independent oracle), frozen into the test, and cross-checked weekly in
+    CI against the oracle — regression + independence, no hand arithmetic to get wrong.</li>
+    <li><strong>Detectors v1</strong> (all evaluated on adjusted daily bars; signal shifted +1 bar
+    before any forward-return join): golden-cross = SMA50 crosses above SMA200 (both defined ≥200
+    bars) · 52w-proximity = close enters within 2% of 252-day high · gap-with-catalyst = |gap| ≥ 3%
+    AND same-day catalyst match · RSI-extreme = RSI14 crosses 30 up or 70 down · unusual-volume =
+    RVOL ≥ 2.5 AND |ret_1| ≥ 2% · breadth-regime = %-above-50DMA (universe) crosses 50% either way
+    (market-level card). Horizons: 5/10/20 trading days. Ledger grades + decay stamps per
+    pattern_meta seed (golden-cross: weak, BLL 1992/STW 1999; 52w-high: mixed, George–Hwang 2004;
+    gap: folklore-adjacent “continuation, not fill”; RSI: weak; volume: mixed, GKM 2001; breadth:
+    context-only) — copy the wording from Research Report Part 4.</li>
+    <li><strong>Scan presets v1</strong> (P1; criteria strings render verbatim on <code>/scans</code>;
+    all five write signal_log with horizonDays 10 — stated rates stay null until P4):
+    <code>unusual-volume</code> RVOL20 ≥ 2.5 AND |1-day return| ≥ 2% [grade: mixed] ·
+    <code>near-52w-high</code> close within 2% of 252-day high, large/mid only [mixed] ·
+    <code>gap-3plus</code> |open gap| ≥ 3% vs prior close [folklore-adjacent — “continuation, not
+    fill”] · <code>golden-cross-fresh</code> SMA50 crossed above SMA200 within the last 2 sessions
+    [weak] · <code>rsi-extreme</code> RSI14 crossed 30↑ or 70↓ [weak]. Same keys and thresholds as
+    the P4 detectors — one definition, two consumers.</li>
+    <li><strong>Tier bands</strong> (tendency tiers, from the RR Part 9 lexicon): win rate
+    &lt; 50% or CI spanning the baseline ⇒ <strong>weak</strong> · 50–58% ⇒ weak · 58–70% ⇒
+    moderate · &gt; 70% ⇒ strong — and the cap rule: a CI that spans the always-up baseline caps
+    the tier at weak regardless of the point estimate. Constants in <code>lib/constants.ts</code>,
+    tested at P4.</li>
+    <li><strong>Weakener seeds</strong> (per-pattern checkboxes on SetupCard; 2–3 each, extend via
+    structural decision only): golden-cross — extended &gt; 15% above 200DMA · signal against the
+    breadth regime; 52w-high — low RVOL on the approach · earnings inside the horizon window;
+    gap-with-catalyst — gap already &gt; 8% (chase risk) · catalyst is analyst-note-only;
+    RSI-extreme — trend strongly against the reversion · earnings inside window; unusual-volume —
+    no catalyst matched · sub-$10 price (lottery adjacency); breadth-regime — whipsaw (3rd cross
+    in 20 sessions).</li>
+    <li><strong>Lottery flag:</strong> price &lt; $5 OR (top-decile 60-day skewness AND price &lt;
+    $10) ⇒ flag on movers/scans rows.</li>
+    <li><strong>Vol bands:</strong> empirical quantiles of overlapping h-day returns over the
+    trailing 500 sessions; bands at 50% (p25–p75) and 80% (p10–p90); label per copy deck; horizons
+    5/10/20 only.</li>
+    <li><strong>Paper fills:</strong> next-session open ± half of a per-bucket <em>at-open</em>
+    spread estimate (large/mid 20bp, small 60bp — seeded from the Research Report §6’s
+    at-the-open figures; the open is the ritual’s realistic fill window and is wider than
+    mid-session) + 5bp slippage; constants live in <code>lib/constants.ts</code> +
+    <code>pipeline/config.py</code>, single source each, documented in the UI’s arithmetic line;
+    changing them is structural.</li>
+    <li><strong>Cooling-off window:</strong> paper order on a symbol &lt; 30 minutes after viewing a
+    fired signal on it ⇒ interstitial (educational copy, proceed/cancel). Frequency mirror: &gt; 5
+    paper round-trips/week ⇒ weekly note with the cost arithmetic.</li>
+  </ul>
+
+  <h3>G · LLM prompts &amp; schemas (briefing/)</h3>
+  <pre># Stage A — extraction (per article; model MODEL_EXTRACT; Batch API; structured output)
+system: You extract facts from ONE news article for a financial briefing. Use ONLY the article
+  text. No outside knowledge. No opinions, no advice, no predictions. If the article states a
+  number, copy it exactly. Output must satisfy the JSON schema.
+schema: { doc_id, headline_neutral (≤120 chars, declarative), summary (≤250 tokens, mechanical
+  voice), tickers[], event_type (earnings|guidance|analyst|ma|fda|macro|legal|product|other),
+  sentiment (-1..1 by article language, not your view), key_numbers[{value_str, what}],
+  quote? (≤160 chars) } — every field grounded in the article; citations implicit via doc_id.
+
+# Stage B — synthesis (one call; model MODEL_SYNTH; sync; structured output)
+system: You write the evening briefing for ONE reader, a beginner, in mechanical third person.
+  Inputs: (1) structured extracts with doc_ids; (2) a computed-stats table. RULES: every claim
+  cites a doc_id or stat_id in its citations array; use provided numbers VERBATIM — never compute,
+  never round differently; no directional predictions; no advice verbs (buy/sell/should);
+  uncertainty language only from the provided lexicon; “no clear reason” is the required statement
+  when no catalyst was matched; ≤5 items; each item fills the labeled slots.
+schema: { today_focus {headline, body, citations[], no_edge_flag}, items[≤5]{what_happened,
+  why_it_matters, by_the_numbers, yes_but, citations[]}, calendar_notes[], learning_link_slug }
+Failure handling: schema violation ⇒ one retry with error appended; second failure ⇒ status
+"held". Verified by Appendix E gate AFTER generation regardless. learning_link_slug is
+validated against the Academy lesson manifest at publish — unmatched ⇒ doorway omitted +
+recorded in verificationJson (manifest empty until P5, so early briefs carry no link).</pre>
+
+  <h3>H · Academy launch lessons (25 — slugs are contractual)</h3>
+  <pre>M0 how-this-app-explains-itself · reading-a-base-rate-sentence · the-probability-lexicon ·
+   the-track-record-page
+M1 nyse-nasdaq-and-tickers · the-us-trading-day · order-types-and-the-spread · reading-the-macro-pulse
+M2 what-a-round-trip-costs · slippage-taxes-and-drag · the-cost-mirror
+M3 position-sizing-before-patterns · stops-and-invalidation · expectancy-and-drawdown-math ·
+   why-base-rates-beat-anecdotes            # completing M3 lifts the pattern-lesson soft gate
+M4 candles-honestly · support-resistance-and-round-numbers · volume-and-rvol · gaps-what-the-data-says
+M5 moving-averages-and-the-golden-cross · rsi-and-oscillators · the-myth-vs-evidence-ledger ·
+   how-our-base-rates-are-computed
+M6 the-four-behavioral-taxes · journaling-and-the-pm-scorecard
+Each lesson: 3–5 min · cites its Research Report Part 4/5/6 rows · evidence grade shown ·
+2–3 retrieval questions in frontmatter · mechanical-honest voice · no live prices.</pre>
+
+  <h3>I · Glossary seed terms (40)</h3>
+  <p>ticker · bid–ask spread · market order · limit order · pre-market · after-hours · gap · RVOL ·
+  breadth · advance/decline · 50-day average · 200-day average · golden cross · RSI · MACD · ATR ·
+  Bollinger bands · 52-week high · base rate · reference class · confidence interval · Wilson
+  interval · always-up baseline · tendency tiers · evidence grade · folklore · decay stamp ·
+  implied move · bmo/amc · FOMC · CPI · jobs report · VIX · drawdown · expectancy · half-Kelly ·
+  Brier score · calibration · paper trading · slippage.</p>
+
+  <h3>J · Copy deck (canonical strings — use verbatim; the full deck lives at <code>app/lib/copy.ts</code>)</h3>
+  <table class="rowhead">
+    <thead><tr><th style="width:40mm">Key</th><th>String</th></tr></thead>
+    <tbody>
+      <tr><td>baseRate.sentence</td><td>“In the past {years} years, this pattern appeared {n} times on {refClass}. Price was higher {h} trading days later in {wins} of {n} cases ({pct}).”</td></tr>
+      <tr><td>baseRate.insufficient</td><td>“Insufficient history (N = {n}) — treat as anecdote.”</td></tr>
+      <tr><td>baseRate.baseline</td><td>“Unconditional {h}-day up-rate ≈ {pct} — read this against that baseline.”</td></tr>
+      <tr><td>tier.actions</td><td>strong → “worth a closer look” · moderate → “note it; check the weakeners” · weak → “watch only” (bands: Appendix F)</td></tr>
+      <tr><td>volband.label</td><td>“In the past, 8 in 10 {h}-day paths from here stayed inside this range.”</td></tr>
+      <tr><td>volband.caveat</td><td>“Ranges assume the recent regime holds — sudden stress can exceed them.”</td></tr>
+      <tr><td>mover.noNews</td><td>“No news found — most moves this size have no identifiable cause; likely noise.”</td></tr>
+      <tr><td>calendar.noEdge</td><td>“No clear edge either way — that is a valid outcome.”</td></tr>
+      <tr><td>brief.unavailable</td><td>“Briefing unavailable tonight — scan results below are complete and verified.”</td></tr>
+      <tr><td>offline.ribbon</td><td>“Offline — showing the last synced briefing ({date}).”</td></tr>
+      <tr><td>scope.line</td><td>“A tendency, not a prediction.”</td></tr>
+      <tr><td>decision.disclaimer</td><td>“Historical tendency — verify before acting.”</td></tr>
+      <tr><td>coolingOff.body</td><td>“You are entering a paper trade within {min} minutes of seeing this signal. The historical base rate is {rate} with the interval shown; costs are certain. Proceed, or sit with it until tomorrow’s brief?”</td></tr>
+      <tr><td>brier.anchor</td><td>“0.25 = coin flip”</td></tr>
+      <tr><td>attribution.fred</td><td>“This product uses the FRED® API but is not endorsed or certified by the Federal Reserve Bank of St. Louis.”</td></tr>
+      <tr><td>degraded.source</td><td>“{source} unavailable tonight — this section is running without it.”</td></tr>
+      <tr><td>save.offline</td><td>“Reconnect to save.”</td></tr>
+      <tr><td>update.ready</td><td>“Updated — refresh when convenient.”</td></tr>
+    </tbody>
+  </table>
+
+  <h3>K · CLAUDE.md template (initialize verbatim at P0, then maintain)</h3>
+  <pre># myStockMarket — constitution
+Single-user US-equities command center + learning hub. Next.js 16 app (app/) + Python pipeline
+(pipeline/) + two GitHub Actions jobs. Executor: Claude Opus 4.8. Contract: DEVELOPMENT-PLAN.md.
+Authority: RR Part 8/9 &gt; Blueprint &gt; plan &gt; DECISIONS.md &gt; judgment. Evidence chapters win.
+
+## Non-negotiables (full list: plan §1.5 — re-read weekly)
+No directional forecasts; vol bands ≤ 20d + regime caveat · base rates = natural frequency + N +
+Wilson CI, N-gated display · CI spanning always-up baseline ⇒ tier weak · new patterns need
+t &gt; 3.0 or a ledger grade · decay stamps · folklore labeled · insert-only
+signal_log/resolution, misses public · no trending surfaces, no gamification · movers need a
+catalyst or the noise line · LLM narrates, never computes; deterministic gate blocks unverified
+numbers · Desk/Academy separated, doorways + return rails · calm tech: no motion on
+probability/money visuals, timestamps everywhere · mechanical voice (copy.ts) · paper-first ·
+login wall always (licensing) · TDD per plan §6.2.
+
+## Commands
+app:      npm run dev | test | typecheck | lint | build     e2e: npx playwright test
+pipeline: uv run pytest      jobs: uv run python -m jobs.job_a (fixtures: MSM_FIXTURES=1)
+db:       npx prisma migrate dev · npx prisma db seed        deploy: git push (Vercel auto)
+
+## Conventions
+Conventional commits · TDD-first list in plan §6.2 · numbers render ONLY via components/BaseRate
+and lib/format · all copy from lib/copy.ts · tokens from globals.css @theme (plan §3) — never
+ad-hoc hex · timestamps via lib/time.ts · adapters follow .claude/skills/new-provider-adapter.
+
+## Session ritual
+Start: git pull → read this + PROGRESS.md + LESSONS.md → diff DECISIONS.md (any non-[claude]
+line = user veto, rank 2.5 — honor it FIRST) → run tests → announce checkpoint.
+End: update PROGRESS.md → log DECISIONS/LESSONS ([claude]-marked) → push.
+Phase exit: plan §6.4 gate → tag.
+
+## Design one-liner
+“Broadsheet Terminal”: ink, hairlines, 2px radii, mono numerals, one hero figure, two rooms
+(cool Desk / warm Academy). If it could be a default template, it is wrong. Checklist: plan §3.10.</pre>
+
+  <p class="footnote">Development Plan compiled July 2026 for executor Claude Opus 4.8; revised
+  after a five-lens adversarial review (stall-hunter, hidden-global-decision, PWA, design-collision,
+  blueprint-fidelity). Companions: <em>Research-Report.pdf</em> (evidence + product) and
+  <em>Build-Blueprint.pdf</em> (architecture + roadmap). The markdown working copy at
+  <code>DEVELOPMENT-PLAN.md</code> is generated from these sources — regenerate with
+  <code>docs/src/build-plan-md.py</code> after edits.</p>
+</section>
+
+</body>
+</html>

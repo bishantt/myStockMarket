@@ -1,0 +1,250 @@
+<!-- ================= PART 3 ================= -->
+<section class="part">
+  <div class="part-head">
+    <div class="kicker">Part 3</div>
+    <h2>What is knowable — and what is not</h2>
+    <p class="dek">The dividing line below is the most important content in this report. Everything
+    on the left can appear in the app as a computed, confidence-intervalled display. Everything on
+    the right is either excluded or shown only with an explicit “this is not predictable” frame.</p>
+  </div>
+
+  <h3>3.1 &nbsp;Genuinely knowable</h3>
+  <ul>
+    <li><strong>Volatility, one day to ~one month out.</strong> Realized-variance persistence is high
+    and HAR/GARCH forecasts hold out-of-sample R² near 0.5 against realized-vol proxies, with no
+    post-publication decay in ~two decades<sup class="cite">[12]</sup>. Fades beyond ~15–20 trading
+    days; understates risk at regime breaks. This powers honest “expected range” bands.</li>
+    <li><strong>Fat-tailed crash risk.</strong> A distributional fact at all horizons, immune to
+    costs<sup class="cite">[7]</sup>. Risk displays must be non-Gaussian.</li>
+    <li><strong>Monthly-horizon factor tilts</strong> (value, momentum, quality, low-vol) — real
+    across 93 countries<sup class="cite">[10]</sup>, but expect a 30–60% haircut from published
+    numbers<sup class="cite">[8]</sup>, and an individual realistically captures them through
+    low-cost factor funds, not a personal scanner.</li>
+    <li><strong>The likely <em>size</em> of an event move.</strong> The options-implied straddle is
+    a roughly unbiased ex-ante estimate of earnings-day move magnitude<sup class="cite">[39]</sup> —
+    honest context for “what to watch,” with no claim about direction.</li>
+    <li><strong>Your own cost drag.</strong> Effective spread × turnover, plus slippage and taxes,
+    is exact arithmetic — the single most reliable forecast the app can ship, and it is a
+    guaranteed negative<sup class="cite">[3]</sup>.</li>
+    <li><strong>Execution timing mechanics.</strong> Spreads are widest in the first ~30 minutes
+    (&gt;20bp on S&amp;P 500 names at the open vs &lt;5bp late day); the closing auction is the
+    deepest liquidity window of the US trading day (industry-measured figures)<sup class="cite">[66]</sup>. Free, capturable knowledge.</li>
+    <li><strong>Base rates of retail outcomes.</strong> Census-grade statistics (Part 6) —
+    displayable as facts, not opinions.</li>
+    <li><strong>The decay law itself.</strong> Published US anomalies lose ~26% out-of-sample, ~58%
+    post-publication on average<sup class="cite">[8]</sup> — so every “proven strategy” can be
+    stamped with an expected haircut.</li>
+  </ul>
+
+  <h3>3.2 &nbsp;Not knowable (by this app, or by anyone selling you a course)</h3>
+  <ul>
+    <li><strong>Next-day direction of a stock or index, net of costs.</strong> Methodologically
+    sound out-of-sample tests cluster at 50–55% hit rates on modern liquid markets — against a naive
+    “always up” baseline of ~53–55%<sup class="cite">[24]</sup>. Pre-2010 edges existed and decayed
+    after costs<sup class="cite">[69]</sup>, so this is an empirical regularity about today’s
+    markets, not a theorem — but no persistent, cost-surviving retail edge is demonstrated today.
+    Published 60%+ accuracies typically reflect leakage or denoising artifacts.</li>
+    <li><strong>Market timing from valuation dials.</strong> Dividend yields, P/E ratios and rate
+    spreads fail to beat the naive historical-mean forecast out-of-sample; over a third of newer
+    predictors lost even in-sample significance on re-testing<sup class="cite">[35]</sup>.</li>
+    <li><strong>The direction of an earnings, FOMC, or macro reaction.</strong> Implied moves
+    forecast size, not sign; guidance routinely dominates the EPS print<sup class="cite">[41]</sup>.</li>
+    <li><strong>Which regime comes next.</strong> Calm/crisis regimes are identifiable after the
+    fact; real-time regime timing has weak out-of-sample support.</li>
+    <li><strong>Why the market moved today</strong> — often. Half to two-thirds of large daily moves
+    lack a cleanly identifiable news cause<sup class="cite">[55,56]</sup>; most morning-after
+    narratives are invented. The app must be willing to say “no clear reason.”</li>
+    <li><strong>Whether a small-sample pattern is real.</strong> 60 wins in 100 has a 95% confidence
+    interval of roughly [50%, 69%] — indistinguishable from a coin flip at realistic edge sizes.
+    About 1,000 independent observations are needed for a ±3-point interval.</li>
+    <li><strong>A teachable path to day-trading profitability.</strong> Full-population data show no
+    learning-by-experience (Brazil, 300+ sessions<sup class="cite">[58]</sup>); the tiny profitable
+    minority reflects rare pre-existing skill (Taiwan<sup class="cite">[57]</sup>).</li>
+    <li><strong>Calibrated probabilities from a language model.</strong> Verbalized LLM confidences
+    are systematically overconfident across model families<sup class="cite">[74]</sup> — they are
+    suppressed in this product, never displayed as market probabilities.</li>
+    <li><strong>Institutional edges at retail costs.</strong> Effects that are real at 1.5bp
+    institutional execution do not transfer to 20–57bp retail costs<sup class="cite">[3]</sup>.
+    “The anomaly survives costs” conclusions do not apply to a scanner user.</li>
+  </ul>
+
+  <div class="callout implication avoid-break">
+    <span class="co-label">Design consequence</span>
+    <p>The app is a <strong>risk-and-context engine with a memory</strong>, not a prediction engine.
+    It forecasts volatility bands and event magnitudes, computes base rates with confidence
+    intervals and decay stamps, explains catalysts with citations, refuses direction, and keeps an
+    append-only public record of how its own flags resolved. Anything that would require the
+    right-hand list is out of scope — permanently.</p>
+  </div>
+</section>
+
+<!-- ================= PART 4 ================= -->
+<section class="part">
+  <div class="part-head">
+    <div class="kicker">Part 4</div>
+    <h2>The evidence ledger</h2>
+    <p class="dek">Eighteen techniques a beginner will encounter in the first month of reading about
+    trading, graded against the peer-reviewed record. “Retail capture” asks the question that
+    matters: even if real, can an individual harvest it after costs?</p>
+  </div>
+
+  <table>
+    <caption>Ledger — technical &amp; quantitative techniques, as of July 2026</caption>
+    <thead><tr>
+      <th style="width:31mm">Technique</th>
+      <th style="width:20mm">Verdict</th>
+      <th>What the careful evidence shows</th>
+      <th style="width:30mm">Retail capture?</th>
+      <th style="width:12mm">Refs</th>
+    </tr></thead>
+    <tbody>
+      <tr><td>Cross-sectional momentum (3–12&nbsp;mo winners)</td><td><span class="chip supported">Supported</span></td>
+        <td>~1%/month gross long-short historically; replicates across eight asset classes and two centuries. Apply the ~58% post-publication haircut. Suffers rare multi-month crashes: −73% (Mar–May 2009), −91% (Jul–Aug 1932), gross of costs.</td>
+        <td>Via low-cost momentum funds; not via a personal scanner</td><td class="num">[13,14]</td></tr>
+      <tr><td>Volatility forecasting (GARCH/HAR)</td><td><span class="chip supported">Supported</span></td>
+        <td>The robust one: OOS R² ≈ 0.5 vs realized-vol proxies at 1-day–1-month horizons; no decay in ~17 years. Fades past ~15–20 days; understates regime breaks.</td>
+        <td>Yes — as risk bands and position sizing, not as trades</td><td class="num">[12]</td></tr>
+      <tr><td>52-week-high proximity</td><td><span class="chip mixed">Mixed</span></td>
+        <td>~0.45%/mo in-sample 1963–2001; fails in Japan; weakened post-publication. Note the direction: new highs historically predicted <em>continuation</em> — “new highs are bearish” is backwards.</td>
+        <td>Context signal only</td><td class="num">[15]</td></tr>
+      <tr><td>High-volume return premium</td><td><span class="chip mixed">Mixed</span></td>
+        <td>Unusual volume carries information (~0.5%/mo strongest deciles, 1963–96); concentrated in small caps with the widest spreads.</td>
+        <td>As information, not as a strategy</td><td class="num">[16]</td></tr>
+      <tr><td>Short-term reversal (buy recent losers)</td><td><span class="chip mixed">Mixed</span></td>
+        <td>Huge gross returns (~2.5%/mo, 1934–87) that are really the market makers’ wage for liquidity provision. Naive versions die after costs; cost-aware large-cap versions earn 30–50bp/week — with institutional execution.</td>
+        <td>No — you are the counterparty, not the market maker</td><td class="num">[17,18,19]</td></tr>
+      <tr><td>Classic chart patterns (H&amp;S, double bottoms)</td><td><span class="chip mixed">Mixed</span></td>
+        <td>Kernel-regression tests find some patterns shift the return distribution — genuine but faint informational content; no profitable strategy demonstrated. Frequently miscited as proof charting “works.”</td>
+        <td>No demonstrated net edge</td><td class="num">[20]</td></tr>
+      <tr><td>Support/resistance at round numbers</td><td><span class="chip mixed">Mixed</span></td>
+        <td>Best mechanism in TA: real order clustering at round numbers produces bounces ~4.6pp more often than arbitrary levels — but the horizon is intraday and no cost-surviving strategy is documented.</td>
+        <td>Explains “levels”; not tradable</td><td class="num">[21]</td></tr>
+      <tr><td>Index moving-average / range-break rules</td><td><span class="chip weak">Weak</span></td>
+        <td>Beat the Dow in-sample 1897–1986; the best of 7,846 rules showed nothing out-of-sample 1987–96 after data-snooping correction; nothing net of costs through 2011 in any ex-ante-selectable period.</td>
+        <td>No</td><td class="num">[22,23,25]</td></tr>
+      <tr><td>Faber 10-month MA trend filter</td><td><span class="chip mixed">Mixed</span></td>
+        <td>A drawdown-reduction tool, not a return enhancer: historically cut max drawdowns roughly in half, lagged buy-and-hold post-2008, loses to whipsaws in V-recoveries. Honest frame: crash insurance paid for in return.</td>
+        <td>Yes, as insurance — if the premium is understood</td><td class="num">[27,28]</td></tr>
+      <tr><td>RSI and standard oscillators</td><td><span class="chip weak">Weak</span></td>
+        <td>No significant net profits at standard settings in developed markets; positive findings come from parameter tuning that invites snooping.</td>
+        <td>No</td><td class="num">[29]</td></tr>
+      <tr><td>Candlestick patterns</td><td><span class="chip weak">Weak</span></td>
+        <td>28 patterns on DJIA stocks 1992–2002: no value before costs; Japan replication negative. Contested-negative, not unanimous: some three-day patterns show profits under alternative exit rules — small, specification-sensitive, unlikely to survive retail costs.</td>
+        <td>No</td><td class="num">[30,31,32]</td></tr>
+      <tr><td>Fibonacci retracements / Elliott Wave</td><td><span class="chip folklore">Folklore</span></td>
+        <td>Bounce rates at Fibonacci zones statistically indistinguishable from arbitrary zones; Elliott counts revisable after the fact are largely unfalsifiable. Round-number clustering explains apparent “levels.”</td>
+        <td>—</td><td class="num">[33,21]</td></tr>
+      <tr><td>“Gaps always fill”</td><td><span class="chip folklore">Folklore</span></td>
+        <td>The main peer-reviewed gap study finds momentum in the gap’s direction, not reversal. The “70–90% fill” statistic has no traceable source; eventual fills are a base-rate artifact.</td>
+        <td>—</td><td class="num">[34]</td></tr>
+      <tr><td>Daily-direction prediction (ML / signals)</td><td><span class="chip weak">Weak</span></td>
+        <td>Sound out-of-sample tests: 50–55% vs an always-up baseline of ~53–55%. A “58%-accurate” signal can literally be worse than always guessing up. Pre-2010 edges decayed.</td>
+        <td>Treat every daily prediction as entertainment</td><td class="num">[24,69]</td></tr>
+      <tr><td>Index timing via valuation/macro dials</td><td><span class="chip folklore">Folklore</span></td>
+        <td>Fails against the naive historical mean out-of-sample; a slow valuation signal exists at decade horizons but cannot time entries.</td>
+        <td>—</td><td class="num">[35]</td></tr>
+      <tr><td>Volatility-managed portfolios</td><td><span class="chip mixed">Mixed</span></td>
+        <td>Headline Sharpe gains failed direct out-of-sample tests across 103 strategies; the risk-stabilization benefit (steadier ride, tamer left tail) is real because volatility is forecastable.</td>
+        <td>As risk control, not return booster</td><td class="num">[36]</td></tr>
+      <tr><td>Factor tilts via low-cost funds</td><td><span class="chip mixed">Mixed</span></td>
+        <td>Most factor themes replicate globally <em>and</em> decay 30–60% post-publication; most published factors fail the t&gt;3.0 hurdle. Expect a fraction of advertised returns.</td>
+        <td>Yes — through cheap funds</td><td class="num">[10,8,9]</td></tr>
+      <tr><td>Overnight-vs-intraday return split</td><td><span class="chip mixed">Mixed</span></td>
+        <td>Statistically robust (the equity premium historically accrued close-to-open) and a failed product: the NightShares ETFs underperformed by ~29pp and liquidated within 13 months.</td>
+        <td>Object lesson: significance ≠ exploitability</td><td class="num">[37,38]</td></tr>
+      <tr><td>Volume/attention spikes as buy signals</td><td><span class="chip weak">Weak</span></td>
+        <td>Attention is a hazard: the stocks retail crowds bought most intensely earned −4.7% abnormal returns over the following 20 days; search spikes pop then revert.</td>
+        <td>Inverted, if anything — the app flags these as risk</td><td class="num">[50,51,52]</td></tr>
+    </tbody>
+  </table>
+
+  <h3>4.1 &nbsp;Notes on the rows that matter most</h3>
+  <p><strong>Momentum is the honest poster child.</strong> The strongest TA-adjacent effect in the
+  literature also carries the ugliest tail: two-to-three-month drawdowns of −73% to −91% (gross),
+  short-side-driven, clustered in rebounds after high-volatility bear markets<sup
+  class="cite">[14]</sup>. Any presentation of momentum without its crash profile is marketing. The
+  app pairs them permanently.</p>
+  <p><strong>The moving-average lesson generalizes.</strong> The Brock–Lakonishok–LeBaron rules are
+  the canonical demonstration of why in-sample success means little: honest re-testing across the
+  full universe of 7,846 rule variants erased the edge the moment the sample ended<sup
+  class="cite">[23]</sup>. This is why every base rate in the app carries a trial-count correction
+  (Part 8) — with five years of daily data, trying ~45 configurations essentially guarantees an
+  impressive, worthless in-sample winner.</p>
+  <p><strong>Candlesticks illustrate calibrated honesty.</strong> The cross-examination pass in this
+  project’s research flagged that “cleanest folklore verdict” overstated the record: one credible
+  study finds some three-day patterns profitable under different exit rules<sup
+  class="cite">[32]</sup>. The accurate label is <em>contested-negative</em> — and that is exactly
+  how the app’s Academy teaches it, because modeling honest gradation is part of the curriculum.</p>
+  <p><strong>“Gaps always fill” is the archetypal folklore trap:</strong> intuitive, everywhere on
+  YouTube, and pointing the wrong way — the one serious study finds continuation, not fill<sup
+  class="cite">[34]</sup>. The Academy uses it as the worked example for “how to check a claim
+  against a base rate.”</p>
+</section>
+
+<!-- ================= PART 5 ================= -->
+<section class="part">
+  <div class="part-head">
+    <div class="kicker">Part 5</div>
+    <h2>The catalyst playbook</h2>
+    <p class="dek">Catalysts are where preparation beats prediction. The app cannot know which way
+    an event breaks — but it can know the event is scheduled, how large the move typically is, and
+    which patterns around it are real versus invented.</p>
+  </div>
+
+  <table>
+    <caption>Catalyst behavior — what is estimable, and the trap to avoid</caption>
+    <thead><tr>
+      <th style="width:30mm">Catalyst</th>
+      <th>Typical behavior (with base rates where known)</th>
+      <th style="width:44mm">The trap</th>
+      <th style="width:12mm">Refs</th>
+    </tr></thead>
+    <tbody>
+      <tr><td>Earnings announcement</td>
+        <td>Mega-caps typically move 3–6% absolute on earnings day, small caps more. Reactions are asymmetric: negative surprises punished far harder than positive ones are rewarded — worst for high-expectation growth names (the “torpedo effect”).</td>
+        <td>Betting the direction of the reaction; it is not predictable from the setup</td><td class="num">[39,40]</td></tr>
+      <tr><td>Forward guidance</td>
+        <td>Guidance frequently dominates the EPS print: mean reaction ≈ −10% to a cut vs only ≈ +2% to a raise. A company can beat and still fall hard.</td>
+        <td>Reading the headline beat/miss as the story</td><td class="num">[41]</td></tr>
+      <tr><td>Options-implied move</td>
+        <td>The ATM straddle is a roughly unbiased estimate of move <em>size</em>. Pricing is name- and regime-dependent: realized falls short of implied 40–75% of the time depending on the name — above half (modestly rich) for many mega-caps, the reverse for several high-volatility names.</td>
+        <td>Blindly buying <em>or</em> selling options into earnings — neither survives retail spreads reliably</td><td class="num">[39,42]</td></tr>
+      <tr><td>Post-earnings drift (PEAD)</td>
+        <td>Historically ~4% top-minus-bottom spread over 60 days; essentially zero in large caps since ~2006 as prices adjust on announcement day. Survives mainly in microcaps where costs consume it. (2025 papers contest the obituary — see Part 10.)</td>
+        <td>Expecting exploitable drift in liquid names</td><td class="num">[43]</td></tr>
+      <tr><td>FOMC meetings</td>
+        <td>The famous pre-FOMC drift (+49bp in the 24h before announcements, ~80% of the annual equity premium 1994–2011) vanished after ~2015, post-publication.</td>
+        <td>Trading a decayed anomaly still circulating in blog posts</td><td class="num">[44,45]</td></tr>
+      <tr><td>Macro prints (CPI, NFP, GDP)</td>
+        <td>Intraday volatility spikes ~3–6× normal in the minutes around release; full-day vol only modestly elevated. Markets react to revisions, composition, and policy implications — not the headline alone.</td>
+        <td>Predicting direction from the headline surprise</td><td class="num">[46]</td></tr>
+      <tr><td>Analyst rating changes</td>
+        <td>≈ +3.0% (upgrades) and −4.7% (downgrades) over three days at announcement; the jump happens within minutes.</td>
+        <td>Chasing the news after the move — nets retail little or nothing</td><td class="num">[47]</td></tr>
+      <tr><td>M&amp;A announcement</td>
+        <td>Target premiums average ~20–30%, captured almost entirely in the instantaneous gap; the residual spread is professional deal-risk compensation.</td>
+        <td>“Merger arbitrage” as a beginner opportunity</td><td class="num">[48]</td></tr>
+      <tr><td>FDA / biotech binaries</td>
+        <td>Single-asset small caps move 40%+ either way on PDUFA outcomes; large pharma barely moves on the same news. A genuine coin flip to outsiders.</td>
+        <td>Confusing high volatility with high opportunity</td><td class="num">[49]</td></tr>
+      <tr><td>Attention spikes / trending lists</td>
+        <td>The most intensely crowd-bought stocks earned −4.7% abnormal returns over the following 20 days; search spikes pop ~2 weeks then revert within the year.</td>
+        <td>Treating “most bought” lists as discovery — the app deliberately has none</td><td class="num">[50,51,52]</td></tr>
+      <tr><td>News sentiment / LLM headline scores</td>
+        <td>Statistically real but tiny and concentrated in small/illiquid names and the short leg; excludes costs; decaying as adoption spreads — a live decay experiment.</td>
+        <td>Using sentiment as a trade signal rather than context</td><td class="num">[53,54]</td></tr>
+      <tr><td>No news at all</td>
+        <td>Half to two-thirds of large daily moves have no cleanly identifiable cause: even modern text methods tie only ~33% of return variance to news days vs 16% on no-news days.</td>
+        <td>Inventing a narrative anyway — the app must say “no clear catalyst found; likely noise”</td><td class="num">[55,56]</td></tr>
+    </tbody>
+  </table>
+
+  <div class="callout reality avoid-break">
+    <span class="co-label">Reality check</span>
+    <p>The single most protective row is the last one. Financial media produces an explanation for
+    every move by 9:00 the next morning; the evidence says most of those explanations are
+    invented after the fact. An app that is willing to display <em>“no clear reason — most moves
+    this size have none”</em> is teaching its user something most professionals never say out
+    loud.</p>
+  </div>
+</section>

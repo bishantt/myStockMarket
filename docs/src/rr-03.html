@@ -1,0 +1,211 @@
+<!-- ================= PART 6 ================= -->
+<section class="part">
+  <div class="part-head">
+    <div class="kicker">Part 6</div>
+    <h2>The retail reality</h2>
+    <p class="dek">These are not anecdotes or survivor stories — several are full-population
+    censuses, which makes “most day traders lose” one of the best-evidenced facts in all of
+    finance. The app is designed to keep its user out of these statistics.</p>
+  </div>
+
+  <div class="stat-row">
+    <div class="stat-tile"><div class="st-label">Underperformance of the most active retail households</div>
+      <div class="st-value">−6.5 pp/yr</div><div class="st-note">Barber &amp; Odean, 66k accounts [26]</div></div>
+    <div class="stat-tile"><div class="st-label">Taiwan day traders persistently profitable, net of fees</div>
+      <div class="st-value">&lt;1%</div><div class="st-note">full-population census [57]</div></div>
+    <div class="stat-tile"><div class="st-label">Brazilians who day-traded 300+ sessions and lost money</div>
+      <div class="st-value">97%</div><div class="st-note">no learning-by-experience found [58]</div></div>
+    <div class="stat-tile"><div class="st-label">Return after a stock hits the “most bought” list</div>
+      <div class="st-value">−4.7%</div><div class="st-note">next 20 days, abnormal [52]</div></div>
+  </div>
+
+  <h3>6.1 &nbsp;The census numbers</h3>
+  <p>Three studies anchor everything. Barber &amp; Odean’s analysis of 66,000 US brokerage
+  households found the quintile that traded most underperformed by about 6.5 percentage points per
+  year — the drag almost exactly equal to their trading costs<sup class="cite">[26]</sup>. The
+  Taiwan census — every day trader in an entire national market over 15 years — found fewer than 1%
+  persistently profitable net of fees; the winners showed <em>pre-existing</em> skill, not learned
+  skill<sup class="cite">[57]</sup>. The Brazil census of futures day traders found 97% of those who
+  persisted 300+ sessions lost money, with no evidence that experience improved outcomes<sup
+  class="cite">[58]</sup> — directly contradicting the education industry’s core promise that
+  day-trading profitability is a learnable craft.</p>
+
+  <h3>6.2 &nbsp;The behavioral taxes</h3>
+  <ul>
+    <li><strong>Disposition effect:</strong> investors sell winners and keep losers; the winners
+    they sold went on to beat the losers they kept by 3.4pp over the following year<sup
+    class="cite">[61]</sup>.</li>
+    <li><strong>Lottery preference:</strong> the tilt toward cheap, high-skew “jackpot” stocks costs
+    roughly 2–3pp per year<sup class="cite">[63]</sup>.</li>
+    <li><strong>Overconfidence:</strong> men trade 45% more than women and pay roughly 0.9pp/yr
+    more in trading drag for it (single men vs single women: 67% more trading, ~1.4pp)<sup class="cite">[62]</sup>.</li>
+    <li><strong>Attention herding:</strong> buying what is trending is reliably value-destroying
+    (−4.7% over 20 days for the most crowd-bought names<sup class="cite">[52]</sup>).</li>
+  </ul>
+  <p>None of these are exotic; all four will knock on this user’s door in month one. The Academy
+  teaches each one <em>through the friction surfaces that detect it</em> — the cost mirror, the
+  trade-frequency mirror, and the cooling-off prompts on the paper-trade ledger — a named exception
+  to the Academy’s pull-only rule (§9.5), rate-limited and dismissible. That pairing is a core
+  product mechanic, not a nice-to-have.</p>
+
+  <h3>6.3 &nbsp;Microstructure a small investor can actually use</h3>
+  <p>Three pieces of execution knowledge are free money relative to ignorance: (1) spreads are
+  widest in the first ~30 minutes — over 20bp on S&amp;P 500 names at the open versus under 5bp late
+  in the day, per industry measurement — so avoid market orders at the US open; (2) prefer limit orders as a default; (3) the
+  closing auction concentrates 10%+ of daily volume and is the deepest window of the day<sup
+  class="cite">[66]</sup>. This is the rare category where knowledge converts directly into saved
+  basis points.</p>
+
+  <h3>6.4 &nbsp;The regulatory ground shifted in 2025–26</h3>
+  <p>Two recent changes matter to the design. First, FINRA eliminated the pattern-day-trader $25,000
+  rule effective June 4, 2026, replacing it with broker-set intraday margin<sup
+  class="cite">[59]</sup> — most web content still describes the old rule as law; the app must not
+  repeat it, and more importantly, <strong>the last external brake on beginner overtrading is gone,
+  so the app supplies its own friction</strong> (trade-frequency mirror, cooling-off prompts, cost
+  projections). Second, the SEC withdrew the Order Competition Rule and Reg Best Execution in June
+  2025<sup class="cite">[60]</sup>: payment for order flow remains legal and disclosure-based, and
+  “price improvement” claims should be read against the midpoint, skeptically.</p>
+
+  <div class="callout assumption avoid-break">
+    <span class="co-label">Assumption &amp; posture — the user</span>
+    <p>The user is a US resident (Long Island, New York — Eastern Time, the market’s own clock).
+    Nothing restricts their access to US equities; any retail brokerage would take the account
+    tomorrow. The design nonetheless <strong>defaults to paper-trading and watchlist mode and
+    ships no brokerage onboarding in v1 — a purely pedagogical stance</strong>: the censuses above
+    price the tuition of learning with real dollars, the last external brake on beginner
+    overtrading (the PDT rule) was removed in June 2026, and every honesty mechanism in this
+    product — the graded track record, the cost mirror, the calibration score — works identically
+    on paper. Live-brokerage integration is therefore a legitimate <em>later</em> extension,
+    gated on the paper record demonstrating readiness — an execution decision, not a legal
+    question.</p>
+  </div>
+
+  <h3>6.5 &nbsp;Free data has a survivorship problem</h3>
+  <p>One quieter trap belongs in this part because it corrupts self-run research: free price
+  datasets typically include only currently listed companies. Missing performance-delisting returns
+  average about −30%<sup class="cite">[65]</sup>, so backtests on survivor-only universes flatter
+  every strategy — by 1.5+ pp/year in small caps. The app warns whenever a backtest universe
+  excludes delisted names, and the Blueprint’s data model carries delisting status for exactly this
+  reason.</p>
+</section>
+
+<!-- ================= PART 7 ================= -->
+<section class="part">
+  <div class="part-head">
+    <div class="kicker">Part 7</div>
+    <h2>What ML and LLMs genuinely add</h2>
+    <p class="dek">The after-close pipeline uses machine intelligence heavily — but in exactly one
+    role: a grounded reader, summarizer, and explainer of things that already happened. Here is the
+    evidence for why the line is drawn there.</p>
+  </div>
+
+  <h3>7.1 &nbsp;The ceiling on ML prediction, measured</h3>
+  <p>The best-in-class academic result — Gu, Kelly &amp; Xiu’s neural networks over decades of US
+  data — achieves an out-of-sample R² of about <strong>0.4% per month per stock</strong><sup
+  class="cite">[67]</sup>. Read that carefully: 99.6% of monthly variation remains unpredictable,
+  and the economic value of the predictable sliver materializes only in institution-scale,
+  diversified long-short portfolios heavy in microcaps. Follow-up work imposing economic
+  restrictions (exclude microcaps and distressed names, apply realistic costs) cuts the
+  risk-adjusted gains by more than half and erodes the rest<sup class="cite">[68]</sup> — the
+  retail-tradable residual is approximately zero. The celebrated deep-learning daily-direction
+  papers fare worse: the documented pre-2010 LSTM edge decayed to roughly zero after costs
+  post-2010<sup class="cite">[69]</sup>, and high-accuracy claims typically dissolve into leakage,
+  lookahead bias, or denoising artifacts on inspection<sup class="cite">[24]</sup>.</p>
+
+  <h3>7.2 &nbsp;Where LLMs are strong — and where they fail in ways that matter here</h3>
+  <table class="rowhead">
+    <thead><tr><th style="width:44mm">Capability</th><th>Evidence &amp; consequence for this product</th></tr></thead>
+    <tbody>
+      <tr><td>Summarizing filings &amp; calls <span class="chip supported" style="margin-left:2mm">Strong</span></td>
+        <td>Model-written summaries of disclosures explain market reactions <em>better</em> than the original documents<sup class="cite">[71]</sup>. This is the pipeline’s core LLM job.</td></tr>
+      <tr><td>Sentiment classification <span class="chip mixed" style="margin-left:2mm">Careful</span></td>
+        <td>Competitive with specialized models when prompts are engineered; naive prompting can score below logistic regression. Anonymizing entity names <em>improved</em> live performance by removing memorized associations<sup class="cite">[70]</sup>.</td></tr>
+      <tr><td>Numeric work <span class="chip folklore" style="margin-left:2mm">Fails</span></td>
+        <td>Models collapse from ~95% accuracy on simple financial lookups to near 0% on multivariate calculations<sup class="cite">[73]</sup>. Consequence: <strong>the pipeline computes every number; the LLM narrates them verbatim</strong> and a deterministic gate verifies each one appears in the sources.</td></tr>
+      <tr><td>Verbalized probabilities <span class="chip folklore" style="margin-left:2mm">Suppressed</span></td>
+        <td>LLM-stated confidences are systematically overconfident across model families<sup class="cite">[74]</sup>. The app never displays a model’s own probability as a market probability; all probabilities on screen are frequency counts from historical data.</td></tr>
+      <tr><td>Backtesting LLM signals <span class="chip weak" style="margin-left:2mm">Trap</span></td>
+        <td>Training-corpus memorization is a leakage channel unique to LLMs: any backtest on pre-cutoff data is untrustworthy<sup class="cite">[70]</sup>. Post-cutoff evaluation is the minimum standard; the headline-sentiment edge is itself decaying as adoption spreads<sup class="cite">[54]</sup>.</td></tr>
+      <tr><td>Autonomous trading agents <span class="chip weak" style="margin-left:2mm">Ruled out</span></td>
+        <td>Published agentic-trading frameworks show single-regime evaluations, leakage, and pathological overtrading; no credible durable alpha. Legitimate for research automation only.</td></tr>
+    </tbody>
+  </table>
+
+  <div class="callout guardrail avoid-break">
+    <span class="co-label">The role, stated once</span>
+    <p>The LLM in this product is a <strong>grounded explainer, disclosure summarizer, and
+    screener-narrator</strong> — with retrieval grounding, forced per-claim citations, deterministic
+    numeric verification, and suppressed verbalized probabilities. It is never a price or direction
+    oracle. The Blueprint implements this as a three-stage pipeline with a hard publish gate.</p>
+  </div>
+</section>
+
+<!-- ================= PART 8 ================= -->
+<section class="part">
+  <div class="part-head">
+    <div class="kicker">Part 8</div>
+    <h2>From evidence to design</h2>
+    <p class="dek">Everything above compresses into two lists: product commitments (what the app
+    does and refuses to do) and statistical guardrails (rules the software enforces mechanically,
+    so honesty doesn’t depend on daily discipline).</p>
+  </div>
+
+  <h3>8.1 &nbsp;Product commitments</h3>
+  <ul>
+    <li><strong>Never ship a directional forecast.</strong> The only quantitative prediction is a
+    short-horizon volatility band (≤ ~1 month), drawn from fat-tailed distributions and labeled as a
+    conditional estimate that can understate sudden stress.</li>
+    <li><strong>Every base rate carries its sample size and a Wilson confidence interval.</strong>
+    “62 of 110 cases” with an interval — never a bare “56%”.</li>
+    <li><strong>Every published pattern carries a decay stamp:</strong> publication date plus the
+    expected post-publication haircut, so “proven strategies” arrive pre-shrunk.</li>
+    <li><strong>Movers never appear without a catalyst check.</strong> If no catalyst is found, the
+    row says so — “no clear reason; most moves this size have none” — instead of inventing one.</li>
+    <li><strong>No trending/most-bought discovery surfaces, ever.</strong> That feature causally
+    generates losses<sup class="cite">[52]</sup>. High-skew, low-price tickers get lottery-risk
+    flags instead.</li>
+    <li><strong>The cost mirror is a first-class widget:</strong> projected annual drag = effective
+    spread × the user’s own turnover, plus a trade-frequency mirror and cooling-off prompts — the
+    app’s replacement for the abolished PDT brake.</li>
+    <li><strong>Position-size suggestions (paper portfolio only) are capped at half-Kelly</strong>,
+    computed from the confidence-interval <em>lower bound</em> of the win rate together with the
+    stored payoff distribution (forward p10/median/p90) — a teaching device for sizing arithmetic
+    on paper, never a conviction dial, and it inherits every cost caveat on the card.</li>
+    <li><strong>The app grades itself in public.</strong> Every flagged setup is logged append-only
+    and scored after resolution; the track-record page shows hits, misses, and calibration — misses
+    first-class.</li>
+    <li><strong>Folklore is labeled folklore</strong> — Fibonacci, Elliott Wave, gap-fill lore, and
+    indicator-based market timing are taught with their evidence grade, not silently omitted.</li>
+    <li><strong>Every real effect names who can capture it</strong> (institutions at scale vs
+    individual via funds) and at what horizon — the “real but not yours” frame from Part 2.</li>
+    <li><strong>Paper-first by default</strong> — a pedagogical stance, not a legal one (§6.4); no
+    brokerage integration in v1, revisited only after the paper track record earns it.</li>
+  </ul>
+
+  <h3>8.2 &nbsp;Statistical guardrails (enforced in code)</h3>
+  <table class="rowhead">
+    <thead><tr><th style="width:52mm">Rule</th><th>Rationale</th></tr></thead>
+    <tbody>
+      <tr><td>t &gt; 3.0 before any new pattern is labeled better than noise</td>
+        <td>Multiple-testing hurdle for a mined field<sup class="cite">[9]</sup>.</td></tr>
+      <tr><td>Trial counting on every user experiment (Deflated Sharpe, PBO)</td>
+        <td>~45 tried configurations on 5 years of daily data guarantee an impressive in-sample mirage<sup class="cite">[72]</sup>.</td></tr>
+      <tr><td>Sample-size display rules: N ≥ 100 → % + CI; 30–99 → “roughly 6 in 10” + wide-interval note; N &lt; 30 → “insufficient history — treat as anecdote,” percentage suppressed</td>
+        <td>60/100 wins spans [50%, 69%] at 95% confidence — visibly near a coin flip; false precision is the enemy.</td></tr>
+      <tr><td>Direction benchmarks use the always-up baseline (~53–55%), never 50%; anything above ~55% OOS is flagged as presumptive overfitting</td>
+        <td>US equities drift upward; a “58% accurate” signal can be worse than “always up”<sup class="cite">[24]</sup>.</td></tr>
+      <tr><td>Decay haircuts auto-applied to published anomalies (−26% OOS / −58% post-publication, US)</td>
+        <td>McLean–Pontiff averages<sup class="cite">[8]</sup>; haircut noted as US-calibrated.</td></tr>
+      <tr><td>Survivorship warnings when a backtest universe lacks delisted names</td>
+        <td>Missing delisting returns average ~−30%<sup class="cite">[65]</sup>.</td></tr>
+      <tr><td>Retail cost assumptions (20–57bp/trade) in every net-of-cost figure; strategies above ~50% monthly turnover presumptively die</td>
+        <td>Institutional cost assumptions are the standard silent lie in backtests<sup class="cite">[3]</sup>.</td></tr>
+      <tr><td>Volatility forecasts only at ≤ 15–20 trading days, with regime-break caveat attached</td>
+        <td>That is where the evidence ends<sup class="cite">[12]</sup>.</td></tr>
+      <tr><td>Regime-sliced statistics get wider bands or are blocked below minimum N</td>
+        <td>Conditioning multiplies implicit tests while shrinking samples.</td></tr>
+      <tr><td>The app’s own flags are Brier-scored; the forecast journal anchors user predictions on displayed base rates</td>
+        <td>Calibration feedback is the best-evidenced debiasing intervention available.</td></tr>
+    </tbody>
+  </table>
+</section>
