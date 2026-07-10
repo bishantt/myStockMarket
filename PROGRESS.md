@@ -1,9 +1,12 @@
 # PROGRESS.md — resumable state
 
-**Current phase:** P0 (walking skeleton + intelligence layer)
-**Last green gate (§6.4):** partial, 2026-07-10 — typecheck, lint, 45 unit tests, build,
-font budget, and 9 Playwright auth tests all green. The full gate cannot run yet: it needs
-Lighthouse (nothing is deployed) and the visual-regression baselines (captured at P0 step 9).
+**Current phase:** P0 — functionally COMPLETE and deployed; phase-0 tag pending two gate items.
+**Last green gate (§6.4):** 2026-07-10 — typecheck, lint, 45 app unit, 13 pytest, webpack build,
+font budget (237/320KB), 28 Playwright (auth + PWA, both viewports), anti-drift §3.10 greps all
+green. **Not yet done for the formal tag:** (1) Lighthouse budgets via lhci — needs setup and an
+authenticated run; first-load JS measured at ~160–200KB, needs a precise check; (2) the
+healthchecks down-then-recover drill (the "up" state is confirmed; the down direction needs a
+~45-min grace-window wait). The phase-0 tag waits on these two.
 **Checkpoint:** P0 steps 1, 3, 4, 5, 6, 7, 8 done and committed; step 9 is done except the
 Vercel deploy. **The P0 loop is proven end to end:** the cloud wrote a pipeline_run row and the
 app renders it. Only the Vercel deploy and the remaining Session-0 secrets stand between here
@@ -58,19 +61,29 @@ app and pipeline jobs on every push; e2e + Lighthouse on `phase-*` tags.
 
 ## Next 3 tasks
 
-1. **Vercel deploy — the ONE remaining P0 item.** User runs `! vercel login` in the session.
-   Then I: `vercel link` (root `app/`), set the app env from local .env + `.vercel-auth-hash.tmp`
-   (DATABASE_URL with `?pgbouncer=true`, DIRECT_URL, AUTH_USER, AUTH_PASS_HASH **raw**,
-   AUTH_COOKIE_SECRET, CRON_SECRET, APP_BASE_URL once known), confirm the build command is
-   `npm run build` (= `next build --webpack`), deploy, and set APP_BASE_URL to the deploy URL.
-   User confirms preview Deployment Protection is ON. Then log in on the deployed shell and see
-   the pipeline timestamp — that finishes P0 step 9.
-2. **Run the P0 exit gate + tag phase-0.** §6.4: typecheck, lint, unit, pytest, build,
-   Playwright/PWA, Lighthouse budgets, anti-drift §3.10, update PROGRESS/DECISIONS, tag.
-   Also: the healthchecks down-then-recover drill (disable nightly-b once, watch the check go
-   down via the read-only API, re-enable).
-3. **Then P1 begins** (data spine): Prisma schema v1, the Alpaca adapter + the
-   `new-provider-adapter` skill, indicators, the real Desk modules.
+1. **Close the §6.4 gate → tag phase-0.** (a) Set up Lighthouse (mint the `release-phase` skill
+   per §9.3): an authenticated mobile run of `/` with a CI-minted session cookie, asserting the
+   perf/a11y budgets and first-load JS ≤ 200KB. (b) The healthchecks down-drill: disable
+   nightly-b, wait past the 45-min grace, confirm the check goes DOWN via the read-only API,
+   re-enable and confirm recovery. Then `git tag phase-0` + push.
+2. **Optional polish before P1:** connect the GitHub repo in the Vercel dashboard (Project →
+   Settings → Git, Root Directory = `app`) so `git push` auto-deploys; delete the unused
+   "My First Check" in healthchecks; rotate the Supabase DB password (was visible in chat).
+3. **P1 begins — the data spine:** Prisma schema v1 (Appendix B), `adapters/base.py` +
+   `adapters/alpaca.py` and mint the `new-provider-adapter` skill, `indicators.py` (toy-series
+   tests) + `new-indicator` skill, the Parquet/DuckDB store, and the first real Desk modules
+   (macro pulse, movers, watchlist).
+
+## Deployment facts (2026-07-10)
+- Production: **https://mystockmarket-eight.vercel.app** — our /login wall gates it; preview/
+  deployment URLs sit behind Vercel SSO (the licensing wall for previews). Vercel project
+  `bishantts-projects/mystockmarket`, linked from `app/`, build command `npm run build`.
+- Vercel env (production + preview): DATABASE_URL, DIRECT_URL, AUTH_USER, AUTH_PASS_HASH (raw),
+  AUTH_COOKIE_SECRET, CRON_SECRET, APP_BASE_URL — all set.
+- Local auth now lives in `app/.env.development.local` (dev-only), NOT root .env — see the
+  DECISIONS/LESSONS entries on the e2e hermeticity fix. `.vercel-auth-hash.tmp` (raw hash) can be
+  deleted now that Vercel has the value.
+- Git auto-deploy is NOT connected yet (the repo is the parent of `app/`; do it in the dashboard).
 
 ## Blocked
 
