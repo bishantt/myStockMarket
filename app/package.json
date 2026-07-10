@@ -15,7 +15,8 @@
     "postinstall": "prisma generate",
     "db:migrate": "prisma migrate dev",
     "db:studio": "prisma studio",
-    "icons": "node scripts/icons.mjs"
+    "icons": "node scripts/icons.mjs",
+    "check:lighthouse": "node scripts/lighthouse-check.mjs"
   },
   "dependencies": {
     "@prisma/client": "^6.19.3",
