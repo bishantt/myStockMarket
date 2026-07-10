@@ -1,0 +1,97 @@
+/**
+ * time.ts — every timestamp the user reads passes through this file.
+ *
+ * The rule (plan §4.3): store UTC, display America/New_York. The user lives on Long Island
+ * and works on market time, so New York is not a preference — it is the market's own clock,
+ * and the app would be lying if it showed anything else.
+ *
+ * There is no ad-hoc date code anywhere else in the app. Two reasons. First, daylight saving:
+ * the US Eastern offset changes twice a year, and every "just subtract 5 hours" shortcut is
+ * wrong for a third of the year. Second, the nightly pipeline is scheduled in fixed UTC, so
+ * the wall-clock time the user sees genuinely shifts with the season; only a real timezone
+ * database gets that right.
+ *
+ * The reader always sees "ET". The EDT/EST distinction is real and this file computes it, but
+ * showing it on the Desk would ask the reader to decode which half of the year they are in.
+ */
+
+/** The market's timezone, and the only one this app ever formats into. */
+const MARKET_TIME_ZONE = "America/New_York";
+
+/**
+ * Intl formatters are expensive to construct and completely stateless once built, so we build
+ * each one once. Note `hourCycle: "h23"`, which is what makes midnight render as "00:00"
+ * rather than "24:00" — the default `hour12: false` still produces 24 in some engines.
+ */
+const clockFormatter = new Intl.DateTimeFormat("en-US", {
+  timeZone: MARKET_TIME_ZONE,
+  hour: "2-digit",
+  minute: "2-digit",
+  hourCycle: "h23",
+});
+
+const dateFormatter = new Intl.DateTimeFormat("en-US", {
+  timeZone: MARKET_TIME_ZONE,
+  month: "short",
+  day: "numeric",
+});
+
+const zoneNameFormatter = new Intl.DateTimeFormat("en-US", {
+  timeZone: MARKET_TIME_ZONE,
+  timeZoneName: "short",
+});
+
+/**
+ * Returns "EDT" or "EST" for the given instant, according to the real US daylight-saving
+ * rules rather than a hardcoded month range.
+ *
+ * This is for provenance and audit contexts — a pipeline log line, a data-vintage note —
+ * where being precise about the offset matters. Reader-facing surfaces use "ET" instead.
+ */
+export function etAbbreviation(instant: Date): "EDT" | "EST" {
+  const zonePart = zoneNameFormatter
+    .formatToParts(instant)
+    .find((part) => part.type === "timeZoneName");
+
+  if (zonePart?.value !== "EDT" && zonePart?.value !== "EST") {
+    // Intl is a platform API; if it stops returning a US Eastern abbreviation, something is
+    // deeply wrong with the runtime's timezone data and silently guessing would be worse.
+    throw new Error(
+      `Expected an EDT or EST abbreviation for ${MARKET_TIME_ZONE}, got "${zonePart?.value}". ` +
+        `The runtime's timezone database is missing or corrupt.`,
+    );
+  }
+  return zonePart.value;
+}
+
+/**
+ * The wall-clock time in New York, as a zero-padded 24-hour "HH:MM".
+ *
+ * 24-hour and zero-padded on purpose: these render in IBM Plex Mono inside a right-aligned
+ * column, and "9:30" would be one glyph narrower than "16:05", breaking the alignment that
+ * mono numerals exist to guarantee.
+ */
+export function formatEtClock(instant: Date): string {
+  return clockFormatter.format(instant);
+}
+
+/**
+ * The calendar date in New York, e.g. "Jul 9".
+ *
+ * The timezone matters more than it looks: an instant at 02:30 UTC is still the previous
+ * evening in New York, and a briefing published at 8:40pm ET carries the date the reader
+ * would call "today", not tomorrow's UTC date.
+ */
+export function formatEtDate(instant: Date): string {
+  return dateFormatter.format(instant);
+}
+
+/**
+ * The exact provenance line every SectionMasthead renders: "as of 16:05 ET".
+ *
+ * Every module on the Desk shows one. It is what makes stale data self-identifying, which is
+ * the whole reason offline mode can be an honest state rather than an apology (plan §5.3).
+ */
+export function formatAsOf(instant: Date): string {
+  return `as of ${formatEtClock(instant)} ET`;
+}
