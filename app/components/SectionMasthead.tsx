@@ -40,9 +40,15 @@ export function SectionMasthead({
          * typography, not a list marker, so it is not a real <ol> — it names the module's
          * fixed place in the daily ritual, which is the same on every visit.
          */}
+        {/*
+         * The em dash is NOT aria-hidden. Hiding it collapsed the accessible name to
+         * "00Pipeline" — the surrounding spaces went with it — so a screen reader announced the
+         * index and the title as one run-on word. Left visible, the dash is silent in every
+         * major screen reader while the spaces around it survive.
+         */}
         <h2 className="font-ui text-xs font-bold uppercase tracking-[0.07em] font-stretch-[120%] text-ink">
           <span className="tabular-nums">{String(index).padStart(2, "0")}</span>
-          <span aria-hidden="true"> — </span>
+          <span> — </span>
           {title}
         </h2>
 
