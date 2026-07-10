@@ -74,13 +74,28 @@ watchlist server actions, e2e journeys 1/2/5, visual baselines.
 
 ## Next 3 tasks
 
-1. **P1 step 1 — Prisma schema v1** (Appendix B): Instrument, PriceBar, ScanResult, SignalLog,
-   WatchlistItem + enums; migrate; extend prisma/seed.ts with a deterministic synthetic morning.
-2. **P1 step 2 — the Alpaca adapter**, test-first: `adapters/base.py` (repository interface +
-   token-bucket rate limiter + fixture loader), then `adapters/alpaca.py` (daily bars, universe,
-   corporate actions) with recorded fixtures via httpx.MockTransport. Mint `new-provider-adapter`.
-3. **P1 step 3 — indicators.py**: the Appendix F set as Polars expressions, toy-series tests
-   first (frozen 30-bar series, expected values from pandas-ta-classic). Mint `new-indicator`.
+1. **P1 step 2 — the Alpaca adapter**, test-first: `adapters/base.py` (repository interface +
+   token-bucket rate limiter + fixture loader via httpx.MockTransport), then `adapters/alpaca.py`
+   (multi-symbol daily bars, universe listing, corporate actions) with recorded fixtures. Tests
+   first: fixture round-trips + rate-limit behaviour + one-provider-down isolation. Mint the
+   `new-provider-adapter` skill after Alpaca. (real Alpaca key is in GitHub secrets; tests use
+   fixtures, never live keys.)
+2. **P1 step 3 — indicators.py**: the Appendix F set as Polars expressions, toy-series tests
+   first (frozen 30-bar series in pipeline/tests/toy_series.py, expected values generated once
+   from pandas-ta-classic and frozen). Mint `new-indicator` after the 2nd. Include the one-bar
+   lookahead guard test.
+3. **P1 steps 4-5 — Parquet/DuckDB store + scans.py (5 presets) + publish.py** wired into job_a,
+   with the universe hard-fail (<95%), publish transaction isolation, and stage-skip rerun tests.
+
+## P1 progress
+- **step 1 DONE (2026-07-10):** Prisma schema v1 migrated to Supabase (Instrument, PriceBar,
+  ScanResult, SignalLog, WatchlistItem, Exchange enum). signal_log insert-only enforced by a
+  trigger (owner bypasses REVOKE — see DECISIONS/LESSONS), verified UPDATE+DELETE both rejected.
+  The deterministic `prisma/seed.ts` synthetic morning is deferred to pair with the Desk modules
+  (step 6) that consume it and the e2e journey-1 P1 variant.
+- Note for DB tests: use a throwaway/test DB, not production Supabase (a verification left an
+  undeletable signal_log row I had to TRUNCATE). The plan calls for dockerised Postgres for
+  pipeline tests and a seeded DB for e2e.
 
 ## Deployment facts (2026-07-10)
 - Production: **https://mystockmarket-eight.vercel.app** — our /login wall gates it; preview/
