@@ -12,6 +12,11 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Serwist compiles these from app/sw.ts at build time — generated, minified, not ours to
+    // lint. The source we own is app/sw.ts, which is linted normally.
+    "public/sw.js",
+    "public/sw.js.map",
+    "public/swe-worker-*.js",
   ]),
 ]);
 

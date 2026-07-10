@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96" fill="none" role="img" aria-label="myStockMarket">
+  <!--
+    The house mark: three candlesticks stepping upward — the tick mark from the document covers.
+    It is the glyph only, drawn in `currentColor` on a transparent field, so it inherits ink in
+    the nav and can be composited onto bone by scripts/icons.mjs for the app icons. No colour is
+    baked in here; that keeps it token-free and lets it flip with the text colour in dark mode.
+
+    Each candle is a thin wick with a solid body. The bodies ascend left to right — a quiet
+    uptrend, not a promise. Kept bold and simple so it still reads at favicon size.
+  -->
+  <g fill="currentColor">
+    <!-- Candle 1 (left, lowest) -->
+    <rect x="22.5" y="46" width="3" height="38" rx="1" />
+    <rect x="15" y="54" width="18" height="24" rx="1.5" />
+    <!-- Candle 2 (middle) -->
+    <rect x="46.5" y="30" width="3" height="40" rx="1" />
+    <rect x="39" y="38" width="18" height="26" rx="1.5" />
+    <!-- Candle 3 (right, highest) -->
+    <rect x="70.5" y="14" width="3" height="42" rx="1" />
+    <rect x="63" y="22" width="18" height="26" rx="1.5" />
+  </g>
+</svg>

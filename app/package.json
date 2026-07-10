@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "next build --webpack",
     "start": "next start",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
@@ -14,7 +14,8 @@
     "check:fonts": "node scripts/check-font-budget.mjs",
     "postinstall": "prisma generate",
     "db:migrate": "prisma migrate dev",
-    "db:studio": "prisma studio"
+    "db:studio": "prisma studio",
+    "icons": "node scripts/icons.mjs"
   },
   "dependencies": {
     "@prisma/client": "^6.19.3",
@@ -27,6 +28,7 @@
   },
   "devDependencies": {
     "@playwright/test": "^1.61.1",
+    "@serwist/next": "^9.5.11",
     "@tailwindcss/postcss": "^4",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
@@ -39,6 +41,7 @@
     "eslint-config-next": "16.2.10",
     "jsdom": "^29.1.1",
     "prisma": "^6.19.3",
+    "serwist": "^9.5.11",
     "sharp": "^0.35.3",
     "tailwindcss": "^4",
     "typescript": "^5",

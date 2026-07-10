@@ -30,9 +30,7 @@ function askSecretly(question) {
     const rl = createInterface({ input: stdin, output: stdout, terminal: true });
     let muted = false;
 
-    // eslint-disable-next-line no-underscore-dangle
     const originalWrite = rl._writeToOutput?.bind(rl);
-    // eslint-disable-next-line no-underscore-dangle
     rl._writeToOutput = (chunk) => {
       if (muted) return; // swallow the echoed characters
       originalWrite?.(chunk);
@@ -61,8 +59,17 @@ if (password.length < 12) {
 
 const digest = await hash(password, BCRYPT_COST);
 
+// A bcrypt hash is full of `$` ($2b$12$...). Vercel and GitHub inject env vars directly, so they
+// take the hash raw. But a LOCAL .env is read by Next through dotenv-expand, which treats `$2b`
+// as a variable reference and eats it — so the local copy needs every `$` escaped as `\$`.
+const escapedForLocalEnv = digest.replaceAll("$", "\\$");
+
+console.log("\n─ For Vercel and GitHub secrets (raw) ─");
 console.log("AUTH_PASS_HASH=" + digest);
+
+console.log("\n─ For the LOCAL .env (each $ escaped as \\$, or dotenv-expand eats the hash) ─");
+console.log("AUTH_PASS_HASH=" + escapedForLocalEnv);
+
 console.log(
-  "\nPlace this in .env and in Vercel (Appendix D). The plaintext is not stored anywhere —\n" +
-    "if you forget it, re-run this script with a new password.",
+  "\nThe plaintext is not stored anywhere. If you forget it, re-run this script with a new one.",
 );

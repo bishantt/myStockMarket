@@ -28,12 +28,12 @@ function builtStylesheets() {
  * one points at. A block qualifies when its unicode-range starts at codepoint zero — that is
  * the range containing ASCII, which any English page is guaranteed to request.
  *
- * Three spellings of that same range exist in the wild, and we have to accept all of them:
- * Google serves `U+0000-00FF`, Next's CSS minifier rewrites it to the wildcard `U+??`, and
- * some tools normalise it to `U+0-FF`. Matching only the first is how this check quietly
- * stopped finding any fonts at all the first time it ran.
+ * Several spellings of that same range exist in the wild, and we have to accept all of them.
+ * Google serves `U+0000-00FF`; Turbopack's minifier rewrites it to `U+??`; the webpack builder
+ * writes `u+00??`; some tools normalise it to `U+0-FF`. Matching only one spelling is how this
+ * check has twice quietly stopped finding any fonts — once per bundler. So match them all.
  */
-const LATIN_RANGE = /^u\+(\?\?|0{1,4}-0{0,2}ff)(?![0-9a-f])/i;
+const LATIN_RANGE = /^u\+(0{0,2}\?\?|0{1,4}-0{0,2}ff)(?![0-9a-f?])/i;
 
 function latinFontFiles() {
   const files = new Set();
