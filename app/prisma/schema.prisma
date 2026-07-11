@@ -46,22 +46,23 @@ model PipelineRun {
   @@map("pipeline_run")
 }
 
-/// The US exchanges in scope (plan Appendix F: NYSE/Nasdaq/AMEX common stocks + ETFs, no OTC).
-enum Exchange {
-  NYSE
-  NASDAQ
-  AMEX
-}
-
 /// The master list of tradable symbols — the universe (Appendix B).
 ///
 /// Delisted names are RETAINED (never deleted): survivorship-filtered history flatters every
 /// backtest, and keeping delisted rows is how the app avoids that trap (Research Report §6.5).
 /// `isActive` and `delistedAt` record a symbol's status without dropping its history.
+///
+/// `exchange` is the venue's raw code as the data provider reports it — NYSE, NASDAQ, AMEX, and
+/// also ARCA and BATS, because ETFs list there and the universe is "common stocks + ETFs"
+/// (Appendix F). It is a plain string, not an enum: the plan's Appendix F named only
+/// NYSE/Nasdaq/AMEX, but the real listing venues for ETFs are more, and a string avoids a schema
+/// migration each time a new code appears. The one hard universe rule — "no OTC" — is enforced at
+/// ingest (OTC symbols are never inserted), not by the column type. Structural correction logged
+/// 2026-07-11.
 model Instrument {
   symbol     String    @id
   name       String
-  exchange   Exchange
+  exchange   String
   sector     String?
   industry   String?
   /// SEC Central Index Key, for EDGAR filings (null until matched). Set in P2.

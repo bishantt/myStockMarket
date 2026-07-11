@@ -20,3 +20,8 @@ first real implementation exists — this file records working code, not intenti
 ---
 
 (no entries yet — no code exists)
+
+## provider-adapter
+Where it lives: pipeline/adapters/base.py (TokenBucket, load_fixture, Adapter) + one file per provider (alpaca.py).
+Shape: subclass Adapter with super().__init__("<name>", client, limiter); call self.get(url, params=) which rate-limits + raises on non-2xx; parse JSON into frozen dataclasses only (no business logic). Tests replay REAL recorded fixtures via httpx.MockTransport + load_fixture; the job (not the adapter) catches per-source errors for sourceStatus.
+Use when: adding any data-provider adapter. Follow the new-provider-adapter skill.
