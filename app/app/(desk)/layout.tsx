@@ -74,6 +74,14 @@ function DeskNav() {
           </li>
           <li>
             <Link
+              href="/paper"
+              className="border-b-2 border-transparent pb-0.5 text-ink-2 hover:text-accent"
+            >
+              Paper
+            </Link>
+          </li>
+          <li>
+            <Link
               href="/track-record"
               className="border-b-2 border-transparent pb-0.5 text-ink-2 hover:text-accent"
             >
