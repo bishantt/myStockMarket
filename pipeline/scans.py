@@ -45,6 +45,20 @@ _LOTTERY_SKEW_PRICE = 10.0
 _SKEW_WINDOW = 60
 
 
+def build_indicated(bars: pl.DataFrame) -> pl.DataFrame:
+    """The full per-(symbol, date) indicator frame for the whole universe (Appendix F).
+
+    `bars` is the union of all symbols' raw bars; this applies with_indicators per symbol and returns
+    every bar with its v1 indicators. This is what the P4 detectors and base rates read; build_snapshot
+    reduces it to the latest row per symbol for the scans.
+    """
+    return (
+        bars.sort("symbol", "date")
+        .group_by("symbol", maintain_order=True)
+        .map_groups(with_indicators)
+    )
+
+
 def build_snapshot(bars: pl.DataFrame) -> pl.DataFrame:
     """
     Reduce every symbol's full bar history to one run-date row with everything the scans need.
@@ -54,11 +68,7 @@ def build_snapshot(bars: pl.DataFrame) -> pl.DataFrame:
     for the crossing presets, and the 60-day return skewness is taken over each symbol's last
     `_SKEW_WINDOW` returns. The result is one row per symbol, its latest bar.
     """
-    indicated = (
-        bars.sort("symbol", "date")
-        .group_by("symbol", maintain_order=True)
-        .map_groups(with_indicators)
-    )
+    indicated = build_indicated(bars)
 
     with_prev = indicated.with_columns(
         pl.col("rsi14").shift(1).over("symbol").alias("rsi14_prev"),

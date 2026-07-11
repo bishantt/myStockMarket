@@ -175,6 +175,7 @@ def main() -> None:
             run_date=run_date,
             fetch_catalysts=build_catalyst_fetcher(settings, run_date),
             submit_extraction=_build_submit_extraction(settings),
+            publish_analytics=pub.publish_analytics,
         )
         result = run_nightly(deps)
 

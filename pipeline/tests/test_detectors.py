@@ -107,7 +107,7 @@ def test_gap_with_catalyst_needs_both_the_gap_and_a_catalyst():
 def test_breadth_regime_fires_when_the_universe_crosses_fifty_percent():
     breadth = pl.DataFrame({
         "date": [date(2026, 1, i) for i in range(1, 5)],
-        "pct_above_50dma": [45.0, 55.0, 60.0, 40.0],  # up-cross at day 2, down-cross at day 4
+        "pct_above_50dma": [0.45, 0.55, 0.60, 0.40],  # up-cross at day 2, down-cross at day 4 (fractions)
     })
     events = det.detect_breadth(breadth)
     assert events.height == 2

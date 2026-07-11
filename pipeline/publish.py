@@ -85,6 +85,121 @@ def publish(
         raise
 
 
+def publish_analytics(
+    conn: psycopg.Connection,
+    *,
+    run_date: date,
+    base_rates: Iterable[Mapping[str, Any]] = (),
+    setup_cards: Iterable[Mapping[str, Any]] = (),
+    vol_bands: Iterable[Mapping[str, Any]] = (),
+) -> None:
+    """Persist the P4 honesty engine atomically: base rates (upserted by their unique key), setup
+    cards and vol bands (replaced per run date). Each card is linked to the base_rate_stat it was
+    scored against, so the exact N and interval it shows are auditable.
+
+    Commits on success, rolls back on any error — a mid-publish reader sees the prior run's cards,
+    never a half-written set.
+    """
+    try:
+        with conn.cursor() as cur:
+            _upsert_base_rates(cur, base_rates)
+            rate_ids = _base_rate_id_map(cur)
+            _replace_setup_cards(cur, run_date, setup_cards, rate_ids)
+            _replace_vol_bands(cur, run_date, vol_bands)
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        raise
+
+
+def _upsert_base_rates(cur, base_rates) -> None:
+    rows = list(base_rates)
+    if not rows:
+        return
+    cur.executemany(
+        """
+        INSERT INTO base_rate_stat
+            (id, pattern_key, universe, horizon_days, regime, n, wins, win_rate, ci_low, ci_high,
+             fwd_p10, fwd_median, fwd_p90, baseline_up_rate, publication_year, evidence_grade,
+             decay_note, computed_at)
+        VALUES (gen_random_uuid()::text, %(patternKey)s, %(universe)s, %(horizonDays)s, %(regime)s,
+                %(n)s, %(wins)s, %(winRate)s, %(ciLow)s, %(ciHigh)s, %(fwdP10)s, %(fwdMedian)s,
+                %(fwdP90)s, %(baselineUpRate)s, %(publicationYear)s, %(evidenceGrade)s, %(decayNote)s, now())
+        ON CONFLICT (pattern_key, universe, horizon_days, regime) DO UPDATE SET
+            n = EXCLUDED.n, wins = EXCLUDED.wins, win_rate = EXCLUDED.win_rate,
+            ci_low = EXCLUDED.ci_low, ci_high = EXCLUDED.ci_high, fwd_p10 = EXCLUDED.fwd_p10,
+            fwd_median = EXCLUDED.fwd_median, fwd_p90 = EXCLUDED.fwd_p90,
+            baseline_up_rate = EXCLUDED.baseline_up_rate, publication_year = EXCLUDED.publication_year,
+            evidence_grade = EXCLUDED.evidence_grade, decay_note = EXCLUDED.decay_note,
+            computed_at = now()
+        """,
+        [_base_rate_params(r) for r in rows],
+    )
+
+
+def _base_rate_params(r: Mapping[str, Any]) -> dict:
+    """Fill in the optional base-rate fields so every parameter key is present for executemany."""
+    return {
+        "patternKey": r["patternKey"], "universe": r["universe"], "horizonDays": r["horizonDays"],
+        "regime": r["regime"], "n": r["n"], "wins": r["wins"], "winRate": r["winRate"],
+        "ciLow": r["ciLow"], "ciHigh": r["ciHigh"], "fwdP10": r.get("fwdP10"),
+        "fwdMedian": r.get("fwdMedian"), "fwdP90": r.get("fwdP90"),
+        "baselineUpRate": r.get("baselineUpRate"), "publicationYear": r.get("publicationYear"),
+        "evidenceGrade": r["evidenceGrade"], "decayNote": r.get("decayNote"),
+    }
+
+
+def _base_rate_id_map(cur) -> dict[tuple, str]:
+    """Map each base_rate_stat's (pattern, universe, horizon, regime) key to its id, so a card can be
+    linked to the exact rate it was scored against."""
+    cur.execute("SELECT id, pattern_key, universe, horizon_days, regime FROM base_rate_stat")
+    return {(row[1], row[2], row[3], row[4]): row[0] for row in cur.fetchall()}
+
+
+def _replace_setup_cards(cur, run_date, setup_cards, rate_ids) -> None:
+    cur.execute("DELETE FROM setup_card WHERE run_date = %s", (run_date,))
+    rows = list(setup_cards)
+    if not rows:
+        return
+    params = []
+    for card in rows:
+        key = tuple(card["baseRateKey"]) if card.get("baseRateKey") else None
+        params.append((
+            card["runDate"], card["symbol"], card["patternKey"], card["tier"],
+            Json(_json_safe_map(card["state"])), Json(dict(card.get("weakeners", {}))),
+            rate_ids.get(key) if key else None,
+        ))
+    cur.executemany(
+        """
+        INSERT INTO setup_card (id, run_date, symbol, pattern_key, tier, state, weakeners, base_rate_id)
+        VALUES (gen_random_uuid()::text, %s, %s, %s, %s, %s, %s, %s)
+        """,
+        params,
+    )
+
+
+def _replace_vol_bands(cur, run_date, vol_bands) -> None:
+    cur.execute("DELETE FROM vol_band WHERE run_date = %s", (run_date,))
+    rows = [
+        (b["runDate"], b["symbol"], b["horizonDays"], b["lo"], b["hi"], b["coverage"], b["label"])
+        for b in vol_bands
+    ]
+    if not rows:
+        return
+    cur.executemany(
+        """
+        INSERT INTO vol_band (id, run_date, symbol, horizon_days, lo, hi, coverage, label)
+        VALUES (gen_random_uuid()::text, %s, %s, %s, %s, %s, %s, %s)
+        """,
+        rows,
+    )
+
+
+def _json_safe_map(state: Mapping[str, Any]) -> dict:
+    """Scrub non-finite floats out of a card's state map before it becomes jsonb."""
+    return {k: _json_safe(v) for k, v in state.items()}
+
+
 def publish_briefing(
     conn: psycopg.Connection,
     *,

@@ -139,14 +139,15 @@ model ScanResult {
 /// Rate fields (statedWinRate, statedN) are null until P4, when base rates exist; at P1 the
 /// signal log records only that a pattern fired and when it resolves.
 model SignalLog {
-  id            String   @id @default(cuid())
-  firedDate     DateTime @map("fired_date") @db.Date
+  id            String            @id @default(cuid())
+  firedDate     DateTime          @map("fired_date") @db.Date
   symbol        String
-  patternKey    String   @map("pattern_key")
-  horizonDays   Int      @map("horizon_days")
-  statedWinRate Float?   @map("stated_win_rate")
-  statedN       Int?     @map("stated_n")
-  resolvesOn    DateTime @map("resolves_on") @db.Date
+  patternKey    String            @map("pattern_key")
+  horizonDays   Int               @map("horizon_days")
+  statedWinRate Float?            @map("stated_win_rate")
+  statedN       Int?              @map("stated_n")
+  resolvesOn    DateTime          @map("resolves_on") @db.Date
+  resolution    SignalResolution?
 
   /// One log row per (day, pattern, symbol, horizon) — a rerun of a night inserts nothing new
   /// (the publish uses ON CONFLICT DO NOTHING). This is what makes the nightly job idempotent.
@@ -263,4 +264,94 @@ model JournalEntry {
 
   @@index([date])
   @@map("journal_entry")
+}
+
+/// Base-rate statistics per pattern × universe bucket × horizon × regime (plan Appendix B, P4).
+///
+/// One row is the honest answer to "the last N times this pattern appeared in this bucket and
+/// regime, how often was price higher H days later" — with the Wilson interval (ciLow/ciHigh), the
+/// forward-return percentiles, and the always-up baseline for the same bucket+horizon so a rate can
+/// never pose as an edge it does not have. Provenance rides along: the key paper's year, the RR
+/// Part 4 evidence grade, and the decay note. Recomputed nightly; keyed so a recompute replaces in
+/// place. `n < 30` is suppressed at display (the N-gate), not here — the raw counts are always kept.
+model BaseRateStat {
+  id              String   @id @default(cuid())
+  patternKey      String   @map("pattern_key")
+  universe        String
+  horizonDays     Int      @map("horizon_days")
+  regime          String
+  n               Int
+  wins            Int
+  winRate         Float    @map("win_rate")
+  ciLow           Float    @map("ci_low")
+  ciHigh          Float    @map("ci_high")
+  fwdP10          Float?   @map("fwd_p10")
+  fwdMedian       Float?   @map("fwd_median")
+  fwdP90          Float?   @map("fwd_p90")
+  baselineUpRate  Float?   @map("baseline_up_rate")
+  publicationYear Int?     @map("publication_year")
+  evidenceGrade   String   @map("evidence_grade")
+  decayNote       String?  @map("decay_note")
+  computedAt      DateTime @default(now()) @map("computed_at")
+
+  setupCards SetupCard[]
+
+  @@unique([patternKey, universe, horizonDays, regime])
+  @@map("base_rate_stat")
+}
+
+/// A setup card — a pattern that fired on a served symbol, shown on the Desk with its base rate and
+/// weakeners (plan Appendix B, P4, §3.6). `tier` is the tendency tier (strong/moderate/weak) from
+/// the Appendix F bands, capped to weak when the CI spans the baseline. `state` is the rendered
+/// card view-model; `weakeners` is the per-pattern checkbox state, which the app writes (✎). The
+/// card links to the base_rate_stat it was scored against, so the exact N and interval shown are
+/// auditable. Replaced per run date.
+model SetupCard {
+  id         String        @id @default(cuid())
+  runDate    DateTime      @map("run_date") @db.Date
+  symbol     String
+  patternKey String        @map("pattern_key")
+  tier       String
+  state      Json
+  weakeners  Json
+  baseRateId String?       @map("base_rate_id")
+  baseRate   BaseRateStat? @relation(fields: [baseRateId], references: [id])
+
+  @@index([runDate])
+  @@map("setup_card")
+}
+
+/// Empirical volatility bands per watchlist symbol (plan Appendix B, P4, Appendix F). The one
+/// forward-looking number the app allows — a range with a frequency label, ALWAYS rendered with the
+/// regime-break caveat (§1.5 rule 1). `lo`/`hi` are return fractions; the chart projects them from
+/// the current close. `horizonDays` is 5, 10, or 20 — nothing beyond 20 by schema. `coverage` is
+/// 0.5 (p25–p75) or 0.8 (p10–p90). Replaced per run date.
+model VolBand {
+  id          String   @id @default(cuid())
+  symbol      String
+  runDate     DateTime @map("run_date") @db.Date
+  horizonDays Int      @map("horizon_days")
+  lo          Float
+  hi          Float
+  coverage    Float
+  label       String
+
+  @@index([runDate])
+  @@map("vol_band")
+}
+
+/// The resolved outcome of a fired signal (plan Appendix B, P4). INSERT-ONLY, like the signal log
+/// it resolves: a permanent record that a pattern's horizon passed and how it turned out, so the
+/// track record can show the app's own misses. One resolution per signal (unique), outcome is
+/// hit / miss / na (na = the horizon could not be resolved, e.g. a delisting). The insert-only
+/// guarantee is enforced by a trigger in the migration, not by a grant (a table owner bypasses
+/// grants — see the signal_log lesson).
+model SignalResolution {
+  id         String    @id @default(cuid())
+  signalId   String    @unique @map("signal_id")
+  signal     SignalLog @relation(fields: [signalId], references: [id])
+  outcome    String
+  resolvedAt DateTime  @default(now()) @map("resolved_at")
+
+  @@map("signal_resolution")
 }

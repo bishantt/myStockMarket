@@ -3,6 +3,21 @@ Single-user US-equities command center + learning hub. Next.js 16 app (app/) + P
 (pipeline/) + two GitHub Actions jobs. Executor: Claude Opus 4.8. Contract: DEVELOPMENT-PLAN.md.
 Authority: RR Part 8/9 > Blueprint > plan > DECISIONS.md > judgment. Evidence chapters win.
 
+## Autonomy (standing directive — user, 2026-07-11, permanent)
+Run the entire plan to completion without pausing. Do NOT stop at phase boundaries or ask
+permission to continue: after tagging a phase, roll straight into the next one. Work through every
+remaining phase autonomously, in order, following all the rules below (TDD, plain English, the
+non-negotiables, the session ritual).
+- **The only reason to stop** is something that GENUINELY blocks further progress and cannot be
+  worked around (e.g. a required secret that is absent and cannot be faked).
+- **For anything else that needs the user's input:** write it to QUESTIONS-FOR-BISHANT.md, make the
+  most reasonable assumption, clearly mark whatever you built on that assumption (in code comments,
+  DECISIONS.md, and PROGRESS.md), and keep going.
+- **A phase gate you cannot complete now is not a blocker.** If a gate needs live observation (e.g.
+  P3's five-night briefing week), proceed with the next phase in parallel and tag the earlier phase
+  when its gate is finally met. Note the pending gate in PROGRESS.md.
+- Keep updating PROGRESS.md, DECISIONS.md, LESSONS.md, PATTERNS.md and minting skills as you go.
+
 ## Non-negotiables (full list: plan §1.5 — re-read weekly)
 No directional forecasts; vol bands ≤ 20d + regime caveat · base rates = natural frequency + N +
 Wilson CI, N-gated display · CI spanning always-up baseline ⇒ tier weak · new patterns need

@@ -42,7 +42,7 @@ _DV_WINDOW = 63           # the point-in-time dollar-volume window
 _MIN_SMALL_PRICE = 5.0    # sub-$5 names are excluded from cards (lottery territory)
 
 # The market-regime breadth line (assumption — see the module docstring / QUESTIONS).
-_REGIME_LEVEL = 50.0
+_REGIME_LEVEL = 0.5  # breadth is a fraction (0-1), matching market_context and the app
 
 # The forward-return percentiles every base rate reports (Appendix B fwdP10/median/P90).
 _PERCENTILES = (0.10, 0.50, 0.90)

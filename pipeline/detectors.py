@@ -42,7 +42,7 @@ _RVOL_MIN = 2.5          # RVOL ≥ 2.5
 _MOVE_MIN = 0.02         # |1-day return| ≥ 2%
 _RSI_LOW = 30.0
 _RSI_HIGH = 70.0
-_BREADTH_LEVEL = 50.0    # % of the universe above its 50-day average
+_BREADTH_LEVEL = 0.5     # fraction of the universe above its 50-day average (0-1, matches market_context)
 
 
 def detect(indicators: pl.DataFrame) -> pl.DataFrame:

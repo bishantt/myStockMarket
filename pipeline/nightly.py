@@ -31,11 +31,17 @@ from typing import Any, Callable, Mapping
 
 import polars as pl
 
+import analytics
+import detectors as det
 from catalysts import classify
 from parquet_store import PRICES, ParquetStore
-from scans import HORIZON_DAYS, UNUSUAL_VOLUME, build_snapshot, run_all
+from scans import HORIZON_DAYS, UNUSUAL_VOLUME, build_indicated, build_snapshot, run_all
 from storage import R2Store
 from trading_calendar import sessions_ahead
+
+# The regime line and the primary card horizon (Appendix F). Breadth is a fraction (0-1).
+_REGIME_LINE = 0.5
+_CARD_HORIZON = 10
 
 # A night must cover at least this share of the universe with bars, or it fails (plan §2.1). A
 # missing tenth of the market is a broken ingest, not a publishable morning.
@@ -83,6 +89,9 @@ class NightlyDeps:
     # Optional: None skips extraction (no key configured, or a night with no news). Given the
     # classified news items; the id it persists lets Job B collect the batch the next evening.
     submit_extraction: Callable[[list[dict]], str] | None = None
+    # Publish the P4 honesty engine (base rates, setup cards, vol bands). Optional: None skips the
+    # analytics stage (used by the fast fake-driven tests). Signature mirrors publish_analytics.
+    publish_analytics: Callable[..., None] | None = None
 
 
 @dataclass(frozen=True)
@@ -171,6 +180,14 @@ def run_nightly(deps: NightlyDeps) -> NightlyResult:
         batch_id=batch_id,
     )
 
+    # The P4 honesty engine: base rates, setup cards, and vol bands over the served universe's
+    # history. Published separately so a heavier compute never risks the core morning's transaction.
+    # (Scope note, logged in DECISIONS: base rates are computed over the SERVED + watchlist history —
+    # the symbols the user actually sees cards for — which is fast and honest via the N-gate. The
+    # full-universe historical replay for larger N is a logged enhancement.)
+    if deps.publish_analytics is not None:
+        _run_analytics(deps, bars, snapshot, served, market_context)
+
     return NightlyResult(
         run_date=deps.run_date,
         universe_size=len(symbols),
@@ -227,6 +244,70 @@ def mover_symbols(scans: pl.DataFrame) -> list[str]:
     if scans.height == 0:
         return []
     return scans.filter(pl.col("preset_key") == UNUSUAL_VOLUME)["symbol"].to_list()
+
+
+def _run_analytics(deps: NightlyDeps, bars: pl.DataFrame, snapshot: pl.DataFrame, served: set[str],
+                   market_context: Mapping[str, Any]) -> None:
+    """Compute and publish the P4 honesty engine over the served universe's history.
+
+    Runs the detectors over the served symbols' full indicator history to build base rates, turns
+    today's fired events on served symbols into setup cards (tier + stated rate), and computes vol
+    bands from each served symbol's recent closes. A failure here degrades the cards, not the
+    morning — the core data already published above — so it is caught and logged, not raised.
+    """
+    try:
+        served_bars = bars.filter(pl.col("symbol").is_in(list(served)))
+        if served_bars.height == 0:
+            return
+        indicated = build_indicated(served_bars)
+        breadth_history = _breadth_history(indicated)
+
+        base_rates = analytics.build_base_rate_rows(indicated, breadth_history)
+        events = det.detect(indicated)
+        regime = "risk_on" if market_context["pct_above_50dma"] >= _REGIME_LINE else "risk_off"
+        bucket_of = _bucket_of(snapshot, served)
+        cards = analytics.build_setup_cards(
+            events, base_rates, run_date=deps.run_date, served=served,
+            bucket_of=bucket_of, regime=regime, horizon=_CARD_HORIZON,
+        )
+        vol_bands = analytics.build_vol_bands(_closes_by_symbol(indicated, served), run_date=deps.run_date)
+
+        deps.publish_analytics(
+            deps.conn, run_date=deps.run_date, base_rates=base_rates, setup_cards=cards, vol_bands=vol_bands,
+        )
+        print(f"nightly: analytics — {len(base_rates)} base rates, {len(cards)} cards, {len(vol_bands)} vol bands.")
+    except Exception as error:  # noqa: BLE001 — analytics degrades the cards, not the published morning
+        print(f"nightly: analytics stage failed ({error}); cards/bands skipped this run.")
+
+
+def _breadth_history(indicated: pl.DataFrame) -> pl.DataFrame:
+    """Per-date breadth (fraction above the 50-day average) over the indicated history — the regime
+    series the base rates condition on."""
+    return (
+        indicated.filter(pl.col("sma50").is_not_null())
+        .group_by("date")
+        .agg((pl.col("close") > pl.col("sma50")).mean().alias("pct_above_50dma"))
+        .sort("date")
+    )
+
+
+def _bucket_of(snapshot: pl.DataFrame, served: set[str]) -> dict[str, str]:
+    """Each served symbol's size bucket today, from the run-date snapshot's large/mid flag and price
+    (sub-$5 excluded, matching the historical bucketing)."""
+    out: dict[str, str] = {}
+    for row in snapshot.filter(pl.col("symbol").is_in(list(served))).iter_rows(named=True):
+        if row["close"] < 5.0:
+            continue
+        out[row["symbol"]] = "large_mid" if row.get("is_large_mid") else "small"
+    return out
+
+
+def _closes_by_symbol(indicated: pl.DataFrame, served: set[str]) -> dict[str, list[float]]:
+    """Each served symbol's closes, oldest first, for the vol bands."""
+    out: dict[str, list[float]] = {}
+    for row in indicated.filter(pl.col("symbol").is_in(list(served))).sort(["symbol", "date"]).iter_rows(named=True):
+        out.setdefault(row["symbol"], []).append(row["close"])
+    return out
 
 
 def _classify_news(news_items: list[dict]) -> list[dict]:

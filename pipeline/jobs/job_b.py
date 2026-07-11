@@ -28,6 +28,7 @@ built and tested; the late sweep is a refinement to add once the loop has run fo
 
 from __future__ import annotations
 
+import os
 import sys
 import tempfile
 import time
@@ -37,13 +38,21 @@ from zoneinfo import ZoneInfo
 import httpx
 import psycopg
 
+import polars as pl
+
 import backup
 import publish as pub
+import resolve
 from briefing.evening import BriefingDeps, run_briefing
 from briefing.stats import build_stats
 from config import Settings, load_settings
 from monitoring import ping
+from parquet_store import PRICES, ParquetStore
+from storage import R2Store
 from trading_calendar import is_trading_session
+
+# Where the Parquet lake is synced on the runner (mirrors job_a). The resolver reads closes from it.
+_PARQUET_ROOT = os.environ.get("MSM_PARQUET_ROOT", "parquet-store")
 
 # The market's clock — the weekly backup runs on the Friday-evening run (end of the trading week).
 _MARKET_TZ = ZoneInfo("America/New_York")
@@ -77,7 +86,9 @@ def main() -> int:
 
     with psycopg.connect(settings.database_url_psycopg) as conn:
         outcome = _run_briefing(settings, conn, run_date)
-    print(f"job_b: briefing {outcome}.")
+        print(f"job_b: briefing {outcome}.")
+        resolved = _resolve_signals(settings, conn, run_date)
+        print(f"job_b: resolver — {resolved} signal(s) resolved.")
 
     if run_date.weekday() == _WEEKLY_BACKUP_WEEKDAY:
         with tempfile.TemporaryDirectory() as work_dir:
@@ -124,6 +135,42 @@ def _run_briefing(settings: Settings, conn: psycopg.Connection, run_date: date) 
     )
     result = run_briefing(deps)
     return f"{result.status} ({result.extract_count} extracts, {result.flag_count} flags)"
+
+
+def _resolve_signals(settings: Settings, conn: psycopg.Connection, run_date: date) -> int:
+    """Resolve every signal whose horizon has passed, reading closes from the Parquet history lake.
+
+    Loads only the closes the due signals actually need (their symbols on their fire and resolution
+    dates), so the resolver never scans the whole lake. If the lake cannot be read (R2 not configured
+    on a buildout night), the resolver still runs and records those signals as unresolvable — the
+    insert-only track record fills as the data arrives.
+    """
+    due = resolve.due_signals(conn, run_date)
+    if not due:
+        return 0
+    prices = _load_prices(settings, due)
+    return resolve.resolve_due(conn, lambda symbol, day: prices.get((symbol, day)), as_of=run_date)
+
+
+def _load_prices(settings: Settings, due: list[tuple[str, str, date, date]]) -> dict[tuple[str, date], float]:
+    """Load the closes the due signals need from the Parquet lake (synced from R2 first). Returns a
+    {(symbol, date): close} map; missing pairs simply resolve to "na"."""
+    symbols = sorted({row[1] for row in due})
+    dates = sorted({row[2] for row in due} | {row[3] for row in due})
+    try:
+        store = ParquetStore(_PARQUET_ROOT)
+        if settings.r2_account_id:
+            R2Store.from_settings(settings).sync_down(store.root, prefix=PRICES)
+        frame = (
+            store.scan(PRICES)
+            .filter(pl.col("symbol").is_in(symbols) & pl.col("date").is_in(dates))
+            .select(["symbol", "date", "close"])
+            .collect()
+        )
+        return {(r["symbol"], r["date"]): r["close"] for r in frame.iter_rows(named=True)}
+    except Exception as error:  # noqa: BLE001 — a missing lake resolves signals as "na", not a crash
+        print(f"job_b: could not read the price lake for resolution ({error}); resolving as available.")
+        return {}
 
 
 # ----- database reads -----
