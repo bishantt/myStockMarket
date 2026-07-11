@@ -27,7 +27,7 @@ import { Archivo, IBM_Plex_Mono, Newsreader } from "next/font/google";
 export const archivo = Archivo({
   subsets: ["latin"],
   axes: ["wdth"],
-  display: "swap",
+  display: "optional",
   variable: "--font-archivo",
 });
 
@@ -44,7 +44,7 @@ export const archivo = Archivo({
 export const plexMono = IBM_Plex_Mono({
   subsets: ["latin"],
   weight: ["400", "500", "600"],
-  display: "swap",
+  display: "optional",
   variable: "--font-plex-mono",
 });
 
@@ -70,7 +70,7 @@ export const plexMono = IBM_Plex_Mono({
 export const newsreader = Newsreader({
   subsets: ["latin"],
   style: ["normal", "italic"],
-  display: "swap",
+  display: "optional",
   variable: "--font-newsreader",
 });
 
