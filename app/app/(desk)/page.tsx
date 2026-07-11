@@ -4,6 +4,7 @@ import { MacroPulse } from "@/components/desk/MacroPulse";
 import { Movers } from "@/components/desk/Movers";
 import { Watchlist } from "@/components/desk/Watchlist";
 import { RailProvider } from "@/components/rail/Rail";
+import { OfflineRibbon } from "@/components/OfflineRibbon";
 import { getLatestRun } from "@/lib/pipeline";
 import { getMorning } from "@/lib/morning";
 import { formatEtDate } from "@/lib/time";
@@ -56,6 +57,9 @@ export default async function DeskPage() {
   return (
     <RailProvider>
     <div className="flex flex-col gap-7">
+      {/* The offline band — shows only when the browser is offline, naming what is on screen. */}
+      <OfflineRibbon syncedDate={asOf ? formatEtDate(asOf) : "—"} />
+
       {/* Module 0 — the pipeline heartbeat (the P0 loop): the app renders what the cloud wrote. */}
       <section>
         <SectionMasthead index={0} title="Pipeline" asOf={latest?.finishedAt ?? undefined} />

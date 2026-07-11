@@ -13,11 +13,12 @@ import { Serwist } from "serwist";
  * nothing cached. That is enough for the app to be installable and to satisfy the §5.5.1
  * assertions.
  *
- * The richer caching the plan describes — the morning-payload StaleWhileRevalidate cache, the
- * cacheWillUpdate guard that stops an expired-cookie /login response from poisoning the page
- * cache, the OfflineRibbon signalling — lands in P1, when the morning payload exists to cache
- * and the pwa-audit skill is minted. Building it now would be caching a payload that does not
- * yet exist.
+ * P1 adds the piece that makes offline SAFE: a cacheWillUpdate guard on every runtime strategy.
+ * The Desk is a server-rendered document cached on navigation, so "the morning payload cache" is
+ * that page cache. The guard is the defence against the expired-cookie failure mode — without it, a
+ * 30-day-old cookie makes a navigation to "/" redirect to /login, the worker caches THAT, and the
+ * user opens the app offline to find a password box where their briefing was. The guard refuses to
+ * cache anything that is not a clean 200 for the page it claims to be (plan §5.2).
  */
 
 declare global {
@@ -28,6 +29,33 @@ declare global {
 }
 
 declare const self: ServiceWorkerGlobalScope;
+
+/**
+ * The expired-cookie guard (plan §5.2). Returned to a strategy's cacheWillUpdate hook, it lets a
+ * response be cached only when it is a clean 200, was not the result of a redirect, and is not the
+ * login page. Any of those three means "this is not the page it claims to be" — most importantly,
+ * an expired-cookie navigation that the proxy redirected to /login — and must never poison the
+ * cache. Returning null tells Serwist not to cache the response.
+ */
+const cacheGuard = {
+  cacheWillUpdate: async ({ response }: { response: Response }): Promise<Response | null> => {
+    if (response.status !== 200 || response.redirected) return null;
+    try {
+      if (new URL(response.url).pathname === "/login") return null;
+    } catch {
+      // An opaque/relative URL has no pathname to check; the status/redirect checks still applied.
+    }
+    return response;
+  },
+};
+
+// Attach the guard to every runtime strategy Serwist ships for Next.js, so no cache write anywhere
+// can store a login redirect (plan §5.2: "a shared cacheWillUpdate plugin on every runtime strategy").
+const guardedRuntimeCaching = defaultCache.map((entry) => {
+  const handler = entry.handler as { plugins?: unknown[] };
+  if (handler && Array.isArray(handler.plugins)) handler.plugins.push(cacheGuard);
+  return entry;
+});
 
 const serwist = new Serwist({
   precacheEntries: self.__SW_MANIFEST,
@@ -42,10 +70,9 @@ const serwist = new Serwist({
   // the first navigation after the worker takes control.
   navigationPreload: true,
 
-  // Serwist's recommended strategy set for Next.js: sensible handling of pages, RSC flight
-  // requests, static assets, and fonts out of the box. P1 replaces this with the plan's
-  // bespoke strategies once there is a morning payload to cache.
-  runtimeCaching: defaultCache,
+  // Serwist's recommended strategy set for Next.js (pages, RSC flight, static assets, fonts), with
+  // the expired-cookie guard attached to every strategy above.
+  runtimeCaching: guardedRuntimeCaching,
 
   fallbacks: {
     entries: [
