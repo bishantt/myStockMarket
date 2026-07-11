@@ -60,8 +60,8 @@ test.describe("The Academy", () => {
   test("the review queue opens (journey 6) and never overwhelms", async ({ page }) => {
     await page.goto("/academy/review");
     await expect(page.getByRole("heading", { name: "Review" })).toBeVisible();
-    // Either the empty state or a session — never a wall of cards; the cap is 5 (unit-tested).
-    await expect(page.getByText(/At most 5 a day|Nothing is due right now/)).toBeVisible();
+    // The cap message is always present; the queue never shows a wall of cards (cap = 5, unit-tested).
+    await expect(page.getByText(/At most 5 a day/)).toBeVisible();
   });
 
   test("a pattern lesson shows the M3 soft gate before M3 is complete", async ({ page }) => {

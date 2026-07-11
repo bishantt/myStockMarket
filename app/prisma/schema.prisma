@@ -389,3 +389,38 @@ model LessonProgress {
 
   @@map("lesson_progress")
 }
+
+/// The paper-trading ledger (plan §7 P6 step 1, Appendix B). Paper trades are the ONLY orders the app
+/// places — no brokerage integration in v1 (§8.1, paper-first). A trade fills at the next-session open
+/// moved against the trader by half the bucket's at-open spread plus slippage (lib/paper.ts), so the
+/// certain cost is recorded, never a mid-price fantasy. `signalViewedAt` (when set) is the moment the
+/// user saw the fired signal that prompted the order — the cooling-off interstitial reads it. A trade
+/// opens `open` and becomes `closed` on exit, when realized P&L is stored. All prices are simulated;
+/// the honesty rules forbid seeding this table on production (dev/test only).
+model PaperTrade {
+  id             String    @id @default(cuid())
+  symbol         String
+  /// "buy" or "sell" (the opening side).
+  side           String
+  /// The reference-class bucket ("large-mid" or "small") — sets the at-open spread used for the fill.
+  bucket         String
+  quantity       Int
+  /// The next-session open the fill was priced from, and the simulated fill after costs.
+  referenceOpen  Float     @map("reference_open")
+  fillPrice      Float     @map("fill_price")
+  /// How far the fill moved against the trader, in basis points (half-spread + slippage).
+  costBps        Float     @map("cost_bps")
+  /// When the user viewed the fired signal that prompted this order (drives cooling-off), if any.
+  signalViewedAt DateTime? @map("signal_viewed_at")
+  openedAt       DateTime  @default(now()) @map("opened_at")
+  /// "open" or "closed".
+  status         String    @default("open")
+  exitFillPrice  Float?    @map("exit_fill_price")
+  closedAt       DateTime? @map("closed_at")
+  realizedPnl    Float?    @map("realized_pnl")
+  note           String?
+
+  @@index([status])
+  @@index([openedAt])
+  @@map("paper_trade")
+}
