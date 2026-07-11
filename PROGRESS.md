@@ -86,17 +86,15 @@ watchlist server actions, e2e journeys 1/2/5, visual baselines.
 
 ## Next 3 tasks
 
-1. **Trigger a real Job A run + verify the deployed Desk**: dispatch nightly-a (workflow_dispatch)
-   now that it wires Alpaca→indicators→parquet→R2→scans→FRED→publish; confirm it writes
-   market_context + served price_bars + scan_result to Supabase and the live Desk lights up. Watch
-   for the universe coverage floor and any Alpaca pagination/URL-length issues at real scale.
-2. **P1 step 6 leftovers — watchlist writes**: the watchlist is currently read-only in the loader;
-   add the CRUD server actions (add/remove/focus, focus cap = 3 enforced in the write path) with a
-   reason required per name. (The read path + rendering are done.)
-3. **P1 steps 7-9**: RailSheet + `/ticker/[symbol]` Lightweight Charts (candles + volume); SW
-   morning-payload cache + OfflineRibbon; weekly pg_dump in nightly-b + one restore test. Wire the
-   trading calendar (exchange_calendars) and turn on signal_log emission (deferred — see below).
-   Then the §6.4 gate (LCP now a HARD gate — see below) and tag phase-1.
+1. **P1 step 7 — the drill (level 2)**: RailSheet + `/ticker/[symbol]` with Lightweight Charts
+   (candles + volume). Desk watchlist/movers rows open the rail (no route change); "Open full view"
+   pushes the ticker route with a back rail. e2e journey 2 (drill & return).
+2. **P1 steps 8-9**: SW morning-payload cache + OfflineRibbon (X-SW-Source header); weekly pg_dump
+   in nightly-b + one restore test. Wire the trading calendar (exchange_calendars) and turn on
+   signal_log emission (deferred — see below).
+3. **Phase-1 exit**: §6.4 gate (LCP now a HARD gate — real content is measurable now), capture
+   visual baselines, then tag phase-1. Also a P2 universe-quality item: narrow the 12,933 universe
+   to common stock + ETF asset classes (currently includes warrants/units/preferreds).
 
 ## P1 progress
 - **step 1 DONE:** Prisma schema v1 migrated (Instrument/PriceBar/ScanResult/SignalLog/
@@ -123,7 +121,15 @@ watchlist server actions, e2e journeys 1/2/5, visual baselines.
   Alpaca/FRED/R2 secrets. **Deferred (logged):** signal_log emission waits for the trading calendar
   (permanent insert-only log must not bake an approximate 10-trading-day horizon). **Not yet run in
   the cloud** — dispatch nightly-a to prove it end to end and light up the deployed Desk.
-- **step 6 ALL BUT job_a:** the three Desk modules are now WIRED to real serving data.
+- **step 6 DONE (incl. watchlist writes):** the three Desk modules render live data, and the
+  watchlist is now fully CRUD. `lib/watchlist.ts` (pure rules: reason required, focus cap = 3 —
+  9 tests). `/settings` route: server actions (add/remove/toggleFocus, cap enforced in the write
+  path, validated at the boundary with zod) + an editorial add form and an editable list
+  (`AddWatchlistForm`, `WatchlistManager`). A "Settings" nav link added. Watchlist copy is inline UI
+  microcopy (Appendix J has no watchlist strings — logged). `e2e/settings.spec.ts` (MSM_SEEDED-gated,
+  per-project symbol to avoid the desktop/phone DB race): add → shows on Desk → focus/unfocus →
+  remove, plus a duplicate-refused check. Build green (/settings is dynamic); typecheck + lint clean.
+- **step 6 (earlier) — real-data wiring:** the three Desk modules WIRED to real serving data.
   - `market_context` table added (VIX / 10-year / breadth had no home in Appendix B) + migration
     `market_context`; `publish.py` writes it in the same transaction (2 new DB tests).
   - `fred.py` minimal adapter (VIXCLS + DGS10) — 4 tests, real recorded fixtures.

@@ -72,6 +72,14 @@ function DeskNav() {
               Academy
             </Link>
           </li>
+          <li>
+            <Link
+              href="/settings"
+              className="border-b-2 border-transparent pb-0.5 text-ink-2 hover:text-accent"
+            >
+              Settings
+            </Link>
+          </li>
         </ul>
       </nav>
     </header>
