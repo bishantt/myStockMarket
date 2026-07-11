@@ -27,5 +27,9 @@ export function GlossaryTerm({ term, children }: { term: string; children?: Reac
     return <>{label}</>;
   }
 
-  return <GlossaryPopover entry={entry}>{label}</GlossaryPopover>;
+  return (
+    <GlossaryPopover entry={entry} termKey={term}>
+      {label}
+    </GlossaryPopover>
+  );
 }

@@ -24,6 +24,14 @@ export default function AcademyIndex() {
           shows you. Every myth-versus-evidence lesson cites the research it rests on. No live prices,
           no hype; three to five minutes each.
         </p>
+        <nav className="flex gap-5 pt-4" aria-label="Academy sections">
+          <Link href="/academy/glossary" className="font-ui text-xs uppercase tracking-[0.06em] text-accent hover:underline">
+            Glossary →
+          </Link>
+          <Link href="/academy/review" className="font-ui text-xs uppercase tracking-[0.06em] text-accent hover:underline">
+            Review →
+          </Link>
+        </nav>
       </header>
 
       {lessons.length === 0 ? (

@@ -3,6 +3,7 @@
 import { useEffect, useId, useRef, useState } from "react";
 import Link from "next/link";
 
+import { recordConceptExposure } from "@/app/academy/review-actions";
 import type { GlossaryEntry } from "@/lib/glossary";
 
 /**
@@ -16,14 +17,28 @@ import type { GlossaryEntry } from "@/lib/glossary";
  */
 export function GlossaryPopover({
   entry,
+  termKey,
   children,
 }: {
   entry: GlossaryEntry;
+  /** The glossary key — when present, opening the popover seeds the review queue with this concept. */
+  termKey?: string;
   children: React.ReactNode;
 }) {
   const [open, setOpen] = useState(false);
   const wrapRef = useRef<HTMLSpanElement>(null);
+  const exposed = useRef(false);
   const panelId = useId();
+
+  // The first time the reader opens this term, record a genuine encounter for the review queue.
+  // Best-effort: a failure here must never disturb reading.
+  function open_() {
+    setOpen((was) => !was);
+    if (termKey && !exposed.current) {
+      exposed.current = true;
+      void recordConceptExposure(termKey).catch(() => {});
+    }
+  }
 
   // Close on Escape or a click outside the term — a popover must never trap the reader.
   useEffect(() => {
@@ -49,7 +64,7 @@ export function GlossaryPopover({
         title={entry.short}
         aria-expanded={open}
         aria-controls={open ? panelId : undefined}
-        onClick={() => setOpen((was) => !was)}
+        onClick={open_}
         className="cursor-help underline decoration-dotted decoration-muted underline-offset-2 hover:decoration-accent focus-visible:decoration-accent"
       >
         {children}

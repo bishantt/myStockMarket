@@ -355,3 +355,26 @@ model SignalResolution {
 
   @@map("signal_resolution")
 }
+
+/// The Academy review queue's Leitner state, one row per glossary concept the user has actually
+/// encountered (plan §7 P5 step 5). A concept enters when its glossary popover is first opened on the
+/// Desk — a genuine encounter, not merely a render — starting in box 1. A correct review promotes it
+/// to a higher box scheduled further out; a wrong review resets it to box 1. `dueOn` drives the
+/// daily queue (capped at five in lib/review.ts). The scheduling math lives in lib/review.ts and is
+/// unit-tested there; this table only persists the result. Keyed by the concept slug so an exposure
+/// is idempotent — re-encountering a known concept does not restart its schedule.
+model ConceptState {
+  /// The glossary key, e.g. "rvol" (its primary key — one row per concept).
+  concept        String    @id
+  /// The Leitner box, 1–5. Higher boxes come due further out.
+  box            Int       @default(1)
+  /// The next review date (a bare calendar day).
+  dueOn          DateTime  @map("due_on") @db.Date
+  firstSeenAt    DateTime  @default(now()) @map("first_seen_at")
+  lastReviewedAt DateTime? @map("last_reviewed_at")
+  timesSeen      Int       @default(0) @map("times_seen")
+  timesCorrect   Int       @default(0) @map("times_correct")
+
+  @@index([dueOn])
+  @@map("concept_state")
+}
