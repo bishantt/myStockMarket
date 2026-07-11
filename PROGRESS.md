@@ -1,5 +1,17 @@
 # PROGRESS.md — resumable state
 
+**REAL DATA IS LIVE (2026-07-11).** Job A ran the full nightly flow in the cloud end to end and
+published real market data to Supabase: universe 12,933 instruments, coverage 98.4% (over the 95%
+floor), 1,825 scan matches, 15 served symbols (indices + sector ETFs; watchlist empty), breadth
+5,091 advancing / 3,987 declining / 60.75% above the 50-day, VIX + 10-year from FRED. The deployed
+Desk's Macro pulse and Movers now render live data; the watchlist shows its empty state until names
+are added. Two fixes got the first run green: Alpaca IEX feed (free plan 403'd on SIP), and NaN
+scan metrics coerced to JSON null (Postgres jsonb rejects NaN). Both committed + tested.
+- **Universe note (P2 refinement):** 12,933 is broader than the plan's "common stocks + ETFs" — it
+  currently includes warrants (…WW), units (…U), preferreds (…P), rights. The no-OTC rule holds;
+  narrowing to common stock + ETF asset classes is a P2 universe-quality item, not a blocker.
+
+
 **Current phase:** P0 COMPLETE — tagged `phase-0` (2026-07-10). P1 (data spine) is next.
 **Last green gate (§6.4), 2026-07-10:** typecheck, lint, 45 app unit, 13 pytest, webpack build,
 font budget (237/320KB), 28 Playwright (auth + PWA, both viewports), anti-drift §3.10 greps —
