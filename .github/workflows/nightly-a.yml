@@ -46,8 +46,12 @@ jobs:
           # EOD bars + the universe.
           ALPACA_KEY_ID: ${{ secrets.ALPACA_KEY_ID }}
           ALPACA_SECRET: ${{ secrets.ALPACA_SECRET }}
-          # The macro strip (VIXCLS + DGS10).
+          # The macro strip (VIXCLS + DGS10) and the FRED release calendar.
           FRED_KEY: ${{ secrets.FRED_KEY }}
+          # The catalyst layer: per-ticker news, market-wide news, and the earnings calendar.
+          FINNHUB_KEY: ${{ secrets.FINNHUB_KEY }}
+          MARKETAUX_KEY: ${{ secrets.MARKETAUX_KEY }}
+          FMP_KEY: ${{ secrets.FMP_KEY }}
           # The Parquet history lake on Cloudflare R2.
           R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
           R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}

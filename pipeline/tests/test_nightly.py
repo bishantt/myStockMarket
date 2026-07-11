@@ -115,6 +115,37 @@ def test_a_full_night_publishes_the_served_data_and_macro_context():
     assert published["instruments"] == universe
 
 
+def test_the_catalyst_stage_classifies_news_and_merges_source_status():
+    universe = [{"symbol": "SPY", "name": "S&P 500 ETF", "exchange": "ARCA"}]
+    bars = {"SPY": _history("SPY", [500, 502, 505])}
+    publish = RecordingPublish()
+
+    def fetch_catalysts(movers):
+        return nightly.CatalystBundle(
+            news_items=[
+                {"provider": "finnhub", "url": "https://x/1", "published_at": "t", "headline": "Apple beats Q3 earnings", "snippet": "", "tickers": ["AAPL"]},
+                {"provider": "edgar", "url": "https://x/2", "published_at": "t", "headline": "Files 8-K", "snippet": "", "tickers": ["MSFT"], "event_type": "filing"},
+            ],
+            calendar_events=[{"date": date(2026, 6, 15), "kind": "earnings", "title": "Apple Q3"}],
+            source_status={"finnhub": "ok", "marketaux": "down", "fmp": "ok"},
+        )
+
+    deps = _deps(universe, bars, served=("SPY",), publish=publish)
+    deps = nightly.NightlyDeps(**{**deps.__dict__, "fetch_catalysts": fetch_catalysts})
+
+    nightly.run_nightly(deps)
+
+    published = publish.calls[0]
+    # News is classified (headline → type), and a pre-typed EDGAR filing is left alone.
+    types = {n["url"]: n["event_type"] for n in published["news_items"]}
+    assert types["https://x/1"] == "earnings"
+    assert types["https://x/2"] == "filing"
+    # Per-source status is merged: the base sources plus each catalyst provider's health.
+    assert published["source_status"]["marketaux"] == "down"
+    assert published["source_status"]["alpaca"] == "ok"
+    assert published["calendar_events"][0]["kind"] == "earnings"
+
+
 def test_fred_outage_marks_the_source_degraded_but_still_publishes():
     universe = [{"symbol": "SPY", "name": "S&P 500 ETF", "exchange": "ARCA"}]
     bars = {"SPY": _history("SPY", [500, 502, 505])}

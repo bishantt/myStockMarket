@@ -30,8 +30,9 @@ from typing import Any, Callable, Mapping
 
 import polars as pl
 
+from catalysts import classify
 from parquet_store import PRICES, ParquetStore
-from scans import HORIZON_DAYS, build_snapshot, run_all
+from scans import HORIZON_DAYS, UNUSUAL_VOLUME, build_snapshot, run_all
 from storage import R2Store
 from trading_calendar import sessions_ahead
 
@@ -51,6 +52,17 @@ _BAR_COLS = ["symbol", "date", "open", "high", "low", "close", "volume"]
 
 
 @dataclass(frozen=True)
+class CatalystBundle:
+    """What the catalyst ingest returns: the night's news + calendar to persist, and per-source
+    health. `calendar_events` is None when the calendar sources were down (publish leaves the
+    existing calendar untouched); an empty list means they ran and found nothing."""
+
+    news_items: list[dict]
+    calendar_events: list[dict] | None
+    source_status: dict[str, str]
+
+
+@dataclass(frozen=True)
 class NightlyDeps:
     """Everything run_nightly needs from the outside world — injected so the flow is fully fakeable."""
 
@@ -63,6 +75,9 @@ class NightlyDeps:
     publish: Callable[..., None]
     conn: Any  # a psycopg connection, passed straight to publish
     run_date: date
+    # The catalyst ingest (news + calendar) for the movers. Optional: None skips the catalyst stage
+    # (the job owns the per-provider try/catch and reports each source's status in the bundle).
+    fetch_catalysts: Callable[[list[str]], CatalystBundle] | None = None
 
 
 @dataclass(frozen=True)
@@ -111,17 +126,32 @@ def run_nightly(deps: NightlyDeps) -> NightlyResult:
     scan_results = curated_scans(scans)
     signal_logs = build_signal_logs(scans, deps.run_date)
 
-    fred_ok = vix is not None or ten_year is not None
+    source_status = {"alpaca": "ok", "fred": "ok" if (vix is not None or ten_year is not None) else "degraded"}
+
+    # The catalyst stage: fetch news for the movers + the calendar, classify, and merge each
+    # provider's health into the source status. A provider being down degrades its section here, in
+    # the source status — the run still succeeds (plan §2, §P2 acceptance).
+    news_items: list[dict] = []
+    calendar_events: list[dict] | None = None
+    if deps.fetch_catalysts is not None:
+        movers = mover_symbols(scans)
+        bundle = deps.fetch_catalysts(movers)
+        news_items = _classify_news(bundle.news_items)
+        calendar_events = bundle.calendar_events
+        source_status = {**source_status, **bundle.source_status}
+
     deps.publish(
         deps.conn,
         run_date=deps.run_date,
         stage_status={"ingest": "ok", "compute": "ok", "scan": "ok", "publish": "ok"},
-        source_status={"alpaca": "ok", "fred": "ok" if fred_ok else "degraded"},
+        source_status=source_status,
         instruments=universe,
         price_bars=served_bars if served_bars.height else None,
         scan_results=scan_results if scan_results.height else None,
         signal_logs=signal_logs,
         market_context=market_context,
+        news_items=news_items,
+        calendar_events=calendar_events,
     )
 
     return NightlyResult(
@@ -173,6 +203,22 @@ def served_price_bars(bars: pl.DataFrame, served: set[str]) -> pl.DataFrame:
         .tail(SERVED_HISTORY_BARS)
     )
     return subset.with_columns(pl.col("close").alias("adj_close"))
+
+
+def mover_symbols(scans: pl.DataFrame) -> list[str]:
+    """The movers whose catalysts we look up — the unusual-volume matches (the Desk's Movers set)."""
+    if scans.height == 0:
+        return []
+    return scans.filter(pl.col("preset_key") == UNUSUAL_VOLUME)["symbol"].to_list()
+
+
+def _classify_news(news_items: list[dict]) -> list[dict]:
+    """Fill each news item's event_type by classifying its headline, unless it already has one (an
+    EDGAR filing arrives typed). Returns new dicts — the inputs are not mutated."""
+    return [
+        {**item, "event_type": item.get("event_type") or classify(item.get("headline", ""))}
+        for item in news_items
+    ]
 
 
 def build_signal_logs(scans: pl.DataFrame, run_date: date) -> list[dict]:

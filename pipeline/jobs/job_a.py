@@ -24,6 +24,7 @@ import publish as pub
 from adapters.alpaca import AlpacaAdapter
 from adapters.base import TokenBucket
 from adapters.fred import FredAdapter
+from catalyst_ingest import build_catalyst_fetcher
 from config import Settings, load_settings
 from nightly import NightlyDeps, run_nightly
 from parquet_store import ParquetStore
@@ -148,6 +149,7 @@ def main() -> None:
             publish=pub.publish,
             conn=conn,
             run_date=run_date,
+            fetch_catalysts=build_catalyst_fetcher(settings, run_date),
         )
         result = run_nightly(deps)
 
