@@ -59,7 +59,8 @@ test.describe("Desk — the seeded morning", () => {
     const watch = page.getByRole("region", { name: "Watchlist" });
     await expect(watch.getByText("AAPL")).toBeVisible();
     await expect(watch.getByText(/Earnings next week/)).toBeVisible();
-    await expect(watch.getByText("focus")).toBeVisible();
+    // Exact match: a bare "focus" would also hit the module masthead "Focus watchlist".
+    await expect(watch.getByText("focus", { exact: true })).toBeVisible();
     await expect(watch.getByText("+2.10%")).toBeVisible();
     await expect(watch.getByText("2.4×")).toBeVisible();
     // The two non-focus names are present too.
