@@ -75,7 +75,8 @@ test.describe("Desk — the seeded morning", () => {
   });
 
   test("the source-status footer names a degraded source and shows the FRED attribution", async ({ page }) => {
-    const footer = page.getByRole("contentinfo", { name: "Source status" });
+    // The <footer> sits inside <main>, so it has no contentinfo landmark role; locate it by label.
+    const footer = page.locator('footer[aria-label="Source status"]');
     await expect(footer.getByText(/marketaux unavailable tonight/)).toBeVisible();
     await expect(footer.getByText(/FRED® API/)).toBeVisible();
   });
