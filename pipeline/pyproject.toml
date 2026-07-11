@@ -6,11 +6,14 @@ dependencies = [
     "anthropic>=0.116.0",
     "boto3>=1.43.45",
     "httpx>=0.28.1",
+    "polars-lts-cpu>=1.33.1",
     "psycopg[binary]>=3.3.4",
     "pydantic-settings>=2.14.2",
 ]
 
 [dependency-groups]
 dev = [
+    "pandas-ta-classic>=0.6.52",
+    "pyarrow>=25.0.0",
     "pytest>=9.1.1",
 ]
