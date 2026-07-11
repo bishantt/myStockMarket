@@ -1,6 +1,16 @@
 # PROGRESS.md — resumable state
 
-**P2 IN PROGRESS (2026-07-11) — catalyst & context layer.** Done so far:
+**P2 COMPLETE — tagged `phase-2` (2026-07-11).** The Desk explains itself. CI-green on the tag
+(app + pipeline + e2e incl. journey 4). Delivered: the five adapters (Finnhub/Marketaux/FMP/EDGAR/
+FRED-calendar, real fixtures); Prisma v2 (news_item, calendar_event); the catalyst matcher
+(classify + ticker/time-window join); publish persistence; the nightly catalyst ingest with
+PER-SOURCE degradation (one provider down ⇒ its section degrades, run succeeds); and the Desk
+modules — Movers (04) with catalyst chip + reason + source link or the honest noise line,
+CalendarTimeline (03) with consensus, and the SourceStatusFooter (degraded lines + FRED
+attribution). Universe narrowed to common stocks + ETFs. Deferred: EDGAR filings in the ingest
+(need symbol→CIK). Next: **P3 — the briefing** (extract → synthesize → verify, the BriefArticle).
+
+**P2 (2026-07-11) — catalyst & context layer.** Detail:
 - **Housekeeping:** universe narrowed to common stocks + ETFs (drops warrants/units/rights/
   preferreds/baby-bonds by asset name; no-OTC kept; flows through to movers/scans/served — test-first);
   QUESTIONS closed (Supabase password rotation DECLINED, healthchecks check deleted, Vercel git
