@@ -1,0 +1,38 @@
+# record-fixtures.yml — TEMPORARY. Records real provider responses as test fixtures.
+#
+# Adapter tests replay recorded JSON and never use a live key. This workflow makes those
+# recordings from the real API (where the provider secrets live) and uploads them as an artifact
+# to download and commit. Deleted once P1's adapter fixtures are captured; not an Appendix C
+# workflow.
+
+name: record-fixtures
+
+on:
+  workflow_dispatch:
+    inputs:
+      provider:
+        description: "which provider to record (alpaca)"
+        required: true
+        default: "alpaca"
+
+jobs:
+  record:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: pipeline
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
+      - run: uv sync --frozen
+      - name: Record
+        env:
+          ALPACA_KEY_ID: ${{ secrets.ALPACA_KEY_ID }}
+          ALPACA_SECRET: ${{ secrets.ALPACA_SECRET }}
+          MSM_FIXTURES_OUT: ${{ runner.temp }}/fixtures
+        run: uv run python -m scripts.record_${{ inputs.provider }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: fixtures-${{ inputs.provider }}
+          path: ${{ runner.temp }}/fixtures/
