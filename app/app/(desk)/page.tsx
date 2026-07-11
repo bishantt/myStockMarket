@@ -3,6 +3,7 @@ import { StatFigure } from "@/components/StatFigure";
 import { MacroPulse } from "@/components/desk/MacroPulse";
 import { Movers } from "@/components/desk/Movers";
 import { Watchlist } from "@/components/desk/Watchlist";
+import { RailProvider } from "@/components/rail/Rail";
 import { getLatestRun } from "@/lib/pipeline";
 import { getMorning } from "@/lib/morning";
 import { formatEtDate } from "@/lib/time";
@@ -53,6 +54,7 @@ export default async function DeskPage() {
   const asOf = morning.asOf;
 
   return (
+    <RailProvider>
     <div className="flex flex-col gap-7">
       {/* Module 0 — the pipeline heartbeat (the P0 loop): the app renders what the cloud wrote. */}
       <section>
@@ -97,5 +99,6 @@ export default async function DeskPage() {
       <Placeholder index={7} title="Sectors & scans" note={PLACEHOLDERS[7]} />
       <Placeholder index={8} title="Paper corner" note={PLACEHOLDERS[8]} />
     </div>
+    </RailProvider>
   );
 }

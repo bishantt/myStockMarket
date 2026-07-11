@@ -1,4 +1,5 @@
 import { SectionMasthead } from "@/components/SectionMasthead";
+import { RailTrigger } from "@/components/rail/Rail";
 import { cx } from "@/lib/cx";
 import type { Direction } from "@/components/StatFigure";
 
@@ -67,22 +68,34 @@ export function Watchlist({ asOf, rows }: { asOf: Date; rows: WatchRow[] }) {
       ) : (
         <ul className="pt-2">
           {rows.map((r) => (
-            <li key={r.symbol} className="flex items-center gap-4 border-b border-hairline py-2 last:border-b-0">
-              <div className="w-20 shrink-0">
-                <div className="flex items-baseline gap-1.5">
-                  <span className="font-ui text-sm font-semibold text-ink">{r.symbol}</span>
-                  {r.isFocus ? (
-                    <span className="font-ui text-2xs uppercase tracking-[0.06em] text-muted">focus</span>
-                  ) : null}
+            <li key={r.symbol} className="border-b border-hairline last:border-b-0">
+              <RailTrigger
+                payload={{
+                  symbol: r.symbol,
+                  name: r.name,
+                  changePct: r.changePct,
+                  direction: r.direction,
+                  rvol: r.rvol,
+                  note: r.reason,
+                }}
+                className="flex items-center gap-4 py-2 hover:bg-desk-bg"
+              >
+                <div className="w-20 shrink-0">
+                  <div className="flex items-baseline gap-1.5">
+                    <span className="font-ui text-sm font-semibold text-ink">{r.symbol}</span>
+                    {r.isFocus ? (
+                      <span className="font-ui text-2xs uppercase tracking-[0.06em] text-muted">focus</span>
+                    ) : null}
+                  </div>
+                  <span className="font-ui text-2xs text-muted">{r.name}</span>
                 </div>
-                <span className="font-ui text-2xs text-muted">{r.name}</span>
-              </div>
-              <span className="min-w-0 flex-1 truncate font-ui text-2xs text-ink-2">{r.reason}</span>
-              <Sparkline points={r.spark} />
-              <span className={cx("w-16 shrink-0 text-right font-mono text-sm", DELTA_COLOUR[r.direction])}>
-                {r.changePct}
-              </span>
-              <span className="w-14 shrink-0 text-right font-mono text-sm text-ink-2">{r.rvol}</span>
+                <span className="min-w-0 flex-1 truncate font-ui text-2xs text-ink-2">{r.reason}</span>
+                <Sparkline points={r.spark} />
+                <span className={cx("w-16 shrink-0 text-right font-mono text-sm", DELTA_COLOUR[r.direction])}>
+                  {r.changePct}
+                </span>
+                <span className="w-14 shrink-0 text-right font-mono text-sm text-ink-2">{r.rvol}</span>
+              </RailTrigger>
             </li>
           ))}
         </ul>
