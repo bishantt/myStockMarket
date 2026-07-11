@@ -16,6 +16,7 @@ from datetime import date
 from adapters.base import Adapter
 
 _OBSERVATIONS = "https://api.stlouisfed.org/fred/series/observations"
+_RELEASE_DATES = "https://api.stlouisfed.org/fred/releases/dates"
 
 
 @dataclass(frozen=True)
@@ -24,6 +25,15 @@ class Observation:
 
     date: date
     value: float
+
+
+@dataclass(frozen=True)
+class ReleaseDate:
+    """One scheduled economic-data release: which release, and the date it publishes."""
+
+    release_id: int
+    name: str
+    date: date
 
 
 class FredAdapter(Adapter):
@@ -57,3 +67,30 @@ class FredAdapter(Adapter):
                 return Observation(date=date.fromisoformat(observation["date"]), value=float(raw))
 
         raise ValueError(f"FRED series {series_id} has no real value in the recent window")
+
+    def release_calendar(self, start: date, end: date) -> list[ReleaseDate]:
+        """
+        The economic-release calendar between start and end — which releases (FOMC statements, CPI,
+        payrolls, ...) publish when. This is the P2 extension of the P1 minimal series adapter, and
+        it feeds the Desk's CalendarTimeline. Ordered soonest-first as FRED returns.
+        """
+        payload = self.get(
+            _RELEASE_DATES,
+            params={
+                "api_key": os.environ.get("FRED_KEY", ""),
+                "file_type": "json",
+                "realtime_start": start.isoformat(),
+                "realtime_end": end.isoformat(),
+                "include_release_dates_with_no_data": "true",
+                "sort_order": "asc",
+                "limit": 100,
+            },
+        ).json()
+        return [
+            ReleaseDate(
+                release_id=item["release_id"],
+                name=item.get("release_name", ""),
+                date=date.fromisoformat(item["date"]),
+            )
+            for item in payload.get("release_dates", [])
+        ]

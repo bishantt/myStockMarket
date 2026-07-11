@@ -62,3 +62,16 @@ def test_raises_when_no_real_value_exists():
     payload = {"observations": [{"date": "2026-07-10", "value": "."}]}
     with pytest.raises(ValueError):
         _adapter(lambda r: httpx.Response(200, json=payload)).latest_value("VIXCLS")
+
+
+def test_parses_the_release_calendar():
+    from datetime import date as _date
+
+    from adapters.fred import ReleaseDate
+
+    adapter = _adapter(lambda r: httpx.Response(200, json=load_fixture("fred", "release_dates")))
+    releases = adapter.release_calendar(_date(2026, 7, 11), _date(2026, 7, 25))
+    assert len(releases) > 0
+    first = releases[0]
+    assert isinstance(first, ReleaseDate)
+    assert first.release_id and first.name and isinstance(first.date, _date)
