@@ -48,6 +48,22 @@ jobs:
   pipeline:
     name: pipeline — pytest
     runs-on: ubuntu-latest
+    # A throwaway Postgres for the publish integration tests (plan §6.1). The rest of the suite
+    # uses recorded fixtures and mock transports — never a live key. TEST_DATABASE_URL below points
+    # the DB tests at this service; without it (locally, no Docker) they skip loudly.
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_PASSWORD: test
+          POSTGRES_DB: msmtest
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
     defaults:
       run:
         working-directory: pipeline
@@ -59,8 +75,10 @@ jobs:
 
       - run: uv sync --frozen
 
-      # Tests use recorded fixtures and mock transports — never a live key or a real database.
-      - run: uv run pytest -q
+      - name: pytest
+        env:
+          TEST_DATABASE_URL: postgresql://postgres:test@localhost:5432/msmtest
+        run: uv run pytest -q
 
   e2e:
     name: e2e + PWA (phase-exit tags only)
