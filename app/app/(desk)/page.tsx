@@ -125,8 +125,15 @@ export default async function DeskPage() {
         <Placeholder index={6} title="Setup cards" note="Setup cards arrive with the nightly base rates." />
       )}
 
-      {/* 07 — sectors/scans, arriving in a later phase. */}
-      <Placeholder index={7} title="Sectors & scans" note={PLACEHOLDERS[7]} />
+      {/* 07 — scans: the five presets live on their own page; sector small-multiples arrive later. */}
+      <section>
+        <SectionMasthead index={7} title="Sectors & scans" />
+        <p className="pt-3 font-ui text-sm text-muted">
+          — &nbsp; The five scan presets, with their criteria and evidence grades, live on the{" "}
+          <a href="/scans" className="text-ink underline underline-offset-2 hover:text-accent">Scans page</a>.
+          Sector small-multiples arrive in a later phase.
+        </p>
+      </section>
       <Placeholder index={8} title="Paper corner" note={PLACEHOLDERS[8]} />
 
       {/* The evening counterpart to the morning ritual: the scorecard shell and the PM journal. It
