@@ -38,16 +38,20 @@ test.describe("Watchlist management", () => {
     await page.getByLabel("Why you are watching it").fill(reason);
     await page.getByRole("button", { name: "Add" }).click();
 
-    const row = page.getByRole("listitem").filter({ hasText: symbol });
-    await expect(row).toContainText(reason);
+    // Locate the row by its REASON — a unique string. (The symbol is a poor filter: "DIA" is a
+    // substring of "NVIDIA", and the symbol also appears inside the instrument name.)
+    const row = page.getByRole("listitem").filter({ hasText: reason });
+    await expect(row).toContainText(symbol);
 
-    // It shows on the Desk's focus watchlist too.
+    // It shows on the Desk's focus watchlist too. Exact match hits the symbol cell, not the name.
     await page.goto("/");
-    await expect(page.getByRole("region", { name: "Watchlist" }).getByText(symbol)).toBeVisible();
+    await expect(
+      page.getByRole("region", { name: "Watchlist" }).getByText(symbol, { exact: true }),
+    ).toBeVisible();
 
     // Focus it, then unfocus it — the button reflects the state each way.
     await page.goto("/settings");
-    const addedRow = page.getByRole("listitem").filter({ hasText: symbol });
+    const addedRow = page.getByRole("listitem").filter({ hasText: reason });
     await addedRow.getByRole("button", { name: "Focus", exact: true }).click();
     await expect(addedRow.getByRole("button", { name: "Unfocus" })).toBeVisible();
     await addedRow.getByRole("button", { name: "Unfocus" }).click();
@@ -55,7 +59,7 @@ test.describe("Watchlist management", () => {
 
     // Remove it — and it is gone.
     await addedRow.getByRole("button", { name: "Remove" }).click();
-    await expect(page.getByRole("listitem").filter({ hasText: symbol })).toHaveCount(0);
+    await expect(page.getByRole("listitem").filter({ hasText: reason })).toHaveCount(0);
   });
 
   test("a duplicate name is refused with a plain message", async ({ page }) => {

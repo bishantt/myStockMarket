@@ -40,7 +40,12 @@ test.describe("Drill & return", () => {
 
   test("Open full view pushes the ticker route; Back returns to the Desk", async ({ page }) => {
     await page.getByRole("button", { name: "Open AAPL details" }).first().click();
-    await page.getByRole("dialog").getByRole("link", { name: /Open full view/ }).click();
+    const rail = page.getByRole("dialog");
+    await expect(rail).toBeVisible();
+    // On the phone the sheet can push the link below the fold; make sure it is reachable.
+    const openFull = rail.getByRole("link", { name: /Open full view/ });
+    await openFull.scrollIntoViewIfNeeded();
+    await openFull.click();
 
     await expect(page).toHaveURL(/\/ticker\/AAPL$/);
     await expect(page.getByRole("heading", { name: "AAPL" })).toBeVisible();

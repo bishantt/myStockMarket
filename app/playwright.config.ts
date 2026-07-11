@@ -30,6 +30,10 @@ export default defineConfig({
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 1 : 0,
+  // One worker in CI. The seeded-database journeys (watchlist writes) mutate shared state, so
+  // running specs concurrently would let a write in one spec change what another spec reads. Serial
+  // execution keeps each journey seeing the seed it expects; the suite is small, so the cost is low.
+  workers: process.env.CI ? 1 : undefined,
   reporter: process.env.CI ? "github" : "list",
 
   use: {
