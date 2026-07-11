@@ -24,6 +24,7 @@ import publish as pub
 from adapters.alpaca import AlpacaAdapter
 from adapters.base import TokenBucket
 from adapters.fred import FredAdapter
+from briefing.extract import submit_batch
 from catalyst_ingest import build_catalyst_fetcher
 from config import Settings, load_settings
 from nightly import NightlyDeps, run_nightly
@@ -113,6 +114,29 @@ def _latest(fred: FredAdapter, series_id: str) -> float | None:
         return None
 
 
+def _build_submit_extraction(settings: Settings):
+    """Return a callable that submits the night's news as an extraction batch, or None if no
+    Anthropic key is configured (the briefing simply degrades — the data still publishes).
+
+    Built lazily so the pipeline runs key-free during buildout: only when ANTHROPIC_API_KEY is
+    present does Job A submit a batch. The import is local so a missing anthropic package never
+    breaks a key-free night.
+    """
+    if not settings.anthropic_api_key:
+        print("job_a: ANTHROPIC_API_KEY not set; skipping the extraction batch (briefing degrades).")
+        return None
+
+    import anthropic
+
+    client = anthropic.Anthropic(api_key=settings.anthropic_api_key)
+    model = settings.model_extract
+
+    def submit(news_items: list[dict]) -> str:
+        return submit_batch(client, news_items, model=model)
+
+    return submit
+
+
 def _read_served_symbols(conn: psycopg.Connection):
     """Return a reader for the served symbol set: the fixed core plus the user's current watchlist."""
 
@@ -150,6 +174,7 @@ def main() -> None:
             conn=conn,
             run_date=run_date,
             fetch_catalysts=build_catalyst_fetcher(settings, run_date),
+            submit_extraction=_build_submit_extraction(settings),
         )
         result = run_nightly(deps)
 

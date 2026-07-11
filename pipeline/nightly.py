@@ -24,6 +24,7 @@ night adds nothing — the log records that a pattern fired and when it resolves
 
 from __future__ import annotations
 
+import hashlib
 from dataclasses import dataclass
 from datetime import date
 from typing import Any, Callable, Mapping
@@ -78,6 +79,10 @@ class NightlyDeps:
     # The catalyst ingest (news + calendar) for the movers. Optional: None skips the catalyst stage
     # (the job owns the per-provider try/catch and reports each source's status in the bundle).
     fetch_catalysts: Callable[[list[str]], CatalystBundle] | None = None
+    # Submit the LLM extraction batch for the night's news and return its batch id (plan P3 step 1).
+    # Optional: None skips extraction (no key configured, or a night with no news). Given the
+    # classified news items; the id it persists lets Job B collect the batch the next evening.
+    submit_extraction: Callable[[list[dict]], str] | None = None
 
 
 @dataclass(frozen=True)
@@ -140,6 +145,17 @@ def run_nightly(deps: NightlyDeps) -> NightlyResult:
         calendar_events = bundle.calendar_events
         source_status = {**source_status, **bundle.source_status}
 
+    # Submit the LLM extraction batch for tonight's news; Job B collects it tomorrow evening. The
+    # batch id is recorded on the pipeline_run row in the same publish. A submission failure degrades
+    # the briefing source (the night still publishes its data) rather than failing the run.
+    batch_id: str | None = None
+    if deps.submit_extraction is not None and news_items:
+        try:
+            batch_id = deps.submit_extraction(news_items)
+        except Exception as error:  # noqa: BLE001 — a failed submit degrades the briefing, not the night
+            source_status = {**source_status, "briefing": "degraded"}
+            print(f"nightly: extraction batch submit failed ({error}); briefing degrades.")
+
     deps.publish(
         deps.conn,
         run_date=deps.run_date,
@@ -152,6 +168,7 @@ def run_nightly(deps: NightlyDeps) -> NightlyResult:
         market_context=market_context,
         news_items=news_items,
         calendar_events=calendar_events,
+        batch_id=batch_id,
     )
 
     return NightlyResult(
@@ -214,11 +231,27 @@ def mover_symbols(scans: pl.DataFrame) -> list[str]:
 
 def _classify_news(news_items: list[dict]) -> list[dict]:
     """Fill each news item's event_type by classifying its headline, unless it already has one (an
-    EDGAR filing arrives typed). Returns new dicts — the inputs are not mutated."""
+    EDGAR filing arrives typed), and stamp a deterministic id.
+
+    The id is derived from (provider, url), so the same article always gets the same id: Job A can
+    use it as the extraction batch's custom_id, publish stores it as the news_item id, and Job B (a
+    separate process) reads the same id back to line the batch results up with their articles — and
+    the app resolves a briefing citation to the article's URL by that id. Returns new dicts; the
+    inputs are not mutated.
+    """
     return [
-        {**item, "event_type": item.get("event_type") or classify(item.get("headline", ""))}
+        {
+            **item,
+            "id": _news_id(item.get("provider", ""), item.get("url", "")),
+            "event_type": item.get("event_type") or classify(item.get("headline", "")),
+        }
         for item in news_items
     ]
+
+
+def _news_id(provider: str, url: str) -> str:
+    """A stable, short id for a news article from its natural key (provider, url)."""
+    return hashlib.sha1(f"{provider}|{url}".encode()).hexdigest()
 
 
 def build_signal_logs(scans: pl.DataFrame, run_date: date) -> list[dict]:

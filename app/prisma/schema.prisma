@@ -102,14 +102,14 @@ model PriceBar {
 /// The focus cap (max 3 focus names) is enforced in the UI, not the schema, so the rule can carry
 /// its own explanatory copy rather than surfacing as a raw database error (plan Appendix B).
 model WatchlistItem {
-  id        String     @id @default(cuid())
-  symbol    String
+  id         String     @id @default(cuid())
+  symbol     String
   instrument Instrument @relation(fields: [symbol], references: [symbol])
   /// A written reason is required per name — the app makes the user articulate why they are
   /// watching it (Research Report §9.2, the focus-watchlist discipline).
-  reason    String
-  isFocus   Boolean    @default(false) @map("is_focus")
-  addedAt   DateTime   @default(now()) @map("added_at")
+  reason     String
+  isFocus    Boolean    @default(false) @map("is_focus")
+  addedAt    DateTime   @default(now()) @map("added_at")
 
   @@index([symbol])
   @@map("watchlist_item")
@@ -218,4 +218,49 @@ model CalendarEvent {
 
   @@index([date])
   @@map("calendar_event")
+}
+
+/// The evening (and optional pre-open) briefing — the editorial heart (plan Appendix B, P3).
+///
+/// Keyed by the trading day it covers, so a rerun of a night updates that day's briefing rather
+/// than inserting a duplicate. `amJson` and `pmJson` hold the two editions in the Appendix G shape
+/// (the AM pre-open glance and the PM after-close read); `pmJson` is null until the PM edition is
+/// written. `verificationJson` records every decision the deterministic gate made — which entities
+/// were checked, which were flagged, and why a held night was held — so a published or withheld
+/// briefing is fully auditable. `modelMeta` carries the models and token/cost metadata of the run.
+///
+/// `status` is a plain string: "published" (the gate passed) or "held" (a flagged number in the
+/// Today's-focus block, or more than two flags — the app then shows "briefing unavailable" over the
+/// verified scans rather than a fabricated sentence). A string, not an enum, so a new status ships
+/// without a migration.
+model Briefing {
+  runDate          DateTime @id @map("run_date") @db.Date
+  amJson           Json     @map("am_json")
+  pmJson           Json?    @map("pm_json")
+  verificationJson Json     @map("verification_json")
+  modelMeta        Json     @map("model_meta")
+  status           String
+
+  @@map("briefing")
+}
+
+/// The user's PM journal — one reflection per evening, and the accountability record behind the
+/// scorecard (plan Appendix B, P3/P4). App-writable (✎). `prompt` is the question that was posed;
+/// `body` is what the user wrote. The forecast fields are optional and fill in over later phases:
+/// `forecast` is the free-text call, `probability` its stated confidence (0..1), `resolvesOn` the
+/// date it can be graded, `outcome` how it resolved, and `brier` the computed Brier score. Kept
+/// nullable so an entry can be a plain reflection with no forecast attached.
+model JournalEntry {
+  id          String    @id @default(cuid())
+  date        DateTime  @db.Date
+  prompt      String
+  body        String
+  forecast    String?
+  probability Float?
+  resolvesOn  DateTime? @map("resolves_on") @db.Date
+  outcome     String?
+  brier       Float?
+
+  @@index([date])
+  @@map("journal_entry")
 }

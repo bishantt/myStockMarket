@@ -24,6 +24,15 @@ def _calendar():
     return xcals.get_calendar(_CALENDAR)
 
 
+def is_trading_session(day: date) -> bool:
+    """True if `day` is a NYSE trading session (not a weekend or market holiday).
+
+    Job B's preflight uses this: on a non-session night there is nothing to brief, so it logs, skips
+    the briefing, and still pings success — the dead-man check expects a ping every scheduled night.
+    """
+    return _calendar().is_session(pd.Timestamp(day))
+
+
 def sessions_ahead(fired_date: date, n: int) -> date:
     """
     Return the trading session `n` sessions after `fired_date` on the NYSE calendar.

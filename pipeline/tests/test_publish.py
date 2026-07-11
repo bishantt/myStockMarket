@@ -135,8 +135,9 @@ def test_a_failure_mid_publish_rolls_everything_back(db):
 
 def test_news_items_upsert_by_provider_and_url(db):
     # News is deduped by (provider, url): a rerun refreshes classification, never duplicates.
-    item = {"published_at": date(2026, 6, 30), "provider": "finnhub", "url": "https://x/1",
-            "headline": "Apple earnings beat", "snippet": "s", "tickers": ["AAPL"], "event_type": None}
+    item = {"id": "news-aapl-1", "published_at": date(2026, 6, 30), "provider": "finnhub",
+            "url": "https://x/1", "headline": "Apple earnings beat", "snippet": "s",
+            "tickers": ["AAPL"], "event_type": None}
     pub.publish(db, run_date=RUN, stage_status={}, source_status={}, news_items=[item])
     pub.publish(db, run_date=RUN, stage_status={}, source_status={},
                 news_items=[{**item, "event_type": "earnings"}])
@@ -159,3 +160,49 @@ def test_calendar_replaces_the_forward_window_but_none_leaves_it_alone(db):
     # None (the ingest was degraded tonight) leaves the existing calendar untouched.
     pub.publish(db, run_date=RUN, stage_status={}, source_status={}, calendar_events=None)
     assert _count(db, "calendar_event") == 1
+
+
+def test_batch_id_persists_and_is_coalesced_on_rerun(db):
+    # Job A records the extraction batch id on pipeline_run; a rerun without a new id keeps it.
+    pub.publish(db, run_date=RUN, stage_status={}, source_status={}, batch_id="batch-abc")
+    got = db.execute("SELECT batch_id FROM pipeline_run WHERE run_date = %s", (RUN,)).fetchone()[0]
+    assert got == "batch-abc"
+    pub.publish(db, run_date=RUN, stage_status={}, source_status={}, batch_id=None)
+    kept = db.execute("SELECT batch_id FROM pipeline_run WHERE run_date = %s", (RUN,)).fetchone()[0]
+    assert kept == "batch-abc"  # COALESCE keeps the id a rerun did not resupply
+
+
+def test_briefing_publishes_and_reruns_replace(db):
+    am = {"today_focus": {"headline": "H", "body": "B", "citations": [], "no_edge_flag": False},
+          "items": [], "calendar_notes": [], "learning_link_slug": None}
+    verification = {"status": "ok", "checked": 3, "held_reason": None, "flags": []}
+    meta = {"model_synth": "claude-sonnet-5", "extract_count": 2}
+    pub.publish_briefing(db, run_date=RUN, am_json=am, verification_json=verification,
+                         model_meta=meta, status="published")
+    row = db.execute(
+        "SELECT status, am_json, verification_json FROM briefing WHERE run_date = %s", (RUN,)
+    ).fetchone()
+    assert row[0] == "published"
+    assert row[1]["today_focus"]["headline"] == "H"
+    assert row[2]["checked"] == 3
+    # A rerun replaces the day's briefing rather than duplicating it.
+    pub.publish_briefing(db, run_date=RUN, am_json={**am, "learning_link_slug": "x"},
+                         verification_json=verification, model_meta=meta, status="held")
+    rows = db.execute("SELECT status FROM briefing WHERE run_date = %s", (RUN,)).fetchall()
+    assert rows == [("held",)]
+
+
+def test_briefing_am_rerun_preserves_an_existing_pm_edition(db):
+    am = {"today_focus": {"headline": "H", "body": "B", "citations": [], "no_edge_flag": False},
+          "items": [], "calendar_notes": [], "learning_link_slug": None}
+    verification = {"status": "ok", "checked": 0, "held_reason": None, "flags": []}
+    meta = {"model_synth": "claude-sonnet-5"}
+    pm = {"today_focus": {"headline": "PM", "body": "PM", "citations": [], "no_edge_flag": False},
+          "items": [], "calendar_notes": [], "learning_link_slug": None}
+    pub.publish_briefing(db, run_date=RUN, am_json=am, verification_json=verification,
+                         model_meta=meta, status="published", pm_json=pm)
+    # A later AM re-publish (pm_json omitted) must not blank the PM edition.
+    pub.publish_briefing(db, run_date=RUN, am_json=am, verification_json=verification,
+                         model_meta=meta, status="published")
+    got = db.execute("SELECT pm_json FROM briefing WHERE run_date = %s", (RUN,)).fetchone()[0]
+    assert got["today_focus"]["headline"] == "PM"
