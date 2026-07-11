@@ -1,5 +1,49 @@
 # PROGRESS.md — resumable state
 
+**STANDING DIRECTIVE (user, 2026-07-11):** run the whole plan to completion autonomously — no
+pausing at phase boundaries, roll straight into the next phase. Only stop on a genuine unworkable
+blocker; otherwise write the question to QUESTIONS-FOR-BISHANT.md, assume, mark it, and keep going.
+Now in CLAUDE.md ("Autonomy"). P3's five-night gate is observed in parallel; P4+ proceed regardless.
+
+**P4 IN PROGRESS (2026-07-11) — setup cards, base rates, the track record.** Pipeline + the
+acceptance-critical UI are done and green; a few peripheral UI items remain before the phase-4 tag.
+- **Pipeline (done):** `detectors.py` (the six detectors, shift-guarded), `baserates.py` (Wilson CI,
+  point-in-time buckets, always-up baseline, pattern_meta decay seed), `volbands.py` (empirical
+  bands, ≤20d), `analytics.py` (base rates + setup cards with the tier + CI-spans-baseline cap +
+  stated rate, vol bands), `resolve.py` (nightly resolver, insert-only outcomes). Wired: Job A
+  computes + publishes the honesty engine (`publish_analytics`) over the served history; Job B
+  resolves due signals from the Parquet lake. Prisma v4 (base_rate_stat, setup_card, vol_band,
+  signal_resolution — resolution insert-only by trigger), migration applied. The lottery-flag rule
+  (P1) got its direct test. Mints the `new-pattern-detector` skill.
+- **UI (done — the acceptance core):** `components/BaseRate.tsx` — the ONE renderer, N-gated (≥100
+  %+CI · 30-99 natural frequency + wide-interval note · <30 suppressed) + decay stamp; `SetupCards`
+  (module 06) — tier lexicon word (neutral, never colour), the base rate, weakener checklist (server
+  action), scope line, provenance, WEAK-capped when the CI spans the baseline; `/track-record` — the
+  app's own resolved log (hits/misses/na + hit rate); ScorecardPM grading now lives off
+  signal_resolution. `lib/constants` (tier bands + cap, tested), `lib/baserate` (view-model, all
+  three N regimes tested), `lib/weakeners`, `lib/patterns`, `lib/track-record`. Seed demonstrates all
+  three N regimes + the WEAK cap + resolved hits/misses. Journey-4 e2e added.
+- **STILL TO DO for the P4 exit gate (plan step 6 + acceptance):**
+  1. `/scans` page — the five presets with criteria strings verbatim + evidence-grade Tags +
+     folklore labels (module 07 is still a placeholder).
+  2. CalendarTimeline branches — attach per-branch base rates, or the N<30 suppression line.
+  3. VolBand on the ticker chart (`/ticker/[symbol]`) — the 50%/80% fan + the regime-break caveat
+     line (copy.volband.caveat), hard stop at 20 days. Vol bands are published + seeded; the chart
+     overlay is not drawn yet.
+  4. Lookahead guards "commit the red test first" — the shift guards + bucket guard are tested, but
+     were committed test+impl together, not as separate red→green commits. Acceptance wants the red
+     proof in git history; consider a demonstrative red commit if the user wants it literal.
+  5. Anti-drift §3.10 checklist on the card UI (the screen most at risk of chip-confetti) — verify no
+     coloured chips beyond the Tag component; the tier tag is neutral by construction.
+  6. Base rates currently computed over the served+watchlist history (logged assumption, QUESTIONS) —
+     full-universe replay is the enhancement for larger N.
+- **Tests:** pipeline 190 pass + 16 CI-only DB skips (new: detectors 9, baserates 6, volbands 5,
+  analytics 5, resolve 1+3-in-CI, scans lottery 2); app 120 unit (new: constants 6, baserate 9,
+  BaseRate render 3) + journey-4 e2e. typecheck, lint, webpack build all green.
+- **Assumptions logged in QUESTIONS-FOR-BISHANT.md:** the market regime split (breadth dichotomy),
+  the base-rate universe scope (served+watchlist), the decay-note wording (my paraphrase vs RR Part
+  4 verbatim), and breadth-regime's grade. None blocking.
+
 **P3 CODE-COMPLETE (2026-07-11) — the briefing. Pending the live observation week, not yet tagged.**
 The editorial heart ships: extract → synthesize → verify across the two jobs, rendered as the
 BriefArticle, degradable and offline-cached (the brief is part of the cached Desk document the SW
