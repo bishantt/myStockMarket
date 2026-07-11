@@ -98,7 +98,14 @@ watchlist server actions, e2e journeys 1/2/5, visual baselines.
   against pandas-ta-classic on a deterministic toy series (`tests/toy_series.py`); exact for
   non-recursive, converged-tail for the smoothers; causality guard. 20 tests. `new-indicator`
   skill MINTED. Uses polars-lts-cpu (Rosetta/no-AVX2 dev machine) + pyarrow (dev).
-- **Pipeline tests: 51 green.** App: 45 unit + 28 e2e green.
+- **step 4 DONE:** scans.py (5 presets, 19 tests) + parquet_store.py (year-partitioned Parquet +
+  DuckDB, 5 tests).
+- **step 5 DONE:** publish.py — single-transaction serving-DB refresh (upserts + insert-only
+  signal_log + per-run scan replacement + atomic rollback), 5 integration tests against a
+  throwaway Postgres (skip locally without Docker; CI runs them via a postgres:16 service).
+- **Vercel git auto-deploy** is connected; Root Directory set to `app` via the API (was building
+  from the repo root → package.json ENOENT).
+- **Pipeline tests: 80 in CI (75 local + 5 DB).** App: 45 unit + 28 e2e green.
 - **LCP ≤ 2.5s is now a HARD P1-exit gate** (user directive 2026-07-11; scripts/lighthouse-check.mjs
   exits non-zero on a miss). Do not tag phase-1 until it passes for real.
 - Note: the deterministic `prisma/seed.ts` synthetic morning still pending (pairs with the Desk
