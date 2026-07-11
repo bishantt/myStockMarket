@@ -1,11 +1,14 @@
 "use client";
 
-import * as Dialog from "@radix-ui/react-dialog";
-import Link from "next/link";
+import dynamic from "next/dynamic";
 import { createContext, useCallback, useContext, useEffect, useState } from "react";
 
 import { cx } from "@/lib/cx";
 import type { Direction } from "@/components/StatFigure";
+
+// The rail's Radix Dialog UI is loaded on demand — it is not needed until a row is first clicked,
+// so keeping it out of the Desk's first-load bundle helps the throttled-CPU LCP (plan §4.5).
+const RailDialog = dynamic(() => import("./RailDialog").then((m) => m.RailDialog), { ssr: false });
 
 /**
  * Rail — drill level 2 (plan §3.6 RailSheet, §9.2). A row on the Desk opens a slide-over that shows
@@ -13,12 +16,10 @@ import type { Direction } from "@/components/StatFigure";
  * change, so the Desk's scroll and selection are preserved and Esc returns you exactly where you
  * were (journey 2).
  *
- * Desktop is a 440px right rail; the phone is a full-width bottom sheet. The scrim (the app's only
- * shadow-like surface) and a 1px ink edge separate it — no drop shadow (§3.4).
- *
- * Opening pushes a history entry and popstate closes the sheet, so the Android back gesture closes
- * the rail instead of exiting the app (§3.6, e2e-tested). Radix handles Esc and outside-click and
- * restores focus to the row that opened it.
+ * This file holds only the light context and the row trigger; the heavier Radix Dialog UI lives in
+ * RailDialog and is code-split, mounted on first open and then kept mounted so Radix can restore
+ * focus to the row on close. Opening pushes a history entry, so the Android back gesture closes the
+ * rail instead of exiting the app.
  */
 
 /** The facts a row hands the rail. Kept small and serializable — the row already has all of it. */
@@ -43,16 +44,13 @@ export function useRail(): RailContextValue {
   return useContext(RailContext);
 }
 
-const DELTA_COLOUR: Record<Direction, string> = {
-  up: "text-up-text",
-  down: "text-down-text",
-  flat: "text-ink",
-};
-
 export function RailProvider({ children }: { children: React.ReactNode }) {
   const [payload, setPayload] = useState<RailPayload | null>(null);
+  // Once the rail has been opened, keep the Dialog mounted so Radix's close (focus restore) runs.
+  const [everOpened, setEverOpened] = useState(false);
 
   const open = useCallback((next: RailPayload) => {
+    setEverOpened(true);
     setPayload(next);
     // Push a history entry so the back gesture (and back button) closes the rail, not the app.
     window.history.pushState({ msmRail: true }, "");
@@ -76,66 +74,8 @@ export function RailProvider({ children }: { children: React.ReactNode }) {
   return (
     <RailContext.Provider value={{ open }}>
       {children}
-      <Dialog.Root open={payload !== null} onOpenChange={onOpenChange}>
-        <Dialog.Portal>
-          <Dialog.Overlay className="fixed inset-0 z-40" style={{ background: "var(--scrim)" }} />
-          <Dialog.Content
-            aria-describedby={undefined}
-            className={cx(
-              "fixed z-50 flex flex-col gap-5 border-ink bg-surface p-5 outline-none",
-              // Phone: full-width bottom sheet. Desktop (≥1366px): 440px right rail.
-              "inset-x-0 bottom-0 max-h-[85dvh] overflow-y-auto border-t",
-              "desk:inset-y-0 desk:left-auto desk:right-0 desk:w-[440px] desk:max-h-none desk:border-l desk:border-t-0",
-            )}
-          >
-            {payload ? <RailBody payload={payload} /> : <Dialog.Title className="sr-only">Details</Dialog.Title>}
-          </Dialog.Content>
-        </Dialog.Portal>
-      </Dialog.Root>
+      {everOpened ? <RailDialog open={payload !== null} payload={payload} onOpenChange={onOpenChange} /> : null}
     </RailContext.Provider>
-  );
-}
-
-function RailBody({ payload }: { payload: RailPayload }) {
-  return (
-    <>
-      <div className="flex items-start justify-between gap-4 border-b border-hairline pb-4">
-        <div>
-          <Dialog.Title className="font-ui text-lg font-bold uppercase tracking-[0.06em] text-ink">
-            {payload.symbol}
-          </Dialog.Title>
-          <p className="pt-1 font-ui text-sm text-muted">{payload.name}</p>
-        </div>
-        <Dialog.Close
-          aria-label="Close"
-          className="rounded-edge border border-hairline px-2 py-1 font-ui text-2xs uppercase tracking-[0.06em] text-ink-2 hover:text-accent"
-        >
-          Close
-        </Dialog.Close>
-      </div>
-
-      <dl className="flex flex-wrap gap-x-10 gap-y-3">
-        <div>
-          <dt className="font-ui text-2xs uppercase tracking-[0.06em] text-muted">Day change</dt>
-          <dd className={cx("pt-0.5 font-mono text-lg", DELTA_COLOUR[payload.direction])}>{payload.changePct}</dd>
-        </div>
-        {payload.rvol ? (
-          <div>
-            <dt className="font-ui text-2xs uppercase tracking-[0.06em] text-muted">Rel. volume</dt>
-            <dd className="pt-0.5 font-mono text-lg text-ink-2">{payload.rvol}</dd>
-          </div>
-        ) : null}
-      </dl>
-
-      {payload.note ? <p className="font-ui text-sm text-ink-2">{payload.note}</p> : null}
-
-      <Link
-        href={`/ticker/${encodeURIComponent(payload.symbol)}`}
-        className="mt-auto font-ui text-xs uppercase tracking-[0.06em] text-ink underline underline-offset-4 hover:text-accent"
-      >
-        Open full view →
-      </Link>
-    </>
   );
 }
 
