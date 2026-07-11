@@ -1,0 +1,35 @@
+---
+module: M0
+slug: the-track-record-page
+title: The track-record page
+minutes: 3
+concepts: [base-rate, calibration, brier-score]
+order: 4
+questions:
+  - q: A signal resolved as "na" on the track record. What does that mean?
+    a: The horizon could not be resolved — usually a missing price, such as a delisting. It is counted but excluded from the hit rate, because there is no honest outcome to score.
+  - q: Why does the track record show the app's misses at all?
+    a: Because a tool that could quietly forget its wrong calls would be worth nothing. The resolved log is insert-only — once an outcome is recorded it can never be rewritten — so the record stays honest.
+---
+
+Most market products show you their hits. This one shows you everything, and it cannot do otherwise: the [track record](/track-record) is where the app is held to its own standard.
+
+## What is on the page
+
+Every signal the app fires is logged when it fires, with the exact trading day its outcome can be judged — ten trading days out. When that day passes, the resolver records what happened:
+
+- **hit** — the price was higher at the horizon than when the signal fired.
+- **miss** — it was not.
+- **na** — the outcome could not be resolved (for example, the symbol stopped trading). These are counted but left out of the hit rate, because scoring an outcome that does not exist would be dishonest.
+
+The summary at the top is deliberately plain — resolved count, hits, misses, and a hit rate — with no spin. Misses read exactly like hits; there is no celebration on the page, because a calm record is a truthful one.
+
+## Why insert-only matters
+
+The resolved log is **insert-only**. Once an outcome is written, nothing — not even the app's own database owner — can change or delete it. That is enforced at the database level, not by good intentions. It means the track record can only ever grow, and it can never be quietly edited to look better than it was. When you judge the app, you are judging its whole record.
+
+## What it becomes
+
+Right now the page is a plain ledger. Later it grows a **calibration** view: when the app said something had a 60% base rate, did those cases actually come in around 60% of the time? Calibration is the honest test of a probability — not "was it right once", but "were its stated frequencies true over many cases" — and the resolved log is the raw material that test is built on.
+
+For now, read the page as it is: proof that the app keeps its own score, in public, misses included.
