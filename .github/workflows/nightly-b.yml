@@ -3,10 +3,11 @@
 # Cron 25 0 * * 2-6 UTC = 8:25pm EDT / 7:25pm EST. This cron matches the healthchecks.io check, so
 # Job B OWNS the dead-man switch: every scheduled night it must feed the check, or an alert fires.
 #
-# At P0 Job B is a stub that pings /start, does its (empty) work, and pings success — proving the
-# schedule and the monitor are live from day one. The pings live inside jobs/job_b.py (so they are
-# unit-testable with a mock transport); the workflow only runs the job. The full briefing pipeline,
-# the weekly pg_dump backup, and the monthly Stooq spot-check attach here in P1-P3.
+# Job B pings /start, does its work, and pings success — the dead-man switch is live from day one.
+# The pings live inside jobs/job_b.py (unit-testable with a mock transport); the workflow only runs
+# the job. From P1 the Friday-evening run also takes a pg_dump of the serving database and pushes it
+# to R2, so postgresql-client-16 is installed for pg_dump. The full briefing pipeline and the
+# monthly Stooq spot-check attach here in P3.
 
 name: nightly-b
 
@@ -34,8 +35,24 @@ jobs:
       - name: Sync dependencies
         run: uv sync --frozen
 
+      # pg_dump for the weekly backup — the client major version must match Supabase (16).
+      - name: Install postgresql-client-16
+        working-directory: .
+        run: |
+          sudo sh -c 'echo "deb https://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list'
+          curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo gpg --dearmor -o /etc/apt/trusted.gpg.d/pgdg.gpg
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client-16
+
       - name: Run Job B
         env:
           HEALTHCHECKS_PING_URL: ${{ secrets.HEALTHCHECKS_PING_URL }}
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          # The weekly pg_dump uses the session pooler (pg_dump needs a session, not the txn pooler).
+          SESSION_POOLER_URL: ${{ secrets.SESSION_POOLER_URL }}
+          # The backup lands in R2 under backups/.
+          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET: ${{ secrets.R2_SECRET }}
+          R2_BUCKET: ${{ secrets.R2_BUCKET }}
         run: uv run python -m jobs.job_b

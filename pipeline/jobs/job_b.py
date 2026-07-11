@@ -5,22 +5,36 @@ Cron `25 0 * * 2-6` UTC = 8:25pm EDT / 7:25pm EST. In the full pipeline Job B ru
 sweep, collects the LLM extraction batch, makes the one synthesis call, runs the deterministic
 verification gate, publishes in a single transaction, revalidates the app, and pings success.
 
-At P0 it is a stub with one real responsibility: feed the healthchecks.io check on schedule, so
-the dead-man switch is live from day one and never false-alarms while later phases are built. It
-pings `/start`, does its (currently empty) work, and pings success. A crash between the two pings
-is exactly what the check is there to notice.
+Job B feeds the healthchecks.io check on schedule, so the dead-man switch is live and never
+false-alarms. It pings `/start`, does its work, and pings success. A crash between the two pings is
+exactly what the check is there to notice. The briefing pipeline (batch collect, synthesis,
+verification gate, publish) lands from P3; what is real now is the healthchecks contract and, from
+P1, the weekly database backup.
 
-The healthchecks contract (Appendix C): a success ping is sent on success paths only. A holiday
-or a no-briefing night still counts as success here — the monitor expects a ping every scheduled
-night, and "nothing to do tonight" is a healthy outcome, not a failure.
+Once a week — on the Friday-evening run, the end of the trading week — Job B takes a pg_dump of the
+serving database and pushes it to R2. If that backup fails, the success ping is NOT sent and the
+dead-man check alarms: a broken backup is a real failure worth waking up for. On the other six
+nights the backup is skipped and the night is healthy with nothing to do.
+
+The healthchecks contract (Appendix C): a success ping is sent on success paths only. A holiday or
+a no-briefing night still counts as success — the monitor expects a ping every scheduled night, and
+"nothing to do tonight" is a healthy outcome, not a failure.
 """
 
 from __future__ import annotations
 
 import sys
+import tempfile
+from datetime import datetime
+from zoneinfo import ZoneInfo
 
+import backup
 from config import load_settings
 from monitoring import ping
+
+# The market's clock — the weekly backup runs on the Friday-evening run (end of the trading week).
+_MARKET_TZ = ZoneInfo("America/New_York")
+_WEEKLY_BACKUP_WEEKDAY = 4  # Monday is 0; Friday is 4.
 
 
 def main() -> int:
@@ -36,12 +50,17 @@ def main() -> int:
 
     ping(ping_url, "/start")
 
-    # P0 stub: there is no briefing pipeline yet. This is where the preflight (XNYS holiday /
-    # no-batch-submitted night), batch collection, synthesis, verification, and publish will live
-    # from P3. For now the job's whole purpose is to prove the schedule and the monitor work.
-    print("job_b: P0 stub — no briefing pipeline yet; feeding the dead-man check.")
+    # The briefing pipeline (preflight, batch collection, synthesis, verification, publish) lands
+    # from P3. What runs now is the weekly backup, on Fridays only.
+    run_date = datetime.now(_MARKET_TZ).date()
+    if run_date.weekday() == _WEEKLY_BACKUP_WEEKDAY:
+        with tempfile.TemporaryDirectory() as work_dir:
+            key = backup.run_weekly_backup(settings, run_date, work_dir)
+        print(f"job_b: weekly backup uploaded to R2 as {key}.")
+    else:
+        print("job_b: not the weekly-backup night; feeding the dead-man check.")
 
-    ping(ping_url)  # success
+    ping(ping_url)  # success — only reached if the work above did not raise
     return 0
 
 

@@ -83,6 +83,15 @@ def test_sync_down_honours_a_dataset_prefix(tmp_path):
     assert not (restored / "indicators_daily").exists()
 
 
+def test_put_file_uploads_a_single_object_to_an_exact_key(tmp_path):
+    src = tmp_path / "msm-2026-07-10.dump"
+    src.write_bytes(b"dump-bytes")
+    fake = FakeS3()
+    key = R2Store(fake, "msm-history").put_file(src, "backups/msm-2026-07-10.dump")
+    assert key == "backups/msm-2026-07-10.dump"
+    assert fake.objects["backups/msm-2026-07-10.dump"] == b"dump-bytes"
+
+
 def test_sync_up_ignores_non_parquet_files(tmp_path):
     root = tmp_path / "store"
     _write(root, "prices_daily/year=2026/part.parquet", b"keep")

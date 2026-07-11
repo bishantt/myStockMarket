@@ -47,6 +47,11 @@ class R2Store:
         )
         return cls(client, settings.r2_bucket)
 
+    def put_file(self, local_path: str | Path, key: str) -> str:
+        """Upload a single file to an exact object key (e.g. a weekly database dump). Returns the key."""
+        self._client.upload_file(str(local_path), self._bucket, key)
+        return key
+
     def sync_up(self, local_root: str | Path) -> list[str]:
         """
         Upload every .parquet file under `local_root`, keyed by its path relative to the root.
