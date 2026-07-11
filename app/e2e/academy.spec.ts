@@ -32,4 +32,42 @@ test.describe("The Academy", () => {
     await page.getByRole("link", { name: "← Back to Desk" }).click();
     await expect(page).toHaveURL("/");
   });
+
+  test("no live prices anywhere under the Academy (journey 3 guard)", async ({ page }) => {
+    // A live price reads as $123.45 — a dollar sign with decimals. Regulatory figures like the
+    // $25,000 PDT threshold have no decimals, so this catches quotes without false-flagging facts.
+    const pricePattern = /\$\d[\d,]*\.\d/;
+    for (const path of [
+      "/academy",
+      "/academy/glossary",
+      "/academy/gaps-what-the-data-says",
+      "/academy/how-our-base-rates-are-computed",
+    ]) {
+      await page.goto(path);
+      const body = (await page.locator("body").innerText()) ?? "";
+      expect(body, `price leaked on ${path}`).not.toMatch(pricePattern);
+    }
+  });
+
+  test("the glossary index lists terms with lesson doorways", async ({ page }) => {
+    await page.goto("/academy");
+    await page.getByRole("link", { name: "Glossary →" }).click();
+    await expect(page).toHaveURL(/\/academy\/glossary/);
+    await expect(page.getByRole("heading", { name: "Glossary" })).toBeVisible();
+    await expect(page.getByText("RVOL", { exact: true })).toBeVisible();
+  });
+
+  test("the review queue opens (journey 6) and never overwhelms", async ({ page }) => {
+    await page.goto("/academy/review");
+    await expect(page.getByRole("heading", { name: "Review" })).toBeVisible();
+    // Either the empty state or a session — never a wall of cards; the cap is 5 (unit-tested).
+    await expect(page.getByText(/At most 5 a day|Nothing is due right now/)).toBeVisible();
+  });
+
+  test("a pattern lesson shows the M3 soft gate before M3 is complete", async ({ page }) => {
+    await page.goto("/academy/rsi-and-oscillators");
+    // Soft, not a lock: the notice is present but the lesson body still renders.
+    await expect(page.getByText("Risk before patterns")).toBeVisible();
+    await expect(page.getByRole("heading", { name: "RSI and oscillators" })).toBeVisible();
+  });
 });

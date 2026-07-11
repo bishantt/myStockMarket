@@ -378,3 +378,14 @@ model ConceptState {
   @@index([dueOn])
   @@map("concept_state")
 }
+
+/// One row per Academy lesson the user has read (plan §7 P5 step 6). Completion is the signal behind
+/// the M3 soft gate: once all four M3 lessons are here, the pattern modules (M4/M5) stop showing their
+/// "do risk first" notice. Written when a lesson page is viewed (a read beacon). Keyed by slug so a
+/// re-read is idempotent.
+model LessonProgress {
+  slug        String   @id
+  completedAt DateTime @default(now()) @map("completed_at")
+
+  @@map("lesson_progress")
+}

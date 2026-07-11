@@ -3,6 +3,9 @@ import { notFound } from "next/navigation";
 import { compileMDX } from "next-mdx-remote/rsc";
 
 import { getLessonMeta, getLessonSource } from "@/lib/academy";
+import { isLessonSoftGated, M3_SLUGS } from "@/lib/academy-progress";
+import { db } from "@/lib/db";
+import { LessonReadBeacon } from "@/components/academy/LessonReadBeacon";
 
 /**
  * /academy/[slug] — a single lesson (plan §9.3, P5 step 2).
@@ -46,6 +49,10 @@ export default async function LessonPage({ params }: { params: Promise<{ slug: s
   const source = getLessonSource(slug);
   if (!meta || source === null) notFound();
 
+  // The M3 soft gate: a pattern lesson (M4/M5) shows a "risk first" notice until M3 is complete.
+  const completed = (await db.lessonProgress.findMany({ select: { slug: true } })).map((row) => row.slug);
+  const gated = isLessonSoftGated(meta.module, completed);
+
   const { content } = await compileMDX({
     source,
     options: { parseFrontmatter: true },
@@ -64,6 +71,23 @@ export default async function LessonPage({ params }: { params: Promise<{ slug: s
         </p>
         <h1 className="max-w-[65ch] pt-2 font-prose text-2xl text-ink">{meta.title}</h1>
       </header>
+
+      {/* SOFT GATE — a nudge, never a lock. The reader may keep going. */}
+      {gated ? (
+        <aside className="mt-4 max-w-[65ch] rounded-edge border border-hairline bg-surface p-4" aria-label="Suggested order">
+          <p className="font-ui text-2xs font-semibold uppercase tracking-[0.06em] text-ink">
+            Risk before patterns
+          </p>
+          <p className="pt-1.5 font-prose text-sm text-ink-2">
+            This is a pattern lesson. The Academy suggests finishing module M3 —{" "}
+            <Link href={`/academy/${M3_SLUGS[0]}`} className="text-accent underline underline-offset-2">
+              the risk lessons
+            </Link>{" "}
+            — first, so a pattern is read against sizing and expectancy, not on its own. You are free to
+            continue now; this is only a suggestion.
+          </p>
+        </aside>
+      ) : null}
 
       <div className="pt-2">{content}</div>
 
@@ -85,6 +109,9 @@ export default async function LessonPage({ params }: { params: Promise<{ slug: s
       <Link href="/academy" className="pt-10 font-ui text-xs uppercase tracking-[0.06em] text-ink-2 hover:text-accent">
         ← All lessons
       </Link>
+
+      {/* Opening the lesson is the read — record it for the M3 soft gate. */}
+      <LessonReadBeacon slug={meta.slug} />
     </article>
   );
 }
