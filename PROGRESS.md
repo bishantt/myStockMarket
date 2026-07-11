@@ -5,15 +5,37 @@ pausing at phase boundaries, roll straight into the next phase. Only stop on a g
 blocker; otherwise write the question to QUESTIONS-FOR-BISHANT.md, assume, mark it, and keep going.
 Now in CLAUDE.md ("Autonomy"). P3's five-night gate is observed in parallel; P4+ proceed regardless.
 
-**P4 — setup cards, base rates, the track record. Acceptance met; tagging phase-4 to run the e2e
-gate (2026-07-11).** Pipeline + UI done and CI-green on main (app typecheck/lint/120 unit/build,
-pipeline 190 pytest incl. the P4 DB tests). Now also done since the last note: the `/scans` page
-(five presets, verbatim criteria + evidence-grade Tags + folklore label), the VolBand typical-range
-panel on the ticker page (with the mandatory regime-break caveat), the nav links, and a build fix
-(getTrackRecord degrades gracefully on the no-DB prerender). Remaining, documented as enhancements
-(not acceptance blockers): CalendarTimeline branch base rates (needs earnings-reaction base rates,
-not yet computed — honest default is suppression), the on-chart vol fan overlay (the panel content
-is complete), and full-universe base rates (the served+watchlist scope is the logged P4 choice).
+**P4 COMPLETE — tagged `phase-4` (2026-07-11). CI-green on the tag: app (typecheck/lint/120 unit/
+build), pipeline (190 pytest incl. the P4 DB tests), and the full e2e + PWA gate (journeys 1–4
+against a seeded Postgres).** The signature unit ships honest-by-construction: the six pattern
+detectors (shift-guarded), base rates with Wilson intervals + point-in-time buckets + the always-up
+baseline + decay stamps, vol bands (≤20d), the nightly resolver (insert-only outcomes from the
+Parquet lake), and the visible resolved log. UI: the one BaseRate renderer (N-gated: ≥100 %+CI ·
+30-99 natural frequency + wide-interval note · <30 suppressed), setup cards (module 06 — tier
+lexicon word neutral-by-law, WEAK-capped when the CI spans the baseline, weakener checklist via
+server action, scope line, provenance), `/scans` (verbatim criteria + evidence grades + folklore
+label), the VolBand typical-range panel (with the mandatory regime-break caveat), `/track-record`
+(the app's own misses), and ScorecardPM grading now live off signal_resolution. Prisma v4 migrated.
+Mints `new-pattern-detector`. Anti-drift §3.10 verified on the card UI (no hex, no colour chips
+outside Tag, tier tag neutral).
+- **Enhancements deferred (documented, NOT acceptance blockers):** CalendarTimeline branch base
+  rates (needs earnings-reaction base rates — honest default is suppression), the on-chart vol fan
+  overlay (the panel content is complete), full-universe base rates (served+watchlist is the logged
+  P4 scope choice). Assumptions in QUESTIONS-FOR-BISHANT.md (regime split, universe scope, decay
+  wording, breadth grade) — none blocking.
+
+**NEXT: P5 — the Academy** (plan §7 P5, ~2-3 weeks, content-heavy). Build order: (1) MDX infra
+(@next/mdx + frontmatter loader — `lib/academy.ts` already stubbed with the empty manifest to
+populate; `content/academy/<module>/<slug>.mdx`; warm-token Academy layout, Newsreader, 65ch); (2)
+author the 25 launch lessons (Appendix H slugs — contractual; each cites its RR Part 4 ledger row;
+mechanical-honest voice; 2-3 retrieval questions in frontmatter — MINT `new-lesson` after the 2nd);
+(3) glossary (40 Appendix I terms + GlossaryTerm popover, first-occurrence-per-view registry); (4)
+worked-example drawer (3-step template + on-chart annotation markers); (5) review queue (Leitner on
+concept_state, max 5/day, seeded from encountered concepts); (6) doorways completed (Learn chips,
+brief's learning link, "See this live", ReturnRail, adaptive fading v1). When lessons land, their
+slugs populate `lib/academy.ts` LESSON_SLUGS and the Learn doorways (brief + cards) light up
+automatically. Then P6 (paper desk, calibration, dark mode — plan §7 P6). Per the standing autonomy
+directive, roll straight into P5.
 - **Pipeline (done):** `detectors.py` (the six detectors, shift-guarded), `baserates.py` (Wilson CI,
   point-in-time buckets, always-up baseline, pattern_meta decay seed), `volbands.py` (empirical
   bands, ≤20d), `analytics.py` (base rates + setup cards with the tier + CI-spans-baseline cap +
