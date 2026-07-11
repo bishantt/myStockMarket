@@ -6,6 +6,7 @@ dependencies = [
     "anthropic>=0.116.0",
     "boto3>=1.43.45",
     "duckdb>=1.5.4",
+    "exchange-calendars>=4.13.2",
     "httpx>=0.28.1",
     "polars-lts-cpu>=1.33.1",
     "psycopg[binary]>=3.3.4",

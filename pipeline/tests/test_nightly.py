@@ -146,6 +146,32 @@ def test_compute_breadth_counts_advancers_decliners_and_share_above_the_50dma():
     assert breadth["pct_above_50dma"] == pytest.approx(0.6667, abs=1e-4)
 
 
+def test_build_signal_logs_makes_one_insert_only_row_per_match():
+    scans = pl.DataFrame(
+        {
+            "preset_key": ["unusual-volume", "gap-3plus"],
+            "symbol": ["AAPL", "MSFT"],
+            "rank": [1, 1],
+        }
+    )
+    logs = nightly.build_signal_logs(scans, date(2026, 6, 30))
+    assert len(logs) == 2
+    assert logs[0] == {
+        "fired_date": date(2026, 6, 30),
+        "symbol": "AAPL",
+        "pattern_key": "unusual-volume",
+        "horizon_days": 10,
+        # Ten NYSE sessions after 30 June 2026 (skipping the 3 July holiday).
+        "resolves_on": date(2026, 7, 15),
+    }
+    assert logs[1]["pattern_key"] == "gap-3plus"
+
+
+def test_build_signal_logs_is_empty_when_nothing_matched():
+    empty = pl.DataFrame({"preset_key": [], "symbol": [], "rank": []})
+    assert nightly.build_signal_logs(empty, date(2026, 6, 30)) == []
+
+
 def test_served_price_bars_keeps_only_served_symbols_and_adds_adjusted_close():
     bars = pl.DataFrame(
         {

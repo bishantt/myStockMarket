@@ -16,10 +16,10 @@ macro read, the Parquet store, R2, the publish, the served-symbol list) is a fie
 so the flow is tested end to end with fakes and no live key is ever needed. Job A's main() builds
 the real collaborators from settings and calls run_nightly.
 
-Deferred at P1 (logged, DECISIONS.md 2026-07-11): signal_log emission. The signal log is INSERT-ONLY
-and permanent, and each row's resolves_on must be exactly ten TRADING days out; without the trading
-calendar wired (exchange_calendars) that horizon can only be approximated, and an approximate date
-baked into a permanent, un-editable log is worse than waiting. It lands when the calendar does.
+Signal log: every scan match writes one INSERT-ONLY signal_log row, with resolves_on set to exactly
+ten TRADING days out via the NYSE calendar (trading_calendar.py). The rate fields stay null until
+P4 gives the patterns base rates. Publish inserts these ON CONFLICT DO NOTHING, so a rerun of a
+night adds nothing — the log records that a pattern fired and when it resolves, permanently.
 """
 
 from __future__ import annotations
@@ -31,8 +31,9 @@ from typing import Any, Callable, Mapping
 import polars as pl
 
 from parquet_store import PRICES, ParquetStore
-from scans import build_snapshot, run_all
+from scans import HORIZON_DAYS, build_snapshot, run_all
 from storage import R2Store
+from trading_calendar import sessions_ahead
 
 # A night must cover at least this share of the universe with bars, or it fails (plan §2.1). A
 # missing tenth of the market is a broken ingest, not a publishable morning.
@@ -108,6 +109,7 @@ def run_nightly(deps: NightlyDeps) -> NightlyResult:
     served = set(deps.read_served_symbols())
     served_bars = served_price_bars(bars, served)
     scan_results = curated_scans(scans)
+    signal_logs = build_signal_logs(scans, deps.run_date)
 
     fred_ok = vix is not None or ten_year is not None
     deps.publish(
@@ -118,6 +120,7 @@ def run_nightly(deps: NightlyDeps) -> NightlyResult:
         instruments=universe,
         price_bars=served_bars if served_bars.height else None,
         scan_results=scan_results if scan_results.height else None,
+        signal_logs=signal_logs,
         market_context=market_context,
     )
 
@@ -170,6 +173,27 @@ def served_price_bars(bars: pl.DataFrame, served: set[str]) -> pl.DataFrame:
         .tail(SERVED_HISTORY_BARS)
     )
     return subset.with_columns(pl.col("close").alias("adj_close"))
+
+
+def build_signal_logs(scans: pl.DataFrame, run_date: date) -> list[dict]:
+    """
+    One insert-only signal_log row per scan match: which pattern fired, on which symbol, and when it
+    resolves — exactly HORIZON_DAYS trading days out on the NYSE calendar. The rate fields stay null
+    until P4. Returns an empty list when nothing matched (the calendar is not consulted then).
+    """
+    if scans.height == 0:
+        return []
+    resolves_on = sessions_ahead(run_date, HORIZON_DAYS)
+    return [
+        {
+            "fired_date": run_date,
+            "symbol": row["symbol"],
+            "pattern_key": row["preset_key"],
+            "horizon_days": HORIZON_DAYS,
+            "resolves_on": resolves_on,
+        }
+        for row in scans.iter_rows(named=True)
+    ]
 
 
 def curated_scans(scans: pl.DataFrame) -> pl.DataFrame:
