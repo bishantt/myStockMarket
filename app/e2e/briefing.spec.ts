@@ -46,10 +46,11 @@ test.describe("Daily brief — the seeded evening briefing", () => {
     await expect(brief.getByRole("link", { name: /Learn:/ })).toHaveCount(0);
   });
 
-  test("the evening scorecard shows its grading-begins state over the journal prompt", async ({ page }) => {
+  test("the evening scorecard shows the live resolved record over the journal prompt", async ({ page }) => {
     const scorecard = page.getByRole("region", { name: "Evening scorecard" });
     await expect(scorecard).toBeVisible();
-    await expect(scorecard.getByText(/Grading begins in P4/)).toBeVisible();
+    // Grading is now live off signal_resolution (P4): the seeded record is 2 hits and a miss.
+    await expect(scorecard.getByText(/The app.s record so far/)).toBeVisible();
     await expect(scorecard.getByText(/What did today's session teach you/)).toBeVisible();
   });
 

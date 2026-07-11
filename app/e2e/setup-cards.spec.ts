@@ -32,10 +32,13 @@ test.describe("Setup cards & track record — the seeded morning", () => {
 
   test("the moderate card shows its percentage, interval, and the always-up baseline", async ({ page }) => {
     const cards = page.getByRole("region", { name: "Setup cards" });
-    await cards.getByText("Near the 52-week high").click(); // open the disclosure
-    await expect(cards.getByText(/66%/)).toBeVisible();
-    await expect(cards.getByText(/95% interval/)).toBeVisible();
-    await expect(cards.getByText(/read this against that baseline/)).toBeVisible();
+    // Scope to the QQQ card's disclosure — every card renders its own CI in the DOM (collapsed), so
+    // an unscoped "95% interval" matches more than one.
+    const card = cards.locator("details", { hasText: "Near the 52-week high" });
+    await card.getByText("Near the 52-week high").click(); // open it
+    await expect(card.getByText(/66%/)).toBeVisible();
+    await expect(card.getByText("95% interval 57%–74%")).toBeVisible();
+    await expect(card.getByText(/read this against that baseline/)).toBeVisible();
   });
 
   test("the small-sample card suppresses its percentage", async ({ page }) => {
