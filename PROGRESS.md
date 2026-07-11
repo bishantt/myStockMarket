@@ -24,7 +24,45 @@ outside Tag, tier tag neutral).
   P4 scope choice). Assumptions in QUESTIONS-FOR-BISHANT.md (regime split, universe scope, decay
   wording, breadth grade) — none blocking.
 
-**NEXT: P5 — the Academy** (plan §7 P5, ~2-3 weeks, content-heavy). Build order: (1) MDX infra
+**P5 IN PROGRESS (2026-07-11) — the Academy.** Step 1 (infra) done + module M0 authored; CI-green
+on main.
+- **Done:** MDX infrastructure via **next-mdx-remote/rsc** (`compileMDX` at request time — chosen
+  specifically to AVOID a `next.config.ts` change, since that file carries the delicate Serwist/
+  webpack integration). `lib/academy.ts` is the synchronous frontmatter loader (gray-matter) — it
+  builds the curriculum manifest and the doorway gate `isKnownLesson` (now backed by real lessons,
+  still a sync predicate so the brief/card view-model builders keep calling it inline). The warm
+  Academy room: `app/academy/layout.tsx` (warm `academy-bg`, return rail), `app/academy/page.tsx`
+  (curriculum map grouped by module), `app/academy/[slug]/page.tsx` (renders MDX with a Newsreader-
+  prose `mdxComponents` map + the frontmatter retrieval questions). **Module M0 complete** — all 4
+  lessons authored (how-this-app-explains-itself, reading-a-base-rate-sentence, the-probability-
+  lexicon, the-track-record-page), each teaching the honesty machinery, mechanical voice, no prices,
+  2-3 retrieval questions. Doorways now auto-light: the seeded brief's Learn link and setup-card
+  links resolve to authored lessons via the gate (`patternLessonSlug` maps cards to M5/M4 lessons —
+  dark until those are written). `new-lesson` skill MINTED. Tests: `lib/academy.test.ts` (loader +
+  gate, 4 tests), `e2e/academy.spec.ts` (room + lesson render). Deps added: next-mdx-remote 6,
+  gray-matter 4. **Content lives in `content/academy/<module-lowercase>/<slug>.mdx`.**
+- **STILL TO DO for P5 (follow the `new-lesson` skill — it's a production line now):**
+  1. Author the remaining 21 lessons (M1–M6 per Appendix H — slugs contractual; myth-vs-evidence
+     lessons cite their RR Part 4/5/6 verdict + grade). M1: nyse-nasdaq-and-tickers · the-us-trading-
+     day · order-types-and-the-spread · reading-the-macro-pulse. M2: what-a-round-trip-costs ·
+     slippage-taxes-and-drag · the-cost-mirror. M3: position-sizing-before-patterns · stops-and-
+     invalidation · expectancy-and-drawdown-math · why-base-rates-beat-anecdotes (M3 completion
+     lifts the pattern-lesson soft gate). M4: candles-honestly · support-resistance-and-round-numbers
+     · volume-and-rvol · gaps-what-the-data-says. M5: moving-averages-and-the-golden-cross · rsi-and-
+     oscillators · the-myth-vs-evidence-ledger · how-our-base-rates-are-computed. M6: the-four-
+     behavioral-taxes · journaling-and-the-pm-scorecard. (The pattern-lesson slugs in
+     `lib/patterns.ts::PATTERN_LESSON` already point at M4/M5 ones — authoring those lights the card
+     doorways automatically.)
+  2. Glossary (step 3): seed the 40 Appendix I terms (`lib/glossary.ts`) + a GlossaryTerm popover,
+     first-occurrence-per-view registry, wired across the Desk.
+  3. Worked-example drawer (step 4): the fixed 3-step template + on-chart annotation markers.
+  4. Review queue (step 5): Leitner boxes on `concept_state` (max 5/day, due dates), seeded from
+     concepts the user actually encountered (Desk render logs exposures to concept_state — needs a
+     Prisma addition for concept_state if not present).
+  5. Doorways completed (step 6): Learn chips, "See this live", ReturnRail on every crossing,
+     adaptive fading v1. Then the P5 exit gate + tag phase-5, then P6.
+
+**(reference) P5 build order** (plan §7 P5, content-heavy). Build order: (1) MDX infra
 (@next/mdx + frontmatter loader — `lib/academy.ts` already stubbed with the empty manifest to
 populate; `content/academy/<module>/<slug>.mdx`; warm-token Academy layout, Newsreader, 65ch); (2)
 author the 25 launch lessons (Appendix H slugs — contractual; each cites its RR Part 4 ledger row;
