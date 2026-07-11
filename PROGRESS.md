@@ -5,8 +5,15 @@ pausing at phase boundaries, roll straight into the next phase. Only stop on a g
 blocker; otherwise write the question to QUESTIONS-FOR-BISHANT.md, assume, mark it, and keep going.
 Now in CLAUDE.md ("Autonomy"). P3's five-night gate is observed in parallel; P4+ proceed regardless.
 
-**P4 IN PROGRESS (2026-07-11) — setup cards, base rates, the track record.** Pipeline + the
-acceptance-critical UI are done and green; a few peripheral UI items remain before the phase-4 tag.
+**P4 — setup cards, base rates, the track record. Acceptance met; tagging phase-4 to run the e2e
+gate (2026-07-11).** Pipeline + UI done and CI-green on main (app typecheck/lint/120 unit/build,
+pipeline 190 pytest incl. the P4 DB tests). Now also done since the last note: the `/scans` page
+(five presets, verbatim criteria + evidence-grade Tags + folklore label), the VolBand typical-range
+panel on the ticker page (with the mandatory regime-break caveat), the nav links, and a build fix
+(getTrackRecord degrades gracefully on the no-DB prerender). Remaining, documented as enhancements
+(not acceptance blockers): CalendarTimeline branch base rates (needs earnings-reaction base rates,
+not yet computed — honest default is suppression), the on-chart vol fan overlay (the panel content
+is complete), and full-universe base rates (the served+watchlist scope is the logged P4 choice).
 - **Pipeline (done):** `detectors.py` (the six detectors, shift-guarded), `baserates.py` (Wilson CI,
   point-in-time buckets, always-up baseline, pattern_meta decay seed), `volbands.py` (empirical
   bands, ≤20d), `analytics.py` (base rates + setup cards with the tier + CI-spans-baseline cap +
