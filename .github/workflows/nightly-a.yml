@@ -4,9 +4,10 @@
 # UTC-fixed on purpose: it sits after the close in both DST regimes, so the cron is never edited —
 # only the user's wall-clock reading of it shifts with the season.
 #
-# At P0 Job A writes one pipeline_run row (a hello-run). It does NOT touch healthchecks.io; its
-# failures surface as GitHub's own failure e-mails via a non-zero exit. The dead-man check belongs
-# to Job B (nightly-b.yml), whose cron matches it.
+# Job A lists the universe, ingests EOD bars, computes indicators + scans, reads the macro context,
+# and publishes the served slice to Postgres (the flow lives in nightly.py). It does NOT touch
+# healthchecks.io; its failures surface as GitHub's own failure e-mails via a non-zero exit. The
+# dead-man check belongs to Job B (nightly-b.yml), whose cron matches it.
 
 name: nightly-a
 
@@ -40,7 +41,18 @@ jobs:
 
       - name: Run Job A
         env:
+          # The serving database (Supabase transaction pooler).
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          # EOD bars + the universe.
+          ALPACA_KEY_ID: ${{ secrets.ALPACA_KEY_ID }}
+          ALPACA_SECRET: ${{ secrets.ALPACA_SECRET }}
+          # The macro strip (VIXCLS + DGS10).
+          FRED_KEY: ${{ secrets.FRED_KEY }}
+          # The Parquet history lake on Cloudflare R2.
+          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET: ${{ secrets.R2_SECRET }}
+          R2_BUCKET: ${{ secrets.R2_BUCKET }}
         run: uv run python -m jobs.job_a
 
       # A private repo's scheduled workflows are disabled by GitHub after 60 days without repo

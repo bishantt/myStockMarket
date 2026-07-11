@@ -74,15 +74,16 @@ watchlist server actions, e2e journeys 1/2/5, visual baselines.
 
 ## Next 3 tasks
 
-1. **P1 step 5 (wiring) — job_a full flow**: wire the Alpaca adapter → indicators → parquet_store
-   → scans → publish (incl. the new market_context) into jobs/job_a.py (replacing the hello-run),
-   with the universe hard-fail (<95% symbols → job fails), the FRED macro read (VIXCLS+DGS10), and
-   the R2 sync (boto3, still to build). This is what makes the deployed Desk show real data.
+1. **Trigger a real Job A run + verify the deployed Desk**: dispatch nightly-a (workflow_dispatch)
+   now that it wires Alpaca→indicators→parquet→R2→scans→FRED→publish; confirm it writes
+   market_context + served price_bars + scan_result to Supabase and the live Desk lights up. Watch
+   for the universe coverage floor and any Alpaca pagination/URL-length issues at real scale.
 2. **P1 step 6 leftovers — watchlist writes**: the watchlist is currently read-only in the loader;
    add the CRUD server actions (add/remove/focus, focus cap = 3 enforced in the write path) with a
    reason required per name. (The read path + rendering are done.)
 3. **P1 steps 7-9**: RailSheet + `/ticker/[symbol]` Lightweight Charts (candles + volume); SW
-   morning-payload cache + OfflineRibbon; weekly pg_dump in nightly-b + one restore test.
+   morning-payload cache + OfflineRibbon; weekly pg_dump in nightly-b + one restore test. Wire the
+   trading calendar (exchange_calendars) and turn on signal_log emission (deferred — see below).
    Then the §6.4 gate (LCP now a HARD gate — see below) and tag phase-1.
 
 ## P1 progress
@@ -100,8 +101,16 @@ watchlist server actions, e2e journeys 1/2/5, visual baselines.
 - **step 4 DONE:** scans.py (5 presets, 19 tests) + parquet_store.py (year-partitioned Parquet +
   DuckDB, 5 tests).
 - **step 5 DONE:** publish.py — single-transaction serving-DB refresh (upserts + insert-only
-  signal_log + per-run scan replacement + atomic rollback), 5 integration tests against a
-  throwaway Postgres (skip locally without Docker; CI runs them via a postgres:16 service).
+  signal_log + per-run scan replacement + atomic rollback + market_context), 7 integration tests
+  against a throwaway Postgres (skip locally without Docker; CI runs them via a postgres:16 service).
+- **step 5 WIRING DONE:** `nightly.py` — Job A's full flow as run_nightly(deps), dependency-injected
+  and tested end to end with fakes (5 tests: universe coverage floor, full-publish, FRED-outage
+  degrade, breadth, served-bar selection). `storage.py` — R2Store (boto3 S3, key-mirrors the Parquet
+  tree, 4 tests with a fake client). `jobs/job_a.py` rewritten from the hello-run to build the real
+  Alpaca/FRED adapters + ParquetStore + R2 + conn and call run_nightly; nightly-a.yml now passes the
+  Alpaca/FRED/R2 secrets. **Deferred (logged):** signal_log emission waits for the trading calendar
+  (permanent insert-only log must not bake an approximate 10-trading-day horizon). **Not yet run in
+  the cloud** — dispatch nightly-a to prove it end to end and light up the deployed Desk.
 - **step 6 ALL BUT job_a:** the three Desk modules are now WIRED to real serving data.
   - `market_context` table added (VIX / 10-year / breadth had no home in Appendix B) + migration
     `market_context`; `publish.py` writes it in the same transaction (2 new DB tests).
