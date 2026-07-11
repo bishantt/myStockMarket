@@ -24,8 +24,42 @@ outside Tag, tier tag neutral).
   P4 scope choice). Assumptions in QUESTIONS-FOR-BISHANT.md (regime split, universe scope, decay
   wording, breadth grade) — none blocking.
 
-**P5 IN PROGRESS (2026-07-11) — the Academy.** Step 1 (infra) done + module M0 authored; CI-green
-on main.
+**P5 CODE-COMPLETE (2026-07-11) — the Academy. All six steps built; tag phase-5 pending the CI
+e2e/Lighthouse gate on the tag.** Local gate green: app typecheck + lint + 157 unit + production
+build (all routes compile, incl. /academy, /academy/glossary, /academy/[slug], /academy/review).
+What shipped since the M0 checkpoint:
+- **All 25 lessons authored** (M0 done earlier; the 21 M1–M6 lessons this session). Voice checked
+  (no first person, no buy-imperatives, no exclamation marks), all frontmatter parses, no live
+  prices (only the $25,000 PDT regulatory figure, which is a fact not a quote). Myth lessons cite
+  their RR Part 4/5/6 verdict + evidence grade (golden cross WEAK, RSI WEAK, candlesticks
+  WEAK/contested-negative, 52w-high MIXED, unusual volume MIXED, gaps FOLKLORE — the flagship
+  worked example). Drafted by parallel module subagents against a fixed spec, then reviewed.
+- **Glossary (step 3):** lib/glossary.ts seeds all 40 Appendix I terms (price-free, lesson
+  doorways); GlossaryTerm (server, first-occurrence-per-view via a React cache()-scoped registry)
+  + GlossaryPopover (client: dotted underline, hover tip, click popover, Full-lesson link). Wired
+  into MacroPulse (breadth/advance-decline/50-day) and /scans (each preset's core term).
+  /academy/glossary term index. Registry + 40-term-coverage + popover tests.
+- **Worked-example drawer (step 4):** lib/worked-example.ts pure builder for the fixed three-step
+  template (data → pattern+belief-with-grade → last N with the failure count shown), honest N<30
+  suppression, numbered markers 1:1 to steps. WorkedExampleDrawer renders the steps beside a
+  labelled SCHEMATIC path (not a live price) whose markers light in sync. Wired into every setup card.
+- **Review queue (step 5):** lib/review.ts pure Leitner scheduler (5 boxes, doubling intervals,
+  promote/reset, queue capped at 5/day, most-overdue-first). Prisma concept_state + migration.
+  A concept enters when its glossary popover is first OPENED (a genuine encounter). /academy/review
+  + ReviewSession (recall → reveal → knew/not-yet/skip, no streaks).
+- **Doorways + M3 soft gate (step 6):** lib/academy-progress.ts (pattern modules M4/M5 gated until
+  all four M3 lessons read — a nudge, never a lock). Prisma lesson_progress + migration. A read
+  beacon marks a lesson complete on view; the curriculum map ticks read lessons and shows the
+  "finish M3 first" marker; the lesson page shows the soft-gate notice. Return rail to the Desk
+  already in the Academy layout. e2e added: no-live-prices-under-/academy, glossary index, review
+  cap, soft gate.
+- **Two Prisma migrations applied to Supabase this session:** p5_concept_state, p5_lesson_progress.
+- **Pending for the phase-5 tag:** the CI e2e (journeys 3/6, no-price guard, seeded Desk) and the
+  Lighthouse budgets run on the tag with a throwaway Postgres — not run locally (running e2e
+  against production Supabase would violate the seed/honesty rules). Per the standing autonomy
+  directive, P6 proceeds in parallel; tag phase-5 once the tag CI is green.
+
+**(historical) P5 IN PROGRESS (2026-07-11) — the Academy.** Step 1 (infra) done + module M0 authored.
 - **Done:** MDX infrastructure via **next-mdx-remote/rsc** (`compileMDX` at request time — chosen
   specifically to AVOID a `next.config.ts` change, since that file carries the delicate Serwist/
   webpack integration). `lib/academy.ts` is the synchronous frontmatter loader (gray-matter) — it
