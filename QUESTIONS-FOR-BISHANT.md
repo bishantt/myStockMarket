@@ -20,12 +20,12 @@ Format: newest first. I mark each as [FYI], [VETO?], or [NEED] so you can scan.
   only LCP (2.8-3.4s, run-to-run variance) missed, as a synthetic cold-4G artifact on a
   contentless page — the app was already optimally built. You accepted this for P0.</details>
 
-- **[FYI] Optional cleanups, whenever you like (none blocking):**
-  - Rotate the Supabase DB password (it appeared in our chat early on). Vercel + GitHub already
-    have everything, so it is a quick re-paste and one re-test.
-  - Delete the unused "My First Check" in healthchecks.io.
-  - Connect the GitHub repo in Vercel (Project → Settings → Git, Root Directory = `app`) so
-    `git push` auto-deploys. Right now I deploy via the CLI.
+- **[CLOSED 2026-07-11] Optional cleanups — all resolved:**
+  - **Supabase DB password rotation — DECLINED by Bishan (2026-07-11).** Keeping the current
+    password. Closed; will not raise again.
+  - **"My First Check" in healthchecks.io — DONE.** Bishan deleted it (2026-07-11). Closed.
+  - **Connect the GitHub repo in Vercel — DONE.** Bishan connected it (2026-07-11); `git push`
+    now auto-deploys. (I no longer deploy via the CLI.)
   - If you want me to run the healthchecks drill or Lighthouse locally in future, add
     HEALTHCHECKS_PING_URL + HEALTHCHECKS_API_KEY to the repo-root `.env` (Appendix D lists the
     API key as local too). For now I run those through GitHub Actions where the secrets live.

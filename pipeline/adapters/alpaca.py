@@ -14,6 +14,7 @@ not against the live host).
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 from datetime import date
 
@@ -21,6 +22,28 @@ from adapters.base import Adapter
 
 _DATA = "https://data.alpaca.markets"
 _TRADING = "https://paper-api.alpaca.markets"
+
+# The universe is common stocks + ETFs only (Appendix F). Alpaca's asset list also carries
+# warrants, units, rights, preferreds, and baby bonds, which pollute a beginner's "what's hot
+# today" surfaces — a warrant spiking 40% is noise, not a signal. Alpaca has no security-type
+# field, but it labels the type in the asset NAME, so that is the discriminator.
+#
+# Warrants / units / rights are never funds, so their words drop unconditionally. Preferreds,
+# depositary shares, and notes ARE sometimes wrapped as ETFs (e.g. iShares Preferred … ETF), so
+# their words drop only when the name does not also read as a fund. Whole-word matching keeps a
+# real common stock whose name merely resembles a type word (Unity, United, Warner) in the universe.
+_FUND_WORDS = re.compile(r"\b(?:etf|etn|fund)\b", re.IGNORECASE)
+_ALWAYS_DROP = re.compile(r"\b(?:warrants?|rights?|units?)\b", re.IGNORECASE)
+_DROP_UNLESS_FUND = re.compile(r"\b(?:preferred|pfd|depositary|debentures?|notes?)\b", re.IGNORECASE)
+
+
+def _is_common_or_etf(name: str) -> bool:
+    """True if an asset name reads as a common stock or an ETF, not a warrant/unit/right/preferred."""
+    if _ALWAYS_DROP.search(name):
+        return False
+    if _DROP_UNLESS_FUND.search(name) and not _FUND_WORDS.search(name):
+        return False
+    return True
 
 
 @dataclass(frozen=True)
@@ -98,12 +121,16 @@ class AlpacaAdapter(Adapter):
 
     def list_universe(self) -> list[Asset]:
         """
-        The tradable universe: active US equities and ETFs, excluding OTC (plan Appendix F).
+        The tradable universe: active US common stocks and ETFs, excluding OTC (plan Appendix F).
 
-        Alpaca's asset list includes non-tradable listings and OTC names; both are filtered out
-        here. "no OTC" is the one hard universe rule, and it is enforced at ingest so an OTC symbol
-        never enters the instrument table. ETFs list on ARCA/BATS, which is why exchange is not
-        constrained to NYSE/Nasdaq/AMEX — only OTC is excluded.
+        Three filters, each earning its place:
+          - active + tradable — skip halted/delisted and non-tradable listings.
+          - not OTC — the one hard universe rule, enforced at ingest so an OTC symbol never enters
+            the instrument table. ETFs list on ARCA/BATS, so exchange is not constrained to
+            NYSE/Nasdaq/AMEX; only OTC is excluded.
+          - common stock or ETF only — warrants, units, rights, preferreds, and baby bonds are
+            dropped (see _is_common_or_etf), because a warrant spiking on the movers list is noise
+            a beginner should never see.
         """
         assets = self.get(
             f"{_TRADING}/v2/assets",
@@ -115,6 +142,8 @@ class AlpacaAdapter(Adapter):
             if raw.get("status") != "active" or not raw.get("tradable"):
                 continue
             if raw.get("exchange") == "OTC":
+                continue
+            if not _is_common_or_etf(raw.get("name", "")):
                 continue
             universe.append(
                 Asset(symbol=raw["symbol"], name=raw["name"], exchange=raw["exchange"])

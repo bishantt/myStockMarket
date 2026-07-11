@@ -109,6 +109,32 @@ class TestUniverse:
         adapter = _adapter(_serve_fixtures)
         assert all(a.exchange != "OTC" for a in adapter.list_universe())
 
+    def test_narrows_to_common_stocks_and_etfs_dropping_warrants_units_rights_preferreds(self):
+        # All of these are active, tradable, and on a real exchange — so ONLY the security-type
+        # filter can tell a common stock / ETF from a warrant, unit, right, preferred, or baby bond.
+        assets = [
+            {"symbol": "AAPL", "exchange": "NASDAQ", "status": "active", "tradable": True, "name": "Apple Inc. Common Stock"},
+            {"symbol": "SPY", "exchange": "ARCA", "status": "active", "tradable": True, "name": "State Street SPDR S&P 500 ETF Trust"},
+            {"symbol": "PFF", "exchange": "NASDAQ", "status": "active", "tradable": True, "name": "iShares Preferred and Income Securities ETF"},
+            {"symbol": "JCSE", "exchange": "NASDAQ", "status": "active", "tradable": True, "name": "JE Cleantech Holdings Limited Ordinary Shares"},
+            # Dropped — the security types that were polluting the movers/scans:
+            {"symbol": "ZEOWW", "exchange": "NASDAQ", "status": "active", "tradable": True, "name": "Zeo Energy Corp. Warrant"},
+            {"symbol": "SVACU", "exchange": "NASDAQ", "status": "active", "tradable": True, "name": "Spac Acquisition Corp. Units"},
+            {"symbol": "SVACR", "exchange": "NASDAQ", "status": "active", "tradable": True, "name": "Spac Acquisition Corp. Rights"},
+            {"symbol": "ZIONP", "exchange": "NASDAQ", "status": "active", "tradable": True, "name": "Zions Bancorporation N.A. Preferred Stock"},
+            {"symbol": "BACPL", "exchange": "NYSE", "status": "active", "tradable": True, "name": "Bank of America Corporation Depositary Shares"},
+            {"symbol": "ABCND", "exchange": "NYSE", "status": "active", "tradable": True, "name": "Some Company 6.25% Notes due 2030"},
+            # Kept — common stocks whose names merely resemble a security-type word:
+            {"symbol": "U", "exchange": "NYSE", "status": "active", "tradable": True, "name": "Unity Software Inc."},
+            {"symbol": "UAL", "exchange": "NASDAQ", "status": "active", "tradable": True, "name": "United Airlines Holdings, Inc. Common Stock"},
+            {"symbol": "WMG", "exchange": "NASDAQ", "status": "active", "tradable": True, "name": "Warner Music Group Corp. Common Stock"},
+        ]
+        adapter = _adapter(lambda r: httpx.Response(200, json=assets))
+        symbols = {a.symbol for a in adapter.list_universe()}
+
+        # Common stocks and ETFs stay — including a preferred-focused ETF (its name says "ETF").
+        assert symbols == {"AAPL", "SPY", "PFF", "JCSE", "U", "UAL", "WMG"}
+
     def test_carries_the_name_and_exchange(self):
         adapter = _adapter(_serve_fixtures)
         aapl = next(a for a in adapter.list_universe() if a.symbol == "AAPL")
