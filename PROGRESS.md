@@ -24,9 +24,13 @@ outside Tag, tier tag neutral).
   P4 scope choice). Assumptions in QUESTIONS-FOR-BISHANT.md (regime split, universe scope, decay
   wording, breadth grade) — none blocking.
 
-**P6 CODE-COMPLETE (2026-07-11) — paper desk, calibration & dark mode. Core built; tag phase-6
-pending the CI e2e/Lighthouse gate + the time-gated ≥30-resolved criterion.** Local gate green:
-app typecheck + lint + 190 unit + production build. What shipped:
+**P6 COMPLETE — tagged `phase-6` (2026-07-11). The phase-6 tag CI is GREEN: app (typecheck/lint/
+190 unit/build), pipeline (pytest), and the full e2e + PWA + Lighthouse gate — including the new
+paper cooling-off interstitial journey and the Dark-Desk-only journey.** The only outstanding P6
+acceptance item is ≥30 resolved signals visible with misses, which is inherently time-gated (signals
+resolve ten trading days after firing; the resolver and the public misses log are built and correct)
+— a pending live-observation gate, in the same category as P3's five-night briefing week, not a
+blocker. What shipped:
 - **Paper desk (steps 1–2):** Prisma paper_trade + migration (paper-only, simulated fills, dev/test
   seed only). lib/paper.ts (simulateFill = next-open moved against the trader by half the at-open
   spread + 5bp slippage; halfKellyFraction — zero on non-positive edge, property-tested never above
