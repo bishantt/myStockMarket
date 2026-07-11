@@ -24,8 +24,46 @@ outside Tag, tier tag neutral).
   P4 scope choice). Assumptions in QUESTIONS-FOR-BISHANT.md (regime split, universe scope, decay
   wording, breadth grade) — none blocking.
 
-**P5 CODE-COMPLETE (2026-07-11) — the Academy. All six steps built; tag phase-5 pending the CI
-e2e/Lighthouse gate on the tag.** Local gate green: app typecheck + lint + 157 unit + production
+**P6 CODE-COMPLETE (2026-07-11) — paper desk, calibration & dark mode. Core built; tag phase-6
+pending the CI e2e/Lighthouse gate + the time-gated ≥30-resolved criterion.** Local gate green:
+app typecheck + lint + 190 unit + production build. What shipped:
+- **Paper desk (steps 1–2):** Prisma paper_trade + migration (paper-only, simulated fills, dev/test
+  seed only). lib/paper.ts (simulateFill = next-open moved against the trader by half the at-open
+  spread + 5bp slippage; halfKellyFraction — zero on non-positive edge, property-tested never above
+  half-Kelly; costMirrorDrag = spread × turnover; frequency mirror). lib/ledger.ts (open/closed
+  split, directional realized P&L, this-week round trips, cooling-off check — clock injected).
+  /paper route (nav link): ledger with close forms, entry form with the half-Kelly sizing helper
+  and the cooling-off interstitial (fires within 30 min of a viewed signal, via copy.coolingOff.body
+  — a pause, never a block), the cost mirror (arithmetic spelled out), the frequency-mirror note
+  above five round trips/week. Soft-gated on Academy M3. zod-validated action boundaries.
+- **Forecast Brier + calibration (steps 3–4):** lib/brier.ts (brierScore 0.25=coin flip,
+  rollingBrier, calibrationBuckets). Journal gains an optional forecast (call + 1–99% + resolves-on);
+  resolveForecast scores it with Brier. Track record gains a "Your forecasts" section: rolling Brier,
+  a CalibrationScatter (predicted vs actual against the diagonal, point size = N), open forecasts
+  with hit/miss resolvers. Misses first-class, same public grading the app uses on itself.
+- **Dark Desk (step 6):** the §3.3 dark column under [data-theme=dark] (explicit) and
+  [data-theme=system] under prefers-color-scheme:dark; token overrides only; academy-bg untouched so
+  the Academy stays light. Cookie-backed System/Light/Dark toggle in Settings; the shell stamps
+  data-theme before paint. viewport.themeColor gains light/dark media variants (status bar follows
+  the OS; manifest theme_color stays light). Anti-drift §3.10 greps clean (no stray hex, no bad radii).
+- **⌘K command palette (step 5):** lib/palette.ts pure zone-badged index + prefix-ranked search;
+  CommandPalette (⌘K, arrow/enter/escape, Desk/Academy badges) over the live index (routes + lessons
+  + watchlist tickers).
+- **e2e added:** paper cost mirror + sizing helper, the cooling-off interstitial firing, and
+  Dark-Desk-only (Academy never darkens). Run on the phase-6 tag with a throwaway Postgres.
+- **Prisma migrations this phase:** p6_paper_trade.
+- **DEFERRED within P6 (documented, NOT acceptance blockers — plan §7 P6 acceptance does not gate on
+  them):** quantile dotplots in the rail and sector small multiples (module 07) are step-5
+  "should-widgets"; the calibration scatter, cost mirror, and ledger — the protective core — are
+  complete. Logged in DECISIONS.
+- **PENDING gates (time/CI-gated, per the standing autonomy directive — not blockers):** ≥30 resolved
+  signals visible with misses needs live time (signals resolve ten trading days after firing; the
+  resolver and the public misses log are built and correct). Lighthouse ≥90, the §5.5 PWA matrix, the
+  §3.10 checklist on every screen, and the full §6.4 gate run on the phase-6 tag CI. Tag phase-6 once
+  the tag CI is green; the ≥30-resolved criterion is met as horizons pass in production.
+
+**P5 CODE-COMPLETE (2026-07-11) — the Academy. All six steps built; phase-5 tag CI is GREEN
+(e2e + Lighthouse) — P5 COMPLETE and tagged.** Local gate green: app typecheck + lint + 157 unit + production
 build (all routes compile, incl. /academy, /academy/glossary, /academy/[slug], /academy/review).
 What shipped since the M0 checkpoint:
 - **All 25 lessons authored** (M0 done earlier; the 21 M1–M6 lessons this session). Voice checked
