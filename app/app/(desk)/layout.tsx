@@ -3,6 +3,10 @@ import Link from "next/link";
 import { cookies } from "next/headers";
 import { DESK_BG, DESK_BG_DARK } from "@/lib/tokens";
 import { THEME_COOKIE, normaliseTheme } from "@/lib/theme";
+import { db } from "@/lib/db";
+import { getLessonManifest } from "@/lib/academy";
+import { ROUTE_ITEMS, type PaletteItem } from "@/lib/palette";
+import { CommandPalette } from "@/components/CommandPalette";
 
 /**
  * The Desk room.
@@ -36,8 +40,18 @@ export default async function DeskLayout({
   // Dark is Desk-only: this attribute lives on the Desk shell, never on the Academy.
   const theme = normaliseTheme((await cookies()).get(THEME_COOKIE)?.value);
 
+  // The ⌘K palette index: fixed routes + every authored lesson + the watchlist's tickers.
+  const lessons = getLessonManifest();
+  const watchlist = await db.watchlistItem.findMany({ select: { symbol: true }, orderBy: { symbol: "asc" } });
+  const paletteItems: PaletteItem[] = [
+    ...ROUTE_ITEMS,
+    ...lessons.map((l) => ({ kind: "lesson" as const, zone: "Academy" as const, label: l.title, href: `/academy/${l.slug}` })),
+    ...watchlist.map((w) => ({ kind: "ticker" as const, zone: "Desk" as const, label: w.symbol, href: `/ticker/${w.symbol}` })),
+  ];
+
   return (
     <div data-theme={theme} className="min-h-dvh bg-desk-bg text-ink">
+      <CommandPalette items={paletteItems} />
       <DeskNav />
       {/*
        * Max width 1360, 12-column grid, 20px gutters on the phone and 32px on the desktop
