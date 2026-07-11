@@ -1,5 +1,43 @@
 # PROGRESS.md — resumable state
 
+**P3 CODE-COMPLETE (2026-07-11) — the briefing. Pending the live observation week, not yet tagged.**
+The editorial heart ships: extract → synthesize → verify across the two jobs, rendered as the
+BriefArticle, degradable and offline-cached (the brief is part of the cached Desk document the SW
+already caches). What was built:
+- **Pipeline (`briefing/`):** `schema.py` (Appendix G pydantic, strict, round-trip tested);
+  `extract.py` (Stage A — one Haiku call per article over the Message Batches API, batch-cutoff
+  collect with an injected clock: ended→all, past-cutoff→cancel + sync the remainder, malformed
+  result dropped not fatal); `synthesize.py` (Stage B — one sync Sonnet call, structured output,
+  one-retry-on-schema-violation → None held); `verify.py` (the deterministic gate — Appendix E
+  tolerances for percent/money/number/date/ticker, held on a focus flag or >2 flags, verification
+  JSON records every decision); `stats.py` (the computed-stats table — movers as unsigned magnitudes
+  so an honest "fell 2.3%" is not flagged); `evening.py` (Job B orchestration, dependency-injected).
+- **Wiring:** Job A submits the extraction batch (deterministic sha1(provider|url) news ids so the
+  batch custom_id, the news_item row, and the citation URL all line up) and records batch_id on
+  pipeline_run. Job B: holiday preflight (non-session night → ping success, no row), collect →
+  synthesize → verify → publish_briefing (atomic; held nights recorded; PM edition preserved on an
+  AM rerun), weekly backup, revalidate, dead-man ping. Comes up key-free during buildout.
+- **Prisma v3:** `briefing` (am/pm JSON, verification_json, model_meta, status) + `journal_entry`;
+  migration `20260711195243_p3_briefing_and_journal` applied to Supabase.
+- **App (step 4):** `lib/briefing.ts` (zod parse — malformed → held — + pure view-model builder,
+  numbering only news-backed citations); `BriefArticle` (module 02 — display-italic Today's-focus
+  headline, labeled item slots, per-claim source superscripts linking to news_item URLs, one Academy
+  doorway gated on the empty-until-P5 manifest, neutral "briefing unavailable" on a held gate); the
+  `ScorecardPM` shell ("grading begins in P4") over the PM journal write (`journal_entry` server
+  action); wired into the morning loader and the Desk page; the seed writes a published briefing.
+- **Tests:** pipeline 162 passing + 13 CI-only DB-integration skips locally (45 new briefing tests:
+  schema 8, verify 13, extract 8, synthesize 4, evening 7, stats 5; plus 3 briefing-publish + 1
+  batch_id integration tests that run in CI); app 105 unit (briefing 11 incl. the mandatory
+  "zod rejects malformed briefing JSON" suite, journal 4) + a new MSM_SEEDED e2e briefing journey.
+  typecheck, lint, and the webpack build all green.
+- **Deferred within P3 (logged in DECISIONS):** the live late-news delta sweep (Job B runs with
+  late_news=None) — the batch already captures the day's news; the batch-cutoff fallback is built.
+- **STILL TO DO for the P3 exit gate (Blueprint P3):** five consecutive nights of real briefings in
+  which every number/ticker/date passes the gate (observe the week; workflow_dispatch reruns if a
+  night is missed); the batch-cutoff fallback drill exercised once for real; publish confirmed atomic
+  under a mid-publish request; the brief read on the phone ritual column and offline. Requires the
+  ANTHROPIC_API_KEY to be live and the jobs to run in the cloud.
+
 **P2 COMPLETE — tagged `phase-2` (2026-07-11).** The Desk explains itself. CI-green on the tag
 (app + pipeline + e2e incl. journey 4). Delivered: the five adapters (Finnhub/Marketaux/FMP/EDGAR/
 FRED-calendar, real fixtures); Prisma v2 (news_item, calendar_event); the catalyst matcher
