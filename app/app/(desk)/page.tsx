@@ -1,8 +1,10 @@
 import { SectionMasthead } from "@/components/SectionMasthead";
 import { StatFigure } from "@/components/StatFigure";
 import { MacroPulse } from "@/components/desk/MacroPulse";
+import { BriefArticle } from "@/components/desk/BriefArticle";
 import { Movers } from "@/components/desk/Movers";
 import { Watchlist } from "@/components/desk/Watchlist";
+import { ScorecardPM } from "@/components/desk/ScorecardPM";
 import { CalendarTimeline } from "@/components/desk/CalendarTimeline";
 import { SourceStatusFooter } from "@/components/desk/SourceStatusFooter";
 import { RailProvider } from "@/components/rail/Rail";
@@ -35,7 +37,6 @@ export const revalidate = 600;
 
 /** The modules not yet wired to data — masthead over a one-line note saying when they arrive. */
 const PLACEHOLDERS: Record<number, string> = {
-  2: "The evening briefing lands in P3.",
   6: "Probabilistic setup cards arrive in P4.",
   7: "Sector small multiples and scan presets arrive in P2–P4.",
   8: "The paper ledger and cost mirror arrive in P6.",
@@ -87,8 +88,12 @@ export default async function DeskPage() {
         <Placeholder index={1} title="Macro pulse" note="Index pulse and breadth arrive with the nightly ingest." />
       )}
 
-      {/* 02 — brief, not yet wired (P3). */}
-      <Placeholder index={2} title="Daily brief" note={PLACEHOLDERS[2]} />
+      {/* 02 — the evening briefing: the editorial centrepiece, or the placeholder until one is written. */}
+      {asOf && morning.brief ? (
+        <BriefArticle asOf={asOf} brief={morning.brief} />
+      ) : (
+        <Placeholder index={2} title="Daily brief" note="The evening briefing lands after the close." />
+      )}
 
       {/* 03 — Session calendar: earnings and macro events, or the placeholder until the ingest runs. */}
       {asOf && morning.calendar ? (
@@ -115,6 +120,11 @@ export default async function DeskPage() {
       <Placeholder index={6} title="Setup cards" note={PLACEHOLDERS[6]} />
       <Placeholder index={7} title="Sectors & scans" note={PLACEHOLDERS[7]} />
       <Placeholder index={8} title="Paper corner" note={PLACEHOLDERS[8]} />
+
+      {/* The evening counterpart to the morning ritual: the scorecard shell and the PM journal. It
+          is always present so the routine's shape is complete; the journal writes whether or not a
+          run is recorded, so it does not gate on asOf. */}
+      <ScorecardPM asOf={asOf ?? undefined} />
 
       {/* The provenance line: which sources ran, which degraded, and the FRED attribution. */}
       <SourceStatusFooter sources={morning.sources} />

@@ -1,6 +1,8 @@
 import { db } from "@/lib/db";
 import { directionOf, multiple, percent, price, signedPercent } from "@/lib/format";
 import { formatUtcDate } from "@/lib/time";
+import { buildBrief, parseBriefDraft, type BriefView } from "@/lib/briefing";
+import { isKnownLesson } from "@/lib/academy";
 import type { Direction } from "@/components/StatFigure";
 import type { Catalyst, Mover } from "@/components/desk/Movers";
 import type { CalendarRow } from "@/components/desk/CalendarTimeline";
@@ -237,6 +239,10 @@ export function buildWatchlist(sources: WatchSource[]): WatchRow[] {
 export type Morning = {
   asOf: string | null;
   macro: MacroView | null;
+  /** The evening briefing view-model, or null when no briefing is recorded yet (the Desk shows the
+   * placeholder). A "held" brief is a non-null view with status "held" — the module shows the
+   * "briefing unavailable" line, not the placeholder. */
+  brief: BriefView | null;
   movers: Mover[] | null;
   watch: WatchRow[] | null;
   calendar: CalendarRow[] | null;
@@ -258,14 +264,64 @@ function closesBy(rows: Array<{ symbol: string; close: number }>): Record<string
  */
 export async function getMorning(): Promise<Morning> {
   const asOf = await latestAsOf();
-  const [macro, movers, watch, calendar, sources] = await Promise.all([
+  const [macro, brief, movers, watch, calendar, sources] = await Promise.all([
     loadMacro(),
+    loadBrief(),
     loadMovers(),
     loadWatchlist(),
     loadCalendar(),
     loadSourceStatus(),
   ]);
-  return { asOf: asOf ? asOf.toISOString() : null, macro, movers, watch, calendar, sources };
+  return { asOf: asOf ? asOf.toISOString() : null, macro, brief, movers, watch, calendar, sources };
+}
+
+/**
+ * Load the latest evening briefing and turn it into the BriefArticle view-model.
+ *
+ * The stored JSON is validated at the boundary and its citation ids are resolved to the news
+ * articles behind them (so the superscripts link out); a held briefing yields a held view (the
+ * "unavailable" line), and an unreadable one degrades to null (the placeholder). learning_link_slug
+ * is gated against the Academy manifest, empty until P5, so early briefs carry no Learn doorway.
+ */
+async function loadBrief(): Promise<BriefView | null> {
+  try {
+    const row = await db.briefing.findFirst({
+      orderBy: { runDate: "desc" },
+      select: { status: true, amJson: true },
+    });
+    if (row === null) return null;
+
+    const resolver = await citationResolver(row.amJson);
+    return buildBrief({
+      status: row.status,
+      draft: row.amJson,
+      resolveCitation: (id) => resolver[id] ?? null,
+      isKnownLesson,
+    });
+  } catch (error) {
+    console.error("getMorning: could not load the briefing", error);
+    return null;
+  }
+}
+
+/**
+ * Resolve a briefing's citation ids to their news articles. Parses the draft to collect the ids it
+ * cites, then looks those up in news_item — a citation that is a computed stat (no matching news
+ * row) is simply absent, and buildBrief treats it as an unlinked, non-footnoted reference.
+ */
+async function citationResolver(amJson: unknown): Promise<Record<string, { url: string; source: string }>> {
+  const draft = parseBriefDraft(amJson);
+  if (draft === null) return {};
+
+  const ids = new Set<string>(draft.today_focus.citations);
+  for (const item of draft.items) for (const id of item.citations) ids.add(id);
+  if (ids.size === 0) return {};
+
+  const rows = await db.newsItem.findMany({
+    where: { id: { in: [...ids] } },
+    select: { id: true, url: true },
+  });
+  return Object.fromEntries(rows.map((r) => [r.id, { url: r.url, source: sourceLabel(r.url) }]));
 }
 
 async function loadCalendar(): Promise<CalendarRow[] | null> {
