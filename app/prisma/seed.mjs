@@ -157,6 +157,55 @@ const MARKET_CONTEXT = {
   pctAbove50dma: 0.61,
 };
 
+/** Base rates for the seeded cards — one large-N with a baseline-spanning CI (WEAK cap), one
+ * clear moderate, plus the always-up baselines. */
+const BASE_RATES = [
+  { patternKey: "golden-cross", universe: "large_mid", horizonDays: 10, regime: "risk_on",
+    n: 140, wins: 77, winRate: 0.55, ciLow: 0.47, ciHigh: 0.63, baselineUpRate: 0.54,
+    publicationYear: 1992, evidenceGrade: "weak", decayNote: "Weakened after Sullivan–Timmermann–White (1999)." },
+  { patternKey: "52w-high-proximity", universe: "large_mid", horizonDays: 10, regime: "risk_on",
+    n: 110, wins: 73, winRate: 0.66, ciLow: 0.57, ciHigh: 0.74, baselineUpRate: 0.54,
+    publicationYear: 2004, evidenceGrade: "mixed", decayNote: "George–Hwang (2004); regime-dependent." },
+];
+
+/** Setup cards demonstrating the three N-gate regimes and the WEAK cap:
+ *  - golden-cross (SPY): N=140, CI spans the 54% baseline ⇒ WEAK cap (RR Fig 9.3).
+ *  - 52w-high (QQQ):     N=110, clear of the baseline ⇒ moderate, full % + CI shown.
+ *  - unusual-volume (SMCI): N=18 ⇒ suppressed ("insufficient history"). */
+const SETUP_CARDS = [
+  { runDate: RUN_DATE, symbol: "SPY", patternKey: "golden-cross", tier: "weak", weakeners: {},
+    state: { direction: "up", winRate: 0.55, n: 140, ciLow: 0.47, ciHigh: 0.63, baseline: 0.54,
+             horizonDays: 10, regime: "risk_on", universe: "large_mid", evidenceGrade: "weak",
+             decayNote: "Weakened after Sullivan–Timmermann–White (1999).", publicationYear: 1992, fwdMedian: 0.004 } },
+  { runDate: RUN_DATE, symbol: "QQQ", patternKey: "52w-high-proximity", tier: "moderate", weakeners: { "low-rvol": true },
+    state: { direction: "up", winRate: 0.66, n: 110, ciLow: 0.57, ciHigh: 0.74, baseline: 0.54,
+             horizonDays: 10, regime: "risk_on", universe: "large_mid", evidenceGrade: "mixed",
+             decayNote: "George–Hwang (2004); regime-dependent.", publicationYear: 2004, fwdMedian: 0.012 } },
+  { runDate: RUN_DATE, symbol: "SMCI", patternKey: "unusual-volume", tier: "weak", weakeners: {},
+    state: { direction: "up", winRate: 0.61, n: 18, ciLow: 0.39, ciHigh: 0.80, baseline: 0.54,
+             horizonDays: 10, regime: "risk_on", universe: "large_mid", evidenceGrade: "mixed",
+             decayNote: "Gervais–Kaniel–Mingelgrin (2001); small effect.", publicationYear: 2001, fwdMedian: 0.02 } },
+];
+
+/** Vol bands for a watchlist name (AAPL), horizons 5/10/20, both coverage levels. */
+const VOL_BANDS = [
+  { runDate: RUN_DATE, symbol: "AAPL", horizonDays: 5, coverage: 0.5, lo: -0.02, hi: 0.021, label: "5 in 10 5-day paths stayed in this range" },
+  { runDate: RUN_DATE, symbol: "AAPL", horizonDays: 5, coverage: 0.8, lo: -0.04, hi: 0.043, label: "8 in 10 5-day paths stayed in this range" },
+  { runDate: RUN_DATE, symbol: "AAPL", horizonDays: 20, coverage: 0.8, lo: -0.09, hi: 0.10, label: "8 in 10 20-day paths stayed in this range" },
+];
+
+/** Fired signals and their resolved outcomes — the track record fills with hits and a miss. */
+const SIGNAL_LOGS = [
+  { id: "sig-spy", firedDate: new Date("2026-06-24T00:00:00.000Z"), symbol: "SPY", patternKey: "golden-cross", horizonDays: 10, resolvesOn: new Date("2026-07-08T00:00:00.000Z") },
+  { id: "sig-qqq", firedDate: new Date("2026-06-24T00:00:00.000Z"), symbol: "QQQ", patternKey: "52w-high-proximity", horizonDays: 10, resolvesOn: new Date("2026-07-08T00:00:00.000Z") },
+  { id: "sig-smci", firedDate: new Date("2026-06-23T00:00:00.000Z"), symbol: "SMCI", patternKey: "unusual-volume", horizonDays: 10, resolvesOn: new Date("2026-07-07T00:00:00.000Z") },
+];
+const RESOLUTIONS = [
+  { id: "res-spy", signalId: "sig-spy", outcome: "hit", resolvedAt: new Date("2026-07-08T00:30:00.000Z") },
+  { id: "res-qqq", signalId: "sig-qqq", outcome: "hit", resolvedAt: new Date("2026-07-08T00:30:00.000Z") },
+  { id: "res-smci", signalId: "sig-smci", outcome: "miss", resolvedAt: new Date("2026-07-07T00:30:00.000Z") },
+];
+
 function guardAgainstProduction() {
   const url = process.env.DATABASE_URL ?? "";
   const looksProd = /supabase\.(co|com)/i.test(url);
@@ -243,6 +292,31 @@ async function main() {
     update: BRIEFING,
     create: BRIEFING,
   });
+
+  // P4 — base rates (upsert by their unique key), setup cards + vol bands (replaced per run date).
+  for (const br of BASE_RATES) {
+    await db.baseRateStat.upsert({
+      where: { patternKey_universe_horizonDays_regime: {
+        patternKey: br.patternKey, universe: br.universe, horizonDays: br.horizonDays, regime: br.regime } },
+      update: br,
+      create: br,
+    });
+  }
+  await db.setupCard.deleteMany({ where: { runDate: RUN_DATE } });
+  for (const card of SETUP_CARDS) await db.setupCard.create({ data: card });
+  await db.volBand.deleteMany({ where: { runDate: RUN_DATE } });
+  for (const band of VOL_BANDS) await db.volBand.create({ data: band });
+
+  // Fired signals and their resolved outcomes (signal_log + signal_resolution are insert-only, so
+  // create only if absent — a re-seed must not attempt to overwrite them).
+  for (const sig of SIGNAL_LOGS) {
+    const exists = await db.signalLog.findUnique({ where: { id: sig.id }, select: { id: true } });
+    if (!exists) await db.signalLog.create({ data: sig });
+  }
+  for (const res of RESOLUTIONS) {
+    const exists = await db.signalResolution.findUnique({ where: { id: res.id }, select: { id: true } });
+    if (!exists) await db.signalResolution.create({ data: res });
+  }
 
   console.log(
     `Seeded: ${INSTRUMENTS.length} instruments, ${PRICE_HISTORY.length} price bars, ` +

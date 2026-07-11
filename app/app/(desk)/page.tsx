@@ -5,12 +5,14 @@ import { BriefArticle } from "@/components/desk/BriefArticle";
 import { Movers } from "@/components/desk/Movers";
 import { Watchlist } from "@/components/desk/Watchlist";
 import { ScorecardPM } from "@/components/desk/ScorecardPM";
+import { SetupCards } from "@/components/desk/SetupCards";
 import { CalendarTimeline } from "@/components/desk/CalendarTimeline";
 import { SourceStatusFooter } from "@/components/desk/SourceStatusFooter";
 import { RailProvider } from "@/components/rail/Rail";
 import { OfflineRibbon } from "@/components/OfflineRibbon";
 import { getLatestRun } from "@/lib/pipeline";
 import { getMorning } from "@/lib/morning";
+import { getTrackRecord } from "@/lib/track-record";
 import { formatEtDate, formatUtcDate } from "@/lib/time";
 
 /**
@@ -54,7 +56,7 @@ function Placeholder({ index, title, note }: { index: number; title: string; not
 }
 
 export default async function DeskPage() {
-  const [latest, morning] = await Promise.all([getLatestRun(), getMorning()]);
+  const [latest, morning, trackRecord] = await Promise.all([getLatestRun(), getMorning(), getTrackRecord(1)]);
   // The cached reads return ISO strings; reconstruct the Dates the components format.
   // A live module always carries an "as of" timestamp, and that timestamp comes from a recorded
   // run. If no run is recorded yet, asOf is null and every live module shows its placeholder — the
@@ -116,15 +118,21 @@ export default async function DeskPage() {
         <Placeholder index={5} title="Focus watchlist" note="Add names and the reason you are watching them." />
       )}
 
-      {/* 06–08 — setup cards, sectors/scans, paper corner, each arriving in a later phase. */}
-      <Placeholder index={6} title="Setup cards" note={PLACEHOLDERS[6]} />
+      {/* 06 — setup cards: the signature unit, or the placeholder until base rates publish. */}
+      {asOf && morning.setupCards ? (
+        <SetupCards asOf={asOf} cards={morning.setupCards} />
+      ) : (
+        <Placeholder index={6} title="Setup cards" note="Setup cards arrive with the nightly base rates." />
+      )}
+
+      {/* 07 — sectors/scans, arriving in a later phase. */}
       <Placeholder index={7} title="Sectors & scans" note={PLACEHOLDERS[7]} />
       <Placeholder index={8} title="Paper corner" note={PLACEHOLDERS[8]} />
 
       {/* The evening counterpart to the morning ritual: the scorecard shell and the PM journal. It
           is always present so the routine's shape is complete; the journal writes whether or not a
           run is recorded, so it does not gate on asOf. */}
-      <ScorecardPM asOf={asOf ?? undefined} />
+      <ScorecardPM asOf={asOf ?? undefined} resolved={trackRecord.summary} />
 
       {/* The provenance line: which sources ran, which degraded, and the FRED attribution. */}
       <SourceStatusFooter sources={morning.sources} />

@@ -32,6 +32,10 @@ export const copy = {
     insufficient: "Insufficient history (N = {n}) — treat as anecdote.",
     /** The always-up baseline, shown beside every base rate so 56% cannot masquerade as an edge. */
     baseline: "Unconditional {h}-day up-rate ≈ {pct} — read this against that baseline.",
+    /** N 30–99: the wide-interval note that MUST accompany the natural-frequency form (Appendix J
+     * addition, 2026-07-11 — the plan mandates the note but left the wording to compose; logged in
+     * DECISIONS). Renders in place of the CI numerals, which are suppressed at this sample size. */
+    wideInterval: "Sample still small — the true rate could sit some way either side of this.",
   },
 
   /**

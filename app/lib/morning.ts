@@ -3,6 +3,10 @@ import { directionOf, multiple, percent, price, signedPercent } from "@/lib/form
 import { formatUtcDate } from "@/lib/time";
 import { buildBrief, parseBriefDraft, type BriefView } from "@/lib/briefing";
 import { isKnownLesson } from "@/lib/academy";
+import { patternCause, patternLabel } from "@/lib/patterns";
+import { weakenersFor } from "@/lib/weakeners";
+import type { SetupCardView } from "@/components/desk/SetupCards";
+import type { Tier } from "@/lib/constants";
 import type { Direction } from "@/components/StatFigure";
 import type { Catalyst, Mover } from "@/components/desk/Movers";
 import type { CalendarRow } from "@/components/desk/CalendarTimeline";
@@ -243,6 +247,8 @@ export type Morning = {
    * placeholder). A "held" brief is a non-null view with status "held" — the module shows the
    * "briefing unavailable" line, not the placeholder. */
   brief: BriefView | null;
+  /** The setup cards for the run — an empty array when the module is wired but nothing fired. */
+  setupCards: SetupCardView[] | null;
   movers: Mover[] | null;
   watch: WatchRow[] | null;
   calendar: CalendarRow[] | null;
@@ -264,15 +270,73 @@ function closesBy(rows: Array<{ symbol: string; close: number }>): Record<string
  */
 export async function getMorning(): Promise<Morning> {
   const asOf = await latestAsOf();
-  const [macro, brief, movers, watch, calendar, sources] = await Promise.all([
+  const [macro, brief, setupCards, movers, watch, calendar, sources] = await Promise.all([
     loadMacro(),
     loadBrief(),
+    loadSetupCards(),
     loadMovers(),
     loadWatchlist(),
     loadCalendar(),
     loadSourceStatus(),
   ]);
-  return { asOf: asOf ? asOf.toISOString() : null, macro, brief, movers, watch, calendar, sources };
+  return { asOf: asOf ? asOf.toISOString() : null, macro, brief, setupCards, movers, watch, calendar, sources };
+}
+
+/**
+ * Load the latest run's setup cards into view-models for module 06. Each card's stored state carries
+ * the base-rate figures the pipeline computed; this maps them onto the shared BaseRate data shape
+ * (the app renders, never derives) and attaches the per-pattern weakener items with their saved
+ * checkbox state. A read failure degrades the module to a placeholder, never the Desk.
+ */
+async function loadSetupCards(): Promise<SetupCardView[] | null> {
+  try {
+    const latest = await db.setupCard.findFirst({ orderBy: { runDate: "desc" }, select: { runDate: true } });
+    if (latest === null) return [];
+    const rows = await db.setupCard.findMany({
+      where: { runDate: latest.runDate },
+      orderBy: [{ tier: "asc" }, { symbol: "asc" }],
+      select: { id: true, symbol: true, patternKey: true, tier: true, state: true, weakeners: true },
+    });
+    return rows.map((row) => {
+      const state = (row.state ?? {}) as Record<string, unknown>;
+      const n = Number(state.n ?? 0);
+      const winRate = Number(state.winRate ?? 0);
+      return {
+        id: row.id,
+        symbol: row.symbol,
+        patternKey: row.patternKey,
+        patternLabel: patternLabel(row.patternKey),
+        tier: row.tier as Tier,
+        cause: patternCause(row.patternKey),
+        baseRate: {
+          n,
+          wins: Math.round(winRate * n),
+          winRate,
+          ciLow: Number(state.ciLow ?? 0),
+          ciHigh: Number(state.ciHigh ?? 0),
+          baseline: state.baseline == null ? null : Number(state.baseline),
+          horizonDays: Number(state.horizonDays ?? 10),
+          refClass: refClassLabel(String(state.universe ?? "")),
+          publicationYear: state.publicationYear == null ? null : Number(state.publicationYear),
+          evidenceGrade: (state.evidenceGrade as SetupCardView["baseRate"]["evidenceGrade"]) ?? null,
+          decayNote: (state.decayNote as string | null) ?? null,
+        },
+        weakeners: weakenersFor(row.patternKey),
+        weakenerState: (row.weakeners ?? {}) as Record<string, boolean>,
+        learnSlug: null, // the Academy manifest is empty until P5 — no doorway yet
+      };
+    });
+  } catch (error) {
+    console.error("getMorning: could not load setup cards", error);
+    return null;
+  }
+}
+
+/** The reference-class label the base-rate sentence reads ("US large/mid", "US small"). */
+function refClassLabel(universe: string): string {
+  if (universe === "large_mid") return "US large/mid names";
+  if (universe === "small") return "US small-cap names";
+  return "US names";
 }
 
 /**
