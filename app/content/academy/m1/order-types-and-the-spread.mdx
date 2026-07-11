@@ -1,0 +1,51 @@
+---
+module: M1
+slug: order-types-and-the-spread
+title: Order types and the spread
+minutes: 4
+concepts: [market-order, limit-order, bid-ask-spread, slippage]
+order: 3
+questions:
+  - q: What is the difference between a market order and a limit order?
+    a: A market order fills right away at whatever price is available, trading certainty of execution for uncertainty of price. A limit order sets the worst price the reader will accept, trading certainty of price for the chance it does not fill.
+  - q: Why is a market order at the US open expensive?
+    a: Because spreads are widest in the first 30 minutes — over 20 basis points on large S&P 500 names at the open versus under 5 basis points late in the day. A market order pays that spread, so paying it at its widest is the costliest time to trade.
+  - q: What is slippage?
+    a: The gap between the price a reader expected and the price actually filled. Wide spreads and thin liquidity make slippage worse, and market orders absorb it in full.
+---
+
+This lesson is the closest thing to free money the app can offer: not a strategy, just the plumbing of how an order fills. Understanding it costs nothing and saves real money, which is why Part 6 of the research calls execution knowledge an edge relative to ignorance rather than an edge over the market.
+
+## Two orders, two trade-offs
+
+Every trade is placed as one of two basic order types.
+
+- A **market order** says "fill me now, at whatever price is available". It trades certainty of *execution* for uncertainty of *price*. It will almost always fill immediately — but at a price the reader does not get to choose.
+- A **limit order** says "fill me only at this price or better". It trades certainty of *price* for uncertainty of *execution*. It protects the reader from a bad fill, at the cost that it may not fill at all if the market moves away.
+
+Neither is right for every moment. But the app has a default, and it is the limit order — for reasons that come down to the spread.
+
+## The spread is a real cost
+
+At any instant a stock has two quoted prices: the highest price a buyer will pay (the bid) and the lowest price a seller will accept (the ask). The **bid-ask spread** is the gap between them. A market buy pays the ask; a market sell receives the bid. So crossing the spread is a cost paid on every market order, every time — an invisible fee that never appears on a statement.
+
+The gap between the price a reader expected and the price actually filled is **slippage**. Wide spreads and thin liquidity make slippage worse, and a market order absorbs all of it.
+
+## Why the open is the worst time for a market order
+
+Spreads are not constant through the day. They are **widest in the first 30 minutes** and tighten as the session settles:
+
+- over **20 basis points** on large S&P 500 names at the open, versus
+- under **5 basis points** late in the day.
+
+That is roughly a fourfold difference in cost for the identical trade, decided only by *when* it is sent. A market order at 9:31am pays the spread at its very widest. The same order mid-afternoon pays a quarter as much. This is the opening-30-minutes volatility from the previous lesson, felt as a bill.
+
+## The default: prefer limit orders
+
+So the plain rule the app teaches is this:
+
+- **Prefer a limit order by default.** Set the worst price acceptable and let the order wait. This caps the spread cost instead of paying it blind.
+- **Avoid market orders at the open**, where the spread — and therefore the slippage — is at its widest.
+- If a market order is genuinely needed, the deep, tight **closing auction** is a far cheaper moment than the open.
+
+None of this predicts direction. It only stops a reader from handing back, in execution cost, whatever small edge a good decision might have earned.

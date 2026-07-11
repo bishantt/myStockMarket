@@ -49,7 +49,17 @@ describe("MacroPulse", () => {
 
   it("states breadth in plain factual terms, no colour", () => {
     render(<MacroPulse {...PROPS} />);
-    expect(screen.getByText(/2100 advancing · 1400 declining/)).toBeInTheDocument();
-    expect(screen.getByText(/58% above the 50-day average/)).toBeInTheDocument();
+    // The counts and the percentage are shown; glossary terms (advancing, 50-day average) are
+    // dotted-underline controls, so the surrounding text is split across nodes — assert the parts.
+    expect(screen.getByText(/2100/)).toBeInTheDocument();
+    expect(screen.getByText(/1400 declining/)).toBeInTheDocument();
+    expect(screen.getByText(/58% above the/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "50-day average" })).toBeInTheDocument();
+  });
+
+  it("decorates breadth terms as glossary popovers (first occurrence)", () => {
+    render(<MacroPulse {...PROPS} />);
+    expect(screen.getByRole("button", { name: "Breadth" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "advancing" })).toBeInTheDocument();
   });
 });

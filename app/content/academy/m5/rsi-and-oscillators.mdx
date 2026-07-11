@@ -1,0 +1,39 @@
+---
+module: M5
+slug: rsi-and-oscillators
+title: RSI and oscillators
+minutes: 4
+concepts: [rsi, macd, bollinger-bands]
+order: 2
+questions:
+  - q: What does RSI measure, and what do the usual 70 and 30 lines mean?
+    a: RSI compares recent up-moves to recent down-moves on a 0–100 scale. Above 70 is conventionally called overbought and below 30 oversold — but those are just labels on a smoothed ratio, not signals with a demonstrated edge.
+  - q: The evidence on oscillators is graded weak. Where do the positive findings come from?
+    a: From parameter tuning. At standard settings, RSI and the common oscillators show no significant net profits in developed markets. The wins appear only after someone searches for the settings that would have worked on that history — which invites data-snooping.
+  - q: Can an individual trader capture an edge from oscillators after costs?
+    a: The ledger's retail-capture answer is none. Even the tuned findings do not survive real trading costs for a private investor.
+---
+
+Oscillators are indicators that swing back and forth inside a bounded range, meant to flag when a move has gone "too far". Three are unavoidable in a beginner's first month. Here is each one plainly, followed by what the record actually shows.
+
+## The three you will meet
+
+- **RSI**, the relative strength index, compares the size of recent up-moves to recent down-moves and reports the result on a 0-to-100 scale. The convention calls readings above 70 "overbought" and below 30 "oversold". Those are just names painted on a smoothed ratio; the ratio does not know what price will do next.
+- **MACD**, moving-average convergence divergence, is the gap between a fast and a slow moving average, plotted with a signal line. When the two lines cross, chart readers call it a momentum shift. It is the same moving-average arithmetic from the previous lesson, dressed in a different chart.
+- **Bollinger bands** wrap a moving average in an upper and lower band set a couple of standard deviations away. Price touching a band is read as "stretched". The bands widen when recent volatility rises and narrow when it falls — that part is honest description; the trading rules attached to it are the disputed part.
+
+## What the evidence finds
+
+The app grades RSI and the standard oscillators **weak**, and the finding is blunt:
+
+> At standard settings, RSI and the common oscillators show no significant net profits in developed markets. The positive results that circulate come from parameter tuning — searching after the fact for the window lengths and thresholds that would have worked on a particular history.
+
+That searching is the same trap the golden-cross lesson describes. Try enough settings on one dataset and one combination will look profitable by chance. It is data-snooping, and it does not repeat on fresh data.
+
+The ledger's retail-capture column answers **none**. Even where a tuned setting looks good on paper, it does not survive real trading costs for a private investor. So the honest reading of an oscillator is that it is a way to *describe* a chart — stretched, smoothed, crossed — not a way to beat holding.
+
+## Why the app still shows the scan, weakly
+
+The app carries an RSI-extreme scan, and it is graded **weak** on purpose. Showing it with an honest grade is more useful than hiding it, because the reader will meet RSI everywhere else and deserves to know what the research says. A weak grade beside the scan is the app telling the truth: this is folklore-adjacent, tune-to-fit evidence, not a demonstrated edge.
+
+To see the RSI-extreme scan carry its weak grade, open `/scans`. To understand why tuned-in-sample results mean so little, read `/academy/moving-averages-and-the-golden-cross`.

@@ -1,0 +1,33 @@
+---
+module: M3
+slug: stops-and-invalidation
+title: Stops and invalidation
+minutes: 4
+concepts: [atr]
+order: 2
+questions:
+  - q: What does "invalidation" mean for a trade?
+    a: The point decided in advance at which the idea has been proven wrong. It is chosen before the trade is opened, when judgment is clear, not after, when hope has taken over.
+  - q: Why size a stop by ATR instead of a round number?
+    a: ATR (average true range) measures the stock's normal daily movement, so an ATR-based stop sits outside routine noise. A round number is arbitrary and may sit right inside the range the stock wanders through on a quiet day.
+  - q: What behavioral trap is a pre-set stop a defense against?
+    a: The disposition effect — the tendency to hold losers hoping they come back while selling winners early. A stop decided in advance takes the decision out of the moment when that bias is strongest.
+---
+
+A trade needs an answer to one question before it is opened: at what point is this idea wrong? That answer is the **invalidation** level, and deciding it in advance is what separates a plan from a hope.
+
+## Decide where you are wrong before you are in
+
+**Invalidation** is the price at which the reason for the trade no longer holds. If the idea was "this level has held before", invalidation is the price that breaks that level. The key is timing: the level is chosen before the position exists, while judgment is calm. Once money is on the line, the mind quietly rewrites the plan — a clear "I was wrong" becomes "it will come back". Writing the invalidation down first locks in the honest answer before the pressure arrives.
+
+## Size the stop by volatility, not by a round number
+
+A stop is where the position is closed when invalidation is reached. The mistake is placing it at a tidy round number — a fixed percentage, or a whole figure that looks clean. Round numbers have nothing to do with how the stock actually moves.
+
+The app sizes stops with **ATR**, the **average true range** — the average of the stock's daily range over a recent window, a plain measure of its normal movement. A stop set some multiple of ATR away sits outside the noise the stock makes on an ordinary day. This matters because a stop placed too tight, inside the normal range, gets hit by routine wiggle and closes a trade that was never actually wrong. Sizing by ATR lets the stop reflect the stock's own volatility: a calm name gets a tight stop, a jumpy name gets a wider one, and both sit past the everyday noise rather than inside it.
+
+## A stop is a pre-commitment
+
+The deeper reason to set a stop is behavioral. The **disposition effect** is the well-documented habit of selling winners too early and holding losers too long, waiting for them to come back. In the evidence, the winners sold went on to beat the losers kept by about 3.4 percentage points over the following year — holding the loser was the costlier choice. A stop decided in advance is a pre-commitment against exactly this pull. It makes the exit a rule set when you were thinking clearly, not a negotiation you have with yourself while the position is red.
+
+Sizing and stops together define the risk on a single trade. The next lesson adds up many trades: [expectancy and drawdown math](/academy/m3/expectancy-and-drawdown-math).

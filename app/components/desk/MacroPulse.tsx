@@ -1,3 +1,4 @@
+import { GlossaryTerm } from "@/components/GlossaryTerm";
 import { SectionMasthead } from "@/components/SectionMasthead";
 import { StatFigure, type Direction } from "@/components/StatFigure";
 
@@ -60,12 +61,16 @@ export function MacroPulse({ asOf, spx, indices, breadth, vix, tenYear }: MacroP
 
         {/* Breadth strip — quiet, factual, no colour: advancers/decliners and % above the 50-day. */}
         <div className="flex flex-wrap items-baseline gap-x-8 gap-y-1 border-t border-hairline pt-3">
-          <span className="font-ui text-2xs uppercase tracking-[0.06em] text-muted">Breadth</span>
-          <span className="font-mono text-sm text-ink-2">
-            {breadth.advancers} advancing · {breadth.decliners} declining
+          <span className="font-ui text-2xs uppercase tracking-[0.06em] text-muted">
+            <GlossaryTerm term="breadth">Breadth</GlossaryTerm>
           </span>
           <span className="font-mono text-sm text-ink-2">
-            {breadth.pctAbove50dma} above the 50-day average
+            {breadth.advancers} <GlossaryTerm term="advance-decline">advancing</GlossaryTerm> ·{" "}
+            {breadth.decliners} declining
+          </span>
+          <span className="font-mono text-sm text-ink-2">
+            {breadth.pctAbove50dma} above the{" "}
+            <GlossaryTerm term="50-day-average">50-day average</GlossaryTerm>
           </span>
         </div>
       </div>

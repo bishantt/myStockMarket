@@ -1,0 +1,44 @@
+---
+module: M3
+slug: expectancy-and-drawdown-math
+title: Expectancy and drawdown math
+minutes: 5
+concepts: [expectancy, drawdown]
+order: 3
+questions:
+  - q: How is expectancy calculated, and why can a high win rate still lose money?
+    a: Expectancy = (win rate × average win) − (loss rate × average loss). A high win rate can still lose money if the average loss is large enough that the rare losses outweigh the frequent small wins.
+  - q: A position falls 50%. What gain is needed to get back to even?
+    a: A 100% gain. Losses and recoveries are not symmetric — the deeper the drawdown, the disproportionately larger the gain required to recover it.
+  - q: Why does the app show every effect together with its worst historical crash?
+    a: Because the average return hides the tail. Momentum, for example, has crashed −73% and −91% in the historical record. Showing the effect without its crash profile is marketing, not honesty.
+---
+
+A single trade can be judged by its idea and its size. A strategy can only be judged by arithmetic. Two numbers do most of that work: expectancy, which says whether the edge is real, and drawdown, which says whether you could survive it.
+
+## Expectancy: the win rate is only half the story
+
+**Expectancy** is the average amount a trade makes or loses, taken over many trades. The formula is plain:
+
+> expectancy = (win rate × average win) − (loss rate × average loss)
+
+The lesson hidden in it is that the win rate alone tells you almost nothing. A strategy can win 70% of the time and still lose money if the 30% of losses are large enough. Suppose it wins 70 times for a small gain each and loses 30 times for a large amount each — the frequent small wins get swamped by the rare big losses, and expectancy is negative. The reverse is also true: a strategy that wins only 40% of the time can be strongly profitable if its wins are much bigger than its losses. This is why the app never shows a win rate on its own. A win rate without the payoff distribution beside it is a number designed to mislead.
+
+## Drawdown and the arithmetic of recovery
+
+A **drawdown** is the drop from a peak in the account down to a later low. The trap in it is that losses and recoveries are not symmetric.
+
+- A 10% loss needs about an 11% gain to recover.
+- A 25% loss needs a 33% gain.
+- A 50% loss needs a 100% gain — the position must double just to get back to where it started.
+- An 80% loss needs a 400% gain.
+
+The deeper the hole, the disproportionately larger the climb out. This is the real reason sizing and stops come first in this module: they exist to keep drawdowns in the shallow part of that curve, where recovery is ordinary rather than heroic. A strategy with a fine expectancy can still be unusable if the path there passes through a drawdown too deep to recover from — or too deep to sit through without abandoning it at the bottom.
+
+## Every effect paired with its worst tail
+
+This is why the app shows a crash profile next to every effect it presents. The average return is not the whole truth; the tail is. Cross-sectional momentum is the clearest case. It is one of the few **supported** effects in the research ledger, historically about 1% per month gross, replicated across eight asset classes and two centuries. And it carries one of the ugliest tails on record: roughly **−73%** in March to May 2009 and **−91%** in July to August 1932, gross. An account that met that tail at full size would not have survived to collect the average.
+
+So the app's rule is blunt: any presentation of an effect without its crash profile is marketing. The strong headline number and the worst historical drawdown belong on the same card, because you cannot size a strategy you have only seen the good half of.
+
+The last lesson in this module steps back to ask why a base rate beats a good story at all: [why base rates beat anecdotes](/academy/m3/why-base-rates-beat-anecdotes).

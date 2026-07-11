@@ -1,6 +1,16 @@
 import { db } from "@/lib/db";
+import { GlossaryTerm } from "@/components/GlossaryTerm";
 import { Tag } from "@/components/Tag";
 import { SCAN_PRESETS } from "@/lib/scan-presets";
+
+/** Each preset's core concept, so its label carries a glossary doorway into the Academy. */
+const PRESET_GLOSSARY: Record<string, string> = {
+  "unusual-volume": "rvol",
+  "near-52w-high": "52-week-high",
+  "gap-3plus": "gap",
+  "golden-cross-fresh": "golden-cross",
+  "rsi-extreme": "rsi",
+};
 
 /**
  * /scans — the five scan presets with fully visible criteria (plan §9.2, Appendix F, P4 step 6).
@@ -53,7 +63,13 @@ export default async function ScansPage() {
           return (
             <li key={preset.key} className="border-t border-hairline pt-4 first:border-t-0 first:pt-0">
               <div className="flex flex-wrap items-baseline gap-3">
-                <h2 className="font-ui text-base font-semibold text-ink">{preset.label}</h2>
+                <h2 className="font-ui text-base font-semibold text-ink">
+                  {PRESET_GLOSSARY[preset.key] ? (
+                    <GlossaryTerm term={PRESET_GLOSSARY[preset.key]}>{preset.label}</GlossaryTerm>
+                  ) : (
+                    preset.label
+                  )}
+                </h2>
                 {preset.folklore ? (
                   <Tag variant="folklore" />
                 ) : (

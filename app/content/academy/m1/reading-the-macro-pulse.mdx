@@ -1,0 +1,46 @@
+---
+module: M1
+slug: reading-the-macro-pulse
+title: Reading the macro pulse
+minutes: 5
+concepts: [breadth, advance-decline, vix, fomc, cpi, jobs-report]
+order: 4
+questions:
+  - q: What does market breadth measure, and how does the Macro pulse show it?
+    a: Breadth measures how broadly a move is shared across stocks, not just where the index closed. The pulse shows it as the advance-decline line — how many names rose versus fell — and the share of stocks trading above their own 50-day average.
+  - q: The pulse flags a scheduled CPI release tomorrow. Can the reader trade the expected direction?
+    a: No. Macro prints reliably spike intraday volatility, roughly 3 to 6 times normal in the minutes around release, but the direction of the reaction is not predictable from the headline surprise. The pulse marks the date so the reader expects turbulence, not so they bet on it.
+  - q: Is a breadth cross a trade signal?
+    a: No. A breadth cross is a context signal — it describes the market's backdrop. The app treats it as context to read the day against, never as an instruction to act.
+---
+
+The Desk's **Macro pulse** module answers one question: what is the weather over the whole market today, and what is scheduled that could change it. It is context, not instruction. This lesson also serves as the Learn doorway for the breadth-regime pattern.
+
+## Breadth: is the move shared
+
+An index level hides how a day was really made. A handful of giant stocks can drag the index up while most names fall. **Breadth** measures how broadly a move is shared, and the pulse shows it two ways:
+
+- The **advance-decline** line — how many stocks rose versus how many fell. A green index on negative advance-decline is a narrow, fragile move.
+- The share of stocks trading **above their own 50-day average** — a simple gauge of how much of the market is in an uptrend of its own, not just riding the leaders.
+
+Together these say whether strength is widespread or resting on a few shoulders.
+
+## The VIX: expected turbulence, not direction
+
+The pulse also shows the **VIX**, a gauge built from S&P 500 option prices that reads out the market's *implied volatility* — how large a move traders are collectively paying to protect against over the next month. A high VIX means the crowd expects a bumpier ride. It says nothing about which way. It is a thermometer for expected turbulence, read strictly as size, never as a forecast of up or down.
+
+## The scheduled prints
+
+Some volatility is on the calendar. The pulse marks the big scheduled macro releases:
+
+- **FOMC** — the Federal Reserve's interest-rate decisions and statements.
+- **CPI** — the monthly inflation report.
+- The **jobs report** — the monthly US employment figures.
+
+Around these releases, intraday volatility reliably spikes — roughly **3 to 6 times normal** in the minutes after the print. That part is dependable. What is *not* dependable is the direction: markets react to revisions, composition, and how the number lands against expectations, not to the headline surprise alone. So the pulse flags these dates so a reader **expects turbulence and sizes orders accordingly**, never so they wager on the outcome. Knowing a storm is coming is not the same as knowing which way the wind will blow.
+
+## A breadth cross is context, not a trade
+
+The breadth reading feeds a pattern the app tracks — a **breadth-regime** signal, where breadth crossing a threshold marks a shift in the market's backdrop. Read the honest framing carefully: a breadth cross is a **context signal, not a trade**. It colors how the rest of the day's evidence should be read; it is never itself an instruction to act. That is the same discipline the app applies everywhere — a tendency and a backdrop are descriptions, and the decision stays with the reader.
+
+To see how the app grades its own signals in public, including breadth, visit `/track-record`.

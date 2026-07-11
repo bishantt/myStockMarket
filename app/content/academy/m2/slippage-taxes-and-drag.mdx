@@ -1,0 +1,42 @@
+---
+module: M2
+slug: slippage-taxes-and-drag
+title: Slippage, taxes, and drag
+minutes: 4
+concepts: [slippage]
+order: 2
+questions:
+  - q: What is slippage, and when is it worst?
+    a: Slippage is the gap between the price a trader expected and the price the order actually filled at. It is worst in thin or fast-moving markets, where the quote moves before the order completes.
+  - q: How does short-term capital-gains tax act as a drag on active trading?
+    a: Selling a position held for a short time realizes a short-term gain, taxed at a higher rate than a long-term gain. Frequent selling keeps turning gains into taxable events, so the tax is paid sooner and more often.
+  - q: What did Barber & Odean find about the most active traders, and what caused it?
+    a: Across 66,000 US households, the most active quintile underperformed by about 6.5 percentage points per year. That drag was almost exactly equal to their trading costs — the activity itself, not bad stock picks, did the damage.
+---
+
+The spread is the visible cost of a round trip. Two more costs ride alongside it, and together they explain a result that the evidence states plainly.
+
+## Slippage: the price that moves before you do
+
+**Slippage** is the gap between the price a trader expected and the price the order actually filled at. A quote is a snapshot; by the time an order reaches the market, the snapshot may be stale. In a deep, calm market the gap is tiny. In a thin market, or a fast-moving one, the price can move several ticks between the decision and the fill.
+
+- **Thin markets** — few resting orders, so a market order walks up the book to worse prices.
+- **Fast markets** — the quote is already moving, and the fill lands behind it.
+
+Slippage is worst exactly when a trader most wants to act quickly: news, a sharp move, the first minutes after the open. It is the cost of demanding immediacy, and it does not appear on any statement.
+
+## Short-term tax: the drag on selling often
+
+There is a second, slower drag. In the US, a gain on a position held a short time is a **short-term capital gain**, taxed at a higher rate than a long-term gain on a position held longer. Active trading realizes gains constantly, so it keeps converting paper gains into taxable events at the higher rate, paid sooner rather than deferred. The more often a trader sells, the more of each gain the tax takes. Holding, by contrast, defers the tax and can qualify it at the lower long-term rate. The tax code quietly rewards patience.
+
+## The costs compound into a measurable drag
+
+Spread, slippage, and tax are each small on one trade. Trade often and they stack, and the stack is not hypothetical. It has been measured.
+
+Barber & Odean studied the trading records of **66,000 US households**. They sorted the households by how much they traded and compared the results:
+
+> The most active quintile underperformed by about **6.5 percentage points per year** — a drag almost exactly equal to their trading costs.
+
+The size of the finding is the point. The gap was not caused by the active traders picking worse stocks. It matched their costs. The activity itself was the drag. Trading more did not find them an edge that paid for the extra cost — it simply cost more.
+
+This is the evidence behind the app's stance on frequency. It is not a moral lesson about patience; it is an arithmetic one. Costs are paid every time, edges are not, and the difference compounds against the trader who acts most. The next lesson shows the widget the app uses to make that arithmetic visible before the trades are made.

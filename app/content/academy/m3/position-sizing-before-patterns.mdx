@@ -1,0 +1,42 @@
+---
+module: M3
+slug: position-sizing-before-patterns
+title: Position sizing before patterns
+minutes: 4
+concepts: [half-kelly]
+order: 1
+questions:
+  - q: What matters more, the pattern a trade is based on or the amount risked on it?
+    a: The amount risked. A good pattern sized too large can still ruin an account, while a mediocre idea sized small survives being wrong. Sizing is the first decision, not the last.
+  - q: Where does the app get the win rate it uses for the half-Kelly cap?
+    a: From the lower bound of the confidence interval on the historical win rate, not the point estimate. Using the humble end of the range keeps the size honest when the sample is small or noisy.
+  - q: Is the half-Kelly number a conviction dial the user can turn up?
+    a: No. It is computed from the stored win-rate interval and the payoff distribution, and it inherits the card's cost caveats. It is a ceiling the evidence sets, not a feeling the user sets.
+---
+
+Most trading education starts with what to buy. This module starts one step earlier, with how much to risk, because that decision does more to your account than any pattern does. A strong setup sized too large can still end an account. A weak idea sized small is survivable. Size comes first.
+
+## The amount decides the outcome more than the pattern
+
+Two traders can hold the exact same position and end up in different worlds. The one who risked a small slice of the account can be wrong many times and keep going. The one who risked most of the account is one bad trade from the exit. The pattern was identical; the sizing was not. This is why the app treats sizing as the first thing to get right, and patterns as something you only reach for once the sizing rules are in place.
+
+## The half-Kelly cap
+
+The app sizes paper positions with a **half-Kelly** cap. Kelly is a formula for the bet size that grows an account fastest given a known edge. It needs two inputs: how often the trade wins, and how much it pays when it wins versus loses.
+
+The app builds those inputs honestly:
+
+- **The win rate is the lower bound of its confidence interval**, never the headline percentage. If the history says "60%, interval 52% to 68%", the cap is computed from the 52%. The humble end of the range is used on purpose, so a small or noisy sample cannot flatter the size.
+- **The payoff comes from the stored distribution** of past wins and losses for that setup, not a guess about how far the trade might run.
+
+Then the result is halved. That is the "half" in half-Kelly.
+
+## Why half, and why the lower bound
+
+Full Kelly assumes the edge is known exactly. Real edges are estimated from limited history, and an overstated edge makes full Kelly bet far too large — a single bad streak can cut an account in half. Halving the bet gives up a little growth in exchange for a much smoother ride and a large margin against an edge that turns out weaker than measured. Taking the win rate from the interval's lower bound adds a second layer of humility: the app sizes as if the true edge sits at the pessimistic end of what the data supports.
+
+## It is a ceiling, not a dial
+
+The half-Kelly number is not a conviction setting. The user cannot turn it up because a trade "feels" strong. It is computed from the stored numbers, and it **inherits the card's cost caveats** — if the setup's evidence is thin or its costs are high, the cap comes down with it. The size is something the evidence hands you, not something you argue for.
+
+Once sizing is settled, the next question is where the idea is wrong. That is [stops and invalidation](/academy/m3/stops-and-invalidation).

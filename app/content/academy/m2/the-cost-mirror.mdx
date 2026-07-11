@@ -1,0 +1,43 @@
+---
+module: M2
+slug: the-cost-mirror
+title: The cost mirror
+minutes: 4
+concepts: []
+order: 3
+questions:
+  - q: What does the Cost Mirror compute, and from which two numbers?
+    a: It projects the trader's annual drag from costs. The projection is the effective spread multiplied by the trader's own turnover — their real cost per round trip times how often they actually trade.
+  - q: What external brake on overtrading was removed in June 2026, and what did the app do in response?
+    a: FINRA eliminated the $25,000 pattern-day-trader rule effective June 4, 2026, removing the last external limit on beginner overtrading. The app supplies its own friction instead — the cost mirror, a trade-frequency mirror, and cooling-off prompts.
+  - q: Why show a projected cost before the trade rather than a bill after it?
+    a: Because the drag is otherwise invisible until it has already been paid. Showing it in advance turns a hidden, compounding cost into a number the trader can see and weigh before acting.
+---
+
+The first two lessons measured what a round trip costs and how the costs compound into a yearly drag. The **Cost Mirror** is the app's answer: a widget that shows a trader that drag in their own numbers, before it is paid.
+
+## What the mirror computes
+
+The projection is deliberately simple, so it stays honest:
+
+> projected annual drag = effective spread × the trader's own turnover
+
+Both inputs are the trader's own. The **effective spread** is the real cost measured from their fills, not a market average. The **turnover** is how much they actually trade over a year. Multiply the two and the result is a plain estimate of how much of a year's capital will be handed to costs at the current pace. It is a mirror, not a forecast — it reflects the trader's own behavior back at them, and it makes no claim about returns.
+
+## Why the app supplies its own friction
+
+For years, one external rule slowed beginner overtrading: the pattern-day-trader rule, which required a $25,000 balance to day-trade freely. **FINRA eliminated that rule effective June 4, 2026**, replacing it with broker-set intraday margin. The last outside brake on a beginner trading too often was gone.
+
+The app treats that as a gap to fill, not a freedom to celebrate. Where the regulator stepped back, the app supplies its own friction — gentle, informational, never a block:
+
+- the **Cost Mirror** — the projected annual drag, described above.
+- a **trade-frequency mirror** — how often the account has been trading, shown plainly.
+- **cooling-off prompts** — a pause before a rapid repeat trade.
+
+None of these forbids anything. The account is the trader's. The app's job is to make the cost of a choice visible at the moment of the choice, not to make the choice.
+
+## Making an invisible cost visible
+
+The whole reason costs do their damage is that they are hidden. The spread is buried in a fill price; slippage never appears on a statement; the yearly drag only shows up in a return that could have been higher. By the time it is felt, it has already been paid. The Cost Mirror moves that number in front of the trade instead of behind it — the same honesty the app applies to every base rate, turned on the trader's own costs.
+
+The app grades its own claims in public on [/track-record](/track-record), misses first. The Cost Mirror is the same discipline pointed inward: an honest number, shown before it is paid, so the trader can weigh it while the choice is still open.

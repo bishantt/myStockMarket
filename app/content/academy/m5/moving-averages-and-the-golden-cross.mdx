@@ -1,0 +1,48 @@
+---
+module: M5
+slug: moving-averages-and-the-golden-cross
+title: Moving averages and the golden cross
+minutes: 5
+concepts: [50-day-average, 200-day-average, golden-cross]
+order: 1
+questions:
+  - q: What is a golden cross?
+    a: It is the moment the 50-day average rises above the 200-day average. It is a lagging description of past prices crossing over, not a forecast of future ones.
+  - q: The golden cross beat the Dow for ninety years in the data. Why does the app still grade it weak?
+    a: Because the win was in-sample. When the best of 7,846 rule variants was tested on fresh 1987–96 data with a data-snooping correction, the edge vanished — and it stayed gone net of costs through 2011. A rule that only works on the data used to pick it has not been shown to work.
+  - q: What everyday guardrail exists because of this exact story?
+    a: The trial-count correction on every base rate. Trying many configurations on a short history almost guarantees an impressive in-sample winner that means nothing, so the app shrinks any rate for how many variants were tried.
+---
+
+A **moving average** is just the average closing price over a fixed window, recomputed each day. It smooths the daily noise into a slow line. Two windows matter most to chart readers.
+
+- The **50-day average** is the mean close of the last 50 trading days. It tracks the medium-term drift and turns fairly quickly.
+- The **200-day average** is the mean close of the last 200 trading days — roughly a year of sessions. It is the slow line, the one many traders treat as the boundary between an uptrend and a downtrend.
+
+## What the golden cross actually is
+
+The **golden cross** is the moment the fast 50-day line rises above the slow 200-day line. The reverse — the 50 falling below the 200 — is called the death cross. The names are dramatic; the mechanics are not. Both are just arithmetic on prices that already happened. A cross tells you the recent average has overtaken the yearly average. It says nothing, on its own, about tomorrow.
+
+That last point is the whole reason this lesson exists.
+
+## The canonical overfitting story
+
+The golden cross is the textbook demonstration of a trap called in-sample overfitting, and it is worth telling in full.
+
+> Index moving-average and range-break rules beat the Dow handsomely in-sample from 1897 to 1986. Then the best of **7,846** rule variants was tested out-of-sample on fresh 1987–96 data with a data-snooping correction applied. It showed nothing. Nothing survived net of trading costs through 2011 in any period a trader could have picked in advance.
+
+Read that carefully. The rules did not fail because markets are random. They failed because the winning rule was *chosen* by looking at the same history it was then judged on. When you try thousands of variants on one dataset, one of them will look brilliant by luck alone. Crown it, then show it new data, and the luck evaporates.
+
+This is not a quirk of moving averages. It is a law of searching. Try roughly 45 configurations on 5 years of data and you are almost guaranteed to find an impressive, worthless in-sample winner.
+
+## Why the app grades it weak
+
+The app grades the fresh-golden-cross scan **weak** for exactly this reason. The pattern has a ninety-year in-sample record and no out-of-sample, cost-surviving one. That is the definition of weak evidence: it looked good on the data that discovered it and has not held up anywhere else.
+
+And this single story is why every base rate the app shows carries a **trial-count correction**. Before any rate earns its tier, the app shrinks it for how many variants were tested to find it. The golden cross taught the whole field this lesson; the app just refuses to forget it.
+
+## A fairer cousin, honestly labelled
+
+One nearby rule earns a better, though still modest, grade. The Faber 10-month moving-average trend filter is graded **mixed** — and mixed for an honest reason. It is a drawdown-reduction tool, not a return enhancer. Historically it cut maximum drawdowns roughly in half, but it lagged buy-and-hold after 2008 and loses to whipsaws in sharp V-shaped recoveries. The honest frame is crash insurance paid for in return, not a way to beat the market.
+
+To see how the golden-cross scan carries its weak grade in the app, open `/scans`. To revisit why in-sample precision is false precision, see `/academy/reading-a-base-rate-sentence`.

@@ -1,0 +1,49 @@
+---
+module: M6
+slug: journaling-and-the-pm-scorecard
+title: Journaling and the PM scorecard
+minutes: 4
+concepts: [brier-score, calibration]
+order: 2
+questions:
+  - q: What three things does a journal forecast record, and what happens to it?
+    a: A probability (how likely the reader thinks something is), a resolves-on date (the trading day the outcome can be judged), and the claim itself. When that date arrives the app resolves it automatically and scores it with a Brier score.
+  - q: A Brier score of 0.25 means what?
+    a: A coin flip. It is the score you get by saying 50 percent to everything, so 0.25 is the line a real forecast has to beat to have shown any skill. Lower is better; 0 is perfect.
+  - q: What does calibration test, and who does the app apply it to?
+    a: Calibration asks whether the things called 70 percent likely actually happened about 70 percent of the time — over many forecasts, not one. The app applies it to the user's journal and to itself, in public, on the track-record page.
+---
+
+A market opinion that is never written down can never be graded. The evening journal exists to fix that: it turns a vague hunch into a dated, numbered claim that the app can later score without asking anyone's memory. The habit is small — a few lines after the close — but it is the only way a person finds out whether their reads are worth anything.
+
+## What a forecast records
+
+A journal forecast is not a note. It is a claim with three fixed parts:
+
+- a **probability** — how likely the reader thinks the thing is, stated as a number, not "probably" or "I feel good about it".
+- a **resolves-on date** — the exact trading day the outcome can be judged. Without a deadline a forecast can dodge scoring forever.
+- the **claim** itself — what, specifically, is being predicted.
+
+When the resolves-on date arrives, the app resolves the forecast automatically. There is no chance to quietly forget the ones that went wrong, which is exactly the point.
+
+## How a forecast is scored
+
+Each resolved forecast gets a **Brier score** — the squared distance between what was predicted and what happened. Say something has a 70% chance, and it happens: the error is small. Say 70% and it does not: the error is large. Lower is better, 0 is perfect, and the number that matters most is the reference line.
+
+> A Brier score of **0.25** is a coin flip.
+
+0.25 is what a person scores by saying 50% to everything. So it is not an abstract benchmark — it is the bar a real forecast has to clear to have shown any skill at all. A journal that hovers around 0.25 is telling its owner something plain and useful: the reads are no better than guessing.
+
+## Calibration: the honest test over many calls
+
+One forecast proves nothing; anyone can be right once. **Calibration** is the test that survives that objection. It asks a single question across the whole journal:
+
+> When the reader said 70% likely, did those things happen about 70% of the time?
+
+If the 70% calls come in around 70%, the reader is calibrated — their stated probabilities mean what they say. If the 70% calls come in at 45%, the reader is overconfident, and the calibration view shows it in aggregate rather than in any single lucky or unlucky call. Calibration is not "was it right", it is "were the stated frequencies true over many cases" — and that is the only test a probability can actually pass.
+
+## The same standard, both ways
+
+None of this is a standard the app imposes only on the user. On the [track record](/track-record) the app grades **itself** the same public way — hits, misses, and calibration, with the misses shown first. The base rates the app fires are forecasts too, resolved on a fixed horizon and scored the same as any journal entry.
+
+That symmetry is the whole idea. The app asks the user to write down a number and be graded on it, and the app does exactly the same in front of the user, misses included. Accountability that only ran one direction would not be worth much.

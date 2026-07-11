@@ -1,0 +1,47 @@
+---
+module: M5
+slug: how-our-base-rates-are-computed
+title: How our base rates are computed
+minutes: 5
+concepts: [wilson-interval, confidence-interval, always-up-baseline, decay-stamp]
+order: 4
+questions:
+  - q: At each sample size, what does the N-gate show?
+    a: With N of 100 or more, a percentage plus a 95% Wilson interval. With N of 30 to 99, a natural frequency and a wide-interval note. With N under 30, nothing but a suppression note — treat it as anecdote.
+  - q: What is the always-up baseline for, and what happens when the interval overlaps it?
+    a: It is the unconditional up-rate over the same horizon, shown beside every rate. If the confidence interval overlaps it, the pattern has not been shown to beat simply holding, so the tier is capped at weak.
+  - q: What does point-in-time discipline prevent?
+    a: Lookahead. A stock is bucketed by its classification on the event date, using only what was knowable then, so a base rate never quietly borrows information from the future.
+---
+
+A base rate on a card looks like one tidy number. Behind it is a short, strict pipeline built to stop that number from lying. This lesson walks the pipeline end to end.
+
+## Step one: count in a fixed reference class
+
+The app picks a **reference class** — a stated group of stocks — and a fixed **horizon**, say 10 trading days. Then it counts: across the reference class, how many times did the pattern appear, and in how many of those did the price finish higher at the horizon. That raw count is the base rate. Everything after this step is about how honestly to display it.
+
+## Step two: the N-gate sets the precision
+
+How the count is shown depends entirely on **N**, the sample size. The **N-gate** has three settings:
+
+- **N of 100 or more** — a percentage, plus a 95% **Wilson interval**. The Wilson interval is the statistically honest range for a proportion, and this is the only regime where a bare percentage is trustworthy.
+- **N of 30 to 99** — a **natural frequency** ("about 6 in 10"), no percentage, plus a note that the sample is small and the true rate could sit some way either side.
+- **N under 30** — nothing but "insufficient history — treat as anecdote". A dozen cases is a story, not a statistic.
+
+## Step three: the always-up baseline sits beside it
+
+A win rate alone is meaningless, because stocks drift up on their own. So every rate is shown next to the **always-up baseline** — the unconditional up-rate over the same horizon, meaning how often the price rose anyway without the pattern.
+
+Now the key rule. If the **confidence interval** overlaps the baseline, the pattern has not been shown to beat simply holding. When that happens, the tier is capped at **weak**, no matter how good the headline percentage looks. A 58% win rate against a 55% baseline with an interval that straddles both is not an edge; it is noise wearing a number.
+
+## Step four: the decay stamp pre-shrinks "proven"
+
+Published edges fade once they are published and crowded. So each rate drawn from the literature carries a **decay stamp**: the publication date and an expected post-publication haircut. The reader sees a claim already shrunk for age, rather than a decades-old figure presented as if it were fresh.
+
+## Step five: point-in-time discipline
+
+The quietest source of false edges is lookahead — letting a base rate borrow information that was not knowable at the time. The app forbids it. A stock is bucketed by its classification **on the event date**, using only what was known then. A company that later became a large cap is counted as whatever it was on the day the pattern fired, never reclassified with hindsight. This point-in-time discipline is what keeps the count honest against the future.
+
+## Reading it back
+
+Put together, a base rate arrives counted, gated for sample size, measured against the baseline, shrunk for decay, and free of lookahead. To practise reading the finished sentence, see `/academy/reading-a-base-rate-sentence`. To watch the app grade its own rates in public — hits, misses, and calibration, misses shown first — open `/track-record`.

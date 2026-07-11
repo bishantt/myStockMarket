@@ -1,0 +1,42 @@
+---
+module: M2
+slug: what-a-round-trip-costs
+title: What a round-trip costs
+minutes: 4
+concepts: [bid-ask-spread, slippage]
+order: 1
+questions:
+  - q: A broker charges zero commission. Does a round trip therefore cost nothing?
+    a: No. A round trip is a buy plus a sell, and the bid-ask spread is paid on both legs. Even with no commission, the spread is a real cost, paid twice.
+  - q: When is the spread on a large US name at its widest, and by roughly how much?
+    a: In the first 30 minutes after the open. Spreads on S&P 500 names can run over 20bp at the open versus under 5bp late in the day, so a market order at the open pays the most.
+  - q: Why does a small per-trade cost matter?
+    a: Because it repeats. A cost that looks trivial on one trade compounds across many trades, and an active trader pays it again and again.
+---
+
+Buying a stock and later selling it is a **round trip**. It is the smallest complete unit of trading, and it is the honest place to measure cost. The price on the screen is not one number — it is two.
+
+## The spread is a price you pay twice
+
+At any moment a stock has two quoted prices: the **bid** (what a buyer will pay) and the **ask** (what a seller will accept). The gap between them is the **bid-ask spread**. A market order to buy fills at the ask; a market order to sell fills at the bid. So the round trip crosses the spread once going in and once coming out.
+
+> Buy at the ask, sell at the bid. The spread is paid on both legs — twice per round trip.
+
+This is true even when the broker advertises zero commission. Commission-free does not mean cost-free. The spread is the cost, and it is collected quietly inside the fill price rather than billed on a statement.
+
+## Effective spread is the real number
+
+The quoted spread is what the screen shows. The **effective spread** is what actually happened: the difference between the price paid and the mid-point of the quote at the moment of the order. It captures the part of the cost that the quote alone does not — including any **slippage**, the small gap between the price expected and the price filled. The effective spread is the honest measure of what a round trip cost, because it is measured from real fills, not from the tidy number on the screen.
+
+## The open is the expensive window
+
+Spreads are not constant through the day. They are widest in the first 30 minutes after the open, when the overnight order flow is still being sorted out:
+
+- On large S&P 500 names, the effective spread can run **over 20bp** at the open.
+- Later in the day the same names settle to **under 5bp**.
+
+A basis point (bp) is one hundredth of a percent, so 20bp is 0.20%. That difference is why a market order fired at the opening bell pays the most it will pay all day. A patient limit order, or simply waiting past the first half hour, avoids the widest part of the spread.
+
+## Small costs compound
+
+The reason any of this matters is repetition. A spread that costs a fraction of a percent looks trivial on a single round trip. But an active trader does not make one round trip — they make many, and the cost is paid on every one. What is invisible per trade becomes the dominant drag over a year of trading. The next lesson follows that drag to where the evidence measures it.
