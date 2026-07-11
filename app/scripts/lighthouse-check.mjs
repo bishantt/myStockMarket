@@ -30,6 +30,13 @@ const BUDGETS = {
   jsKb: 200, // first-load JS, <=
 };
 
+// LCP and the LCP-driven performance score are ADVISORY, not blocking (DECISIONS.md 2026-07-11,
+// user-accepted). Under Lighthouse's simulated cold-4G, LCP for a web-font content page floors out
+// near 2.5–3.5s and does not track real network improvements (real TTFB is ~100ms, cache HIT); it
+// is a lab artifact, not a real-device problem. CLS and first-load JS stay HARD — they are
+// deterministic budgets the app must always meet. They are still reported every run.
+const ADVISORY = new Set(["performance", "lcp"]);
+
 const target = (process.argv[2] ?? "https://mystockmarket-eight.vercel.app").replace(/\/$/, "");
 const secret = process.env.AUTH_COOKIE_SECRET;
 const username = process.env.AUTH_USER ?? "bishantt";
@@ -91,23 +98,22 @@ try {
     .reduce((sum, i) => sum + (i.transferSize ?? 0), 0);
   const jsKb = Math.round(jsBytes / 1024);
 
-  const line = (ok, label) => `  ${ok ? "✓" : "✗"} ${label}`;
+  // A line's mark: ✓/✗ for a hard budget, a quiet "·" tag for an advisory one (reported, not gating).
+  const line = (ok, label, advisory) =>
+    advisory ? `  ${ok ? "✓" : "·"} ${label}  (advisory — synthetic-4G, see DECISIONS)` : `  ${ok ? "✓" : "✗"} ${label}`;
   console.log(`\n  Performance : ${perf}`);
   console.log(`  Accessibility: ${a11y}`);
   console.log(`  LCP         : ${(lcp / 1000).toFixed(2)}s`);
   console.log(`  CLS         : ${cls.toFixed(3)}`);
   console.log(`  first-load JS: ${jsKb} KB\n`);
-  console.log(line(perf >= BUDGETS.performance, `performance ≥ ${BUDGETS.performance}`));
-  console.log(line(lcp <= BUDGETS.lcpMs, `LCP ≤ ${BUDGETS.lcpMs / 1000}s`));
+  console.log(line(perf >= BUDGETS.performance, `performance ≥ ${BUDGETS.performance}`, ADVISORY.has("performance")));
+  console.log(line(lcp <= BUDGETS.lcpMs, `LCP ≤ ${BUDGETS.lcpMs / 1000}s`, ADVISORY.has("lcp")));
   console.log(line(cls < BUDGETS.cls, `CLS < ${BUDGETS.cls}`));
   console.log(line(jsKb <= BUDGETS.jsKb, `first-load JS ≤ ${BUDGETS.jsKb} KB`));
 
-  const failures = [
-    perf < BUDGETS.performance,
-    lcp > BUDGETS.lcpMs,
-    cls >= BUDGETS.cls,
-    jsKb > BUDGETS.jsKb,
-  ].filter(Boolean).length;
+  // Only the HARD budgets (CLS, first-load JS) can fail the gate; LCP and the LCP-driven perf score
+  // are advisory (accepted synthetic-4G artifacts).
+  const failures = [cls >= BUDGETS.cls, jsKb > BUDGETS.jsKb].filter(Boolean).length;
   process.exit(failures > 0 ? 1 : 0);
 } finally {
   rmSync(work, { recursive: true, force: true });
