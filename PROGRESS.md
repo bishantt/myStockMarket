@@ -1,5 +1,19 @@
 # PROGRESS.md — resumable state
 
+**P1 COMPLETE — tagged `phase-1` (2026-07-11).** The full P1 exit gate is green on the tag CI:
+app (typecheck/lint/80 unit/webpack build), pipeline (96 pytest incl. DB + backup-restore round
+trip), and the browser suite (48 Playwright: auth, PWA, seeded Desk data, watchlist CRUD, drill &
+return, offline + expired-cookie drills). Steps 1–9 done: schema v1 + market_context, adapters
+(Alpaca/FRED), indicators, scans + Parquet/DuckDB, publish, the real Desk (macro/movers/watchlist +
+all 8 mastheads), the ticker drill (RailSheet level 2 + /ticker Lightweight Charts level 3), the SW
+morning cache + OfflineRibbon, and the weekly pg_dump backup + restore test. signal_log emits with an
+exact 10-trading-day resolves_on (NYSE calendar). Job A's nightly flow ran real data end to end
+(12,933 instruments, 98.4% coverage, 1,825 scans). **Exit-gate budgets:** first-load JS 133KB ✓,
+CLS 0.000 ✓, a11y 100 ✓; **LCP accepted as a synthetic-4G artifact** (user decision 2026-07-11 —
+real TTFB is ~100ms via ISR + edge cache; Lighthouse's simulated cold-4G LCP is a lab number). Two
+P1 follow-ups logged: capture visual-regression baselines on a CI Linux runner, and narrow the
+12,933 universe to common-stock + ETF asset classes (currently includes warrants/units/preferreds).
+
 **REAL DATA IS LIVE (2026-07-11).** Job A ran the full nightly flow in the cloud end to end and
 published real market data to Supabase: universe 12,933 instruments, coverage 98.4% (over the 95%
 floor), 1,825 scan matches, 15 served symbols (indices + sector ETFs; watchlist empty), breadth
