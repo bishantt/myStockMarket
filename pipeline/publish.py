@@ -55,6 +55,8 @@ def publish(
     scan_results: pl.DataFrame | None = None,
     signal_logs: Iterable[Mapping[str, Any]] = (),
     market_context: Mapping[str, Any] | None = None,
+    news_items: Iterable[Mapping[str, Any]] = (),
+    calendar_events: Iterable[Mapping[str, Any]] | None = None,
 ) -> None:
     """
     Persist a run's serving data atomically. Commits on success; rolls back on any error.
@@ -71,6 +73,8 @@ def publish(
             _replace_scan_results(cur, run_date, scan_results)
             _insert_signal_logs(cur, signal_logs)
             _upsert_market_context(cur, run_date, market_context)
+            _upsert_news_items(cur, news_items)
+            _replace_calendar(cur, run_date, calendar_events)
         conn.commit()
     except Exception:
         conn.rollback()
@@ -165,6 +169,55 @@ def _insert_signal_logs(cur, signal_logs) -> None:
         INSERT INTO signal_log (id, fired_date, symbol, pattern_key, horizon_days, resolves_on)
         VALUES (gen_random_uuid()::text, %s, %s, %s, %s, %s)
         ON CONFLICT (fired_date, pattern_key, symbol, horizon_days) DO NOTHING
+        """,
+        rows,
+    )
+
+
+def _upsert_news_items(cur, news_items) -> None:
+    # News accumulates (it is historical context), so it is upserted by its natural key
+    # (provider, url): a rerun refreshes the classification/sentiment of an article it already has,
+    # and never duplicates it. tickers is a text[] — psycopg adapts a Python list to a Postgres array.
+    rows = [
+        (n["published_at"], n["provider"], n["url"], n["headline"], n.get("snippet", ""),
+         list(n.get("tickers", [])), n.get("event_type"), n.get("sentiment"))
+        for n in news_items
+    ]
+    if not rows:
+        return
+    cur.executemany(
+        """
+        INSERT INTO news_item
+            (id, published_at, provider, url, headline, snippet, tickers, event_type, sentiment)
+        VALUES (gen_random_uuid()::text, %s, %s, %s, %s, %s, %s, %s, %s)
+        ON CONFLICT (provider, url) DO UPDATE SET
+            headline = EXCLUDED.headline, snippet = EXCLUDED.snippet, tickers = EXCLUDED.tickers,
+            event_type = EXCLUDED.event_type, sentiment = EXCLUDED.sentiment
+        """,
+        rows,
+    )
+
+
+def _replace_calendar(cur, run_date, calendar_events) -> None:
+    # The calendar is a forward view, so each run replaces it from the run date onward — the fresh
+    # schedule wins, and a cancelled or rescheduled event does not linger. `None` means "the catalyst
+    # ingest did not run tonight", so the existing calendar is left untouched (a degraded source must
+    # not blank the calendar); an empty list means "it ran and found nothing", which does replace.
+    if calendar_events is None:
+        return
+    cur.execute("DELETE FROM calendar_event WHERE date >= %s", (run_date,))
+    rows = [
+        (e["date"], e["kind"], e.get("symbol"), e.get("timing"), e["title"],
+         e.get("consensus"), e.get("prior"), e.get("importance"))
+        for e in calendar_events
+    ]
+    if not rows:
+        return
+    cur.executemany(
+        """
+        INSERT INTO calendar_event
+            (id, date, kind, symbol, timing, title, consensus, prior, importance)
+        VALUES (gen_random_uuid()::text, %s, %s, %s, %s, %s, %s, %s, %s)
         """,
         rows,
     )

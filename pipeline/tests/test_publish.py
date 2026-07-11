@@ -131,3 +131,31 @@ def test_a_failure_mid_publish_rolls_everything_back(db):
     with pytest.raises(Exception):
         pub.publish(db, run_date=RUN, stage_status={"x": "y"}, source_status={}, price_bars=bad)
     assert _count(db, "pipeline_run") == 0  # nothing committed
+
+
+def test_news_items_upsert_by_provider_and_url(db):
+    # News is deduped by (provider, url): a rerun refreshes classification, never duplicates.
+    item = {"published_at": date(2026, 6, 30), "provider": "finnhub", "url": "https://x/1",
+            "headline": "Apple earnings beat", "snippet": "s", "tickers": ["AAPL"], "event_type": None}
+    pub.publish(db, run_date=RUN, stage_status={}, source_status={}, news_items=[item])
+    pub.publish(db, run_date=RUN, stage_status={}, source_status={},
+                news_items=[{**item, "event_type": "earnings"}])
+    rows = db.execute("SELECT tickers, event_type FROM news_item").fetchall()
+    assert len(rows) == 1  # ON CONFLICT (provider, url)
+    assert rows[0][0] == ["AAPL"]  # text[] round-trips
+    assert rows[0][1] == "earnings"  # refreshed
+
+
+def test_calendar_replaces_the_forward_window_but_none_leaves_it_alone(db):
+    ev = {"date": date(2026, 7, 15), "kind": "earnings", "symbol": "AAPL", "timing": None,
+          "title": "Apple Q3", "consensus": 1.5, "prior": 1.4, "importance": None}
+    pub.publish(db, run_date=RUN, stage_status={}, source_status={}, calendar_events=[ev])
+    assert _count(db, "calendar_event") == 1
+    # A re-run with a different forward event REPLACES the window.
+    pub.publish(db, run_date=RUN, stage_status={}, source_status={},
+                calendar_events=[{**ev, "symbol": "MSFT", "title": "Microsoft Q4"}])
+    rows = db.execute("SELECT symbol FROM calendar_event").fetchall()
+    assert rows == [("MSFT",)]
+    # None (the ingest was degraded tonight) leaves the existing calendar untouched.
+    pub.publish(db, run_date=RUN, stage_status={}, source_status={}, calendar_events=None)
+    assert _count(db, "calendar_event") == 1
