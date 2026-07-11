@@ -57,7 +57,11 @@ _CORE_SERVED = (
 
 
 def _alpaca(settings: Settings) -> AlpacaAdapter:
-    """An Alpaca adapter with auth headers on the client and a ~3/s rate limiter (200/min free tier)."""
+    """An Alpaca adapter with auth headers on the client and a ~3/s rate limiter (200/min free tier).
+
+    The data feed defaults to IEX (the free plan's only feed); ALPACA_FEED can override it to "sip"
+    once the account has a paid data subscription.
+    """
     client = httpx.Client(
         timeout=30,
         headers={
@@ -65,7 +69,8 @@ def _alpaca(settings: Settings) -> AlpacaAdapter:
             "APCA-API-SECRET-KEY": settings.require("alpaca_secret"),
         },
     )
-    return AlpacaAdapter(client, TokenBucket(rate_per_sec=3.0, capacity=3.0))
+    feed = os.environ.get("ALPACA_FEED", "iex")
+    return AlpacaAdapter(client, TokenBucket(rate_per_sec=3.0, capacity=3.0), feed=feed)
 
 
 def _fred(settings: Settings) -> FredAdapter:

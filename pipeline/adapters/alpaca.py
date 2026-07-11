@@ -46,10 +46,16 @@ class Asset:
 
 
 class AlpacaAdapter(Adapter):
-    """Alpaca EOD bars + universe. Construct with an httpx client and a rate limiter (base class)."""
+    """Alpaca EOD bars + universe. Construct with an httpx client and a rate limiter (base class).
 
-    def __init__(self, client, limiter) -> None:
+    `feed` picks the market-data feed. The free plan serves only IEX, so "iex" is the default;
+    omitting the feed makes Alpaca default to SIP, which the free plan rejects with a 403. Pass
+    "sip" once the account is on a paid data subscription — a one-line change, no code path differs.
+    """
+
+    def __init__(self, client, limiter, feed: str = "iex") -> None:
         super().__init__("alpaca", client, limiter)
+        self._feed = feed
 
     def daily_bars(
         self, symbols: list[str], start: date, end: date
@@ -58,7 +64,8 @@ class AlpacaAdapter(Adapter):
         Fetch daily bars for many symbols between start and end (inclusive), following pagination.
 
         Returns a dict of symbol -> its bars in date order. `adjustment=all` gives split- and
-        dividend-adjusted prices, which is what indicator math and forward returns need.
+        dividend-adjusted prices, which is what indicator math and forward returns need; `feed`
+        selects the data feed (IEX on the free plan — see the class docstring).
         """
         params = {
             "symbols": ",".join(symbols),
@@ -66,6 +73,7 @@ class AlpacaAdapter(Adapter):
             "start": start.isoformat(),
             "end": end.isoformat(),
             "adjustment": "all",
+            "feed": self._feed,
             "limit": 10000,
         }
 

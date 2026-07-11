@@ -52,6 +52,17 @@ class TestDailyBars:
         assert first.close == 306.31
         assert first.volume == 49067433
 
+    def test_requests_the_iex_feed_by_default(self):
+        # The free Alpaca data plan serves only IEX; omitting the feed defaults to SIP and 403s.
+        seen = {}
+
+        def handler(request):
+            seen["feed"] = request.url.params.get("feed")
+            return httpx.Response(200, json=load_fixture("alpaca", "bars"))
+
+        _adapter(handler).daily_bars(["AAPL"], date(2026, 6, 1), date(2026, 6, 5))
+        assert seen["feed"] == "iex"
+
     def test_the_bar_date_is_the_trading_day_not_the_utc_instant(self):
         # Alpaca timestamps a daily bar at midnight ET (04:00Z in summer); the date must be the
         # trading day, not shifted by the UTC offset.
