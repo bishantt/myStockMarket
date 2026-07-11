@@ -21,7 +21,9 @@ from pathlib import Path
 import httpx
 
 _DATA = "https://data.alpaca.markets"
-_TRADING = "https://api.alpaca.markets"
+# The paper key authenticates against paper-api, not the live api host. The asset universe is the
+# same on both, so paper-api/v2/assets is the right source for our paper-first pipeline.
+_TRADING = "https://paper-api.alpaca.markets"
 
 
 def _auth() -> dict[str, str]:
