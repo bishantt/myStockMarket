@@ -153,3 +153,20 @@ model SignalLog {
   @@unique([firedDate, patternKey, symbol, horizonDays])
   @@map("signal_log")
 }
+
+/// Per-run macro context for the Desk's Macro Pulse module — the VIX, the 10-year yield, and the
+/// day's breadth of the ingested universe (plan §9.2 macro strip). Appendix B's schema had no home
+/// for these (indices live in price_bar as instruments, but VIX/10-yr are FRED series and breadth
+/// is computed across the universe), so this table is added at P1. Structural, logged 2026-07-11.
+model MarketContext {
+  runDate       DateTime @id @map("run_date") @db.Date
+  /// The VIX (FRED VIXCLS) and the 10-year Treasury yield (FRED DGS10), null if FRED was down.
+  vix           Float?
+  tenYear       Float?   @map("ten_year")
+  /// Breadth of the ingested universe on the run date.
+  advancers     Int
+  decliners     Int
+  pctAbove50dma Float    @map("pct_above_50dma")
+
+  @@map("market_context")
+}

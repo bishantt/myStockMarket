@@ -12,6 +12,7 @@ What gets written each run:
   scan_result    this run's preset matches (the run's rows are replaced)
   signal_log     one row per fired setup, INSERT ... ON CONFLICT DO NOTHING — insert-only and
                  idempotent, so re-running a night adds nothing and rewrites nothing
+  market_context the day's macro strip — VIX, 10-year yield, breadth (upsert by run date)
 
 Idempotency is the point: a workflow_dispatch re-run of a night produces zero duplicates. The
 inputs are plain Python/Polars structures the compute stage builds; this module only persists them.
@@ -38,6 +39,7 @@ def publish(
     price_bars: pl.DataFrame | None = None,
     scan_results: pl.DataFrame | None = None,
     signal_logs: Iterable[Mapping[str, Any]] = (),
+    market_context: Mapping[str, Any] | None = None,
 ) -> None:
     """
     Persist a run's serving data atomically. Commits on success; rolls back on any error.
@@ -53,6 +55,7 @@ def publish(
             _upsert_price_bars(cur, price_bars)
             _replace_scan_results(cur, run_date, scan_results)
             _insert_signal_logs(cur, signal_logs)
+            _upsert_market_context(cur, run_date, market_context)
         conn.commit()
     except Exception:
         conn.rollback()
@@ -149,4 +152,29 @@ def _insert_signal_logs(cur, signal_logs) -> None:
         ON CONFLICT (fired_date, pattern_key, symbol, horizon_days) DO NOTHING
         """,
         rows,
+    )
+
+
+def _upsert_market_context(cur, run_date, market_context: Mapping[str, Any] | None) -> None:
+    # The macro strip's one row per run — upsert by run date so a re-run updates in place. VIX and
+    # the 10-year yield are nullable because FRED can be down; breadth always comes from the
+    # ingested universe, so it is always present.
+    if market_context is None:
+        return
+    cur.execute(
+        """
+        INSERT INTO market_context (run_date, vix, ten_year, advancers, decliners, pct_above_50dma)
+        VALUES (%(run_date)s, %(vix)s, %(ten_year)s, %(advancers)s, %(decliners)s, %(pct)s)
+        ON CONFLICT (run_date) DO UPDATE SET
+            vix = EXCLUDED.vix, ten_year = EXCLUDED.ten_year, advancers = EXCLUDED.advancers,
+            decliners = EXCLUDED.decliners, pct_above_50dma = EXCLUDED.pct_above_50dma
+        """,
+        {
+            "run_date": run_date,
+            "vix": market_context.get("vix"),
+            "ten_year": market_context.get("ten_year"),
+            "advancers": market_context["advancers"],
+            "decliners": market_context["decliners"],
+            "pct": market_context["pct_above_50dma"],
+        },
     )

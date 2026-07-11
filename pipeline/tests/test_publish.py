@@ -38,12 +38,24 @@ def test_writes_every_table_in_one_run(db):
             {"preset_key": ["gap-3plus"], "symbol": ["AAPL"], "rank": [1], "gap_pct": [0.05], "lottery_flag": [False]}
         ),
         signal_logs=[{"fired_date": RUN, "symbol": "AAPL", "pattern_key": "gap-3plus", "horizon_days": 10, "resolves_on": date(2026, 7, 14)}],
+        market_context={"vix": 15.84, "ten_year": 4.54, "advancers": 3200, "decliners": 1800, "pct_above_50dma": 0.61},
     )
     assert _count(db, "pipeline_run") == 1
     assert _count(db, "instrument") == 1
     assert _count(db, "price_bar") == 1
     assert _count(db, "scan_result") == 1
     assert _count(db, "signal_log") == 1
+    assert _count(db, "market_context") == 1
+
+
+def test_market_context_upserts_by_run_date(db):
+    # The macro strip's per-run row is keyed by run date, so a re-run updates it in place rather
+    # than duplicating. FRED can be down, so vix / ten_year are nullable.
+    base = dict(run_date=RUN, stage_status={}, source_status={})
+    pub.publish(db, **base, market_context={"vix": 15.84, "ten_year": 4.54, "advancers": 3200, "decliners": 1800, "pct_above_50dma": 0.61})
+    pub.publish(db, **base, market_context={"vix": None, "ten_year": None, "advancers": 2500, "decliners": 2500, "pct_above_50dma": 0.50})
+    rows = db.execute("SELECT vix, ten_year, advancers, decliners, pct_above_50dma FROM market_context").fetchall()
+    assert rows == [(None, None, 2500, 2500, 0.50)]  # one row, updated in place
 
 
 def test_rerunning_a_night_makes_no_duplicates(db):

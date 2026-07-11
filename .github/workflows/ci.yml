@@ -84,6 +84,28 @@ jobs:
     name: e2e + PWA (phase-exit tags only)
     if: startsWith(github.ref, 'refs/tags/phase-')
     runs-on: ubuntu-latest
+    # A throwaway Postgres, seeded with the deterministic synthetic morning (prisma/seed.mjs), so
+    # the Desk data journey (desk.spec.ts) asserts real rendered values end to end. This is a TEST
+    # database only — the seed refuses to touch a Supabase host, so production is never involved.
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_PASSWORD: test
+          POSTGRES_DB: msmtest
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      # Both URLs point at the service container: the app runtime reads DATABASE_URL, Prisma Migrate
+      # reads DIRECT_URL. MSM_SEEDED flips the guarded Desk journey on (it skips without it).
+      DATABASE_URL: postgresql://postgres:test@localhost:5432/msmtest
+      DIRECT_URL: postgresql://postgres:test@localhost:5432/msmtest
+      MSM_SEEDED: "1"
     defaults:
       run:
         working-directory: app
@@ -98,9 +120,16 @@ jobs:
 
       - run: npm ci
 
+      # Bring the test database up to the current schema, then load the synthetic morning. The app's
+      # webServer (started by Playwright) reads DATABASE_URL from this job's env and serves it.
+      - name: Migrate and seed the test database
+        run: |
+          npx prisma migrate deploy
+          npm run db:seed
+
       - name: Install Playwright browser
         run: npx playwright install --with-deps chromium
 
       # The webServer in playwright.config.ts builds and starts the app with fixture auth
-      # credentials, so this needs no repository secrets.
+      # credentials; the database URLs above come from the job env, so this needs no secrets.
       - run: npm run e2e

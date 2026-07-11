@@ -74,14 +74,13 @@ watchlist server actions, e2e journeys 1/2/5, visual baselines.
 
 ## Next 3 tasks
 
-1. **P1 step 6 — the real Desk modules** (locally buildable, no Docker): `prisma/seed.ts`
-   deterministic synthetic morning (instruments + price_bar for indices/watchlist + scan_result),
-   then module 01 Macro pulse (SPX hero + index row + breadth), 04 Movers (rows, "reasons in P2"),
-   05 Watchlist (CRUD server actions + sparklines). All 8 mastheads mount over "—" placeholders.
-   `lib/morning.ts` assembles the Desk payload, tagged 'morning'. e2e journey 1 (P1 variant).
-2. **P1 step 5 (wiring) — job_a full flow**: wire the Alpaca adapter → indicators → parquet_store
-   → scans → publish into jobs/job_a.py (replacing the hello-run), with the universe hard-fail
-   (<95% symbols → job fails) and the R2 sync (boto3). The R2 sync module is still to build.
+1. **P1 step 5 (wiring) — job_a full flow**: wire the Alpaca adapter → indicators → parquet_store
+   → scans → publish (incl. the new market_context) into jobs/job_a.py (replacing the hello-run),
+   with the universe hard-fail (<95% symbols → job fails), the FRED macro read (VIXCLS+DGS10), and
+   the R2 sync (boto3, still to build). This is what makes the deployed Desk show real data.
+2. **P1 step 6 leftovers — watchlist writes**: the watchlist is currently read-only in the loader;
+   add the CRUD server actions (add/remove/focus, focus cap = 3 enforced in the write path) with a
+   reason required per name. (The read path + rendering are done.)
 3. **P1 steps 7-9**: RailSheet + `/ticker/[symbol]` Lightweight Charts (candles + volume); SW
    morning-payload cache + OfflineRibbon; weekly pg_dump in nightly-b + one restore test.
    Then the §6.4 gate (LCP now a HARD gate — see below) and tag phase-1.
@@ -103,17 +102,26 @@ watchlist server actions, e2e journeys 1/2/5, visual baselines.
 - **step 5 DONE:** publish.py — single-transaction serving-DB refresh (upserts + insert-only
   signal_log + per-run scan replacement + atomic rollback), 5 integration tests against a
   throwaway Postgres (skip locally without Docker; CI runs them via a postgres:16 service).
-- **step 6 IN PROGRESS:** the three real Desk module COMPONENTS built + unit-tested (14 tests):
-  MacroPulse (01, hero S&P in ink), Movers (04, RVOL + honest noise line), Watchlist (05, reason +
-  sparkline) in `components/desk/`. The Desk page now mounts all 8 mastheads in ritual order over
-  quiet "—" placeholders (the "ritual shape complete" milestone). STILL TO DO for step 6: wire the
-  real data — `lib/morning.ts` loader, a macro-context store (VIX/10-yr/breadth need a home; the
-  serving schema has none yet — a schema addition), the minimal `fred.py` adapter (VIXCLS+DGS10),
-  and job_a's full ingest→compute→scan→publish flow (see next tasks) — then the components render
-  live data instead of placeholders. Also pending: `prisma/seed.ts` + e2e journey 1 (P1 variant)
-  against a seeded test Postgres (CI Postgres service).
+- **step 6 ALL BUT job_a:** the three Desk modules are now WIRED to real serving data.
+  - `market_context` table added (VIX / 10-year / breadth had no home in Appendix B) + migration
+    `market_context`; `publish.py` writes it in the same transaction (2 new DB tests).
+  - `fred.py` minimal adapter (VIXCLS + DGS10) — 4 tests, real recorded fixtures.
+  - `lib/format.ts` — the number-formatting home the conventions name (price/signedPercent/percent/
+    multiple/directionOf), 8 tests; true-minus, flat band.
+  - `lib/morning.ts` — the Desk loader: pure builders (buildMacro/buildMovers/buildWatchlist, 8
+    tests) + `getMorning()` with per-module graceful degradation. Movers are sourced from the
+    unusual-volume scan (volume-confirmed moves; catalysts in P2 — logged).
+  - The Desk page renders MacroPulse/Movers/Watchlist when data exists, else the quiet placeholder;
+    a live module only stamps a date when a run is recorded.
+  - `prisma/seed.mjs` — deterministic synthetic morning, plain ESM (`npx prisma db seed`), with a
+    guard that refuses any Supabase host (dev/test only; honesty rules forbid seeding production).
+  - `e2e/desk.spec.ts` — journey 1 (P1 variant), gated by MSM_SEEDED=1; CI e2e job now stands up a
+    Postgres service, runs `prisma migrate deploy` + `db:seed`, and asserts the rendered morning.
+  - STILL TO DO for step 6: job_a's full ingest→compute→scan→publish flow (writes the real
+    market_context + scans the loader reads). Until then the deployed Desk shows placeholders (no
+    production seed by design).
 - **Vercel git auto-deploy** connected; Root Directory = `app` (fixed via API). Every push deploys.
-- **Tests: 55 app unit + 28 e2e + 80 pipeline (CI, incl. 5 DB) green.**
+- **Tests: 71 app unit + 31 e2e (28 + 3 seeded-Desk) + 82 pipeline (CI, incl. 7 DB) green.**
 - **LCP ≤ 2.5s is now a HARD P1-exit gate** (user directive 2026-07-11; scripts/lighthouse-check.mjs
   exits non-zero on a miss). Do not tag phase-1 until it passes for real.
 - Note: the deterministic `prisma/seed.ts` synthetic morning still pending (pairs with the Desk
