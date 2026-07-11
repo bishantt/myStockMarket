@@ -103,9 +103,17 @@ watchlist server actions, e2e journeys 1/2/5, visual baselines.
 - **step 5 DONE:** publish.py — single-transaction serving-DB refresh (upserts + insert-only
   signal_log + per-run scan replacement + atomic rollback), 5 integration tests against a
   throwaway Postgres (skip locally without Docker; CI runs them via a postgres:16 service).
-- **Vercel git auto-deploy** is connected; Root Directory set to `app` via the API (was building
-  from the repo root → package.json ENOENT).
-- **Pipeline tests: 80 in CI (75 local + 5 DB).** App: 45 unit + 28 e2e green.
+- **step 6 IN PROGRESS:** the three real Desk module COMPONENTS built + unit-tested (14 tests):
+  MacroPulse (01, hero S&P in ink), Movers (04, RVOL + honest noise line), Watchlist (05, reason +
+  sparkline) in `components/desk/`. The Desk page now mounts all 8 mastheads in ritual order over
+  quiet "—" placeholders (the "ritual shape complete" milestone). STILL TO DO for step 6: wire the
+  real data — `lib/morning.ts` loader, a macro-context store (VIX/10-yr/breadth need a home; the
+  serving schema has none yet — a schema addition), the minimal `fred.py` adapter (VIXCLS+DGS10),
+  and job_a's full ingest→compute→scan→publish flow (see next tasks) — then the components render
+  live data instead of placeholders. Also pending: `prisma/seed.ts` + e2e journey 1 (P1 variant)
+  against a seeded test Postgres (CI Postgres service).
+- **Vercel git auto-deploy** connected; Root Directory = `app` (fixed via API). Every push deploys.
+- **Tests: 55 app unit + 28 e2e + 80 pipeline (CI, incl. 5 DB) green.**
 - **LCP ≤ 2.5s is now a HARD P1-exit gate** (user directive 2026-07-11; scripts/lighthouse-check.mjs
   exits non-zero on a miss). Do not tag phase-1 until it passes for real.
 - Note: the deterministic `prisma/seed.ts` synthetic morning still pending (pairs with the Desk
