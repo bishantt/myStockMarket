@@ -19,6 +19,24 @@ export const ALWAYS_UP_BASELINE = 0.54;
 export const N_FULL = 100;
 export const N_SUPPRESS = 30;
 
+/**
+ * Paper-fill constants (Appendix F — "Paper fills"). A paper order fills at the next-session open,
+ * moved against the trader by half the per-bucket at-open spread plus a fixed slippage. These mirror
+ * pipeline/config.py; both cite the plan, and changing either is a structural decision.
+ * Values are basis points (1bp = 0.01%). The at-open spread is wider than mid-session on purpose —
+ * the open is the ritual's realistic fill window (RR §6.3).
+ */
+export const SPREAD_BP_LARGE_MID = 20;
+export const SPREAD_BP_SMALL = 60;
+export const SLIPPAGE_BP = 5;
+
+/** Cooling-off + frequency-mirror thresholds (Appendix F — "Cooling-off window"). */
+export const COOLING_OFF_MINUTES = 30;
+export const FREQUENCY_MIRROR_WEEKLY_ROUND_TRIPS = 5;
+
+/** The size-suggestion cap: never above half of the Kelly fraction (Appendix F, §8.1). */
+export const KELLY_FRACTION_CAP = 0.5;
+
 export type Tier = "weak" | "moderate" | "strong";
 
 /**
