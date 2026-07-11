@@ -1,5 +1,30 @@
 # PROGRESS.md — resumable state
 
+**P2 IN PROGRESS (2026-07-11) — catalyst & context layer.** Done so far:
+- **Housekeeping:** universe narrowed to common stocks + ETFs (drops warrants/units/rights/
+  preferreds/baby-bonds by asset name; no-OTC kept; flows through to movers/scans/served — test-first);
+  QUESTIONS closed (Supabase password rotation DECLINED, healthchecks check deleted, Vercel git
+  auto-deploy connected).
+- **Step 1 — adapters (DONE):** finnhub (company news + metrics), marketaux (market-wide tagged
+  news), fmp (earnings calendar — /stable/ has date+consensus, no bmo/amc, logged), edgar (per-CIK
+  filings, User-Agent asserted), fred extended (release calendar). All test-first vs REAL recorded
+  fixtures (recorded via a temp workflow, since deleted; fixtures trimmed). Credentials constructor-
+  injected. 12 new tests.
+- **Step 2 — schema + matcher + persistence (DONE):** Prisma v2 news_item (dedup provider+url,
+  tickers[], event_type, extract Json) + calendar_event (kind/symbol?/timing?/consensus/prior),
+  migrated. catalysts.py — classify(headline)→type + match_catalysts() (ticker + time-window join,
+  most-recent-wins, provider-agnostic NewsRecord), 5 tests. publish() writes news_item (upsert) +
+  calendar_event (replace forward window; None leaves it untouched), 2 DB tests.
+- **STILL TO DO for P2:** (a) wire the nightly catalyst ingest — fetch news for the movers
+  (finnhub+marketaux) + the calendar (fmp+fred), match/classify, publish, with PER-SOURCE status
+  into pipeline_run.sourceStatus (one provider down ⇒ its section degrades, run succeeds); (b) Desk
+  step 3 — 03 CalendarTimeline, 04 Movers upgraded (catalyst Tag + reason + source link, or the
+  noise line), SourceStatusFooter with FRED attribution; (c) step 4 copy-deck degraded/empty states;
+  (d) e2e journey 4 (partial). Acceptance: every >3% mover shows a catalyst chip or the noise tag;
+  killing one provider key degrades one section, not the run.
+- Pipeline 116 tests (incl. new DB tests run in CI). app 82 unit + 48 e2e green. main is CI-green.
+
+
 **P1 COMPLETE — tagged `phase-1` (2026-07-11).** The full P1 exit gate is green on the tag CI:
 app (typecheck/lint/80 unit/webpack build), pipeline (96 pytest incl. DB + backup-restore round
 trip), and the browser suite (48 Playwright: auth, PWA, seeded Desk data, watchlist CRUD, drill &
