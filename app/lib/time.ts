@@ -87,6 +87,25 @@ export function formatEtDate(instant: Date): string {
 }
 
 /**
+ * A BARE calendar date, e.g. "Jul 15", formatted by its UTC components — NOT shifted to ET.
+ *
+ * This is for Prisma `@db.Date` values (a trading day, an earnings date, a pipeline run date): they
+ * carry no meaningful time of day and are stored at UTC midnight, so their UTC calendar date already
+ * IS the intended date. Running them through the ET formatter (formatEtDate) would wrongly roll them
+ * back a day — 2026-07-15 at UTC midnight is still 2026-07-14 in New York. Use this for bare dates
+ * and formatEtDate only for real instants (timestamps).
+ */
+const utcDateFormatter = new Intl.DateTimeFormat("en-US", {
+  timeZone: "UTC",
+  month: "short",
+  day: "numeric",
+});
+
+export function formatUtcDate(date: Date): string {
+  return utcDateFormatter.format(date);
+}
+
+/**
  * The exact provenance line every SectionMasthead renders: "as of 16:05 ET".
  *
  * Every module on the Desk shows one. It is what makes stale data self-identifying, which is

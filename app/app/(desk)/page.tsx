@@ -3,11 +3,13 @@ import { StatFigure } from "@/components/StatFigure";
 import { MacroPulse } from "@/components/desk/MacroPulse";
 import { Movers } from "@/components/desk/Movers";
 import { Watchlist } from "@/components/desk/Watchlist";
+import { CalendarTimeline } from "@/components/desk/CalendarTimeline";
+import { SourceStatusFooter } from "@/components/desk/SourceStatusFooter";
 import { RailProvider } from "@/components/rail/Rail";
 import { OfflineRibbon } from "@/components/OfflineRibbon";
 import { getLatestRun } from "@/lib/pipeline";
 import { getMorning } from "@/lib/morning";
-import { formatEtDate } from "@/lib/time";
+import { formatEtDate, formatUtcDate } from "@/lib/time";
 
 /**
  * The Desk — the one-screen ritual column (plan §9.2, Figure 9.2).
@@ -34,7 +36,6 @@ export const revalidate = 600;
 /** The modules not yet wired to data — masthead over a one-line note saying when they arrive. */
 const PLACEHOLDERS: Record<number, string> = {
   2: "The evening briefing lands in P3.",
-  3: "Earnings and macro events arrive in P2.",
   6: "Probabilistic setup cards arrive in P4.",
   7: "Sector small multiples and scan presets arrive in P2–P4.",
   8: "The paper ledger and cost mirror arrive in P6.",
@@ -70,7 +71,7 @@ export default async function DeskPage() {
       <section>
         <SectionMasthead index={0} title="Pipeline" asOf={lastRunFinishedAt} />
         <div className="pt-4">
-          <StatFigure label="Last cloud run" value={latest ? formatEtDate(new Date(latest.runDate)) : "—"} scale="figure" />
+          <StatFigure label="Last cloud run" value={latest ? formatUtcDate(new Date(latest.runDate)) : "—"} scale="figure" />
           <p className="pt-3 font-ui text-sm text-muted">
             {latest
               ? "Written by the nightly pipeline in the cloud — nothing runs on this device."
@@ -86,9 +87,15 @@ export default async function DeskPage() {
         <Placeholder index={1} title="Macro pulse" note="Index pulse and breadth arrive with the nightly ingest." />
       )}
 
-      {/* 02–03 — brief and calendar, not yet wired. */}
+      {/* 02 — brief, not yet wired (P3). */}
       <Placeholder index={2} title="Daily brief" note={PLACEHOLDERS[2]} />
-      <Placeholder index={3} title="Session calendar" note={PLACEHOLDERS[3]} />
+
+      {/* 03 — Session calendar: earnings and macro events, or the placeholder until the ingest runs. */}
+      {asOf && morning.calendar ? (
+        <CalendarTimeline asOf={asOf} events={morning.calendar} />
+      ) : (
+        <Placeholder index={3} title="Session calendar" note="Earnings and macro events arrive with the nightly ingest." />
+      )}
 
       {/* 04 — Movers: the volume-confirmed moves, or the placeholder until scans publish. */}
       {asOf && morning.movers ? (
@@ -108,6 +115,9 @@ export default async function DeskPage() {
       <Placeholder index={6} title="Setup cards" note={PLACEHOLDERS[6]} />
       <Placeholder index={7} title="Sectors & scans" note={PLACEHOLDERS[7]} />
       <Placeholder index={8} title="Paper corner" note={PLACEHOLDERS[8]} />
+
+      {/* The provenance line: which sources ran, which degraded, and the FRED attribution. */}
+      <SourceStatusFooter sources={morning.sources} />
     </div>
     </RailProvider>
   );

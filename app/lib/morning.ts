@@ -1,7 +1,10 @@
 import { db } from "@/lib/db";
 import { directionOf, multiple, percent, price, signedPercent } from "@/lib/format";
+import { formatUtcDate } from "@/lib/time";
 import type { Direction } from "@/components/StatFigure";
-import type { Mover } from "@/components/desk/Movers";
+import type { Catalyst, Mover } from "@/components/desk/Movers";
+import type { CalendarRow } from "@/components/desk/CalendarTimeline";
+import type { SourceStatus } from "@/components/desk/SourceStatusFooter";
 import type { WatchRow } from "@/components/desk/Watchlist";
 
 /**
@@ -110,16 +113,20 @@ export function buildMacro(
 
 // ── Movers ────────────────────────────────────────────────────────────────────────────────────
 
-/** Below this relative volume a move is likely noise, not conviction (Appendix J mover.noNews). */
-const NOISE_RVOL = 1.5;
-
-/** One mover before formatting — the fields pulled from a scan result and the instrument table. */
-export type MoverSource = { symbol: string; name: string; changeFraction: number; rvol: number };
+/** One mover before formatting — the fields pulled from a scan result, the instrument table, and
+ * (if any) the matched catalyst from the news. */
+export type MoverSource = {
+  symbol: string;
+  name: string;
+  changeFraction: number;
+  rvol: number;
+  catalyst?: Catalyst;
+};
 
 /**
- * Format the movers, preserving the order given (the pipeline ranks them). A move on thin volume is
- * flagged likely-noise so the row never presents a big percentage without the "is anyone trading
- * this?" caveat — the honest stand-in until catalyst chips arrive in P2.
+ * Format the movers, preserving the order given (the pipeline ranks them). Each mover carries its
+ * matched catalyst, or none — the Movers component renders the catalyst chip when present and the
+ * honest "no news found — likely noise" line when it is absent (§1.5 rule 9).
  */
 export function buildMovers(sources: MoverSource[]): Mover[] {
   return sources.map((s) => ({
@@ -128,8 +135,54 @@ export function buildMovers(sources: MoverSource[]): Mover[] {
     changePct: signedPercent(s.changeFraction),
     direction: directionOf(s.changeFraction),
     rvol: multiple(s.rvol),
-    likelyNoise: s.rvol < NOISE_RVOL,
+    catalyst: s.catalyst,
   }));
+}
+
+// ── Calendar ──────────────────────────────────────────────────────────────────────────────────
+
+/** One calendar event as it comes from the calendar_event table. */
+export type CalendarSource = {
+  date: Date;
+  kind: string;
+  symbol: string | null;
+  title: string;
+  consensus: number | null;
+  prior: number | null;
+};
+
+/**
+ * Format the session calendar for display: the event date (a bare calendar date, by its UTC
+ * calendar date, not shifted to ET) and the consensus/prior figures through lib/format. No forecasting.
+ */
+export function buildCalendar(sources: CalendarSource[]): CalendarRow[] {
+  return sources.map((s) => ({
+    dateLabel: formatUtcDate(s.date),
+    kind: s.kind,
+    title: s.title,
+    symbol: s.symbol ?? undefined,
+    consensus: s.consensus === null ? undefined : price(s.consensus),
+    prior: s.prior === null ? undefined : price(s.prior),
+  }));
+}
+
+// ── Source status ─────────────────────────────────────────────────────────────────────────────
+
+/** The order sources are listed in the footer — a stable inventory, whichever ran tonight. */
+const SOURCE_ORDER = ["alpaca", "finnhub", "marketaux", "fmp", "fred", "edgar"];
+
+/** Turn the run's sourceStatus JSON ({alpaca: "ok", finnhub: "degraded", ...}) into ordered rows. */
+export function buildSourceStatus(status: Record<string, unknown> | null): SourceStatus[] {
+  if (!status) return [];
+  const known = SOURCE_ORDER.filter((name) => name in status).map((name) => ({
+    name,
+    status: String(status[name]),
+  }));
+  // Include any provider not in the known order (a future source), after the known ones.
+  const extra = Object.keys(status)
+    .filter((name) => !SOURCE_ORDER.includes(name))
+    .map((name) => ({ name, status: String(status[name]) }));
+  return [...known, ...extra];
 }
 
 // ── Watchlist ─────────────────────────────────────────────────────────────────────────────────
@@ -186,6 +239,9 @@ export type Morning = {
   macro: MacroView | null;
   movers: Mover[] | null;
   watch: WatchRow[] | null;
+  calendar: CalendarRow[] | null;
+  /** Per-source health for the run's footer; an empty array when no run is recorded. */
+  sources: SourceStatus[];
 };
 
 /** Group price rows (already sorted oldest-first) into a symbol → closes map. */
@@ -202,8 +258,41 @@ function closesBy(rows: Array<{ symbol: string; close: number }>): Record<string
  */
 export async function getMorning(): Promise<Morning> {
   const asOf = await latestAsOf();
-  const [macro, movers, watch] = await Promise.all([loadMacro(), loadMovers(), loadWatchlist()]);
-  return { asOf: asOf ? asOf.toISOString() : null, macro, movers, watch };
+  const [macro, movers, watch, calendar, sources] = await Promise.all([
+    loadMacro(),
+    loadMovers(),
+    loadWatchlist(),
+    loadCalendar(),
+    loadSourceStatus(),
+  ]);
+  return { asOf: asOf ? asOf.toISOString() : null, macro, movers, watch, calendar, sources };
+}
+
+async function loadCalendar(): Promise<CalendarRow[] | null> {
+  try {
+    const rows = await db.calendarEvent.findMany({
+      orderBy: [{ date: "asc" }],
+      take: 15,
+      select: { date: true, kind: true, symbol: true, title: true, consensus: true, prior: true },
+    });
+    return buildCalendar(rows);
+  } catch (error) {
+    console.error("getMorning: could not load the calendar", error);
+    return null;
+  }
+}
+
+async function loadSourceStatus(): Promise<SourceStatus[]> {
+  try {
+    const run = await db.pipelineRun.findFirst({
+      orderBy: { runDate: "desc" },
+      select: { sourceStatus: true },
+    });
+    return buildSourceStatus((run?.sourceStatus ?? null) as Record<string, unknown> | null);
+  } catch (error) {
+    console.error("getMorning: could not read source status", error);
+    return [];
+  }
 }
 
 async function latestAsOf(): Promise<Date | null> {
@@ -234,19 +323,27 @@ async function loadMacro(): Promise<MacroView | null> {
   }
 }
 
+/** How far back from the run date to look for a mover's catalyst — enough to catch a weekend and
+ * the after-hours news that explains an open. */
+const CATALYST_WINDOW_DAYS = 3;
+
 async function loadMovers(): Promise<Mover[] | null> {
   try {
-    // The P1 movers are the volume-confirmed moves — the "unusual-volume" scan's matches, ranked.
-    // A move that also cleared the volume gate is exactly what a beginner should see; catalyst
-    // chips arrive in P2 (DECISIONS.md 2026-07-11). Top eight of the latest run.
+    // The movers are the volume-confirmed moves — the "unusual-volume" scan's matches, ranked.
+    // Top eight of the latest run.
     const rows = await db.scanResult.findMany({
       where: { presetKey: "unusual-volume" },
       orderBy: [{ runDate: "desc" }, { rank: "asc" }],
       take: 8,
-      select: { symbol: true, metrics: true },
+      select: { symbol: true, metrics: true, runDate: true },
     });
     if (rows.length === 0) return [];
-    const names = await instrumentNames(rows.map((r) => r.symbol));
+
+    const symbols = rows.map((r) => r.symbol);
+    const [names, catalysts] = await Promise.all([
+      instrumentNames(symbols),
+      loadCatalysts(symbols, rows[0].runDate),
+    ]);
     const sources: MoverSource[] = rows.map((r) => {
       const m = (r.metrics ?? {}) as Record<string, unknown>;
       return {
@@ -254,12 +351,56 @@ async function loadMovers(): Promise<Mover[] | null> {
         name: names[r.symbol] ?? r.symbol,
         changeFraction: Number(m.ret_1 ?? 0),
         rvol: Number(m.rvol20 ?? 0),
+        catalyst: catalysts[r.symbol],
       };
     });
     return buildMovers(sources);
   } catch (error) {
     console.error("getMorning: could not load movers", error);
     return null;
+  }
+}
+
+/**
+ * For a set of mover symbols, find each one's most recent in-window news and return it as a
+ * Catalyst (symbol → Catalyst). A symbol with no matching news is simply absent, and the Movers
+ * row renders the honest noise line for it. The classification (event type) is done by the pipeline
+ * and stored on the row; the source label is the article's domain.
+ */
+async function loadCatalysts(symbols: string[], runDate: Date): Promise<Record<string, Catalyst>> {
+  const windowStart = new Date(runDate);
+  windowStart.setUTCDate(windowStart.getUTCDate() - CATALYST_WINDOW_DAYS);
+
+  const news = await db.newsItem.findMany({
+    where: { tickers: { hasSome: symbols }, publishedAt: { gte: windowStart } },
+    orderBy: { publishedAt: "desc" },
+    select: { tickers: true, headline: true, url: true, eventType: true },
+  });
+
+  const wanted = new Set(symbols);
+  const out: Record<string, Catalyst> = {};
+  // News is newest-first, so the FIRST article naming a symbol is its most recent catalyst.
+  for (const article of news) {
+    for (const ticker of article.tickers) {
+      if (wanted.has(ticker) && !out[ticker]) {
+        out[ticker] = {
+          type: article.eventType ?? "news",
+          headline: article.headline,
+          source: sourceLabel(article.url),
+          url: article.url,
+        };
+      }
+    }
+  }
+  return out;
+}
+
+/** A short, human source label from an article URL — its host, without a leading "www.". */
+function sourceLabel(url: string): string {
+  try {
+    return new URL(url).hostname.replace(/^www\./, "");
+  } catch {
+    return "source";
   }
 }
 

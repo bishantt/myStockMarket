@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { buildMacro, buildMovers, buildWatchlist } from "@/lib/morning";
+import { buildCalendar, buildMacro, buildMovers, buildSourceStatus, buildWatchlist } from "@/lib/morning";
 
 /**
  * Tests for the pure builders in lib/morning — the row-shape → view-model transforms the Desk
@@ -48,9 +48,10 @@ describe("buildMacro", () => {
 });
 
 describe("buildMovers", () => {
-  it("formats change and relative volume, ranked as given", () => {
+  it("formats change and relative volume, ranked as given, carrying the catalyst", () => {
+    const catalyst = { type: "earnings", headline: "GameStop beats", source: "reuters.com", url: "https://reuters.com/1" };
     const movers = buildMovers([
-      { symbol: "GME", name: "GameStop", changeFraction: 0.082, rvol: 3.1 },
+      { symbol: "GME", name: "GameStop", changeFraction: 0.082, rvol: 3.1, catalyst },
       { symbol: "AMC", name: "AMC Entertainment", changeFraction: -0.045, rvol: 2.6 },
     ]);
     expect(movers[0]).toEqual({
@@ -59,15 +60,15 @@ describe("buildMovers", () => {
       changePct: "+8.20%",
       direction: "up",
       rvol: "3.1×",
-      likelyNoise: false,
+      catalyst,
     });
     expect(movers[1].changePct).toBe("−4.50%");
     expect(movers[1].direction).toBe("down");
   });
 
-  it("flags a low-volume move as likely noise", () => {
+  it("leaves catalyst undefined when a mover has no matched news (the noise line renders)", () => {
     const [mover] = buildMovers([{ symbol: "XYZ", name: "Xyz", changeFraction: 0.09, rvol: 1.1 }]);
-    expect(mover.likelyNoise).toBe(true);
+    expect(mover.catalyst).toBeUndefined();
   });
 });
 
@@ -97,5 +98,31 @@ describe("buildWatchlist", () => {
     expect(row.rvol).toBe("—");
     expect(row.changePct).toBe("+0.00%"); // a single close has no move
     expect(row.direction).toBe("flat");
+  });
+});
+
+describe("buildCalendar", () => {
+  it("formats event dates in ET and the consensus/prior figures", () => {
+    const rows = buildCalendar([
+      { date: new Date("2026-07-15T00:00:00.000Z"), kind: "earnings", symbol: "AAPL", title: "Apple Q3", consensus: 1.28, prior: 1.4 },
+      { date: new Date("2026-07-16T00:00:00.000Z"), kind: "macro", symbol: null, title: "CPI", consensus: null, prior: null },
+    ]);
+    expect(rows[0]).toMatchObject({ kind: "earnings", symbol: "AAPL", title: "Apple Q3", consensus: "1.28", prior: "1.40" });
+    expect(rows[0].dateLabel).toMatch(/Jul 15/);
+    // A macro event has no symbol and no consensus.
+    expect(rows[1].symbol).toBeUndefined();
+    expect(rows[1].consensus).toBeUndefined();
+  });
+});
+
+describe("buildSourceStatus", () => {
+  it("orders known providers and reports each status", () => {
+    const rows = buildSourceStatus({ fred: "ok", alpaca: "ok", finnhub: "degraded" });
+    expect(rows.map((r) => r.name)).toEqual(["alpaca", "finnhub", "fred"]);
+    expect(rows.find((r) => r.name === "finnhub")?.status).toBe("degraded");
+  });
+
+  it("returns an empty list when there is no run", () => {
+    expect(buildSourceStatus(null)).toEqual([]);
   });
 });

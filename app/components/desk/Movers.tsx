@@ -1,5 +1,7 @@
 import { SectionMasthead } from "@/components/SectionMasthead";
 import { RailTrigger } from "@/components/rail/Rail";
+import { Tag } from "@/components/Tag";
+import { ExternalLink } from "@/components/ExternalLink";
 import { cx } from "@/lib/cx";
 import { copy } from "@/lib/copy";
 import type { Direction } from "@/components/StatFigure";
@@ -9,11 +11,21 @@ import type { Direction } from "@/components/StatFigure";
  *
  * The highest-leverage terminal pattern for a beginner: a percentage move and its relative volume
  * on the same row, so "why is this moving and is anyone actually trading it?" is answerable at a
- * glance. At P1 the catalyst chips are not wired yet — the row shows the move and RVOL, and a
- * quiet note says reasons arrive in P2. A bare "+21%" with no context is exactly the momentum bait
- * this module exists to defuse, so RVOL is always on the row and the honest noise line stands in
- * for a missing catalyst.
+ * glance. And the answer is honest by construction (§1.5 rule 9): a move either carries a CATALYST —
+ * a type chip, a one-line reason, and a source link — or it renders the plain "No news found —
+ * likely noise" line. A bare "+21%" with no context is exactly the momentum bait this module exists
+ * to defuse, so it never appears alone. Market-wide catalyst coverage is partial by design, and the
+ * noise line is what says so.
  */
+
+/** The catalyst behind a move: its type, a one-line headline, and where it came from. */
+export type Catalyst = {
+  /** The catalyst type, e.g. "earnings", "analyst", "m&a" — rendered as the chip label. */
+  type: string;
+  headline: string;
+  source: string;
+  url: string;
+};
 
 export type Mover = {
   symbol: string;
@@ -23,8 +35,8 @@ export type Mover = {
   direction: Direction;
   /** Relative volume, formatted, e.g. "3.1×". */
   rvol: string;
-  /** True when RVOL is low enough that the move is likely noise (Appendix J mover.noNews). */
-  likelyNoise: boolean;
+  /** The matched catalyst, or undefined — in which case the honest noise line renders. */
+  catalyst?: Catalyst;
 };
 
 const DELTA_COLOUR: Record<Direction, string> = {
@@ -38,12 +50,7 @@ const GLYPH: Record<Direction, string> = { up: "▲", down: "▼", flat: "" };
 export function Movers({ asOf, movers }: { asOf: Date; movers: Mover[] }) {
   return (
     <section aria-label="Movers">
-      <SectionMasthead
-        index={4}
-        title="Movers"
-        asOf={asOf}
-        action={<span className="font-ui text-2xs text-muted">reasons arrive in P2</span>}
-      />
+      <SectionMasthead index={4} title="Movers" asOf={asOf} />
 
       {movers.length === 0 ? (
         <p className="pt-4 font-ui text-sm text-muted">No notable movers.</p>
@@ -58,20 +65,32 @@ export function Movers({ asOf, movers }: { asOf: Date; movers: Mover[] }) {
                   changePct: m.changePct,
                   direction: m.direction,
                   rvol: m.rvol,
-                  note: m.likelyNoise ? copy.mover.noNews : undefined,
+                  note: m.catalyst ? m.catalyst.headline : copy.mover.noNews,
                 }}
                 className="flex items-baseline gap-4 py-2 hover:bg-desk-bg"
               >
                 <span className="w-16 shrink-0 font-ui text-sm font-semibold text-ink">{m.symbol}</span>
-                <span className="min-w-0 flex-1 truncate font-ui text-sm text-muted">{m.name}</span>
+                <span className="hidden min-w-0 flex-1 truncate font-ui text-sm text-muted sm:block">{m.name}</span>
                 <span className={cx("flex w-20 shrink-0 items-baseline justify-end gap-0.5 font-mono text-sm", DELTA_COLOUR[m.direction])}>
                   {m.direction !== "flat" ? <span aria-hidden="true">{GLYPH[m.direction]}</span> : null}
                   {m.changePct}
                 </span>
-                <span className="w-16 shrink-0 text-right font-mono text-sm text-ink-2">{m.rvol}</span>
-                {/* No catalyst wiring yet: a low-RVOL move gets the honest noise line, not an invented cause. */}
-                <span className="w-64 shrink-0 font-ui text-2xs text-muted">
-                  {m.likelyNoise ? copy.mover.noNews : "—"}
+                <span className="w-14 shrink-0 text-right font-mono text-sm text-ink-2">{m.rvol}</span>
+                {/* The catalyst — a type chip, the headline, and a source link — or the noise line. */}
+                <span className="flex w-72 shrink-0 items-baseline gap-2">
+                  {m.catalyst ? (
+                    <>
+                      <Tag variant="catalyst">{m.catalyst.type}</Tag>
+                      <span className="min-w-0 flex-1 truncate font-ui text-2xs text-ink-2" title={m.catalyst.headline}>
+                        {m.catalyst.headline}
+                      </span>
+                      <ExternalLink href={m.catalyst.url} className="shrink-0 font-ui text-2xs text-ink">
+                        {m.catalyst.source}
+                      </ExternalLink>
+                    </>
+                  ) : (
+                    <span className="font-ui text-2xs text-muted">{copy.mover.noNews}</span>
+                  )}
                 </span>
               </RailTrigger>
             </li>

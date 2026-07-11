@@ -93,6 +93,23 @@ const MOVERS = [
   { symbol: "PLTR", rank: 3, ret_1: 0.061, rvol20: 2.8, lottery_flag: false },
 ];
 
+/** News that explains the movers — each tagged to its ticker, published on the run day. One mover
+ * (PLTR) is intentionally left with NO news, so the Desk renders the honest noise line for it. */
+const NEWS = [
+  { publishedAt: new Date("2026-07-09T13:10:00.000Z"), provider: "finnhub", url: "https://reuters.com/smci-q3",
+    headline: "Super Micro beats Q3 estimates on AI server demand", snippet: "Revenue jumped 40%.", tickers: ["SMCI"], eventType: "earnings" },
+  { publishedAt: new Date("2026-07-09T11:30:00.000Z"), provider: "marketaux", url: "https://bloomberg.com/gme-downgrade",
+    headline: "Analyst downgrades GameStop to Sell on weak fundamentals", snippet: "Price target cut.", tickers: ["GME"], eventType: "analyst" },
+];
+
+/** The forward session calendar — earnings with consensus, plus market-wide macro/Fed days. */
+const CALENDAR = [
+  { date: new Date("2026-07-12T00:00:00.000Z"), kind: "macro", symbol: null, timing: null, title: "CPI (June)", consensus: null, prior: null, importance: "high" },
+  { date: new Date("2026-07-15T00:00:00.000Z"), kind: "earnings", symbol: "AAPL", timing: null, title: "Apple Q3 earnings", consensus: 1.28, prior: 1.4, importance: "high" },
+  { date: new Date("2026-07-16T00:00:00.000Z"), kind: "fed", symbol: null, timing: null, title: "FOMC statement", consensus: null, prior: null, importance: "high" },
+  { date: new Date("2026-07-17T00:00:00.000Z"), kind: "earnings", symbol: "NVDA", timing: null, title: "NVIDIA Q2 earnings", consensus: 0.92, prior: 0.85, importance: "high" },
+];
+
 /** The macro strip's context row: a calm-tape VIX, the 10-year yield, and a positive breadth day. */
 const MARKET_CONTEXT = {
   runDate: RUN_DATE,
@@ -127,7 +144,8 @@ async function main() {
       startedAt: new Date("2026-07-09T22:37:00.000Z"),
       finishedAt: new Date("2026-07-09T22:40:00.000Z"),
       stageStatus: { ingest: "ok", compute: "ok", scan: "ok", publish: "ok" },
-      sourceStatus: { alpaca: "ok", fred: "ok" },
+      // marketaux degraded on purpose, so the SourceStatusFooter's honest degraded line shows.
+      sourceStatus: { alpaca: "ok", finnhub: "ok", marketaux: "degraded", fmp: "ok", fred: "ok" },
     },
   });
 
@@ -169,9 +187,23 @@ async function main() {
     await db.watchlistItem.create({ data: w });
   }
 
+  // News upserts by (provider, url); the calendar replaces its forward window.
+  for (const n of NEWS) {
+    await db.newsItem.upsert({
+      where: { provider_url: { provider: n.provider, url: n.url } },
+      update: n,
+      create: n,
+    });
+  }
+  await db.calendarEvent.deleteMany({});
+  for (const e of CALENDAR) {
+    await db.calendarEvent.create({ data: e });
+  }
+
   console.log(
     `Seeded: ${INSTRUMENTS.length} instruments, ${PRICE_HISTORY.length} price bars, ` +
-      `${MOVERS.length} movers, ${WATCHLIST.length} watchlist names, 1 macro context.`,
+      `${MOVERS.length} movers, ${WATCHLIST.length} watchlist names, 1 macro context, ` +
+      `${NEWS.length} news items, ${CALENDAR.length} calendar events.`,
   );
 }
 

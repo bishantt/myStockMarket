@@ -55,6 +55,31 @@ test.describe("Desk — the seeded morning", () => {
     await expect(movers.getByText("PLTR")).toBeVisible();
   });
 
+  test("a mover with news shows a catalyst chip + source link; one without shows the noise line", async ({ page }) => {
+    const movers = page.getByRole("region", { name: "Movers" });
+    // SMCI has seeded earnings news → a catalyst chip, the headline, and a source link.
+    await expect(movers.getByText("earnings")).toBeVisible();
+    await expect(movers.getByText(/Super Micro beats Q3/)).toBeVisible();
+    await expect(movers.getByRole("link", { name: "reuters.com" })).toBeVisible();
+    // PLTR has no seeded news → the honest noise line (§1.5 rule 9).
+    await expect(movers.getByText(/No news found/)).toBeVisible();
+  });
+
+  test("the session calendar shows upcoming events with consensus", async ({ page }) => {
+    const calendar = page.getByRole("region", { name: "Session calendar" });
+    await expect(calendar.getByText(/Apple Q3 earnings/)).toBeVisible();
+    await expect(calendar.getByText("earnings").first()).toBeVisible();
+    await expect(calendar.getByText(/cons\. 1\.28/)).toBeVisible();
+    // A market-wide macro event with no symbol.
+    await expect(calendar.getByText(/CPI/)).toBeVisible();
+  });
+
+  test("the source-status footer names a degraded source and shows the FRED attribution", async ({ page }) => {
+    const footer = page.getByRole("contentinfo", { name: "Source status" });
+    await expect(footer.getByText(/marketaux unavailable tonight/)).toBeVisible();
+    await expect(footer.getByText(/FRED® API/)).toBeVisible();
+  });
+
   test("the focus watchlist shows each name, its reason, and the focus mark", async ({ page }) => {
     const watch = page.getByRole("region", { name: "Watchlist" });
     await expect(watch.getByText("AAPL")).toBeVisible();

@@ -8,8 +8,11 @@ const ASOF = new Date("2026-07-09T20:05:00Z");
 
 describe("Movers", () => {
   const movers = [
-    { symbol: "SMCI", name: "Super Micro", changePct: "+8.2%", direction: "up" as const, rvol: "3.1×", likelyNoise: false },
-    { symbol: "XYZ", name: "Noise Co", changePct: "+5.1%", direction: "up" as const, rvol: "0.8×", likelyNoise: true },
+    {
+      symbol: "SMCI", name: "Super Micro", changePct: "+8.2%", direction: "up" as const, rvol: "3.1×",
+      catalyst: { type: "earnings", headline: "Super Micro beats Q3 estimates", source: "Reuters", url: "https://ex.com/1" },
+    },
+    { symbol: "XYZ", name: "Noise Co", changePct: "+5.1%", direction: "up" as const, rvol: "0.8×" },
   ];
 
   it("shows each mover's symbol, change and RVOL", () => {
@@ -19,7 +22,15 @@ describe("Movers", () => {
     expect(screen.getByText("3.1×")).toBeInTheDocument();
   });
 
-  it("uses the honest noise line for a low-RVOL move, never an invented cause", () => {
+  it("renders the catalyst type chip, its reason, and a source link", () => {
+    render(<Movers asOf={ASOF} movers={movers} />);
+    expect(screen.getByText("earnings")).toBeInTheDocument();
+    expect(screen.getByText("Super Micro beats Q3 estimates")).toBeInTheDocument();
+    const link = screen.getByRole("link", { name: "Reuters" });
+    expect(link).toHaveAttribute("href", "https://ex.com/1");
+  });
+
+  it("uses the honest noise line for a mover with no catalyst, never an invented cause", () => {
     render(<Movers asOf={ASOF} movers={movers} />);
     expect(screen.getByText(copy.mover.noNews)).toBeInTheDocument();
   });
