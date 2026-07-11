@@ -35,6 +35,41 @@ export function JournalPrompt() {
         />
       </label>
 
+      {/* An optional forecast — a call, a probability, and when it resolves. Scored on /track-record. */}
+      <details className="max-w-[62ch]">
+        <summary className="cursor-pointer font-ui text-2xs uppercase tracking-[0.06em] text-ink-2 hover:text-accent">
+          Add a forecast (optional)
+        </summary>
+        <div className="flex flex-col gap-3 pt-3">
+          <input
+            name="forecast"
+            maxLength={500}
+            placeholder="The call you are making, e.g. this setup resolves higher."
+            className="rounded-edge border border-hairline bg-surface px-3 py-2 font-prose text-base text-ink placeholder:text-muted"
+          />
+          <div className="flex flex-wrap gap-3">
+            <label className="flex flex-col gap-1">
+              <span className="font-ui text-2xs uppercase tracking-[0.06em] text-muted">Probability %</span>
+              <input
+                name="probability"
+                type="number"
+                min="1"
+                max="99"
+                className="w-24 rounded-edge border border-hairline bg-surface px-2 py-1 font-mono text-sm text-ink"
+              />
+            </label>
+            <label className="flex flex-col gap-1">
+              <span className="font-ui text-2xs uppercase tracking-[0.06em] text-muted">Resolves on</span>
+              <input
+                name="resolvesOn"
+                type="date"
+                className="rounded-edge border border-hairline bg-surface px-2 py-1 font-mono text-sm text-ink"
+              />
+            </label>
+          </div>
+        </div>
+      </details>
+
       <div className="flex items-center gap-4">
         <button
           type="submit"

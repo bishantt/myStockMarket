@@ -29,3 +29,42 @@ export function validateJournal(body: unknown): JournalValidation {
   }
   return { ok: true, value: { body: trimmed } };
 }
+
+export const FORECAST_MAX = 500;
+
+/** A validated forecast: the call, its probability as a 0–1 fraction, and its resolution date. */
+export type ForecastValidation =
+  | { ok: true; value: { forecast: string; probability: number; resolvesOn: Date } }
+  | { ok: false; error: string };
+
+/**
+ * Validate an optional forecast attached to a journal entry: a call, a probability (entered as a
+ * percentage 1–99 and stored as a 0–1 fraction — 0 and 100 are not honest forecasts), and a future
+ * resolution date. Pure, so the rule is tested without a database.
+ */
+export function validateForecast(
+  forecast: unknown,
+  probabilityPct: unknown,
+  resolvesOn: unknown,
+  today: Date,
+): ForecastValidation {
+  if (typeof forecast !== "string" || forecast.trim().length === 0) {
+    return { ok: false, error: "Write the call you are forecasting." };
+  }
+  if (forecast.trim().length > FORECAST_MAX) {
+    return { ok: false, error: `Keep the forecast under ${FORECAST_MAX} characters.` };
+  }
+  const pct = Number(probabilityPct);
+  if (!Number.isFinite(pct) || pct < 1 || pct > 99) {
+    return { ok: false, error: "Give a probability between 1 and 99 percent." };
+  }
+  if (typeof resolvesOn !== "string" || resolvesOn.length === 0) {
+    return { ok: false, error: "Pick a date the forecast resolves." };
+  }
+  const date = new Date(resolvesOn);
+  if (Number.isNaN(date.getTime())) return { ok: false, error: "That resolution date is not valid." };
+  if (date.getTime() <= today.getTime()) {
+    return { ok: false, error: "The resolution date must be in the future." };
+  }
+  return { ok: true, value: { forecast: forecast.trim(), probability: pct / 100, resolvesOn: date } };
+}

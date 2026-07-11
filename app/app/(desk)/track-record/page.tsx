@@ -1,5 +1,9 @@
 import { getTrackRecord } from "@/lib/track-record";
+import { getForecastRecord } from "@/lib/forecasts";
 import { formatUtcDate } from "@/lib/time";
+import { copy } from "@/lib/copy";
+import { CalibrationScatter } from "@/components/desk/CalibrationScatter";
+import { ForecastResolver } from "@/components/desk/ForecastResolver";
 
 /**
  * /track-record — the app's own resolved log (plan P4 step 6, §1.5 rule 7).
@@ -15,6 +19,7 @@ export const dynamic = "force-dynamic";
 
 export default async function TrackRecordPage() {
   const { rows, summary } = await getTrackRecord();
+  const forecasts = await getForecastRecord();
 
   return (
     <div className="flex flex-col gap-6">
@@ -78,6 +83,52 @@ export default async function TrackRecordPage() {
           </div>
         </>
       )}
+
+      {/* YOUR FORECASTS — the user's own calibration, graded the same public way (plan §7 P6 step 4). */}
+      <section aria-label="Your forecasts" className="pt-2">
+        <h2 className="font-ui text-sm font-bold uppercase tracking-[0.06em] text-ink">Your forecasts</h2>
+        <div className="mt-2 h-px bg-hairline" />
+        <p className="max-w-[62ch] pt-3 font-prose text-base text-ink-2">
+          The forecasts you attach to journal entries, scored once they resolve. The same Brier score
+          the app uses on itself — {copy.brier.anchor}.
+        </p>
+
+        {forecasts.resolvedCount === 0 ? (
+          <p className="pt-3 font-ui text-sm text-muted">
+            — No resolved forecasts yet. Attach a probability to a journal entry, then resolve it here
+            once its date passes.
+          </p>
+        ) : (
+          <div className="flex flex-wrap items-start gap-10 pt-4">
+            <div className="flex flex-col gap-0.5">
+              <span className="font-ui text-2xs uppercase tracking-[0.06em] text-muted">Rolling Brier</span>
+              <span className="font-mono text-lg text-ink">{forecasts.rollingBrier?.toFixed(3) ?? "—"}</span>
+              <span className="font-ui text-2xs text-muted">over {forecasts.resolvedCount} resolved</span>
+            </div>
+            <div>
+              <span className="font-ui text-2xs uppercase tracking-[0.06em] text-muted">Calibration</span>
+              <CalibrationScatter buckets={forecasts.buckets} />
+            </div>
+          </div>
+        )}
+
+        {forecasts.open.length > 0 ? (
+          <div className="pt-6">
+            <p className="font-ui text-2xs uppercase tracking-[0.06em] text-muted">Open forecasts</p>
+            <ul className="pt-2">
+              {forecasts.open.map((f) => (
+                <li key={f.id} className="flex flex-wrap items-center gap-3 border-b border-hairline py-2">
+                  <span className="max-w-[40ch] font-prose text-sm text-ink">{f.forecast}</span>
+                  <span className="font-mono text-2xs text-muted">
+                    {Math.round(f.probability * 100)}% · by {formatUtcDate(f.resolvesOn)}
+                  </span>
+                  <ForecastResolver id={f.id} />
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
+      </section>
     </div>
   );
 }
