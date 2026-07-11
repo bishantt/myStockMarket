@@ -2,8 +2,10 @@ import { SectionMasthead } from "@/components/SectionMasthead";
 import { Tag } from "@/components/Tag";
 import { BaseRate } from "@/components/BaseRate";
 import { WeakenerChecklist } from "@/components/desk/WeakenerChecklist";
+import { WorkedExampleDrawer } from "@/components/desk/WorkedExampleDrawer";
 import { copy } from "@/lib/copy";
 import type { BaseRateData } from "@/lib/baserate";
+import { buildWorkedExample } from "@/lib/worked-example";
 import type { Weakener } from "@/lib/weakeners";
 import type { Tier } from "@/lib/constants";
 
@@ -77,6 +79,17 @@ function SetupCard({ card }: { card: SetupCardView }) {
 
         {/* WEAKENERS — the reader's own checklist against the case. */}
         <WeakenerChecklist cardId={card.id} items={card.weakeners} checked={card.weakenerState} />
+
+        {/* WORKED EXAMPLE — the three-step walk-through (data → pattern+belief → last N, failures shown). */}
+        <WorkedExampleDrawer
+          example={buildWorkedExample({
+            symbol: card.symbol,
+            patternKey: card.patternKey,
+            patternLabel: card.patternLabel,
+            cause: card.cause,
+            baseRate: card.baseRate,
+          })}
+        />
 
         {/* The scope line — four words doing most of the product's ethical work. */}
         <p className="font-ui text-2xs uppercase tracking-wide text-muted">{copy.scope.line}</p>
