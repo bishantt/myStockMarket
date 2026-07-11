@@ -17,5 +17,8 @@
 /** The Desk room's page plane. Mirrors `--color-desk-bg`. Cool bone. */
 export const DESK_BG = "#f4f5f3";
 
+/** The dark Desk's page plane (P6). Mirrors the `[data-theme="dark"]` `--color-desk-bg`. */
+export const DESK_BG_DARK = "#131412";
+
 /** The Academy room's paper. Mirrors `--color-academy-bg`. Warm. */
 export const ACADEMY_BG = "#faf6ef";

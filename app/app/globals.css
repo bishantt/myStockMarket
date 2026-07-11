@@ -144,6 +144,55 @@
   --scrim: rgb(20 21 17 / 0.4);
 }
 
+/* ── Dark Desk (§3.3 dark column, P6) ─────────────────────────────────────────────────
+ * Dark mode is DESK-ONLY: the Academy stays light so the room switch is always felt. The dark
+ * values only take hold under a `data-theme="dark"` element (the toggle) or a `data-theme="system"`
+ * element when the OS prefers dark — so nothing without that attribute (the Academy) ever darkens.
+ * academy-bg is deliberately NOT overridden. Only the tokens change; every utility that reads them
+ * (bg-desk-bg, text-ink, border-hairline, …) follows automatically. Dark grade dots spot-checked ≥3:1.
+ */
+[data-theme="dark"] {
+  --color-desk-bg: #131412;
+  --color-surface: #1a1b19;
+  --color-ink: #f1f1ea;
+  --color-ink-2: #bdbeb4;
+  --color-muted: #8f9088;
+  --color-hairline: #2b2c29;
+  --color-accent: #2e9c90;
+  --color-up: #4ca5de;
+  --color-down: #e97f33;
+  --color-up-text: #6fb6e6;
+  --color-down-text: #f09456;
+  --color-alert: #e0a83e;
+  --color-alert-wash: #3a2f14;
+  --color-grade-supported: #4cbf7e;
+  --color-grade-mixed: #d9a03f;
+  --color-grade-weak: #d07b5b;
+  --color-grade-folklore: #e06c6c;
+}
+
+@media (prefers-color-scheme: dark) {
+  [data-theme="system"] {
+    --color-desk-bg: #131412;
+    --color-surface: #1a1b19;
+    --color-ink: #f1f1ea;
+    --color-ink-2: #bdbeb4;
+    --color-muted: #8f9088;
+    --color-hairline: #2b2c29;
+    --color-accent: #2e9c90;
+    --color-up: #4ca5de;
+    --color-down: #e97f33;
+    --color-up-text: #6fb6e6;
+    --color-down-text: #f09456;
+    --color-alert: #e0a83e;
+    --color-alert-wash: #3a2f14;
+    --color-grade-supported: #4cbf7e;
+    --color-grade-mixed: #d9a03f;
+    --color-grade-weak: #d07b5b;
+    --color-grade-folklore: #e06c6c;
+  }
+}
+
 html {
   background-color: var(--color-desk-bg);
   color: var(--color-ink);

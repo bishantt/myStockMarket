@@ -1,5 +1,9 @@
+import { cookies } from "next/headers";
+
 import { db } from "@/lib/db";
 import { FOCUS_CAP } from "@/lib/watchlist";
+import { THEME_COOKIE, normaliseTheme } from "@/lib/theme";
+import { ThemeToggle } from "@/components/desk/ThemeToggle";
 import { AddWatchlistForm } from "./AddWatchlistForm";
 import { WatchlistManager, type ManagedItem } from "./WatchlistManager";
 
@@ -28,6 +32,7 @@ export default async function SettingsPage() {
     isFocus: r.isFocus,
   }));
   const focusCount = items.filter((i) => i.isFocus).length;
+  const theme = normaliseTheme((await cookies()).get(THEME_COOKIE)?.value);
 
   return (
     <div className="flex flex-col gap-8 py-6">
@@ -46,6 +51,16 @@ export default async function SettingsPage() {
 
       <section aria-label="Your watchlist">
         <WatchlistManager items={items} focusCount={focusCount} />
+      </section>
+
+      <section aria-label="Appearance">
+        <h2 className="font-ui text-sm font-bold uppercase tracking-[0.08em] text-ink">Appearance</h2>
+        <div className="mt-1 h-0.5 bg-ink" />
+        <p className="pt-3 font-ui text-sm text-muted">
+          The Desk can run dark. The Academy stays light by design — the room switch should always be
+          felt. System follows your device.
+        </p>
+        <ThemeToggle current={theme} />
       </section>
     </div>
   );

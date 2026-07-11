@@ -1,6 +1,8 @@
 import type { Viewport } from "next";
 import Link from "next/link";
-import { DESK_BG } from "@/lib/tokens";
+import { cookies } from "next/headers";
+import { DESK_BG, DESK_BG_DARK } from "@/lib/tokens";
+import { THEME_COOKIE, normaliseTheme } from "@/lib/theme";
 
 /**
  * The Desk room.
@@ -14,16 +16,28 @@ import { DESK_BG } from "@/lib/tokens";
  * This route group adds no URL segment: `(desk)/page.tsx` is `/`.
  */
 
-/** The standalone PWA's status bar follows the room. P6 adds the dark-mode media variants. */
+/**
+ * The standalone PWA's status bar follows the room, and now the OS colour scheme (P6): a light and a
+ * dark variant keyed on prefers-color-scheme. The manifest's theme_color stays light (install-time
+ * only) — this is only the live status bar. The explicit Light/Dark toggle recolours the page via the
+ * data-theme attribute; the status bar follows the OS, which is the honest default for chrome.
+ */
 export const viewport: Viewport = {
-  themeColor: DESK_BG,
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: DESK_BG },
+    { media: "(prefers-color-scheme: dark)", color: DESK_BG_DARK },
+  ],
 };
 
-export default function DeskLayout({
+export default async function DeskLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
+  // The Desk theme rides in a cookie so the shell can stamp data-theme before paint (no flash).
+  // Dark is Desk-only: this attribute lives on the Desk shell, never on the Academy.
+  const theme = normaliseTheme((await cookies()).get(THEME_COOKIE)?.value);
+
   return (
-    <div className="min-h-dvh bg-desk-bg text-ink">
+    <div data-theme={theme} className="min-h-dvh bg-desk-bg text-ink">
       <DeskNav />
       {/*
        * Max width 1360, 12-column grid, 20px gutters on the phone and 32px on the desktop
