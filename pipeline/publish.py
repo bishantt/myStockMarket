@@ -21,12 +21,27 @@ inputs are plain Python/Polars structures the compute stage builds; this module 
 from __future__ import annotations
 
 import json
+import math
 from datetime import date
 from typing import Any, Iterable, Mapping
 
 import polars as pl
 import psycopg
 from psycopg.types.json import Json
+
+
+def _json_safe(value: Any) -> Any:
+    """
+    Make a metric value safe for Postgres jsonb, which — unlike Python and JSON5 — rejects the
+    non-finite floats NaN and ±Infinity outright.
+
+    An indicator that could not be computed (say RVOL for a name with too little volume history)
+    surfaces as a float NaN out of Polars. NaN in a metrics map is not a number the app should ever
+    show, so it becomes null: the honest "no value" rather than a token Postgres refuses to store.
+    """
+    if isinstance(value, float) and not math.isfinite(value):
+        return None
+    return value
 
 
 def publish(
@@ -124,7 +139,7 @@ def _replace_scan_results(cur, run_date, scan_results: pl.DataFrame | None) -> N
     metric_cols = [c for c in scan_results.columns if c not in ("preset_key", "symbol", "rank")]
     rows = []
     for r in scan_results.iter_rows(named=True):
-        metrics = {c: r[c] for c in metric_cols}
+        metrics = {c: _json_safe(r[c]) for c in metric_cols}
         rows.append((run_date, r["preset_key"], r["symbol"], int(r["rank"]), Json(metrics)))
     cur.executemany(
         """

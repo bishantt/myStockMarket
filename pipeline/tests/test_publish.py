@@ -4,6 +4,7 @@ Covers the happy path, idempotent re-runs, signal_log insert-only + ON CONFLICT 
 per-run scan replacement, and atomic rollback (a failure leaves nothing behind).
 """
 
+import math
 from datetime import date
 
 import polars as pl
@@ -12,6 +13,34 @@ import pytest
 import publish as pub
 
 RUN = date(2026, 6, 30)
+
+
+def test_json_safe_turns_non_finite_floats_into_none():
+    # NaN/±inf out of Polars must become null — Postgres jsonb rejects them, and they are not
+    # numbers the app should show anyway.
+    assert pub._json_safe(float("nan")) is None
+    assert pub._json_safe(float("inf")) is None
+    assert pub._json_safe(float("-inf")) is None
+    assert pub._json_safe(3.14) == 3.14
+    assert pub._json_safe(None) is None
+    assert pub._json_safe(False) is False
+
+
+def test_scan_metrics_with_a_nan_are_stored_as_json_null(db):
+    # A real run produces NaN metrics (e.g. RVOL for a thin-volume name); publish must not choke.
+    pub.publish(
+        db,
+        run_date=RUN,
+        stage_status={},
+        source_status={},
+        scan_results=pl.DataFrame(
+            {"preset_key": ["unusual-volume"], "symbol": ["THIN"], "rank": [1],
+             "ret_1": [0.0], "rvol20": [float("nan")]}
+        ),
+    )
+    metrics = db.execute("SELECT metrics FROM scan_result").fetchone()[0]
+    assert metrics["ret_1"] == 0.0
+    assert metrics["rvol20"] is None  # NaN became JSON null
 
 
 def _price_bars(*rows) -> pl.DataFrame:
