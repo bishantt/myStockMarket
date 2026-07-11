@@ -33,6 +33,17 @@ export type TrackRecord = {
  * counted but excluded from the rate). Returns an empty record if nothing has resolved yet.
  */
 export async function getTrackRecord(limit = 200): Promise<TrackRecord> {
+  try {
+    return await loadTrackRecord(limit);
+  } catch (error) {
+    // The Desk prerenders with this loader; a build with no database (CI) or a slow table must
+    // degrade to an empty record, exactly as getMorning does — never fail the render.
+    console.error("getTrackRecord: could not read the resolved log", error);
+    return { rows: [], summary: { total: 0, hits: 0, misses: 0, na: 0, hitRate: null } };
+  }
+}
+
+async function loadTrackRecord(limit: number): Promise<TrackRecord> {
   const [resolutions, counts] = await Promise.all([
     db.signalResolution.findMany({
       orderBy: { resolvedAt: "desc" },
