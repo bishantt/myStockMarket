@@ -170,3 +170,52 @@ model MarketContext {
 
   @@map("market_context")
 }
+
+/// Company and market news that explains why names moved (plan Appendix B, P2). Written by the
+/// nightly catalyst ingest from Finnhub (per-ticker), Marketaux (market-wide, tagged), and EDGAR
+/// (filings). One row per article, deduplicated by (provider, url) so a rerun adds nothing new.
+///
+/// `tickers` is a Postgres text array — an article can name several symbols. `eventType` is the
+/// catalyst-type classification (earnings, guidance, analyst, filing, ...) the matcher assigns, null
+/// until classified. `extract` is reserved for the P3 LLM structured extract.
+model NewsItem {
+  id          String   @id @default(cuid())
+  publishedAt DateTime @map("published_at")
+  provider    String
+  url         String
+  headline    String
+  snippet     String
+  /// The symbols this article was tagged with (a news item can mention several).
+  tickers     String[]
+  eventType   String?  @map("event_type")
+  sentiment   Float?
+  extract     Json?
+
+  @@unique([provider, url])
+  @@index([publishedAt])
+  @@map("news_item")
+}
+
+/// The forward event calendar — earnings, macro releases, Fed days, dividends (plan Appendix B, P2).
+/// Written nightly from FMP (earnings + consensus) and FRED (economic releases). The nightly refresh
+/// replaces the forward window each run, so the calendar always reflects the latest schedule.
+///
+/// `kind` is a plain string (earnings|macro|fed|div|other), not an enum, so a new event type ships
+/// without a migration. `symbol` is null for market-wide events (a Fed day, a CPI print). `timing`
+/// (bmo|amc|time) is nullable — FMP's /stable/ endpoint does not carry the time of day (logged).
+model CalendarEvent {
+  id         String   @id @default(cuid())
+  date       DateTime @db.Date
+  kind       String
+  symbol     String?
+  timing     String?
+  title      String
+  /// Consensus and prior figures for a data release or earnings report, when known.
+  consensus  Float?
+  prior      Float?
+  /// A coarse importance marker (e.g. "high"), null until assigned.
+  importance String?
+
+  @@index([date])
+  @@map("calendar_event")
+}

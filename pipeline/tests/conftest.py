@@ -19,7 +19,7 @@ TEST_DATABASE_URL = os.environ.get("TEST_DATABASE_URL")
 
 # Every serving table, truncated between tests. TRUNCATE bypasses signal_log's insert-only row
 # trigger (which fires per-row on UPDATE/DELETE, not on TRUNCATE), so the log can still be reset.
-_ALL_TABLES = "pipeline_run, instrument, price_bar, scan_result, signal_log, watchlist_item, market_context"
+_ALL_TABLES = "pipeline_run, instrument, price_bar, scan_result, signal_log, watchlist_item, market_context, news_item, calendar_event"
 
 _MIGRATIONS = sorted(
     glob.glob(str(Path(__file__).resolve().parents[2] / "app" / "prisma" / "migrations" / "*" / "migration.sql"))
