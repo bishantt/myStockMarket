@@ -74,17 +74,17 @@ watchlist server actions, e2e journeys 1/2/5, visual baselines.
 
 ## Next 3 tasks
 
-1. **P1 step 4 (scans) — scans.py**: the 5 Appendix F presets (unusual-volume, near-52w-high,
-   gap-3plus, golden-cross-fresh, rsi-extreme) as filters over the indicator frame → ScanResult
-   rows with metrics + the lottery-risk flag. Test-first with synthetic bar frames. Same keys as
-   the P4 detectors (one definition, two consumers).
-2. **P1 step 4 (store) — the Parquet/DuckDB layer**: year-partitioned Parquet on R2
-   (`adapters` R2 client), current-year rewrite + trailing 5-session re-pull, DuckDB scan queries.
-   Heavier infra; the scan LOGIC (task 1) is independent and comes first.
-3. **P1 step 5 — publish.py** wired into job_a: single-transaction refresh of price_bar
-   (watchlist + indices + sector ETFs), scan_result, pipeline_run stages; signal_log ON CONFLICT
-   DO NOTHING; idempotent stage-skip resume. Tests: universe hard-fail (<95%), publish
-   transaction isolation, stage-skip rerun, signal_log idempotency.
+1. **P1 step 6 — the real Desk modules** (locally buildable, no Docker): `prisma/seed.ts`
+   deterministic synthetic morning (instruments + price_bar for indices/watchlist + scan_result),
+   then module 01 Macro pulse (SPX hero + index row + breadth), 04 Movers (rows, "reasons in P2"),
+   05 Watchlist (CRUD server actions + sparklines). All 8 mastheads mount over "—" placeholders.
+   `lib/morning.ts` assembles the Desk payload, tagged 'morning'. e2e journey 1 (P1 variant).
+2. **P1 step 5 (wiring) — job_a full flow**: wire the Alpaca adapter → indicators → parquet_store
+   → scans → publish into jobs/job_a.py (replacing the hello-run), with the universe hard-fail
+   (<95% symbols → job fails) and the R2 sync (boto3). The R2 sync module is still to build.
+3. **P1 steps 7-9**: RailSheet + `/ticker/[symbol]` Lightweight Charts (candles + volume); SW
+   morning-payload cache + OfflineRibbon; weekly pg_dump in nightly-b + one restore test.
+   Then the §6.4 gate (LCP now a HARD gate — see below) and tag phase-1.
 
 ## P1 progress
 - **step 1 DONE:** Prisma schema v1 migrated (Instrument/PriceBar/ScanResult/SignalLog/
