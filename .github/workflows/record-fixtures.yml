@@ -1,0 +1,38 @@
+# record-fixtures.yml — TEMPORARY. Records real provider responses as test fixtures.
+#
+# Provider secrets live only in GitHub, so fixtures are recorded here and uploaded as an artifact
+# to download and commit. Deleted once the needed fixtures are captured; not an Appendix C
+# workflow. Re-added per provider as needed (Alpaca earlier, FRED now).
+
+name: record-fixtures
+
+on:
+  workflow_dispatch:
+    inputs:
+      provider:
+        description: "which provider to record (alpaca | fred)"
+        required: true
+        default: "fred"
+
+jobs:
+  record:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: pipeline
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
+      - run: uv sync --frozen
+      - name: Record
+        env:
+          ALPACA_KEY_ID: ${{ secrets.ALPACA_KEY_ID }}
+          ALPACA_SECRET: ${{ secrets.ALPACA_SECRET }}
+          FRED_KEY: ${{ secrets.FRED_KEY }}
+          MSM_FIXTURES_OUT: ${{ runner.temp }}/fixtures
+        run: uv run python -m scripts.record_${{ inputs.provider }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: fixtures-${{ inputs.provider }}
+          path: ${{ runner.temp }}/fixtures/
