@@ -96,11 +96,48 @@ const MOVERS = [
 /** News that explains the movers — each tagged to its ticker, published on the run day. One mover
  * (PLTR) is intentionally left with NO news, so the Desk renders the honest noise line for it. */
 const NEWS = [
-  { publishedAt: new Date("2026-07-09T13:10:00.000Z"), provider: "finnhub", url: "https://reuters.com/smci-q3",
+  { id: "seed-smci", publishedAt: new Date("2026-07-09T13:10:00.000Z"), provider: "finnhub", url: "https://reuters.com/smci-q3",
     headline: "Super Micro beats Q3 estimates on AI server demand", snippet: "Revenue jumped 40%.", tickers: ["SMCI"], eventType: "earnings" },
-  { publishedAt: new Date("2026-07-09T11:30:00.000Z"), provider: "marketaux", url: "https://bloomberg.com/gme-downgrade",
+  { id: "seed-gme", publishedAt: new Date("2026-07-09T11:30:00.000Z"), provider: "marketaux", url: "https://bloomberg.com/gme-downgrade",
     headline: "Analyst downgrades GameStop to Sell on weak fundamentals", snippet: "Price target cut.", tickers: ["GME"], eventType: "analyst" },
 ];
+
+/** A published evening briefing over the seeded news and movers (Appendix G shape). Its numbers
+ * match the movers (SMCI +18.40%, GME -9.20%) and the breadth (3210 advancers); its citations point
+ * at the seeded news ids so the BriefArticle's source superscripts resolve to real links. The
+ * learning_link_slug is deliberately unknown until P5, so no Learn doorway renders yet. */
+const BRIEFING = {
+  runDate: RUN_DATE,
+  status: "published",
+  amJson: {
+    today_focus: {
+      headline: "AI-server demand carried the tape",
+      body: "Breadth was positive, with 3210 advancers against 1780 decliners, and the session's story was Super Micro's earnings beat.",
+      citations: ["seed-smci", "stat-breadth"],
+      no_edge_flag: false,
+    },
+    items: [
+      {
+        what_happened: "Super Micro beat Q3 estimates on AI server demand.",
+        why_it_matters: "It is an early read on datacentre spending this quarter.",
+        by_the_numbers: "Shares rose 18.40% on relative volume of 4.7×.",
+        yes_but: "One quarter of demand is not a trend.",
+        citations: ["seed-smci"],
+      },
+      {
+        what_happened: "An analyst downgraded GameStop to sell.",
+        why_it_matters: "The move was on a rating change, not a shift in the business.",
+        by_the_numbers: "Shares fell 9.20%.",
+        yes_but: "A single downgrade is one view, not a verdict.",
+        citations: ["seed-gme"],
+      },
+    ],
+    calendar_notes: ["CPI for June is due 2026-07-12."],
+    learning_link_slug: "reading-a-base-rate-sentence",
+  },
+  verificationJson: { status: "ok", checked: 4, held_reason: null, flags: [] },
+  modelMeta: { model_extract: "claude-haiku-4-5", model_synth: "claude-sonnet-5", extract_count: 2 },
+};
 
 /** The forward session calendar — earnings with consensus, plus market-wide macro/Fed days. */
 const CALENDAR = [
@@ -200,10 +237,17 @@ async function main() {
     await db.calendarEvent.create({ data: e });
   }
 
+  // The evening briefing — keyed by run date, so a re-seed replaces it in place.
+  await db.briefing.upsert({
+    where: { runDate: RUN_DATE },
+    update: BRIEFING,
+    create: BRIEFING,
+  });
+
   console.log(
     `Seeded: ${INSTRUMENTS.length} instruments, ${PRICE_HISTORY.length} price bars, ` +
       `${MOVERS.length} movers, ${WATCHLIST.length} watchlist names, 1 macro context, ` +
-      `${NEWS.length} news items, ${CALENDAR.length} calendar events.`,
+      `${NEWS.length} news items, ${CALENDAR.length} calendar events, 1 briefing.`,
   );
 }
 
