@@ -176,3 +176,28 @@ class TestBuildSnapshot:
         bars = toy_ohlcv(260).with_columns(pl.lit("AAA").alias("symbol"))
         snap = scans.build_snapshot(bars)
         assert snap["date"].to_list() == [bars["date"].max()]
+
+
+class TestLotteryFlagRule:
+    """The lottery-flag rule directly (Appendix F, plan §6.2): price < $5, OR a top-decile 60-day
+    skew name priced under $10. A normal name is never flagged."""
+
+    def test_sub_five_dollar_is_always_flagged(self):
+        snap = scans._add_lottery_flag(_snapshot(
+            {"symbol": "PENNY", "close": 3.0, "skew_60": 0.0},
+            {"symbol": "NORMAL", "close": 50.0, "skew_60": 0.0},
+        ))
+        flags = dict(zip(snap["symbol"].to_list(), snap["lottery_flag"].to_list()))
+        assert flags["PENNY"] is True
+        assert flags["NORMAL"] is False
+
+    def test_high_skew_under_ten_dollars_is_flagged_but_not_at_or_above_ten(self):
+        snap = scans._add_lottery_flag(_snapshot(
+            {"symbol": "SKEWLOW", "close": 8.0, "skew_60": 5.0},    # top-decile skew, under $10 → flag
+            {"symbol": "SKEWHIGH", "close": 12.0, "skew_60": 5.0},  # same skew but ≥ $10 → no flag
+            {"symbol": "CALM", "close": 8.0, "skew_60": -1.0},      # under $10 but low skew → no flag
+        ))
+        flags = dict(zip(snap["symbol"].to_list(), snap["lottery_flag"].to_list()))
+        assert flags["SKEWLOW"] is True
+        assert flags["SKEWHIGH"] is False
+        assert flags["CALM"] is False
