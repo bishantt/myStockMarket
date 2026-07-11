@@ -74,18 +74,29 @@ watchlist server actions, e2e journeys 1/2/5, visual baselines.
 
 ## Next 3 tasks
 
-1. **P1 step 2 — the Alpaca adapter**, test-first: `adapters/base.py` (repository interface +
-   token-bucket rate limiter + fixture loader via httpx.MockTransport), then `adapters/alpaca.py`
-   (multi-symbol daily bars, universe listing, corporate actions) with recorded fixtures. Tests
-   first: fixture round-trips + rate-limit behaviour + one-provider-down isolation. Mint the
-   `new-provider-adapter` skill after Alpaca. (real Alpaca key is in GitHub secrets; tests use
-   fixtures, never live keys.)
-2. **P1 step 3 — indicators.py**: the Appendix F set as Polars expressions, toy-series tests
-   first (frozen 30-bar series in pipeline/tests/toy_series.py, expected values generated once
-   from pandas-ta-classic and frozen). Mint `new-indicator` after the 2nd. Include the one-bar
-   lookahead guard test.
-3. **P1 steps 4-5 — Parquet/DuckDB store + scans.py (5 presets) + publish.py** wired into job_a,
-   with the universe hard-fail (<95%), publish transaction isolation, and stage-skip rerun tests.
+1. **P1 step 3 — indicators.py**: the Appendix F set as Polars expressions (SMA 20/50/200, EMA
+   12/26, RSI 14 Wilder, MACD, ATR 14, Bollinger 20/2, RVOL 20, 52w-high distance, gap %, returns
+   1/5/20d), toy-series tests first — a frozen 30-bar synthetic series in
+   `pipeline/tests/toy_series.py` with expected values generated ONCE from pandas-ta-classic and
+   frozen. Include the one-bar lookahead guard. Mint `new-indicator` after the 2nd indicator.
+2. **P1 step 2 leftover — Alpaca corporate actions.** Bars + universe are done; the corporate-
+   actions method pairs naturally with the Parquet store's adjustment handling (step 4), so it is
+   deferred there rather than built stranded now.
+3. **P1 step 4 — Parquet/DuckDB store + scans.py** (the 5 Appendix F presets), then step 5
+   `publish.py` wired into job_a, with the universe hard-fail (<95%), publish transaction
+   isolation, and stage-skip rerun tests.
+
+## P1 progress
+- **step 1 DONE:** Prisma schema v1 migrated (Instrument/PriceBar/ScanResult/SignalLog/
+  WatchlistItem); signal_log insert-only via trigger (owner bypasses REVOKE).
+- **step 2 DONE:** `adapters/base.py` (TokenBucket rate limiter, load_fixture, Adapter — 11 tests)
+  and `adapters/alpaca.py` (daily_bars + list_universe — 7 tests) built test-first against REAL
+  recorded fixtures. `new-provider-adapter` skill MINTED; PATTERNS.md has the adapter shape.
+  Structural fix logged: exchange is a String (ETFs list on ARCA), no-OTC enforced at ingest.
+  Fixtures recorded via `scripts/record_alpaca.py` + a temp Actions workflow (removed).
+- **Pipeline tests: 31 green.** App: 45 unit + 28 e2e green.
+- Note: the deterministic `prisma/seed.ts` synthetic morning still pending (pairs with the Desk
+  modules at step 6). DB verification should use a throwaway DB, not production Supabase.
 
 ## P1 progress
 - **step 1 DONE (2026-07-10):** Prisma schema v1 migrated to Supabase (Instrument, PriceBar,
