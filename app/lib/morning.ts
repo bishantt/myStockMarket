@@ -178,9 +178,11 @@ export function buildWatchlist(sources: WatchSource[]): WatchRow[] {
 // ── The loader ──────────────────────────────────────────────────────────────────────────────────
 
 /** Everything the Desk renders. A null field means "show the placeholder"; an empty array means
- * "the module is wired but had nothing today" (its own empty state renders). */
+ * "the module is wired but had nothing today" (its own empty state renders). `asOf` is an ISO
+ * string (not a Date) because this whole object is cached, and the cache serialises to JSON — the
+ * page reconstructs the Date. */
 export type Morning = {
-  asOf: Date | null;
+  asOf: string | null;
   macro: MacroView | null;
   movers: Mover[] | null;
   watch: WatchRow[] | null;
@@ -201,7 +203,7 @@ function closesBy(rows: Array<{ symbol: string; close: number }>): Record<string
 export async function getMorning(): Promise<Morning> {
   const asOf = await latestAsOf();
   const [macro, movers, watch] = await Promise.all([loadMacro(), loadMovers(), loadWatchlist()]);
-  return { asOf, macro, movers, watch };
+  return { asOf: asOf ? asOf.toISOString() : null, macro, movers, watch };
 }
 
 async function latestAsOf(): Promise<Date | null> {

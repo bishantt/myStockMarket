@@ -8,12 +8,13 @@ import { db } from "@/lib/db";
  * cards) is assembled by lib/morning.ts from P1 onward; this stays as the pipeline-status read.
  */
 
-/** The shape the Desk needs from the most recent run. */
+/** The shape the Desk needs from the most recent run. Dates are ISO strings because this is cached
+ * (the data cache serialises to JSON); the page reconstructs them. */
 export type LatestRun = {
-  /** The trading day the run processed. */
-  runDate: Date;
-  /** When it finished, if it did. Null while a run is still in flight. */
-  finishedAt: Date | null;
+  /** The trading day the run processed (ISO date string). */
+  runDate: string;
+  /** When it finished, if it did (ISO string). Null while a run is still in flight. */
+  finishedAt: string | null;
 };
 
 /**
@@ -31,7 +32,11 @@ export async function getLatestRun(): Promise<LatestRun | null> {
       orderBy: { runDate: "desc" },
       select: { runDate: true, finishedAt: true },
     });
-    return row ?? null;
+    if (!row) return null;
+    return {
+      runDate: row.runDate.toISOString(),
+      finishedAt: row.finishedAt ? row.finishedAt.toISOString() : null,
+    };
   } catch (error) {
     console.error("getLatestRun: could not read pipeline_run", error);
     return null;

@@ -103,7 +103,8 @@ export async function toggleFocus(_prev: ActionResult, formData: FormData): Prom
   }
 }
 
-/** Refresh the two routes that render the watchlist so a write shows up at once. */
+/** Refresh the two routes that render the watchlist so a write shows up at once — the Desk (its
+ * cached ISR render) and this settings page. */
 function revalidateWatchlist(): void {
   revalidatePath("/");
   revalidatePath("/settings");

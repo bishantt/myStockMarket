@@ -53,6 +53,9 @@ jobs:
           R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
           R2_SECRET: ${{ secrets.R2_SECRET }}
           R2_BUCKET: ${{ secrets.R2_BUCKET }}
+          # After publishing, ask the app to revalidate its cached Desk payload.
+          APP_BASE_URL: ${{ secrets.APP_BASE_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
         run: uv run python -m jobs.job_a
 
       # A private repo's scheduled workflows are disabled by GitHub after 60 days without repo

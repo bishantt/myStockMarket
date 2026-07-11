@@ -151,11 +151,35 @@ def main() -> None:
         )
         result = run_nightly(deps)
 
+    _revalidate_desk(settings)
+
     print(
         f"job_a: {run_date.isoformat()} — universe {result.universe_size}, "
         f"coverage {result.coverage:.1%}, {result.scan_matches} scan matches, "
         f"{result.served_symbols} served symbols, breadth {result.breadth}."
     )
+
+
+def _revalidate_desk(settings: Settings) -> None:
+    """
+    Ask the app to refresh its cached morning payload after publishing (best-effort).
+
+    The Desk reads a cached payload so its LCP stays low; this POST revalidates that cache so the
+    next visit sees tonight's data at once. A failure here does not fail the night — the six-hour
+    time fallback still refreshes the Desk — so it is logged, not raised. Needs APP_BASE_URL and
+    CRON_SECRET (Appendix D); if either is absent the step is skipped with a note.
+    """
+    base = settings.app_base_url
+    secret = settings.cron_secret
+    if not base or not secret:
+        print("job_a: APP_BASE_URL or CRON_SECRET not set; skipping the Desk revalidation.")
+        return
+    try:
+        response = httpx.post(f"{base.rstrip('/')}/api/revalidate", params={"secret": secret}, timeout=15)
+        response.raise_for_status()
+        print("job_a: asked the app to revalidate the Desk.")
+    except Exception as error:  # noqa: BLE001 — revalidation is best-effort; the time fallback covers it
+        print(f"job_a: Desk revalidation failed ({error}); the app will refresh on its time fallback.")
 
 
 if __name__ == "__main__":

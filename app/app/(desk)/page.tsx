@@ -25,7 +25,11 @@ import { formatEtDate } from "@/lib/time";
  * placeholder note until their phase lands.
  */
 
-export const dynamic = "force-dynamic";
+// The Desk is served from a cached render (ISR), not rebuilt per request — that is what keeps its
+// TTFB, and so its LCP, low (the data changes once a night, not per visit; plan §4.5). The render
+// is refreshed on demand: Job A calls /api/revalidate after publishing, and a watchlist write calls
+// revalidatePath("/"). The 10-minute time fallback bounds staleness if an on-demand refresh is missed.
+export const revalidate = 600;
 
 /** The modules not yet wired to data — masthead over a one-line note saying when they arrive. */
 const PLACEHOLDERS: Record<number, string> = {
@@ -49,10 +53,12 @@ function Placeholder({ index, title, note }: { index: number; title: string; not
 
 export default async function DeskPage() {
   const [latest, morning] = await Promise.all([getLatestRun(), getMorning()]);
+  // The cached reads return ISO strings; reconstruct the Dates the components format.
   // A live module always carries an "as of" timestamp, and that timestamp comes from a recorded
   // run. If no run is recorded yet, asOf is null and every live module shows its placeholder — the
   // Desk never stamps a module with a fabricated date.
-  const asOf = morning.asOf;
+  const asOf = morning.asOf ? new Date(morning.asOf) : null;
+  const lastRunFinishedAt = latest?.finishedAt ? new Date(latest.finishedAt) : undefined;
 
   return (
     <RailProvider>
@@ -62,9 +68,9 @@ export default async function DeskPage() {
 
       {/* Module 0 — the pipeline heartbeat (the P0 loop): the app renders what the cloud wrote. */}
       <section>
-        <SectionMasthead index={0} title="Pipeline" asOf={latest?.finishedAt ?? undefined} />
+        <SectionMasthead index={0} title="Pipeline" asOf={lastRunFinishedAt} />
         <div className="pt-4">
-          <StatFigure label="Last cloud run" value={latest ? formatEtDate(latest.runDate) : "—"} scale="figure" />
+          <StatFigure label="Last cloud run" value={latest ? formatEtDate(new Date(latest.runDate)) : "—"} scale="figure" />
           <p className="pt-3 font-ui text-sm text-muted">
             {latest
               ? "Written by the nightly pipeline in the cloud — nothing runs on this device."
