@@ -2,6 +2,7 @@ import { db } from "@/lib/db";
 import { GlossaryTerm } from "@/components/GlossaryTerm";
 import { Tag } from "@/components/Tag";
 import { SCAN_PRESETS } from "@/lib/scan-presets";
+import { capMatches } from "@/lib/scan-view";
 
 /** Each preset's core concept, so its label carries a glossary doorway into the Academy. */
 const PRESET_GLOSSARY: Record<string, string> = {
@@ -82,9 +83,20 @@ export default async function ScansPage() {
               <p className="pt-2 font-ui text-2xs uppercase tracking-[0.06em] text-muted">
                 {hits.length === 0 ? "No matches today" : `${hits.length} match${hits.length === 1 ? "" : "es"} today`}
               </p>
-              {hits.length > 0 ? (
-                <p className="pt-1 font-mono text-sm text-ink-2">{hits.join(" · ")}</p>
-              ) : null}
+              {hits.length > 0
+                ? (() => {
+                    // Show a calm, capped run of tickers with an honest "+ N more" tail — never a wall.
+                    const capped = capMatches(hits);
+                    return (
+                      <p className="pt-1 font-mono text-sm text-ink-2">
+                        {capped.shown.join(" · ")}
+                        {capped.more > 0 ? (
+                          <span className="text-muted"> · + {capped.more} more</span>
+                        ) : null}
+                      </p>
+                    );
+                  })()
+                : null}
             </li>
           );
         })}

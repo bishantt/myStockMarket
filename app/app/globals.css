@@ -199,6 +199,18 @@ html {
   /* Mono numerals are tabular by construction, but Archivo's lining figures need asking. */
   font-variant-numeric: tabular-nums lining-nums;
   -webkit-text-size-adjust: 100%;
+  /* Calm tech: the page body never scrolls sideways. Wide content (the nav strip, a table) scrolls
+   * inside its own container; nothing is allowed to drag the whole page off-axis (§3, mobile fix). */
+  overflow-x: hidden;
+}
+
+/* A scroll strip with no visible scrollbar chrome — used by the nav's room links on narrow screens. */
+.no-scrollbar {
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
 }
 
 body {

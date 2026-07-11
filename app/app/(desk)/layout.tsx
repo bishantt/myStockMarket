@@ -7,6 +7,7 @@ import { db } from "@/lib/db";
 import { getLessonManifest } from "@/lib/academy";
 import { ROUTE_ITEMS, type PaletteItem } from "@/lib/palette";
 import { CommandPalette } from "@/components/CommandPalette";
+import { RoomNav } from "@/components/desk/RoomNav";
 
 /**
  * The Desk room.
@@ -73,66 +74,17 @@ function DeskNav() {
     <header className="border-b border-hairline">
       <nav
         aria-label="Rooms"
-        className="mx-auto flex max-w-[1360px] items-center justify-between gap-6 px-5 py-3 desk:px-8"
+        className="mx-auto flex max-w-[1360px] items-center gap-4 px-5 py-3 desk:px-8"
       >
         <Link
           href="/"
-          className="font-ui text-sm font-bold uppercase tracking-[0.08em] font-stretch-[115%]"
+          className="shrink-0 font-ui text-sm font-bold uppercase tracking-[0.08em] font-stretch-[115%]"
         >
           myStockMarket
         </Link>
 
-        <ul className="flex items-center gap-5 font-ui text-xs uppercase tracking-[0.06em]">
-          <li>
-            <Link
-              href="/"
-              aria-current="page"
-              className="border-b-2 border-ink pb-0.5 text-ink"
-            >
-              Desk
-            </Link>
-          </li>
-          <li>
-            <Link
-              href="/scans"
-              className="border-b-2 border-transparent pb-0.5 text-ink-2 hover:text-accent"
-            >
-              Scans
-            </Link>
-          </li>
-          <li>
-            <Link
-              href="/paper"
-              className="border-b-2 border-transparent pb-0.5 text-ink-2 hover:text-accent"
-            >
-              Paper
-            </Link>
-          </li>
-          <li>
-            <Link
-              href="/track-record"
-              className="border-b-2 border-transparent pb-0.5 text-ink-2 hover:text-accent"
-            >
-              Track record
-            </Link>
-          </li>
-          <li>
-            <Link
-              href="/academy"
-              className="border-b-2 border-transparent pb-0.5 text-ink-2 hover:text-accent"
-            >
-              Academy
-            </Link>
-          </li>
-          <li>
-            <Link
-              href="/settings"
-              className="border-b-2 border-transparent pb-0.5 text-ink-2 hover:text-accent"
-            >
-              Settings
-            </Link>
-          </li>
-        </ul>
+        {/* The room links live in a scroll strip so a narrow phone scrolls the links, not the page. */}
+        <RoomNav />
       </nav>
     </header>
   );

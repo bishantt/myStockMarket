@@ -67,21 +67,22 @@ export function Movers({ asOf, movers }: { asOf: Date; movers: Mover[] }) {
                   rvol: m.rvol,
                   note: m.catalyst ? m.catalyst.headline : copy.mover.noNews,
                 }}
-                className="flex items-baseline gap-4 py-2 hover:bg-desk-bg"
+                className="flex flex-wrap items-baseline gap-x-4 gap-y-1 py-2 hover:bg-desk-bg"
               >
-                <span className="w-16 shrink-0 font-ui text-sm font-semibold text-ink">{m.symbol}</span>
+                <span className="w-14 shrink-0 font-ui text-sm font-semibold text-ink">{m.symbol}</span>
                 <span className="hidden min-w-0 flex-1 truncate font-ui text-sm text-muted sm:block">{m.name}</span>
                 <span className={cx("flex w-20 shrink-0 items-baseline justify-end gap-0.5 font-mono text-sm", DELTA_COLOUR[m.direction])}>
                   {m.direction !== "flat" ? <span aria-hidden="true">{GLYPH[m.direction]}</span> : null}
                   {m.changePct}
                 </span>
                 <span className="w-14 shrink-0 text-right font-mono text-sm text-ink-2">{m.rvol}</span>
-                {/* The catalyst — a type chip, the headline, and a source link — or the noise line. */}
-                <span className="flex w-72 shrink-0 items-baseline gap-2">
+                {/* The catalyst — chip, headline, source link — or the noise line. Full-width on a
+                 * phone (wraps to its own line so the row never overflows); a fixed column on desktop. */}
+                <span className="flex w-full min-w-0 shrink-0 items-baseline gap-2 sm:w-72">
                   {m.catalyst ? (
                     <>
                       <Tag variant="catalyst">{m.catalyst.type}</Tag>
-                      <span className="min-w-0 flex-1 truncate font-ui text-2xs text-ink-2" title={m.catalyst.headline}>
+                      <span className="min-w-0 flex-1 font-ui text-2xs text-ink-2 sm:truncate" title={m.catalyst.headline}>
                         {m.catalyst.headline}
                       </span>
                       <ExternalLink href={m.catalyst.url} className="shrink-0 font-ui text-2xs text-ink">
@@ -89,7 +90,9 @@ export function Movers({ asOf, movers }: { asOf: Date; movers: Mover[] }) {
                       </ExternalLink>
                     </>
                   ) : (
-                    <span className="font-ui text-2xs text-muted">{copy.mover.noNews}</span>
+                    <span className="min-w-0 flex-1 font-ui text-2xs text-muted sm:truncate" title={copy.mover.noNews}>
+                      {copy.mover.noNews}
+                    </span>
                   )}
                 </span>
               </RailTrigger>
