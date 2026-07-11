@@ -3,7 +3,7 @@ import { directionOf, multiple, percent, price, signedPercent } from "@/lib/form
 import { formatUtcDate } from "@/lib/time";
 import { buildBrief, parseBriefDraft, type BriefView } from "@/lib/briefing";
 import { isKnownLesson } from "@/lib/academy";
-import { patternCause, patternLabel } from "@/lib/patterns";
+import { patternCause, patternLabel, patternLessonSlug } from "@/lib/patterns";
 import { weakenersFor } from "@/lib/weakeners";
 import type { SetupCardView } from "@/components/desk/SetupCards";
 import type { Tier } from "@/lib/constants";
@@ -323,13 +323,20 @@ async function loadSetupCards(): Promise<SetupCardView[] | null> {
         },
         weakeners: weakenersFor(row.patternKey),
         weakenerState: (row.weakeners ?? {}) as Record<string, boolean>,
-        learnSlug: null, // the Academy manifest is empty until P5 — no doorway yet
+        // The card links to its pattern's lesson — but only once that lesson is authored (the
+        // doorway gates on the slug existing), so cards for not-yet-written lessons carry none.
+        learnSlug: knownLessonOrNull(patternLessonSlug(row.patternKey)),
       };
     });
   } catch (error) {
     console.error("getMorning: could not load setup cards", error);
     return null;
   }
+}
+
+/** A lesson slug only if the Academy manifest knows it — else null (no doorway yet). */
+function knownLessonOrNull(slug: string | null): string | null {
+  return slug && isKnownLesson(slug) ? slug : null;
 }
 
 /** The reference-class label the base-rate sentence reads ("US large/mid", "US small"). */

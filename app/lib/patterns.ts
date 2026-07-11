@@ -26,8 +26,24 @@ const PATTERN_CAUSE: Record<string, string> = {
   "breadth-regime": "Market breadth crossed the 50% line.",
 };
 
+/** The Academy lesson each pattern links to (Appendix H slugs). A card's Learn doorway lights up
+ * automatically once that lesson is authored (the loader gates on the slug existing). */
+const PATTERN_LESSON: Record<string, string> = {
+  "golden-cross": "moving-averages-and-the-golden-cross",
+  "52w-high-proximity": "support-resistance-and-round-numbers",
+  "gap-with-catalyst": "gaps-what-the-data-says",
+  "rsi-extreme": "rsi-and-oscillators",
+  "unusual-volume": "volume-and-rvol",
+  "breadth-regime": "reading-the-macro-pulse",
+};
+
 export function patternLabel(key: string): string {
   return PATTERN_LABELS[key] ?? key;
+}
+
+/** The lesson slug a pattern's card links to, or null if none is mapped. */
+export function patternLessonSlug(key: string): string | null {
+  return PATTERN_LESSON[key] ?? null;
 }
 
 export function patternCause(key: string): string {

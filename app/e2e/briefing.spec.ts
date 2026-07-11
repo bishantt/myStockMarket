@@ -41,9 +41,12 @@ test.describe("Daily brief — the seeded evening briefing", () => {
     await expect(brief.getByRole("link", { name: "reuters.com" })).toBeVisible();
   });
 
-  test("no Learn doorway renders while the Academy manifest is empty (pre-P5)", async ({ page }) => {
+  test("the Learn doorway now links to the seeded lesson (the Academy manifest has it)", async ({ page }) => {
+    // The seeded brief's learning_link_slug is an authored M0 lesson, so the doorway lights up.
     const brief = page.getByRole("region", { name: "Daily brief" });
-    await expect(brief.getByRole("link", { name: /Learn:/ })).toHaveCount(0);
+    const doorway = brief.getByRole("link", { name: /Learn:/ });
+    await expect(doorway).toBeVisible();
+    await expect(doorway).toHaveAttribute("href", "/academy/reading-a-base-rate-sentence");
   });
 
   test("the evening scorecard shows the live resolved record over the journal prompt", async ({ page }) => {

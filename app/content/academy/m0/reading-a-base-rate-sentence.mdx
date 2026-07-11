@@ -1,0 +1,43 @@
+---
+module: M0
+slug: reading-a-base-rate-sentence
+title: Reading a base-rate sentence
+minutes: 4
+concepts: [base-rate, reference-class, confidence-interval, wilson-interval, natural-frequency]
+order: 2
+questions:
+  - q: In "this pattern appeared 110 times on US large/mid names; price was higher 10 trading days later in 66 of 110 cases", what is the reference class?
+    a: US large/mid names — the specific group of stocks the count was measured on. A base rate only means something against a stated reference class.
+  - q: The app shows "about 6 in 10" instead of "60%" for a sample of 60. Why?
+    a: At a middling sample size the exact percentage is false precision. The natural-frequency form is honest about the resolution the data actually supports, and the wide-interval note says the true rate could sit some way either side.
+---
+
+A base-rate sentence looks simple, but every clause in it is doing a job. Learn to read the clauses and you can judge any base rate the app shows you.
+
+Here is the canonical form:
+
+> In the past 5 years, this pattern appeared **110 times** on **US large/mid names**. Price was higher **10 trading days** later in **66 of 110 cases** (**60%**).
+
+## Clause by clause
+
+- **"appeared 110 times"** — this is **N**, the sample size. It is the single most important number on the card. A big N earns a percentage; a small N does not (more below).
+- **"on US large/mid names"** — this is the **reference class**. A base rate is always relative to a group. "Higher 60% of the time" means nothing until you know *for what*. The same pattern can behave differently on large caps and small caps, so the app keeps them separate.
+- **"10 trading days later"** — the **horizon**. The count measures the price at a fixed number of trading days out, not "eventually". Change the horizon and you change the base rate.
+- **"66 of 110 cases (60%)"** — the outcome, as a natural frequency first and a percentage second. The frequency is the honest form; the percentage is a convenience.
+
+## How the sample size changes what you see
+
+The app shows the base rate at three levels of precision, set by N:
+
+- **N of 100 or more** — the percentage, plus a 95% **Wilson interval** (the statistically honest range for a proportion). This is the only regime where a percentage is trustworthy.
+- **N of 30 to 99** — a **natural frequency** ("about 6 in 10"), no percentage, plus a note that the sample is still small and the true rate could sit some way either side.
+- **N under 30** — nothing but "insufficient history — treat as anecdote". A dozen cases is a story, not a statistic, and the app refuses to dress it up as one.
+
+## The two numbers you always check together
+
+Never read the win rate alone. Read it with:
+
+1. the **always-up baseline** — how often the price rose anyway, and
+2. the **confidence interval** — how wide the uncertainty is.
+
+If the interval overlaps the baseline, the pattern has not been shown to beat simply holding. That is the honest reading, and it is exactly the reading the app enforces with the weak-tier cap.

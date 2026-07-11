@@ -1,0 +1,35 @@
+---
+module: M0
+slug: how-this-app-explains-itself
+title: How this app explains itself
+minutes: 3
+concepts: [base-rate, reference-class, always-up-baseline]
+order: 1
+questions:
+  - q: When a setup card shows a 55% win rate but its interval includes the always-up baseline, what tier does it get?
+    a: Weak. The interval cannot rule out that the pattern is no better than simply being long, so the card is capped at weak no matter what the point estimate says.
+  - q: Why does every base rate show an always-up baseline next to it?
+    a: So a number like 55% cannot pose as an edge when the market was up about that often anyway. You read the pattern against the baseline, not on its own.
+---
+
+This app is built to argue with itself, out loud, so you never have to take a number on faith.
+
+Most market tools show you a signal and stop there. This one shows you the signal, how often it has actually been followed by a higher price, how uncertain that count is, and what the market did anyway over the same window. If those four things do not add up to an edge, the app says so.
+
+## What a setup card really claims
+
+A setup card names a pattern that fired on a symbol. Under it sits a base rate: the plain count of how often, in the past, the price was higher a set number of trading days later. It is written as a natural frequency — "higher in 66 of 110 cases" — because that is easier to reason about than a bare percentage, and harder to mistake for a promise.
+
+Beside every base rate is the **always-up baseline**: how often the price was higher over the same window regardless of any pattern. US stocks drift up over time, so the baseline is usually somewhere around 53–55%. A pattern that "wins" 55% of the time has done nothing the baseline did not already do.
+
+## Why the interval matters more than the number
+
+A win rate from a small sample is mostly noise. So the app never shows a percentage without its **confidence interval** — the range the true rate plausibly sits in. When that interval overlaps the always-up baseline, the honest conclusion is that the pattern cannot be told apart from just being long. The card is capped at the **weak** tier, whatever the headline number looks like.
+
+That cap is not a display quirk. It is the whole point: a number is only as good as the interval around it.
+
+## The track record keeps the app honest
+
+Every signal the app fires is logged, and when its horizon passes, the outcome — hit or miss — is recorded and never rewritten. The [track record](/track-record) shows all of it, misses included. An app that could quietly forget its wrong calls would be worth nothing; this one cannot.
+
+So as you read the Desk, hold it to its own standard. If a card cannot show you an N, an interval, and a baseline, it should not be asking for your attention.
