@@ -1,5 +1,28 @@
 # PROGRESS.md — resumable state
 
+**F6 COMPLETE (2026-07-12) — tagged `feel-6`, CI green on the tag.**
+Next: F7, the last phase — hardening, the evidence tables, and the docs sync. Nothing is blocked.
+
+**Track record** is the page that keeps the whole product honest, so the two things that matter there
+are enforced by the table itself now: the filter **defaults to ALL**, and a seeded miss is on the
+first page with nobody touching a control (a default of "hits" would be a product grading its own
+homework), and the outcome rides line 1 of the phone card-row — never below the fold of its own row.
+If a reader has to scroll to find out whether the app was wrong, the app has hidden being wrong.
+
+It also killed **the app's last sideways-scrolling table**. A six-column grid peeked through a 390px
+keyhole was the phone experience there. Drift rule 16 has unlisted the page: there is one table in
+this app now, and the rule is closed.
+
+**Academy** goes two-up from 1024px and each module states its position as a COUNT — "2 of 4 read".
+Never a progress bar or a ring: a half-full ring is a nudge to finish, and this is a reading room.
+
+**Settings** became the three cards it always was.
+
+Tests at F6 exit: **384 unit · 214 pytest · e2e + VRT + PWA green on the `feel-6` tag · 17 drift rules.**
+
+---
+
+
 **F5 COMPLETE (2026-07-12) — tagged `feel-5`, CI green on the tag.**
 Next: F6, the remaining rooms (track record, academy, settings). Nothing is blocked.
 
