@@ -388,9 +388,11 @@ def _replace_calendar(cur, run_date, calendar_events) -> None:
     if calendar_events is None:
         return
     cur.execute("DELETE FROM calendar_event WHERE date >= %s", (run_date,))
+    # `code` is the chip the Desk renders (CPI, JOBS, FOMC, EARNINGS …) — the calendar's one
+    # vocabulary, set by the allowlist rather than by the raw provider name (redesign §6.2).
     rows = [
         (e["date"], e["kind"], e.get("symbol"), e.get("timing"), e["title"],
-         e.get("consensus"), e.get("prior"), e.get("importance"))
+         e.get("consensus"), e.get("prior"), e.get("importance"), e.get("code"))
         for e in calendar_events
     ]
     if not rows:
@@ -398,31 +400,56 @@ def _replace_calendar(cur, run_date, calendar_events) -> None:
     cur.executemany(
         """
         INSERT INTO calendar_event
-            (id, date, kind, symbol, timing, title, consensus, prior, importance)
-        VALUES (gen_random_uuid()::text, %s, %s, %s, %s, %s, %s, %s, %s)
+            (id, date, kind, symbol, timing, title, consensus, prior, importance, code)
+        VALUES (gen_random_uuid()::text, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         """,
         rows,
     )
 
 
 def _upsert_market_context(cur, run_date, market_context: Mapping[str, Any] | None) -> None:
-    # The macro strip's one row per run — upsert by run date so a re-run updates in place. VIX and
-    # the 10-year yield are nullable because FRED can be down; breadth always comes from the
+    # The macro strip's one row per run — upsert by run date so a re-run updates in place. Every FRED
+    # column is nullable because every FRED series can fail on its own: the VIX, the 10-year yield,
+    # and each index level with the level before it (redesign §6.1). Breadth always comes from the
     # ingested universe, so it is always present.
+    #
+    # The priors are persisted alongside the levels because the app computes the day's change by
+    # subtracting them. It has no access to the pipeline's observations — if the prior is not in the
+    # row, the change is not knowable, and the Desk prints "—" instead of inventing one.
     if market_context is None:
         return
     cur.execute(
         """
-        INSERT INTO market_context (run_date, vix, ten_year, advancers, decliners, pct_above_50dma)
-        VALUES (%(run_date)s, %(vix)s, %(ten_year)s, %(advancers)s, %(decliners)s, %(pct)s)
+        INSERT INTO market_context (
+            run_date, vix, ten_year,
+            sp500, sp500_prior, nasdaq_composite, nasdaq_composite_prior, djia, djia_prior,
+            advancers, decliners, pct_above_50dma
+        )
+        VALUES (
+            %(run_date)s, %(vix)s, %(ten_year)s,
+            %(sp500)s, %(sp500_prior)s, %(nasdaq_composite)s, %(nasdaq_composite_prior)s,
+            %(djia)s, %(djia_prior)s,
+            %(advancers)s, %(decliners)s, %(pct)s
+        )
         ON CONFLICT (run_date) DO UPDATE SET
-            vix = EXCLUDED.vix, ten_year = EXCLUDED.ten_year, advancers = EXCLUDED.advancers,
+            vix = EXCLUDED.vix, ten_year = EXCLUDED.ten_year,
+            sp500 = EXCLUDED.sp500, sp500_prior = EXCLUDED.sp500_prior,
+            nasdaq_composite = EXCLUDED.nasdaq_composite,
+            nasdaq_composite_prior = EXCLUDED.nasdaq_composite_prior,
+            djia = EXCLUDED.djia, djia_prior = EXCLUDED.djia_prior,
+            advancers = EXCLUDED.advancers,
             decliners = EXCLUDED.decliners, pct_above_50dma = EXCLUDED.pct_above_50dma
         """,
         {
             "run_date": run_date,
             "vix": market_context.get("vix"),
             "ten_year": market_context.get("ten_year"),
+            "sp500": market_context.get("sp500"),
+            "sp500_prior": market_context.get("sp500_prior"),
+            "nasdaq_composite": market_context.get("nasdaq_composite"),
+            "nasdaq_composite_prior": market_context.get("nasdaq_composite_prior"),
+            "djia": market_context.get("djia"),
+            "djia_prior": market_context.get("djia_prior"),
             "advancers": market_context["advancers"],
             "decliners": market_context["decliners"],
             "pct": market_context["pct_above_50dma"],

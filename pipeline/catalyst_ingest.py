@@ -16,7 +16,9 @@ from __future__ import annotations
 from datetime import date, timedelta
 from typing import Any, Callable
 
+from catalyst_allowlist import Release, select_releases
 from nightly import CatalystBundle
+from universe import CORE_SERVED
 
 # How many movers to pull per-ticker Finnhub news for, and how many to name in the one Marketaux
 # call — the free tiers are small, and the top movers are what the Desk shows.
@@ -74,8 +76,17 @@ def gather_catalysts(
 
     if fred is not None:
         try:
-            for release in fred.release_calendar(run_date, run_date + timedelta(days=_CALENDAR_AHEAD_DAYS)):
-                calendar.append(_fred_event(release))
+            releases = fred.release_calendar(run_date, run_date + timedelta(days=_CALENDAR_AHEAD_DAYS))
+            # Curate BEFORE mapping (redesign §6.2): the allowlist works on the typed adapter rows,
+            # which carry the release id the de-duplication needs. A dropped release is skipped
+            # outright — it never becomes an empty row.
+            selected = select_releases(releases)
+            for release, entry in selected:
+                calendar.append(_fred_event(release, entry))
+            print(
+                f"catalysts: fred calendar — kept {len(selected)} catalysts, "
+                f"dropped {len(releases) - len(selected)} non-catalyst releases"
+            )
             calendar_ran = True
         except Exception as error:  # noqa: BLE001 — fred's macro-series status is reported by the macro stage
             print(f"catalysts: fred calendar down ({error})")
@@ -108,6 +119,19 @@ def _marketaux_news(article: Any) -> dict:
     }
 
 
+def earnings_importance(symbol: str) -> str:
+    """
+    How loudly the calendar marks a company's earnings report (redesign Appendix E-4).
+
+    The rule: high if the product actually serves the symbol, medium otherwise. Note what that means
+    today — the served core is the index ETFs and the sector SPDRs, none of which report earnings —
+    so in practice every earnings row renders "medium". That is deliberate rather than accidental:
+    the "high" marker stays reserved for the market-wide catalysts (CPI, the jobs report, FOMC),
+    which is what a beginner most needs to see coming. Logged in QUESTIONS-FOR-BISHANT.md.
+    """
+    return "high" if symbol in CORE_SERVED else "medium"
+
+
 def _fmp_event(event: Any) -> dict:
     return {
         "date": event.date,
@@ -117,22 +141,25 @@ def _fmp_event(event: Any) -> dict:
         "title": f"{event.symbol} earnings",
         "consensus": event.eps_estimate,
         "prior": None,
-        "importance": None,
+        "importance": earnings_importance(event.symbol),
+        "code": "EARNINGS",
     }
 
 
-def _fred_event(release: Any) -> dict:
-    # FOMC releases are the Fed's; everything else is a macro data release.
-    kind = "fed" if "fomc" in release.name.lower() else "macro"
+def _fred_event(release: Any, entry: Release) -> dict:
+    """Map one allowlisted FRED release onto the calendar's row shape. Every field the Desk renders —
+    the chip code, the title, the importance — comes from the allowlist table, never from the raw
+    FRED name, so the calendar speaks one vocabulary (redesign §6.2, Appendix C)."""
     return {
         "date": release.date,
-        "kind": kind,
+        "kind": entry.kind,
         "symbol": None,
         "timing": None,
-        "title": release.name,
+        "title": entry.display,
         "consensus": None,
         "prior": None,
-        "importance": None,
+        "importance": entry.importance,
+        "code": entry.code,
     }
 
 

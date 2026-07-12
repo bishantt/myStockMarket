@@ -37,53 +37,183 @@ import type { WatchRow } from "@/components/desk/Watchlist";
 
 // ── Macro ─────────────────────────────────────────────────────────────────────────────────────
 
-/** The index ETFs the macro strip shows. SPY is the hero; the rest form the index row (plan §9.2). */
-const INDEX_ETFS: ReadonlyArray<{ symbol: string; label: string; hero: boolean }> = [
-  { symbol: "SPY", label: "S&P 500", hero: true },
-  { symbol: "QQQ", label: "Nasdaq", hero: false },
-  { symbol: "DIA", label: "Dow", hero: false },
-  { symbol: "IWM", label: "Russell 2000", hero: false },
+/**
+ * The macro strip's four slots, and the honesty rule that shapes this whole section.
+ *
+ * An ETF is not its index. SPY tracks the S&P 500's percentage move, but it trades near 755 while
+ * the index sits near 6,800 — so printing SPY's price under the words "S&P 500" tells a beginner
+ * something false, in the largest numeral on the Desk. That is what this code exists to prevent.
+ *
+ * Each slot therefore has two ways to render, and the label follows whichever one happened:
+ *
+ *   source: "index"      the true level, from the FRED series stored on market_context
+ *   source: "etf-proxy"  the ETF's own price, under the ETF's own honest label
+ *
+ * There is deliberately no third path where an ETF price wears an index's name. The Russell 2000
+ * has no free FRED series at all, so its slot is *always* the proxy — and always says so
+ * (UI-REDESIGN-PLAN §6.1, Appendix E-1).
+ */
+type IndexSlot = {
+  /** The label when the true index level is available. */
+  indexLabel: string;
+  /** The ETF that stands in when it is not — and the label that admits it. */
+  proxySymbol: string;
+  proxyLabel: string;
+  /** Pulls this slot's level and prior level out of the context row. */
+  level: (ctx: MacroContext) => { value: number | null; prior: number | null };
+};
+
+const SPX_SLOT: IndexSlot = {
+  indexLabel: "S&P 500",
+  proxySymbol: "SPY",
+  proxyLabel: "S&P 500 · SPY (ETF proxy)",
+  level: (ctx) => ({ value: ctx.sp500, prior: ctx.sp500Prior }),
+};
+
+const INDEX_SLOTS: readonly IndexSlot[] = [
+  {
+    indexLabel: "Nasdaq Composite",
+    // QQQ tracks the Nasdaq-100, NOT the Composite. The fallback label must not claim otherwise —
+    // it is a different index with different members, and saying "Composite" here would be a lie
+    // of exactly the kind this whole module was rewritten to stop.
+    proxySymbol: "QQQ",
+    proxyLabel: "Nasdaq-100 · QQQ (ETF proxy)",
+    level: (ctx) => ({ value: ctx.nasdaqComposite, prior: ctx.nasdaqCompositePrior }),
+  },
+  {
+    indexLabel: "Dow",
+    proxySymbol: "DIA",
+    proxyLabel: "Dow · DIA (ETF proxy)",
+    level: (ctx) => ({ value: ctx.djia, prior: ctx.djiaPrior }),
+  },
+  {
+    // No free FRED daily series exists for the Russell 2000, so this slot never has an index level.
+    // It is an ETF proxy by construction, and it wears the chip that says so.
+    indexLabel: "Russell 2000",
+    proxySymbol: "IWM",
+    proxyLabel: "Russell 2000 · IWM (ETF proxy)",
+    level: () => ({ value: null, prior: null }),
+  },
 ];
+
+/** Every ETF the strip may need — the fallback quotes, and the Russell's only quote. */
+const PROXY_SYMBOLS: string[] = [SPX_SLOT, ...INDEX_SLOTS].map((s) => s.proxySymbol);
 
 /** The per-run macro-context row, exactly as the market_context table stores it. */
 export type MacroContext = {
   vix: number | null;
   tenYear: number | null;
+  /** True index levels from FRED, each with the level before it. Null when the series was down. */
+  sp500: number | null;
+  sp500Prior: number | null;
+  nasdaqComposite: number | null;
+  nasdaqCompositePrior: number | null;
+  djia: number | null;
+  djiaPrior: number | null;
   advancers: number;
   decliners: number;
   pctAbove50dma: number;
 };
 
-type IndexQuote = { value: string; deltaPct: string; direction: Direction };
+/** Where a slot's number came from. The label is not free to disagree with this. */
+export type QuoteSource = "index" | "etf-proxy";
+
+export type IndexQuote = {
+  label: string;
+  /** Already formatted. This module never calls toFixed; every number goes through lib/format. */
+  value: string;
+  /** The one-day change, or "—" when it is not knowable from what was stored. */
+  deltaPct: string;
+  direction: Direction;
+  source: QuoteSource;
+  /** Set only on a proxy slot: the ETF actually being shown. Drives the "ETF proxy" chip. */
+  proxySymbol?: string;
+};
 
 /** The macro strip's view-model — the exact shape MacroPulse renders (minus asOf, added by the page). */
 export type MacroView = {
   spx: IndexQuote;
-  indices: Array<IndexQuote & { label: string }>;
+  indices: IndexQuote[];
   breadth: { advancers: number; decliners: number; pctAbove50dma: string };
   vix: string;
   tenYear: string;
 };
 
 /**
- * A quote from a symbol's recent closes: the latest level and its day change against the prior
- * close. Returns null when there is not enough history to state a change honestly (needs two bars).
+ * A quote from a true index level and the level before it.
+ *
+ * If the prior level is missing, the level still renders and the change renders "—". It is never
+ * borrowed from the ETF: the ETF's percentage move is close to the index's, but "close" is not
+ * "the same", and a number the database cannot justify does not get printed.
  */
-function quoteFromCloses(closes: number[] | undefined): IndexQuote | null {
+function quoteFromLevel(slot: IndexSlot, ctx: MacroContext): IndexQuote | null {
+  const { value, prior } = slot.level(ctx);
+  if (value === null) return null;
+
+  if (prior === null) {
+    return { label: slot.indexLabel, value: price(value), deltaPct: "—", direction: "flat", source: "index" };
+  }
+  const delta = (value - prior) / prior;
+  return {
+    label: slot.indexLabel,
+    value: price(value),
+    deltaPct: signedPercent(delta),
+    direction: directionOf(delta),
+    source: "index",
+  };
+}
+
+/**
+ * The one-day change from a run of closes: the latest close against the one before it.
+ *
+ * Returns null when there is not enough history to state a change honestly — it needs two bars, and
+ * a single bar is not a change. Shared by the macro strip's ETF fallback and the watchlist.
+ */
+function dayChange(
+  closes: number[] | undefined,
+): { latest: number; deltaPct: string; direction: Direction } | null {
   if (!closes || closes.length < 2) return null;
   const latest = closes[closes.length - 1];
   const prev = closes[closes.length - 2];
   const delta = (latest - prev) / prev;
-  return { value: price(latest), deltaPct: signedPercent(delta), direction: directionOf(delta) };
+  return { latest, deltaPct: signedPercent(delta), direction: directionOf(delta) };
 }
 
 /**
- * Build the macro strip from the day's context row and each index ETF's recent closes.
+ * A quote from an ETF's recent closes — the fallback path, and the Russell's only path.
+ *
+ * The label is the slot's *proxy* label, so the ETF is named as an ETF wherever this is used.
+ */
+function quoteFromCloses(slot: IndexSlot, closes: number[] | undefined): IndexQuote | null {
+  const change = dayChange(closes);
+  if (change === null) return null;
+  return {
+    label: slot.proxyLabel,
+    value: price(change.latest),
+    deltaPct: change.deltaPct,
+    direction: change.direction,
+    source: "etf-proxy",
+    proxySymbol: slot.proxySymbol,
+  };
+}
+
+/** The true level if the pipeline stored one, otherwise the honestly-labelled ETF. Never a hybrid. */
+function quoteForSlot(
+  slot: IndexSlot,
+  ctx: MacroContext,
+  closesBySymbol: Record<string, number[]>,
+): IndexQuote | null {
+  return quoteFromLevel(slot, ctx) ?? quoteFromCloses(slot, closesBySymbol[slot.proxySymbol]);
+}
+
+/**
+ * Build the macro strip from the day's context row, its index levels, and the ETF closes that stand
+ * in when a level is missing.
  *
  * Returns null — so the Desk shows the placeholder instead — when the hero (the S&P) cannot be
- * formed or there is no macro context row, because a macro module without its hero numeral or its
- * breadth is not the macro module. An index that lacks two bars is simply dropped from the row; a
- * FRED cell that is null (FRED was down) renders as a quiet "—" rather than a fake zero.
+ * formed by either path, or when there is no macro context row at all: a macro module without its
+ * hero numeral or its breadth is not the macro module. A slot with neither a level nor two bars is
+ * dropped from the row. A FRED context cell that is null renders as a quiet "—", never a fake zero.
  */
 export function buildMacro(
   ctx: MacroContext | null,
@@ -91,16 +221,12 @@ export function buildMacro(
 ): MacroView | null {
   if (ctx === null) return null;
 
-  const spxDef = INDEX_ETFS.find((e) => e.hero)!;
-  const spx = quoteFromCloses(closesBySymbol[spxDef.symbol]);
+  const spx = quoteForSlot(SPX_SLOT, ctx, closesBySymbol);
   if (spx === null) return null;
 
-  const indices = INDEX_ETFS.filter((e) => !e.hero)
-    .map((e) => {
-      const quote = quoteFromCloses(closesBySymbol[e.symbol]);
-      return quote ? { label: e.label, ...quote } : null;
-    })
-    .filter((q): q is IndexQuote & { label: string } => q !== null);
+  const indices = INDEX_SLOTS.map((slot) => quoteForSlot(slot, ctx, closesBySymbol)).filter(
+    (quote): quote is IndexQuote => quote !== null,
+  );
 
   return {
     spx,
@@ -155,20 +281,31 @@ export type CalendarSource = {
   title: string;
   consensus: number | null;
   prior: number | null;
+  /** The chip code the pipeline's allowlist assigned (CPI, JOBS, FOMC, EARNINGS…). */
+  code: string | null;
+  /** "high" | "medium". Older rows, written before the allowlist, carry null. */
+  importance: string | null;
 };
 
 /**
  * Format the session calendar for display: the event date (a bare calendar date, by its UTC
  * calendar date, not shifted to ET) and the consensus/prior figures through lib/format. No forecasting.
+ *
+ * The chip the reader sees is the allowlist's `code`, not the raw `kind`. That is the point of the
+ * allowlist: the calendar speaks one small vocabulary it chose, rather than whatever FRED happened
+ * to call a release that night. A row written before the allowlist existed has no code, so it falls
+ * back to its kind rather than rendering an empty chip.
  */
 export function buildCalendar(sources: CalendarSource[]): CalendarRow[] {
   return sources.map((s) => ({
     dateLabel: formatUtcDate(s.date),
     kind: s.kind,
+    code: s.code ?? s.kind,
     title: s.title,
     symbol: s.symbol ?? undefined,
     consensus: s.consensus === null ? undefined : price(s.consensus),
     prior: s.prior === null ? undefined : price(s.prior),
+    high: s.importance === "high",
   }));
 }
 
@@ -216,7 +353,7 @@ export type WatchSource = {
  */
 export function buildWatchlist(sources: WatchSource[]): WatchRow[] {
   return sources.map((s) => {
-    const quote = quoteFromCloses(s.closes) ?? { deltaPct: signedPercent(0), direction: "flat" as Direction };
+    const quote = dayChange(s.closes) ?? { deltaPct: signedPercent(0), direction: "flat" as Direction };
     const prior = s.volumes.slice(0, -1).slice(-RVOL_WINDOW);
     const latestVolume = s.volumes[s.volumes.length - 1];
     const rvol =
@@ -400,7 +537,10 @@ async function loadCalendar(): Promise<CalendarRow[] | null> {
     const rows = await db.calendarEvent.findMany({
       orderBy: [{ date: "asc" }],
       take: 15,
-      select: { date: true, kind: true, symbol: true, title: true, consensus: true, prior: true },
+      select: {
+        date: true, kind: true, symbol: true, title: true,
+        consensus: true, prior: true, code: true, importance: true,
+      },
     });
     return buildCalendar(rows);
   } catch (error) {
@@ -438,8 +578,10 @@ async function latestAsOf(): Promise<Date | null> {
 async function loadMacro(): Promise<MacroView | null> {
   try {
     const ctx = await db.marketContext.findFirst({ orderBy: { runDate: "desc" } });
+    // The ETF bars are still read: they are the fallback path for any slot whose index level is
+    // missing, and the only path the Russell 2000 has (§6.1).
     const bars = await db.priceBar.findMany({
-      where: { symbol: { in: INDEX_ETFS.map((e) => e.symbol) } },
+      where: { symbol: { in: PROXY_SYMBOLS } },
       orderBy: [{ symbol: "asc" }, { date: "asc" }],
       select: { symbol: true, close: true },
     });

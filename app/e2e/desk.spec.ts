@@ -32,11 +32,26 @@ test.describe("Desk — the seeded morning", () => {
     await expect(page).toHaveURL("/");
   });
 
-  test("the macro strip shows the S&P hero, the FRED cells, and breadth", async ({ page }) => {
+  test("the macro strip shows the S&P hero as a TRUE INDEX LEVEL, the FRED cells, and breadth", async ({ page }) => {
     const macro = page.getByRole("region", { name: "Macro pulse" });
     await expect(macro).toBeVisible();
-    // The S&P 500 day change is exactly the seed's final-day move (+1.1%), rendered in ink.
-    await expect(macro.getByText("+1.10%")).toBeVisible();
+
+    // The regression lock on the product's worst bug (redesign §6.1). The hero is the S&P 500's
+    // real index level from FRED — the seeded 6,812.34 — NOT the SPY ETF's ~600 price, which the
+    // Desk used to print under this exact label. The change is computed from the level and its
+    // prior level (6,789.10 → 6,812.34 = +0.34%), never borrowed from the ETF.
+    await expect(macro.getByText("6,812.34")).toBeVisible();
+    await expect(macro.getByText("+0.34%")).toBeVisible();
+    await expect(macro.getByText("Index levels · FRED · prior close")).toBeVisible();
+
+    // The other true levels.
+    await expect(macro.getByText("22,345.67")).toBeVisible(); // Nasdaq Composite
+    await expect(macro.getByText("44,210.55")).toBeVisible(); // Dow
+
+    // The Russell has no free FRED series, so its slot is an ETF — and says so, on the surface.
+    await expect(macro.getByText("Russell 2000 · IWM (ETF proxy)")).toBeVisible();
+    await expect(macro.getByText("ETF proxy")).toBeVisible();
+
     // The two FRED context cells.
     await expect(macro.getByText("15.84")).toBeVisible();
     await expect(macro.getByText("4.54%")).toBeVisible();
@@ -65,13 +80,25 @@ test.describe("Desk — the seeded morning", () => {
     await expect(movers.getByText(/No news found/)).toBeVisible();
   });
 
-  test("the session calendar shows upcoming events with consensus", async ({ page }) => {
+  test("the session calendar shows curated catalysts with their chip codes and no noise", async ({ page }) => {
     const calendar = page.getByRole("region", { name: "Session calendar" });
-    await expect(calendar.getByText(/Apple Q3 earnings/)).toBeVisible();
-    await expect(calendar.getByText("earnings").first()).toBeVisible();
+
+    // The chip is the allowlist's CODE — the calendar's one vocabulary (redesign §6.2).
+    await expect(calendar.getByText("EARNINGS").first()).toBeVisible();
+    await expect(calendar.getByText(/AAPL earnings/)).toBeVisible();
     await expect(calendar.getByText(/cons\. 1\.28/)).toBeVisible();
-    // A market-wide macro event with no symbol.
-    await expect(calendar.getByText(/CPI/)).toBeVisible();
+
+    // The market-wide catalysts, each marked with the word "high" beside an ink dot.
+    await expect(calendar.getByText("CPI")).toBeVisible();
+    await expect(calendar.getByText("FOMC")).toBeVisible();
+    await expect(calendar.getByText("JOBS")).toBeVisible();
+    await expect(calendar.getByText("high").first()).toBeVisible();
+
+    // And the firehose the allowlist exists to stop: none of FRED's daily non-catalyst releases
+    // may ever appear here again.
+    for (const noise of ["Coinbase", "Commercial Paper", "CBOE", "Dow Jones Averages"]) {
+      await expect(calendar.getByText(new RegExp(noise, "i"))).toHaveCount(0);
+    }
   });
 
   test("the source-status footer names a degraded source and shows the FRED attribution", async ({ page }) => {

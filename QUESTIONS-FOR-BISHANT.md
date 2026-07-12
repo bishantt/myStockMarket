@@ -82,3 +82,31 @@ constitution docs, and the PDFs are reconciled to the answers. Nothing here is o
   - If you want me to run the healthchecks drill or Lighthouse locally in future, add
     HEALTHCHECKS_PING_URL + HEALTHCHECKS_API_KEY to the repo-root `.env` (Appendix D lists the
     API key as local too). For now I run those through GitHub Actions where the secrets live.
+
+---
+
+## R0 — the two content fixes (2026-07-12)
+
+- **[NEED — assumption made, not blocking] Every earnings row on the calendar renders as
+  "medium" importance, never "high".** The redesign plan's rule (Appendix E-4) is: high if the
+  reporting symbol is in the pipeline's *served core*, medium otherwise. I implemented exactly
+  that — but the served core is today the four index ETFs and the eleven sector SPDRs, and an ETF
+  does not report earnings. So the rule, as written, can never fire "high" for a real company:
+  Apple's earnings render medium.
+  **My assumption:** that is acceptable, and arguably right — it keeps the "high" marker reserved
+  for the market-wide catalysts a beginner most needs to see coming (CPI, the jobs report, FOMC),
+  which is the calmest reading of the design. The code says so plainly
+  (`pipeline/catalyst_ingest.py`, `earnings_importance`).
+  **If you want AAPL-style earnings marked high**, say so and I will pass the served symbol list
+  (core + your watchlist, which the pipeline already reads for other purposes) into the catalyst
+  ingest — a small, contained plumbing change, roughly an hour.
+
+- **[FYI — no action needed] The seven FRED release names could not be verified against the live
+  endpoint.** The plan asks the build to check each allowlisted release name once against FRED and
+  log any mismatch here. There is no `FRED_KEY` in the repo-root `.env`, so I could not call the
+  live API. What I did instead: the names come from FRED's own recorded release feed (the fixture
+  in `pipeline/adapters/fixtures/fred/`), and matching is by **case-insensitive containment**, so a
+  release FRED renames slightly ("Consumer Price Index" → "Consumer Price Index (CPI)") still
+  lands. The FRED release *ids* recorded beside each entry are documentation only — nothing
+  matches on them, so a stale id cannot silently drop a real CPI print.
+  **When the FRED key lands**, I will run the one-time verification and report.

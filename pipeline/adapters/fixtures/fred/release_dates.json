@@ -1,251 +1,251 @@
 {
-  "realtime_start": "2026-07-11",
-  "realtime_end": "2026-07-25",
-  "order_by": "release_date",
-  "sort_order": "asc",
-  "count": 382,
-  "offset": 0,
-  "limit": 40,
-  "release_dates": [
-    {
-      "release_id": 101,
-      "release_name": "FOMC Press Release",
-      "release_last_updated": "2026-07-11 07:02:22-05",
-      "date": "2026-07-11"
-    },
-    {
-      "release_id": 441,
-      "release_name": "Coinbase Cryptocurrencies",
-      "release_last_updated": "2026-07-10 19:05:30-05",
-      "date": "2026-07-11"
-    },
-    {
-      "release_id": 441,
-      "release_name": "Coinbase Cryptocurrencies",
-      "release_last_updated": "2026-07-10 19:05:30-05",
-      "date": "2026-07-12"
-    },
-    {
-      "release_id": 101,
-      "release_name": "FOMC Press Release",
-      "release_last_updated": "2026-07-11 07:02:22-05",
-      "date": "2026-07-12"
-    },
-    {
-      "release_id": 200,
-      "release_name": "CBOE Market Statistics",
-      "release_last_updated": "2026-07-10 08:38:21-05",
-      "date": "2026-07-13"
-    },
-    {
-      "release_id": 441,
-      "release_name": "Coinbase Cryptocurrencies",
-      "release_last_updated": "2026-07-10 19:05:30-05",
-      "date": "2026-07-13"
-    },
-    {
-      "release_id": 86,
-      "release_name": "Commercial Paper",
-      "release_last_updated": "2026-07-10 12:02:03-05",
-      "date": "2026-07-13"
-    },
-    {
-      "release_id": 72,
-      "release_name": "Daily Treasury Inflation-Indexed Securities",
-      "release_last_updated": "2026-07-10 20:13:31-05",
-      "date": "2026-07-13"
-    },
-    {
-      "release_id": 197,
-      "release_name": "Dow Jones Averages",
-      "release_last_updated": "2026-07-10 17:03:19-05",
-      "date": "2026-07-13"
-    },
-    {
-      "release_id": 279,
-      "release_name": "Economic Policy Uncertainty",
-      "release_last_updated": "2026-07-10 08:02:23-05",
-      "date": "2026-07-13"
-    },
-    {
-      "release_id": 502,
-      "release_name": "Euro Short Term Rate",
-      "release_last_updated": "2026-07-10 03:33:11-05",
-      "date": "2026-07-13"
-    },
-    {
-      "release_id": 378,
-      "release_name": "Federal Funds Data",
-      "release_last_updated": "2026-07-10 08:02:25-05",
-      "date": "2026-07-13"
-    },
-    {
-      "release_id": 101,
-      "release_name": "FOMC Press Release",
-      "release_last_updated": "2026-07-11 07:02:22-05",
-      "date": "2026-07-13"
-    },
-    {
-      "release_id": 17,
-      "release_name": "H.10 Foreign Exchange Rates",
-      "release_last_updated": "2026-07-06 15:16:38-05",
-      "date": "2026-07-13"
-    },
-    {
-      "release_id": 18,
-      "release_name": "H.15 Selected Interest Rates",
-      "release_last_updated": "2026-07-10 15:16:24-05",
-      "date": "2026-07-13"
-    },
-    {
-      "release_id": 504,
-      "release_name": "Historical Overnight AMERIBOR Unsecured Interest Rate",
-      "release_last_updated": "2026-07-10 07:02:18-05",
-      "date": "2026-07-13"
-    },
-    {
-      "release_id": 209,
-      "release_name": "ICE BofA Indices",
-      "release_last_updated": "2026-07-10 15:57:39-05",
-      "date": "2026-07-13"
-    },
-    {
-      "release_id": 185,
-      "release_name": "Interest Rate on Reserve Balances",
-      "release_last_updated": "2026-07-10 15:51:16-05",
-      "date": "2026-07-13"
-    },
-    {
-      "release_id": 304,
-      "release_name": "Interest Rate Spreads",
-      "release_last_updated": "2026-07-10 16:03:25-05",
-      "date": "2026-07-13"
-    },
-    {
-      "release_id": 239,
-      "release_name": "International Financial Statistics",
-      "release_last_updated": "2026-07-06 07:30:28-05",
-      "date": "2026-07-13"
-    },
-    {
-      "release_id": 4,
-      "release_name": "Kansas City Fed Policy Rate Skew",
-      "release_last_updated": "2026-07-10 11:22:16-05",
-      "date": "2026-07-13"
-    },
-    {
-      "release_id": 739,
-      "release_name": "Kansas City Fed Policy Rate Uncertainty",
-      "release_last_updated": "2026-07-10 11:22:15-05",
-      "date": "2026-07-13"
-    },
-    {
-      "release_id": 484,
-      "release_name": "Key ECB Interest Rates",
-      "release_last_updated": "2026-07-10 06:47:13-05",
-      "date": "2026-07-13"
-    },
-    {
-      "release_id": 383,
-      "release_name": "Market Value of U.S. Government Debt",
-      "release_last_updated": "2026-06-15 13:49:19-05",
-      "date": "2026-07-13"
-    },
-    {
-      "release_id": 363,
-      "release_name": "Monthly Treasury Statement",
-      "release_last_updated": "2026-06-10 14:04:38-05",
-      "date": "2026-07-13"
-    },
-    {
-      "release_id": 427,
-      "release_name": "Moody's Daily Corporate Bond Yield Averages",
-      "release_last_updated": "2026-07-10 10:31:14-05",
-      "date": "2026-07-13"
-    },
-    {
-      "release_id": 328,
-      "release_name": "Nasdaq Daily Index Data",
-      "release_last_updated": "2026-07-10 22:46:01-05",
-      "date": "2026-07-13"
-    },
-    {
-      "release_id": 287,
-      "release_name": "Nikkei Indexes",
-      "release_last_updated": "2026-07-10 07:02:21-05",
-      "date": "2026-07-13"
-    },
-    {
-      "release_id": 473,
-      "release_name": "Optimal Blue Mortgage Market Indices",
-      "release_last_updated": "2026-07-10 07:02:22-05",
-      "date": "2026-07-13"
-    },
-    {
-      "release_id": 375,
-      "release_name": "Overnight Bank Funding Rate Data",
-      "release_last_updated": "2026-07-10 08:02:25-05",
-      "date": "2026-07-13"
-    },
-    {
-      "release_id": 242,
-      "release_name": "Recession Indicators Series",
-      "release_last_updated": "2026-07-06 18:02:23-05",
-      "date": "2026-07-13"
-    },
-    {
-      "release_id": 2,
-      "release_name": "Risk-On Risk-Off Index",
-      "release_last_updated": "2026-07-10 12:35:16-05",
-      "date": "2026-07-13"
-    },
-    {
-      "release_id": 445,
-      "release_name": "Secured Overnight Financing Rate Data",
-      "release_last_updated": "2026-07-10 07:02:22-05",
-      "date": "2026-07-13"
-    },
-    {
-      "release_id": 483,
-      "release_name": "SOFR Averages and Index Data",
-      "release_last_updated": "2026-07-10 07:02:15-05",
-      "date": "2026-07-13"
-    },
-    {
-      "release_id": 492,
-      "release_name": "SONIA Interest Rate Benchmark",
-      "release_last_updated": "2026-07-10 05:02:21-05",
-      "date": "2026-07-13"
-    },
-    {
-      "release_id": 189,
-      "release_name": "Standard & Poors",
-      "release_last_updated": "2026-07-10 19:01:37-05",
-      "date": "2026-07-13"
-    },
-    {
-      "release_id": 379,
-      "release_name": "Temporary Open Market Operations",
-      "release_last_updated": "2026-07-10 13:02:30-05",
-      "date": "2026-07-13"
-    },
-    {
-      "release_id": 1105,
-      "release_name": "Tri-Party General Collateral Rate Data",
-      "release_last_updated": "2026-07-10 07:01:19-05",
-      "date": "2026-07-13"
-    },
-    {
-      "release_id": 454,
-      "release_name": "Average Price Data",
-      "release_last_updated": "2026-06-10 07:43:57-05",
-      "date": "2026-07-14"
-    },
-    {
-      "release_id": 200,
-      "release_name": "CBOE Market Statistics",
-      "release_last_updated": "2026-07-10 08:38:21-05",
-      "date": "2026-07-14"
-    }
-  ]
+ "realtime_start": "2026-07-11",
+ "realtime_end": "2026-07-25",
+ "order_by": "release_date",
+ "sort_order": "asc",
+ "count": 40,
+ "offset": 0,
+ "limit": 40,
+ "release_dates": [
+  {
+   "release_id": 441,
+   "release_name": "Coinbase Cryptocurrencies",
+   "release_last_updated": "2026-07-10 19:05:30-05",
+   "date": "2026-07-11"
+  },
+  {
+   "release_id": 441,
+   "release_name": "Coinbase Cryptocurrencies",
+   "release_last_updated": "2026-07-10 19:05:30-05",
+   "date": "2026-07-12"
+  },
+  {
+   "release_id": 2,
+   "release_name": "Risk-On Risk-Off Index",
+   "release_last_updated": "2026-07-10 12:35:16-05",
+   "date": "2026-07-13"
+  },
+  {
+   "release_id": 4,
+   "release_name": "Kansas City Fed Policy Rate Skew",
+   "release_last_updated": "2026-07-10 11:22:16-05",
+   "date": "2026-07-13"
+  },
+  {
+   "release_id": 17,
+   "release_name": "H.10 Foreign Exchange Rates",
+   "release_last_updated": "2026-07-06 15:16:38-05",
+   "date": "2026-07-13"
+  },
+  {
+   "release_id": 18,
+   "release_name": "H.15 Selected Interest Rates",
+   "release_last_updated": "2026-07-10 15:16:24-05",
+   "date": "2026-07-13"
+  },
+  {
+   "release_id": 72,
+   "release_name": "Daily Treasury Inflation-Indexed Securities",
+   "release_last_updated": "2026-07-10 20:13:31-05",
+   "date": "2026-07-13"
+  },
+  {
+   "release_id": 86,
+   "release_name": "Commercial Paper",
+   "release_last_updated": "2026-07-10 12:02:03-05",
+   "date": "2026-07-13"
+  },
+  {
+   "release_id": 185,
+   "release_name": "Interest Rate on Reserve Balances",
+   "release_last_updated": "2026-07-10 15:51:16-05",
+   "date": "2026-07-13"
+  },
+  {
+   "release_id": 189,
+   "release_name": "Standard & Poors",
+   "release_last_updated": "2026-07-10 19:01:37-05",
+   "date": "2026-07-13"
+  },
+  {
+   "release_id": 197,
+   "release_name": "Dow Jones Averages",
+   "release_last_updated": "2026-07-10 17:03:19-05",
+   "date": "2026-07-13"
+  },
+  {
+   "release_id": 200,
+   "release_name": "CBOE Market Statistics",
+   "release_last_updated": "2026-07-10 08:38:21-05",
+   "date": "2026-07-13"
+  },
+  {
+   "release_id": 209,
+   "release_name": "ICE BofA Indices",
+   "release_last_updated": "2026-07-10 15:57:39-05",
+   "date": "2026-07-13"
+  },
+  {
+   "release_id": 239,
+   "release_name": "International Financial Statistics",
+   "release_last_updated": "2026-07-06 07:30:28-05",
+   "date": "2026-07-13"
+  },
+  {
+   "release_id": 242,
+   "release_name": "Recession Indicators Series",
+   "release_last_updated": "2026-07-06 18:02:23-05",
+   "date": "2026-07-13"
+  },
+  {
+   "release_id": 279,
+   "release_name": "Economic Policy Uncertainty",
+   "release_last_updated": "2026-07-10 08:02:23-05",
+   "date": "2026-07-13"
+  },
+  {
+   "release_id": 287,
+   "release_name": "Nikkei Indexes",
+   "release_last_updated": "2026-07-10 07:02:21-05",
+   "date": "2026-07-13"
+  },
+  {
+   "release_id": 304,
+   "release_name": "Interest Rate Spreads",
+   "release_last_updated": "2026-07-10 16:03:25-05",
+   "date": "2026-07-13"
+  },
+  {
+   "release_id": 328,
+   "release_name": "Nasdaq Daily Index Data",
+   "release_last_updated": "2026-07-10 22:46:01-05",
+   "date": "2026-07-13"
+  },
+  {
+   "release_id": 363,
+   "release_name": "Monthly Treasury Statement",
+   "release_last_updated": "2026-06-10 14:04:38-05",
+   "date": "2026-07-13"
+  },
+  {
+   "release_id": 375,
+   "release_name": "Overnight Bank Funding Rate Data",
+   "release_last_updated": "2026-07-10 08:02:25-05",
+   "date": "2026-07-13"
+  },
+  {
+   "release_id": 378,
+   "release_name": "Federal Funds Data",
+   "release_last_updated": "2026-07-10 08:02:25-05",
+   "date": "2026-07-13"
+  },
+  {
+   "release_id": 379,
+   "release_name": "Temporary Open Market Operations",
+   "release_last_updated": "2026-07-10 13:02:30-05",
+   "date": "2026-07-13"
+  },
+  {
+   "release_id": 383,
+   "release_name": "Market Value of U.S. Government Debt",
+   "release_last_updated": "2026-06-15 13:49:19-05",
+   "date": "2026-07-13"
+  },
+  {
+   "release_id": 427,
+   "release_name": "Moody's Daily Corporate Bond Yield Averages",
+   "release_last_updated": "2026-07-10 10:31:14-05",
+   "date": "2026-07-13"
+  },
+  {
+   "release_id": 441,
+   "release_name": "Coinbase Cryptocurrencies",
+   "release_last_updated": "2026-07-10 19:05:30-05",
+   "date": "2026-07-13"
+  },
+  {
+   "release_id": 445,
+   "release_name": "Secured Overnight Financing Rate Data",
+   "release_last_updated": "2026-07-10 07:02:22-05",
+   "date": "2026-07-13"
+  },
+  {
+   "release_id": 473,
+   "release_name": "Optimal Blue Mortgage Market Indices",
+   "release_last_updated": "2026-07-10 07:02:22-05",
+   "date": "2026-07-13"
+  },
+  {
+   "release_id": 483,
+   "release_name": "SOFR Averages and Index Data",
+   "release_last_updated": "2026-07-10 07:02:15-05",
+   "date": "2026-07-13"
+  },
+  {
+   "release_id": 484,
+   "release_name": "Key ECB Interest Rates",
+   "release_last_updated": "2026-07-10 06:47:13-05",
+   "date": "2026-07-13"
+  },
+  {
+   "release_id": 492,
+   "release_name": "SONIA Interest Rate Benchmark",
+   "release_last_updated": "2026-07-10 05:02:21-05",
+   "date": "2026-07-13"
+  },
+  {
+   "release_id": 502,
+   "release_name": "Euro Short Term Rate",
+   "release_last_updated": "2026-07-10 03:33:11-05",
+   "date": "2026-07-13"
+  },
+  {
+   "release_id": 504,
+   "release_name": "Historical Overnight AMERIBOR Unsecured Interest Rate",
+   "release_last_updated": "2026-07-10 07:02:18-05",
+   "date": "2026-07-13"
+  },
+  {
+   "release_id": 739,
+   "release_name": "Kansas City Fed Policy Rate Uncertainty",
+   "release_last_updated": "2026-07-10 11:22:15-05",
+   "date": "2026-07-13"
+  },
+  {
+   "release_id": 1105,
+   "release_name": "Tri-Party General Collateral Rate Data",
+   "release_last_updated": "2026-07-10 07:01:19-05",
+   "date": "2026-07-13"
+  },
+  {
+   "release_id": 10,
+   "release_name": "Consumer Price Index",
+   "release_last_updated": "2026-07-10 08:31:02-05",
+   "date": "2026-07-14"
+  },
+  {
+   "release_id": 200,
+   "release_name": "CBOE Market Statistics",
+   "release_last_updated": "2026-07-10 08:38:21-05",
+   "date": "2026-07-14"
+  },
+  {
+   "release_id": 454,
+   "release_name": "Average Price Data",
+   "release_last_updated": "2026-06-10 07:43:57-05",
+   "date": "2026-07-14"
+  },
+  {
+   "release_id": 101,
+   "release_name": "FOMC Press Release",
+   "release_last_updated": "2026-07-11 07:02:22-05",
+   "date": "2026-07-15"
+  },
+  {
+   "release_id": 50,
+   "release_name": "Employment Situation",
+   "release_last_updated": "2026-07-10 08:31:02-05",
+   "date": "2026-07-17"
+  }
+ ]
 }

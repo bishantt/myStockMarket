@@ -54,14 +54,44 @@ export const copy = {
     caveat: "Ranges assume the recent regime holds — sudden stress can exceed them.",
   },
 
+  /**
+   * The macro strip (redesign §6.1). These four strings exist because an ETF is not its index:
+   * SPY traded near 755 while the S&P 500 was near 6,800, and the Desk printed the former under
+   * the latter's name. The levels now come from FRED; where no free index series exists (the
+   * Russell 2000), the slot still shows an ETF — and says, on the surface, that it is showing one.
+   */
+  macro: {
+    provenance: "Index levels · FRED · prior close",
+    proxyChip: "ETF proxy",
+    proxyNote: "{symbol} is an ETF whose price tracks this group; it is not the index level.",
+    indexUnavailable: "Index level unavailable — showing {symbol} (ETF proxy).",
+  },
+
+  desk: {
+    edition: "The Desk — Evening Edition",
+    status: "Markets {state} · data as of {close} · updated {stamp}",
+  },
+
   mover: {
     /** The honest alternative to inventing a reason. A mover renders this or a real catalyst. */
     noNews: "No news found — most moves this size have no identifiable cause; likely noise.",
+    /** The empty Desk: no mover cleared the bar. Information, not an apology. */
+    quiet: "No moves cleared the catalyst-or-noise bar today.",
+    relvolNote:
+      'RelVol = volume ÷ 20-day average. "No clear catalyst" usually means noise; a cause sometimes surfaces later — absence of news is not a reason to act.',
   },
 
   calendar: {
     /** "No edge" is a first-class outcome with its own rendering, never an apology. */
     noEdge: "No clear edge either way — that is a valid outcome.",
+    /** The word beside a high-importance row's dot — outcome never rides on colour alone. */
+    importanceHigh: "high",
+    /**
+     * The empty calendar is a signature, not a failure. The allowlist drops every non-catalyst
+     * FRED release, so a genuinely quiet fortnight now renders as one — and says why.
+     */
+    empty: "A quiet stretch — no scheduled catalysts in the next 14 days.",
+    emptySub: "Curated from the full FRED release feed; the rest was noise.",
   },
 
   brief: {

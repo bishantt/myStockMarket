@@ -1,5 +1,6 @@
 import { SectionMasthead } from "@/components/SectionMasthead";
 import { Tag } from "@/components/Tag";
+import { copy } from "@/lib/copy";
 
 /**
  * CalendarTimeline — Desk module 03, the US session calendar (plan §9.2, §3.6).
@@ -15,8 +16,13 @@ import { Tag } from "@/components/Tag";
 export type CalendarRow = {
   /** The event date, formatted, e.g. "Jul 15". */
   dateLabel: string;
-  /** earnings | macro | fed | div | other — the chip label. */
+  /** earnings | macro | fed — the data model's classification. Not what the reader sees. */
   kind: string;
+  /**
+   * What the reader sees on the chip: CPI, JOBS, PPI, GDP, PCE, RETAIL, FOMC, EARNINGS. One small
+   * vocabulary, chosen by the pipeline's allowlist (redesign §6.2), never FRED's own release names.
+   */
+  code: string;
   title: string;
   /** The symbol for a single-name event (earnings, dividend); absent for a macro/Fed event. */
   symbol?: string;
@@ -24,15 +30,29 @@ export type CalendarRow = {
   consensus?: string;
   /** The prior figure, formatted, when known. */
   prior?: string;
+  /** A high-importance event — the ones a beginner most needs to see coming. */
+  high?: boolean;
 };
 
+/**
+ * CalendarTimeline — Desk module 03.
+ *
+ * Two rules shape how a high-importance row is marked. It gets an ink dot and the *word* "high",
+ * never a colour: outcome must never ride on colour alone, and the amber–orange region is reserved
+ * for losses and the two alert consumers (plan §3.3, §1.5). And it is never the loudest thing in
+ * the row — a calendar that shouts manufactures the urgency this product refuses to sell.
+ */
 export function CalendarTimeline({ asOf, events }: { asOf: Date; events: CalendarRow[] }) {
   return (
     <section aria-label="Session calendar">
       <SectionMasthead index={3} title="Session calendar" asOf={asOf} />
 
       {events.length === 0 ? (
-        <p className="pt-4 font-ui text-sm text-muted">No scheduled events in the days ahead.</p>
+        // The empty calendar is the allowlist working, not the module failing — so it says so.
+        <div className="flex flex-col items-center gap-2 py-8 text-center">
+          <p className="font-prose text-base text-ink-2">{copy.calendar.empty}</p>
+          <p className="font-mono text-2xs text-muted">{copy.calendar.emptySub}</p>
+        </div>
       ) : (
         <ul className="pt-2">
           {events.map((e, i) => (
@@ -44,12 +64,20 @@ export function CalendarTimeline({ asOf, events }: { asOf: Date; events: Calenda
                 {e.dateLabel}
               </span>
               <span className="w-24 shrink-0">
-                <Tag variant="catalyst">{e.kind}</Tag>
+                <Tag variant="catalyst">{e.code}</Tag>
               </span>
               <span className="min-w-0 flex-1 truncate font-ui text-sm text-ink-2">
                 {e.symbol ? <span className="font-semibold text-ink">{e.symbol}</span> : null}
                 {e.symbol ? " · " : ""}
                 {e.title}
+                {e.high ? (
+                  <span className="ml-2 inline-flex items-center gap-1 whitespace-nowrap">
+                    <span aria-hidden="true" className="inline-block size-1.5 rounded-edge bg-ink" />
+                    <span className="font-mono text-2xs uppercase tracking-[0.04em] text-muted">
+                      {copy.calendar.importanceHigh}
+                    </span>
+                  </span>
+                ) : null}
               </span>
               {e.consensus ? (
                 <span className="shrink-0 font-mono text-2xs text-muted">

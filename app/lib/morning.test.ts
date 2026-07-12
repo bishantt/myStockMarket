@@ -10,7 +10,29 @@ import { buildCalendar, buildMacro, buildMovers, buildSourceStatus, buildWatchli
  */
 
 describe("buildMacro", () => {
-  const ctx = { vix: 15.84, tenYear: 4.54, advancers: 3200, decliners: 1800, pctAbove50dma: 0.61 };
+  /**
+   * The macro strip is where the product's worst bug lived: it printed the SPY ETF's price under
+   * the label "S&P 500", so the Desk's hero numeral read ~755 when the index was near 6,800. The
+   * fix is a coupling, and these tests are its lock:
+   *
+   *     a slot may claim an index name ONLY when its number came from the index series.
+   *
+   * When the level is missing the slot still renders — as its ETF, labelled as an ETF proxy. There
+   * is no third option where an ETF price wears an index's name.
+   */
+  const ctx = {
+    vix: 15.84,
+    tenYear: 4.54,
+    sp500: 6812.34,
+    sp500Prior: 6789.1,
+    nasdaqComposite: 22345.67,
+    nasdaqCompositePrior: 22280.15,
+    djia: 44210.55,
+    djiaPrior: 44320.8,
+    advancers: 3200,
+    decliners: 1800,
+    pctAbove50dma: 0.61,
+  };
   const closes = {
     SPY: [600, 612],
     QQQ: [500, 505],
@@ -18,14 +40,78 @@ describe("buildMacro", () => {
     IWM: [220, 220],
   };
 
-  it("builds the S&P hero, the index row, breadth, and the FRED cells", () => {
+  it("builds the S&P hero from the true index level and its prior", () => {
     const macro = buildMacro(ctx, closes)!;
-    expect(macro.spx).toEqual({ value: "612.00", deltaPct: "+2.00%", direction: "up" });
+    expect(macro.spx).toEqual({
+      label: "S&P 500",
+      value: "6,812.34",
+      deltaPct: "+0.34%",
+      direction: "up",
+      source: "index",
+    });
+  });
+
+  it("builds the index row from index levels, and the small-caps slot from its ETF proxy", () => {
+    const macro = buildMacro(ctx, closes)!;
     expect(macro.indices).toEqual([
-      { label: "Nasdaq", value: "505.00", deltaPct: "+1.00%", direction: "up" },
-      { label: "Dow", value: "435.60", deltaPct: "−1.00%", direction: "down" },
-      { label: "Russell 2000", value: "220.00", deltaPct: "+0.00%", direction: "flat" },
+      {
+        label: "Nasdaq Composite",
+        value: "22,345.67",
+        deltaPct: "+0.29%",
+        direction: "up",
+        source: "index",
+      },
+      { label: "Dow", value: "44,210.55", deltaPct: "−0.25%", direction: "down", source: "index" },
+      // Russell 2000 has no free FRED series, so this slot is honest about being an ETF (E-1).
+      {
+        label: "Russell 2000 · IWM (ETF proxy)",
+        value: "220.00",
+        deltaPct: "+0.00%",
+        direction: "flat",
+        source: "etf-proxy",
+        proxySymbol: "IWM",
+      },
     ]);
+  });
+
+  it("NEVER puts an index name on an ETF price — the label follows the source", () => {
+    // The regression lock for the whole bug. With no index levels at all, every slot falls back to
+    // its ETF, and every fallback label says so. Nothing claims to be an index that is not one.
+    const macro = buildMacro(
+      { ...ctx, sp500: null, sp500Prior: null, nasdaqComposite: null, nasdaqCompositePrior: null, djia: null, djiaPrior: null },
+      closes,
+    )!;
+    const slots = [macro.spx, ...macro.indices];
+    for (const slot of slots) {
+      if (slot.source === "etf-proxy") expect(slot.label).toContain("ETF proxy");
+      if (slot.source === "index") expect(slot.label).not.toContain("proxy");
+    }
+    expect(slots.every((s) => s.source === "etf-proxy")).toBe(true);
+  });
+
+  it("labels the Nasdaq proxy as the Nasdaq-100, because QQQ does not track the Composite", () => {
+    const macro = buildMacro({ ...ctx, nasdaqComposite: null, nasdaqCompositePrior: null }, closes)!;
+    const nasdaq = macro.indices.find((i) => i.proxySymbol === "QQQ")!;
+    expect(nasdaq.label).toBe("Nasdaq-100 · QQQ (ETF proxy)");
+    expect(nasdaq.value).toBe("505.00"); // QQQ's price, under QQQ's name
+  });
+
+  it("falls back per slot, not all-or-nothing", () => {
+    const macro = buildMacro({ ...ctx, djia: null, djiaPrior: null }, closes)!;
+    expect(macro.spx.source).toBe("index"); // the S&P still has its level
+    expect(macro.indices.find((i) => i.proxySymbol === "DIA")!.label).toBe("Dow · DIA (ETF proxy)");
+  });
+
+  it("renders — for the change when the prior level is missing, never borrowing the ETF's", () => {
+    const macro = buildMacro({ ...ctx, sp500Prior: null }, closes)!;
+    expect(macro.spx.value).toBe("6,812.34"); // the level is real, so it prints
+    expect(macro.spx.deltaPct).toBe("—"); // the change is not knowable, so it does not
+    expect(macro.spx.direction).toBe("flat");
+    expect(macro.spx.source).toBe("index");
+  });
+
+  it("builds breadth and the FRED context cells", () => {
+    const macro = buildMacro(ctx, closes)!;
     expect(macro.breadth).toEqual({ advancers: 3200, decliners: 1800, pctAbove50dma: "61%" });
     expect(macro.vix).toBe("15.84");
     expect(macro.tenYear).toBe("4.54%");
@@ -37,9 +123,9 @@ describe("buildMacro", () => {
     expect(macro.tenYear).toBe("—");
   });
 
-  it("returns null when the S&P hero cannot be formed (no SPY bars)", () => {
+  it("returns null when the S&P hero cannot be formed at all (no level, no SPY bars)", () => {
     // The hero is the module's reason to exist; without it the Desk shows the placeholder instead.
-    expect(buildMacro(ctx, { QQQ: [500, 505] })).toBeNull();
+    expect(buildMacro({ ...ctx, sp500: null, sp500Prior: null }, { QQQ: [500, 505] })).toBeNull();
   });
 
   it("returns null when there is no macro context row at all", () => {
@@ -104,14 +190,33 @@ describe("buildWatchlist", () => {
 describe("buildCalendar", () => {
   it("formats event dates in ET and the consensus/prior figures", () => {
     const rows = buildCalendar([
-      { date: new Date("2026-07-15T00:00:00.000Z"), kind: "earnings", symbol: "AAPL", title: "Apple Q3", consensus: 1.28, prior: 1.4 },
-      { date: new Date("2026-07-16T00:00:00.000Z"), kind: "macro", symbol: null, title: "CPI", consensus: null, prior: null },
+      { date: new Date("2026-07-15T00:00:00.000Z"), kind: "earnings", symbol: "AAPL", title: "AAPL earnings", consensus: 1.28, prior: 1.4, code: "EARNINGS", importance: "medium" },
+      { date: new Date("2026-07-16T00:00:00.000Z"), kind: "macro", symbol: null, title: "Consumer Price Index", consensus: null, prior: null, code: "CPI", importance: "high" },
     ]);
-    expect(rows[0]).toMatchObject({ kind: "earnings", symbol: "AAPL", title: "Apple Q3", consensus: "1.28", prior: "1.40" });
+    expect(rows[0]).toMatchObject({ kind: "earnings", symbol: "AAPL", title: "AAPL earnings", consensus: "1.28", prior: "1.40" });
     expect(rows[0].dateLabel).toMatch(/Jul 15/);
     // A macro event has no symbol and no consensus.
     expect(rows[1].symbol).toBeUndefined();
     expect(rows[1].consensus).toBeUndefined();
+  });
+
+  it("carries the allowlist's chip code and marks the high-importance rows", () => {
+    const rows = buildCalendar([
+      { date: new Date("2026-07-14T00:00:00.000Z"), kind: "macro", symbol: null, title: "Consumer Price Index", consensus: null, prior: null, code: "CPI", importance: "high" },
+      { date: new Date("2026-07-15T00:00:00.000Z"), kind: "macro", symbol: null, title: "Producer Price Index", consensus: null, prior: null, code: "PPI", importance: "medium" },
+    ]);
+    expect(rows[0]).toMatchObject({ code: "CPI", high: true });
+    expect(rows[1]).toMatchObject({ code: "PPI", high: false });
+  });
+
+  it("falls back to the kind for a row written before the allowlist existed", () => {
+    // Old rows carry no code. They still render a chip — an empty chip would be worse than a
+    // slightly-stale one, and the next nightly run replaces the forward calendar anyway.
+    const [row] = buildCalendar([
+      { date: new Date("2026-07-15T00:00:00.000Z"), kind: "macro", symbol: null, title: "Something old", consensus: null, prior: null, code: null, importance: null },
+    ]);
+    expect(row.code).toBe("macro");
+    expect(row.high).toBe(false);
   });
 });
 

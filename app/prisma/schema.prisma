@@ -164,6 +164,23 @@ model MarketContext {
   /// The VIX (FRED VIXCLS) and the 10-year Treasury yield (FRED DGS10), null if FRED was down.
   vix           Float?
   tenYear       Float?   @map("ten_year")
+
+  /// The true index LEVELS from FRED (SP500, NASDAQCOM, DJIA), each with the level before it.
+  ///
+  /// These exist because an ETF is not its index: SPY traded near 755 while the S&P 500 was near
+  /// 6,800, and the Desk used to print the former under the latter's name. The prior level is
+  /// stored alongside each level because the app computes the one-day change by subtracting them —
+  /// it never sees the pipeline's observations, so a prior it does not have is a change it must
+  /// render as "—" rather than invent. Every column is nullable: each FRED series fails alone, and
+  /// a null level sends that slot to its ETF proxy, labelled as a proxy on-surface.
+  /// (UI-REDESIGN-PLAN §6.1. Russell 2000 has no free FRED series, so IWM stays an honest proxy.)
+  sp500                  Float?
+  sp500Prior             Float?  @map("sp500_prior")
+  nasdaqComposite        Float?  @map("nasdaq_composite")
+  nasdaqCompositePrior   Float?  @map("nasdaq_composite_prior")
+  djia                   Float?
+  djiaPrior              Float?  @map("djia_prior")
+
   /// Breadth of the ingested universe on the run date.
   advancers     Int
   decliners     Int
@@ -214,8 +231,12 @@ model CalendarEvent {
   /// Consensus and prior figures for a data release or earnings report, when known.
   consensus  Float?
   prior      Float?
-  /// A coarse importance marker (e.g. "high"), null until assigned.
+  /// A coarse importance marker ("high" | "medium"), null on rows written before the allowlist.
   importance String?
+  /// The chip the Desk renders: CPI, JOBS, PPI, GDP, PCE, RETAIL, FOMC, EARNINGS. One vocabulary,
+  /// set by the pipeline's release allowlist (UI-REDESIGN-PLAN §6.2, Appendix C) — never derived
+  /// from the raw provider name, so the calendar cannot start speaking in FRED's dialect again.
+  code       String?
 
   @@index([date])
   @@map("calendar_event")

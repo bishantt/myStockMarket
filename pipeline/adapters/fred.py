@@ -50,6 +50,32 @@ class FredAdapter(Adapter):
         not always a number; this asks for the observations newest-first and returns the first one
         that actually has a value. Raises ValueError if the series has no real value at all.
         """
+        for observation in self._real_observations(series_id):
+            return observation
+
+        raise ValueError(f"FRED series {series_id} has no real value in the recent window")
+
+    def latest_two(self, series_id: str) -> list[Observation]:
+        """
+        Return the two most recent REAL observations of a series, newest first.
+
+        The macro strip needs both: the index level AND the level before it, because a one-day
+        change can only be stated honestly by subtracting two real closes. Returns fewer than two
+        items when the series has fewer than two real values in the recent window — one value still
+        renders the level, and the change renders "—" rather than being borrowed from somewhere else.
+        """
+        observations: list[Observation] = []
+        for observation in self._real_observations(series_id):
+            observations.append(observation)
+            if len(observations) == 2:
+                break
+        return observations
+
+    def _real_observations(self, series_id: str):
+        """
+        Yield a series' observations newest-first, skipping the days FRED marks with a "." (holidays
+        and unpublished releases). Both public readers above are thin wrappers around this.
+        """
         payload = self.get(
             _OBSERVATIONS,
             params={
@@ -64,9 +90,7 @@ class FredAdapter(Adapter):
         for observation in payload.get("observations", []):
             raw = observation.get("value")
             if raw and raw != ".":
-                return Observation(date=date.fromisoformat(observation["date"]), value=float(raw))
-
-        raise ValueError(f"FRED series {series_id} has no real value in the recent window")
+                yield Observation(date=date.fromisoformat(observation["date"]), value=float(raw))
 
     def release_calendar(self, start: date, end: date) -> list[ReleaseDate]:
         """
@@ -81,7 +105,11 @@ class FredAdapter(Adapter):
                 "file_type": "json",
                 "realtime_start": start.isoformat(),
                 "realtime_end": end.isoformat(),
-                "include_release_dates_with_no_data": "true",
+                # "false" is load-bearing (redesign §6.2): asking for release dates with no data
+                # repeats every release on every date in the window and is what turned the Session
+                # Calendar into a firehose. The allowlist curates what remains; this stops the noise
+                # at the source.
+                "include_release_dates_with_no_data": "false",
                 "sort_order": "asc",
                 "limit": 100,
             },

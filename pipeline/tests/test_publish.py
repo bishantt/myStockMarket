@@ -87,6 +87,46 @@ def test_market_context_upserts_by_run_date(db):
     assert rows == [(None, None, 2500, 2500, 0.50)]  # one row, updated in place
 
 
+def test_market_context_stores_the_index_levels_and_their_priors(db):
+    # Redesign §6.1: the true index levels, with the level before each, so the app can state a
+    # one-day change without borrowing an ETF's. Every column is nullable — each FRED series can
+    # fail alone, and a missing level sends that slot to its honestly-labelled ETF proxy.
+    base = dict(run_date=RUN, stage_status={}, source_status={})
+    pub.publish(db, **base, market_context={
+        "vix": 15.84, "ten_year": 4.54,
+        "sp500": 6812.34, "sp500_prior": 6789.10,
+        "nasdaq_composite": 22345.67, "nasdaq_composite_prior": 22280.15,
+        "djia": 44210.55, "djia_prior": 44320.80,
+        "advancers": 3200, "decliners": 1800, "pct_above_50dma": 0.61,
+    })
+    [row] = db.execute(
+        "SELECT sp500, sp500_prior, nasdaq_composite, nasdaq_composite_prior, djia, djia_prior"
+        " FROM market_context"
+    ).fetchall()
+    assert row == (6812.34, 6789.10, 22345.67, 22280.15, 44210.55, 44320.80)
+
+
+def test_market_context_tolerates_index_levels_that_fred_could_not_supply(db):
+    base = dict(run_date=RUN, stage_status={}, source_status={})
+    pub.publish(db, **base, market_context={
+        "vix": 15.84, "ten_year": 4.54, "advancers": 3200, "decliners": 1800, "pct_above_50dma": 0.61,
+    })
+    [row] = db.execute("SELECT sp500, sp500_prior, djia FROM market_context").fetchall()
+    assert row == (None, None, None)
+
+
+def test_calendar_rows_carry_the_chip_code_the_desk_renders(db):
+    # The chip vocabulary (CPI, JOBS, FOMC, EARNINGS …) is set by the allowlist and persisted with
+    # the row — the Desk never derives it from the raw provider name (redesign §6.2).
+    base = dict(run_date=RUN, stage_status={}, source_status={})
+    pub.publish(db, **base, calendar_events=[
+        {"date": RUN, "kind": "macro", "symbol": None, "timing": None, "title": "Consumer Price Index",
+         "consensus": None, "prior": None, "importance": "high", "code": "CPI"},
+    ])
+    [row] = db.execute("SELECT code, importance, title FROM calendar_event").fetchall()
+    assert row == ("CPI", "high", "Consumer Price Index")
+
+
 def test_rerunning_a_night_makes_no_duplicates(db):
     args = dict(
         run_date=RUN,

@@ -70,12 +70,47 @@ class CatalystBundle:
 
 
 @dataclass(frozen=True)
+class MacroRead:
+    """
+    What one night's FRED read yields: the two context cells, and the three index levels with the
+    level that came before each (redesign §6.1).
+
+    Every field is nullable because every series can fail on its own. The priors are stored, not
+    just the levels, because the app can only diff what is persisted — buildMacro never sees the
+    pipeline's observations, so a change it cannot compute from the database is a change it must
+    render as "—" rather than borrow from an ETF.
+    """
+
+    vix: float | None
+    ten_year: float | None
+    sp500: float | None = None
+    sp500_prior: float | None = None
+    nasdaq_composite: float | None = None
+    nasdaq_composite_prior: float | None = None
+    djia: float | None = None
+    djia_prior: float | None = None
+
+    def as_columns(self) -> dict[str, float | None]:
+        """The macro half of the market_context row, keyed as the table's columns."""
+        return {
+            "vix": self.vix,
+            "ten_year": self.ten_year,
+            "sp500": self.sp500,
+            "sp500_prior": self.sp500_prior,
+            "nasdaq_composite": self.nasdaq_composite,
+            "nasdaq_composite_prior": self.nasdaq_composite_prior,
+            "djia": self.djia,
+            "djia_prior": self.djia_prior,
+        }
+
+
+@dataclass(frozen=True)
 class NightlyDeps:
     """Everything run_nightly needs from the outside world — injected so the flow is fully fakeable."""
 
     fetch_universe: Callable[[], list[Mapping[str, Any]]]
     fetch_bars: Callable[[list[str]], dict[str, list[Any]]]
-    read_macro: Callable[[], tuple[float | None, float | None]]
+    read_macro: Callable[[], MacroRead]
     read_served_symbols: Callable[[], list[str]]
     store: Any  # ParquetStore (or a recording fake)
     r2: Any  # R2Store | None
@@ -131,16 +166,19 @@ def run_nightly(deps: NightlyDeps) -> NightlyResult:
     snapshot = build_snapshot(bars)
     scans = run_all(snapshot)
 
-    vix, ten_year = deps.read_macro()
+    macro = deps.read_macro()
     breadth = compute_breadth(snapshot)
-    market_context = {"vix": vix, "ten_year": ten_year, **breadth}
+    market_context = {**macro.as_columns(), **breadth}
 
     served = set(deps.read_served_symbols())
     served_bars = served_price_bars(bars, served)
     scan_results = curated_scans(scans)
     signal_logs = build_signal_logs(scans, deps.run_date)
 
-    source_status = {"alpaca": "ok", "fred": "ok" if (vix is not None or ten_year is not None) else "degraded"}
+    # FRED is "ok" if any of its cells came back — the levels and the context cells fail separately,
+    # and a partial read still fills part of the strip. Only a total FRED outage is "degraded".
+    fred_ok = any(value is not None for value in macro.as_columns().values())
+    source_status = {"alpaca": "ok", "fred": "ok" if fred_ok else "degraded"}
 
     # The catalyst stage: fetch news for the movers + the calendar, classify, and merge each
     # provider's health into the source status. A provider being down degrades its section here, in

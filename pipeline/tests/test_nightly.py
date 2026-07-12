@@ -53,7 +53,14 @@ class RecordingPublish:
         self.calls.append(kwargs)
 
 
-def _deps(universe, bars_by_symbol, *, macro=(15.8, 4.5), served=("SPY",), publish=None, r2=None):
+def _deps(universe, bars_by_symbol, *, macro=None, served=("SPY",), publish=None, r2=None):
+    # The night's FRED read: the two context cells plus the three index levels and their priors.
+    macro = macro if macro is not None else nightly.MacroRead(
+        vix=15.8, ten_year=4.5,
+        sp500=6812.34, sp500_prior=6789.10,
+        nasdaq_composite=22345.67, nasdaq_composite_prior=22280.15,
+        djia=44210.55, djia_prior=44320.80,
+    )
     return nightly.NightlyDeps(
         fetch_universe=lambda: universe,
         fetch_bars=lambda symbols: bars_by_symbol,
@@ -109,6 +116,12 @@ def test_a_full_night_publishes_the_served_data_and_macro_context():
     published = publish.calls[0]
     assert published["market_context"]["vix"] == 15.8
     assert published["market_context"]["ten_year"] == 4.5
+    # The index LEVELS and their priors travel to the database (redesign §6.1). Without the prior,
+    # the app cannot compute a one-day change and must print "—" rather than borrow an ETF's.
+    assert published["market_context"]["sp500"] == 6812.34
+    assert published["market_context"]["sp500_prior"] == 6789.10
+    assert published["market_context"]["nasdaq_composite"] == 22345.67
+    assert published["market_context"]["djia"] == 44210.55
     # Only the served symbol (SPY) reaches Postgres; AAPL stays in the Parquet lake.
     served_symbols = set(published["price_bars"]["symbol"].to_list())
     assert served_symbols == {"SPY"}
@@ -150,7 +163,7 @@ def test_fred_outage_marks_the_source_degraded_but_still_publishes():
     universe = [{"symbol": "SPY", "name": "S&P 500 ETF", "exchange": "ARCA"}]
     bars = {"SPY": _history("SPY", [500, 502, 505])}
     publish = RecordingPublish()
-    deps = _deps(universe, bars, macro=(None, None), served=("SPY",), publish=publish)
+    deps = _deps(universe, bars, macro=nightly.MacroRead(vix=None, ten_year=None), served=("SPY",), publish=publish)
 
     nightly.run_nightly(deps)
 

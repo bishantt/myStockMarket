@@ -139,19 +139,39 @@ const BRIEFING = {
   modelMeta: { model_extract: "claude-haiku-4-5", model_synth: "claude-sonnet-5", extract_count: 2 },
 };
 
-/** The forward session calendar — earnings with consensus, plus market-wide macro/Fed days. */
+/**
+ * The forward session calendar — earnings with consensus, plus market-wide macro/Fed days.
+ *
+ * Every row carries the chip `code` the Desk renders and its importance, exactly as the pipeline's
+ * release allowlist writes them (UI-REDESIGN-PLAN §6.2, Appendix C). Earnings sit at "medium": the
+ * "high" marker is reserved for the market-wide catalysts a beginner most needs to see coming.
+ */
 const CALENDAR = [
-  { date: new Date("2026-07-12T00:00:00.000Z"), kind: "macro", symbol: null, timing: null, title: "CPI (June)", consensus: null, prior: null, importance: "high" },
-  { date: new Date("2026-07-15T00:00:00.000Z"), kind: "earnings", symbol: "AAPL", timing: null, title: "Apple Q3 earnings", consensus: 1.28, prior: 1.4, importance: "high" },
-  { date: new Date("2026-07-16T00:00:00.000Z"), kind: "fed", symbol: null, timing: null, title: "FOMC statement", consensus: null, prior: null, importance: "high" },
-  { date: new Date("2026-07-17T00:00:00.000Z"), kind: "earnings", symbol: "NVDA", timing: null, title: "NVIDIA Q2 earnings", consensus: 0.92, prior: 0.85, importance: "high" },
+  { date: new Date("2026-07-12T00:00:00.000Z"), kind: "macro", symbol: null, timing: null, title: "Consumer Price Index", consensus: null, prior: null, importance: "high", code: "CPI" },
+  { date: new Date("2026-07-15T00:00:00.000Z"), kind: "earnings", symbol: "AAPL", timing: null, title: "AAPL earnings", consensus: 1.28, prior: 1.4, importance: "medium", code: "EARNINGS" },
+  { date: new Date("2026-07-16T00:00:00.000Z"), kind: "fed", symbol: null, timing: null, title: "FOMC decision", consensus: null, prior: null, importance: "high", code: "FOMC" },
+  { date: new Date("2026-07-17T00:00:00.000Z"), kind: "macro", symbol: null, timing: null, title: "Jobs report", consensus: null, prior: null, importance: "high", code: "JOBS" },
+  { date: new Date("2026-07-20T00:00:00.000Z"), kind: "earnings", symbol: "NVDA", timing: null, title: "NVDA earnings", consensus: 0.92, prior: 0.85, importance: "medium", code: "EARNINGS" },
 ];
 
-/** The macro strip's context row: a calm-tape VIX, the 10-year yield, and a positive breadth day. */
+/**
+ * The macro strip's context row: a calm-tape VIX, the 10-year yield, a positive breadth day — and
+ * the three true index levels with the level before each.
+ *
+ * The levels are not decoration in the seed. Without them the seeded Desk falls back to the ETF
+ * proxy path, and the redesign's regression lock (the S&P hero must read as an index level, near
+ * 6,800, not as SPY's ~755 price) could never be asserted end to end.
+ */
 const MARKET_CONTEXT = {
   runDate: RUN_DATE,
   vix: 15.84,
   tenYear: 4.54,
+  sp500: 6812.34,
+  sp500Prior: 6789.1,
+  nasdaqComposite: 22345.67,
+  nasdaqCompositePrior: 22280.15,
+  djia: 44210.55,
+  djiaPrior: 44320.8,
   advancers: 3210,
   decliners: 1780,
   pctAbove50dma: 0.61,
