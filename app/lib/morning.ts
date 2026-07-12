@@ -1,4 +1,5 @@
 import { db } from "@/lib/db";
+import { SCAN_PRESETS } from "@/lib/scan-presets";
 import { directionOf, multiple, percent, price, signedPercent } from "@/lib/format";
 import { formatUtcDate } from "@/lib/time";
 import { buildBrief, parseBriefDraft, type BriefView } from "@/lib/briefing";
@@ -417,7 +418,7 @@ export type Morning = {
 async function loadScanCount(): Promise<{ matches: number; presets: number }> {
   try {
     const latest = await db.scanResult.findFirst({ orderBy: { runDate: "desc" }, select: { runDate: true } });
-    if (!latest) return { matches: 0, presets: 0 };
+    if (!latest) return { matches: 0, presets: SCAN_PRESETS.length };
 
     const grouped = await db.scanResult.groupBy({
       by: ["presetKey"],
@@ -426,11 +427,14 @@ async function loadScanCount(): Promise<{ matches: number; presets: number }> {
     });
     return {
       matches: grouped.reduce((sum, g) => sum + g._count._all, 0),
-      presets: grouped.length,
+      // Every preset RAN. Reporting only the ones that matched would quietly undercount the work and
+      // imply that a scan which found nothing did not happen — and "the filter ran and found nothing"
+      // is a result this product goes out of its way to state everywhere else.
+      presets: SCAN_PRESETS.length,
     };
   } catch (error) {
     console.error("getMorning: could not count the scan matches", error);
-    return { matches: 0, presets: 0 };
+    return { matches: 0, presets: SCAN_PRESETS.length };
   }
 }
 

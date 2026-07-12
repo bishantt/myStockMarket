@@ -255,7 +255,13 @@ export default async function DeskPage() {
         <Surface className={cx("p-5 desk:p-6", MAIN)}>
           <SectionMasthead index={7} title="Sectors & scans" />
           <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-2 pt-4">
-            <p className="font-mono text-num-lg tabular-nums text-ink">
+            {/*
+             * A GLANCE, not a second hero. `num-lg` here rendered "52 matches across 4 scans" as a
+             * three-line block of 32px numerals that competed with the S&P for the eye — and the Desk
+             * gets exactly ONE hero figure (P14), which is spent on the index level at the top. This
+             * is a sentence with a number in it, set to be read in passing.
+             */}
+            <p className="font-mono text-base tabular-nums text-ink">
               {fill(copy.desk.scanCount, { n: morning.scans.matches, k: morning.scans.presets })}
             </p>
             <Link
