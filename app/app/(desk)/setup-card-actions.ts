@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { after } from "next/server";
 import { z } from "zod";
 
 import { db } from "@/lib/db";
@@ -36,7 +37,9 @@ export async function toggleWeakener(_prev: WeakenerResult, formData: FormData):
     const next = { ...current, [parsed.data.key]: !current[parsed.data.key] };
 
     await db.setupCard.update({ where: { id: parsed.data.cardId }, data: { weakeners: next } });
-    revalidatePath("/");
+    // After the response, never during it — see the note in journal-actions.ts. Revalidating "/"
+    // inline, from an action invoked on "/", deadlocks the action's own reply.
+    after(() => revalidatePath("/"));
     return { ok: true };
   } catch (error) {
     console.error("toggleWeakener failed", error);
