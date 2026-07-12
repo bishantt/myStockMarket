@@ -173,15 +173,22 @@ jobs:
       # credentials; the database URLs above come from the job env, so this needs no secrets.
       - run: npm run e2e
 
-      # A failed visual-regression check is only useful if you can SEE what changed. The report
-      # carries the expected/actual/diff triptych for every baseline that moved.
-      - name: Upload the Playwright report (diff images live here)
+      # A failed visual-regression check is only useful if you can SEE what changed — and for six
+      # phases this uploaded a directory that does not exist. CI runs the `github` reporter, not the
+      # `html` one, so app/playwright-report/ is never written; the artifact came back empty every
+      # time, which meant the one thing a VRT failure owes you (the picture) was the one thing you
+      # could not get. `test-results/` is where Playwright actually writes the expected/actual/diff
+      # triptych, and it has been there all along.
+      - name: Upload the failure artifacts (the expected/actual/diff images live here)
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: playwright-report
-          path: app/playwright-report/
+          name: playwright-failures
+          path: |
+            app/test-results/
+            app/playwright-report/
           retention-days: 14
+          if-no-files-found: warn
 
   vrt-baselines:
     name: VRT — generate baselines (manual; CI is the pixel oracle)
