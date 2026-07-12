@@ -312,24 +312,36 @@
     spec and every visual-regression baseline is captured against it.</p>
   </div>
 
+  <div class="callout"><strong>Amended 2026-07-11 (user directive — “Morning Broadsheet”).</strong>
+  The aesthetic clauses of this Part — the §3.1 ban list, 2px radii, no-elevation, motion
+  minimalism, and the §3.10 greps that enforce them — are superseded by
+  <strong>UI-REDESIGN-PLAN.md</strong>, which deliberately allows gradients, soft elevation,
+  rounded glass cards, colored chips, a warm indigo palette, and general UI motion. Every honesty
+  clause in this Part stands unchanged and is restated there: mono numerals everywhere, one hero
+  figure per view, redundant (never color-only) delta encoding, amber’s two consumers, no motion
+  on probability/money visuals, N + CI on every base rate. Where this Part and UI-REDESIGN-PLAN.md
+  disagree on looks, the redesign plan wins; on honesty, nothing changed and nothing may.</div>
+
   <h3>3.1 &nbsp;The manifesto (read before styling anything)</h3>
   <p><strong>This app is a financial broadsheet set by a typographer, not a SaaS dashboard.</strong>
   Its ancestors are the print business page and the terminal screen: ink on paper, hairline rules,
   columns, dense tabular numerals, restrained color used only where it means something. Boldness
   comes from <em>scale contrast</em> (a 64px mono numeral against 13px labels), <em>editorial
   structure</em> (numbered section mastheads, 2px rules, asymmetric grids, generous margins), and
-  <em>two distinct room tones</em> (the Desk cool and dense; the Academy warm and literary) — never
-  from gradients, glows, or decoration. The design must pass one test: <strong>if a screenshot
-  could be mistaken for a default admin template or an AI-generated dashboard, it is wrong.</strong></p>
-  <p><strong>Banned outright</strong> (this list is enforceable in review): gradients and
-  glassmorphism; drop shadows on cards (the drawer scrim is the sole shadow in the app);
-  <code>rounded-2xl</code> softness — the app’s radius is 2px; decorative icons and emoji;
-  colored-chip confetti; skeleton shimmer (use quiet “—” placeholders); purple anything; count-up
-  number animations; default-shadcn visual identity (its Radix primitives may be used headless, its
-  look may not); synthesized small-caps — Archivo ships no <code>smcp</code> feature, so uppercase
-  with tracking is the house alternative. <strong>Required:</strong> hairlines instead of shadows, uppercase condensed
-  mastheads with index numbers (“01 — MACRO PULSE”), mono numerals everywhere data appears, one
-  hero figure per view maximum, whitespace treated as a material.</p>
+  <em>two distinct room tones</em> (the Desk cool and dense; the Academy warm and literary) — and,
+  since the 2026-07-11 amendment, from morning-light gradients and soft glass depth used as
+  material, never as noise. The design must pass one test: <strong>if a screenshot could be
+  mistaken for a default template — austere admin panel or glossy AI dashboard — it is wrong.</strong></p>
+  <p><strong>Banned outright — amended 2026-07-11.</strong> The original taste bans (gradients and
+  glassmorphism; card shadows; radii above 2px; colored chips; purple; skeleton shimmer) are
+  repealed; the amended aesthetic law is UI-REDESIGN-PLAN.md §2.1 and its §3.10 v2 greps replace
+  the enforcement below. Still banned, because they were never taste: decorative icons and emoji;
+  colored chips that carry no meaning (“confetti”); count-up number animations; default-shadcn
+  visual identity (its Radix primitives may be used headless, its look may not); synthesized
+  small-caps. <strong>Required (unchanged):</strong> uppercase mastheads with index numbers
+  (“01 — MACRO PULSE”), mono numerals everywhere data appears, one hero figure per view maximum,
+  whitespace treated as a material — hairlines now live inside cards rather than standing in for
+  elevation.</p>
   <p><strong>The honesty constraint is the style.</strong> The Research Report bans fake-confidence
   chrome (gauges, gauzy “AI glow”, urgency motion); this system turns that ban into identity. Color
   is nearly absent precisely so that the few semantic uses — a delta triangle, an amber alert, an
@@ -346,10 +358,26 @@
         <td>Everything on the Desk that is not a number or prose: labels, table headers, buttons, nav. Mastheads use Expanded width (wdth ~120) 700–800 uppercase, tracking +6–8%; body UI at wdth 100, wght 400/500.</td></tr>
       <tr><td>Data &amp; numerals</td><td><strong>IBM Plex Mono</strong> (400/500/600; OFL)</td>
         <td>Every quantitative figure in the product — prices, percentages, counts, N, CIs, timestamps, axis ticks — renders in Plex Mono. This is the single strongest identity move and also the alignment guarantee (mono ⇒ tabular by construction). Never render a number in Archivo.</td></tr>
-      <tr><td>Prose (Academy + briefs)</td><td><strong>Newsreader</strong> (variable incl. optical size + italic; OFL)</td>
-        <td>Academy lesson bodies, the AM/PM brief paragraphs, worked-example prose: 17–18px/1.65, measure 62–68ch, opsz auto. Display italic (opsz 36+) for the brief’s “Today’s focus” headline — the one literary flourish.</td></tr>
+      <tr><td>Prose (Academy + briefs)</td><td><strong>Newsreader</strong> (variable, italic; OFL)</td>
+        <td>Academy lesson bodies, the AM/PM brief paragraphs, worked-example prose: 17–18px/1.65, measure 62–68ch. Display italic for the brief’s “Today’s focus” headline — the one literary flourish.</td></tr>
     </tbody>
   </table>
+
+  <p><strong>Correction, 2026-07-10 (P0 · structural · Part 10 rule 9).</strong> The Newsreader row
+  above originally read “variable incl. optical size + italic” and asked for “opsz auto” with
+  “display italic (opsz 36+)”. The optical-size axis is dropped; the row and §4.5 now describe what
+  is actually built. Measured on the latin subset, Newsreader costs 272KB with
+  <code>ital + opsz + wght</code> and 119KB with <code>ital + wght</code> — that single axis costs
+  153KB, more than Archivo (87KB) and IBM Plex Mono (29KB) put together, and it pushed the three
+  families to 388KB against the ≤ 320KB budget this same plan sets in §4.5. Two clauses of the plan
+  contradicted each other and neither is protected by a rank-1 or rank-2 source, so the budget wins:
+  it serves the Research Report’s calm, fast reading experience directly (LCP ≤ 2.5s on a
+  Moto-G-class phone), whereas optical sizing is a refinement of letterform proportions that most
+  readers never consciously see. The display italic — “the one literary flourish” — survives intact.
+  The three families now total 237KB with 83KB of headroom, guarded permanently by
+  <code>app/scripts/check-font-budget.mjs</code> in the §6.4 phase-exit gate. Logged in
+  DECISIONS.md.</p>
+
   <table>
     <caption>Type scale (px) — Tailwind v4 @theme tokens; line-height beside each</caption>
     <thead><tr><th>Token</th><th class="num">Size/leading</th><th>Use</th></tr></thead>
@@ -368,6 +396,9 @@
   </table>
 
   <h3>3.3 &nbsp;Color tokens</h3>
+  <p><em>Amended 2026-07-11: the palette below is the original build’s (P0–P6); the current
+  palette is UI-REDESIGN-PLAN.md Appendix A. The rules in the rightmost column — redundant
+  encoding, amber’s two consumers, grade dots only beside their words — remain law verbatim.</em></p>
   <p>Two room palettes plus one semantic set. Interactive elements are <strong>ink + underline</strong>
   (editorial), with petrol reserved for focus/active states — so no color ever competes with the
   semantic channel. All text pairs meet WCAG AA on their surface (spot-check with a contrast tool
@@ -395,10 +426,12 @@
     <li><strong>Spatial system:</strong> 4px base. Component padding 12/16/20; module gap 28;
     section-masthead rhythm: 12 above the 2px rule, 8 below; page gutters 20 (mobile) / 32
     (desktop); Desk max-width 1360, 12-col grid, 20px gutters.</li>
-    <li><strong>Radii:</strong> 2px everywhere (inputs, buttons, cards, sheets). The near-square
-    corner is a signature — treat any rounded-looking corner as a bug.</li>
-    <li><strong>Elevation:</strong> none. Hairline borders separate; the slide-over rail/bottom
-    sheet uses a scrim (<code>rgb(20 21 17 / 0.4)</code>) and a 1px ink edge — no drop shadow.</li>
+    <li><strong>Radii — amended 2026-07-11:</strong> the 2px signature is retired; the radius
+    scale is now tokenized in UI-REDESIGN-PLAN.md §3.5 (16px cards / 12 panels / 10 controls /
+    8 chips / pill). Arbitrary radii remain banned by grep.</li>
+    <li><strong>Elevation — amended 2026-07-11:</strong> soft tokenized shadows and glass
+    surfaces are allowed (UI-REDESIGN-PLAN.md §3.4, with a hard blur budget); arbitrary
+    shadows remain banned by grep. The scrim survives as the overlay backdrop.</li>
     <li><strong>Section mastheads:</strong> every Desk module opens with
     <code>NN — NAME</code> in Archivo Expanded 12px caps over a 2px ink rule, with the module’s
     data timestamp right-aligned in Plex Mono 11px (“as of 16:05 ET”). This one component carries
@@ -407,15 +440,15 @@
 
   <h3>3.5 &nbsp;Motion</h3>
   <ul>
-    <li>Durations: 160ms fades / 200ms sheet-and-rail slides, ease-out, translate ≤ 12px. Nothing
-    else moves. (Declared deviation #3, §1.2: the Research Report’s §9.7 says “~500ms” for refresh
-    fades; 160–200ms preserves the calm intent — one quiet fade, no color flash — without reading
-    as shimmer.)</li>
-    <li><strong>Never animated:</strong> numbers (no count-up, no flash-on-change), probability
-    visuals (icon arrays, dotplots, calibration curves, vol bands), chart data (series appear
-    settled). Price/data refresh = a 160ms opacity fade of the module, once.</li>
+    <li><em>Amended 2026-07-11:</em> general UI motion is allowed — page transitions, hover
+    states, drawer slides, one-time chart draw-ins, tasteful micro-interactions — under the
+    motion system and durations of UI-REDESIGN-PLAN.md §3.6. Nothing loops, nothing autoplays,
+    nothing manufactures urgency.</li>
+    <li><strong>Never animated (unchanged law):</strong> numbers (no count-up, no
+    flash-on-change) and probability visuals (icon/dot arrays, dotplots, calibration curves,
+    vol bands / fan charts, CI bars, Brier figures) — these render complete on first paint,
+    always. Restated as the “P2 carve-out” in UI-REDESIGN-PLAN.md §3.6 and grepped by name.</li>
     <li><code>prefers-reduced-motion</code>: all transitions drop to 0ms except focus outlines.</li>
-    <li>No page-transition animation; navigation is instant and quiet.</li>
   </ul>
 
   <h3>3.6 &nbsp;Component inventory (anatomy in one line each; build in this order within P1–P6)</h3>
@@ -490,11 +523,11 @@
 
   <h3>3.10 &nbsp;Anti-drift checklist (run at every phase exit — mechanical checks first, then eyes)</h3>
   <ol>
-    <li><strong>Mechanical greps (must all be empty):</strong> <code>shadow-</code>/<code>box-shadow</code>
-    outside the scrim; <code>gradient</code>; radius utilities &gt; 2px; hex colors outside
-    <code>globals.css</code> tokens; font families beyond the three loaded; <code>small-caps</code>;
-    amber tokens outside the two §3.3 consumers; animation/transition on any probability or money
-    component.</li>
+    <li><strong>Mechanical greps — amended 2026-07-11:</strong> replaced by the v2 grep list in
+    UI-REDESIGN-PLAN.md §3.10 (tokenized gradients/shadows/radii only; blur budget; hex outside
+    the token sheet; font families beyond the four loaded; <code>small-caps</code>). Two greps
+    carry over verbatim because they are honesty: amber tokens outside the two §3.3 consumers,
+    and animation/transition on any probability or money component.</li>
     <li><strong>Hero discipline:</strong> “view” = route. Only <code>/</code> renders
     <code>--text-hero</code> (the macro SPX figure, in ink); every other route’s largest numeral is
     ≤ <code>--text-num-lg</code>; <code>/paper</code> never renders P&amp;L at ≥
@@ -507,6 +540,7 @@
     <li>Would the Research Report’s §9.8 anti-pattern table object to anything visible?</li>
   </ol>
 </section>
+
 <!-- ================= PART 4 ================= -->
 <section class="part">
   <div class="part-head">
@@ -1409,8 +1443,9 @@ Wilson CI, N-gated display · CI spanning always-up baseline ⇒ tier weak · ne
 t &gt; 3.0 or a ledger grade · decay stamps · folklore labeled · insert-only
 signal_log/resolution, misses public · no trending surfaces, no gamification · movers need a
 catalyst or the noise line · LLM narrates, never computes; deterministic gate blocks unverified
-numbers · Desk/Academy separated, doorways + return rails · calm tech: no motion on
-probability/money visuals, timestamps everywhere · mechanical voice (copy.ts) · paper-first ·
+numbers · Desk/Academy separated, doorways + return rails · general UI motion is allowed
+(2026-07-11 amendment) but probability/money visuals NEVER move and nothing manufactures
+urgency · timestamps everywhere · mechanical voice (copy.ts) · paper-first ·
 login wall always (licensing) · TDD per plan §6.2.
 
 ## Commands
@@ -1420,8 +1455,9 @@ db:       npx prisma migrate dev · npx prisma db seed        deploy: git push (
 
 ## Conventions
 Conventional commits · TDD-first list in plan §6.2 · numbers render ONLY via components/BaseRate
-and lib/format · all copy from lib/copy.ts · tokens from globals.css @theme (plan §3) — never
-ad-hoc hex · timestamps via lib/time.ts · adapters follow .claude/skills/new-provider-adapter.
+and lib/format · all copy from lib/copy.ts · tokens from globals.css @theme (UI-REDESIGN-PLAN.md
+§3 + Appendix A) — never ad-hoc hex · timestamps via lib/time.ts · adapters follow
+.claude/skills/new-provider-adapter.
 
 ## Session ritual
 Start: git pull → read this + PROGRESS.md + LESSONS.md → diff DECISIONS.md (any non-[claude]
@@ -1430,8 +1466,10 @@ End: update PROGRESS.md → log DECISIONS/LESSONS ([claude]-marked) → push.
 Phase exit: plan §6.4 gate → tag.
 
 ## Design one-liner
-“Broadsheet Terminal”: ink, hairlines, 2px radii, mono numerals, one hero figure, two rooms
-(cool Desk / warm Academy). If it could be a default template, it is wrong. Checklist: plan §3.10.</pre>
+“Morning Broadsheet” (amended 2026-07-11; supersedes “Broadsheet Terminal”): editorial serif
+over mono numerals, lavender morning-light wash, glass cards with soft depth, hairlines inside
+cards, one hero figure, two rooms (cool lavender Desk / warm cream Academy). If it could be a
+template — austere OR glossy — it is wrong. Spec: UI-REDESIGN-PLAN.md Part 3 · checklist §3.10 v2.</pre>
 
   <p class="footnote">Development Plan compiled July 2026 for executor Claude Opus 4.8; revised
   after a five-lens adversarial review (stall-hunter, hidden-global-decision, PWA, design-collision,

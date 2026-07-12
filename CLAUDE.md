@@ -1,7 +1,9 @@
 # myStockMarket — constitution
 Single-user US-equities command center + learning hub. Next.js 16 app (app/) + Python pipeline
-(pipeline/) + two GitHub Actions jobs. Executor: Claude Opus 4.8. Contract: DEVELOPMENT-PLAN.md.
-Authority: RR Part 8/9 > Blueprint > plan > DECISIONS.md > judgment. Evidence chapters win.
+(pipeline/) + two GitHub Actions jobs. Executor: Claude Opus 4.8. Contract: DEVELOPMENT-PLAN.md,
+plus UI-REDESIGN-PLAN.md for everything visual. Authority: RR Part 8/9 > Blueprint > plan >
+DECISIONS.md > judgment — except on looks, where UI-REDESIGN-PLAN.md wins (deliberate user
+amendment, 2026-07-11). Evidence chapters win on evidence.
 
 ## Autonomy (standing directive — user, 2026-07-11, permanent)
 Run the entire plan to completion without pausing. Do NOT stop at phase boundaries or ask
@@ -24,8 +26,9 @@ Wilson CI, N-gated display · CI spanning always-up baseline ⇒ tier weak · ne
 t > 3.0 or a ledger grade · decay stamps · folklore labeled · insert-only
 signal_log/resolution, misses public · no trending surfaces, no gamification · movers need a
 catalyst or the noise line · LLM narrates, never computes; deterministic gate blocks unverified
-numbers · Desk/Academy separated, doorways + return rails · calm tech: no motion on
-probability/money visuals, timestamps everywhere · mechanical voice (copy.ts) · paper-first ·
+numbers · Desk/Academy separated, doorways + return rails · general UI motion is allowed
+(2026-07-11 amendment) but probability/money visuals NEVER move and nothing manufactures
+urgency · timestamps everywhere · mechanical voice (copy.ts) · paper-first ·
 login wall always (licensing) · TDD per plan §6.2.
 
 ## Readability & documentation (permanent, non-negotiable — user directive 2026-07-10)
@@ -50,8 +53,8 @@ db:       npx prisma migrate dev · npx prisma db seed        deploy: git push (
 
 ## Conventions
 Conventional commits · TDD-first list in plan §6.2 · numbers render ONLY via components/BaseRate
-and lib/format · all copy from lib/copy.ts · tokens from globals.css @theme (plan §3) — never
-ad-hoc hex · timestamps via lib/time.ts · adapters follow .claude/skills/new-provider-adapter ·
+and lib/format · all copy from lib/copy.ts · tokens from globals.css @theme (UI-REDESIGN-PLAN.md §3 +
+Appendix A) — never ad-hoc hex · timestamps via lib/time.ts · adapters follow .claude/skills/new-provider-adapter ·
 readable-first code and plain-English docs per the Readability section above.
 
 ## Session ritual
@@ -61,8 +64,11 @@ End: update PROGRESS.md → log DECISIONS/LESSONS ([claude]-marked) → push.
 Phase exit: plan §6.4 gate → tag.
 
 ## Design one-liner
-“Broadsheet Terminal”: ink, hairlines, 2px radii, mono numerals, one hero figure, two rooms
-(cool Desk / warm Academy). If it could be a default template, it is wrong. Checklist: plan §3.10.
+“Morning Broadsheet” (amended 2026-07-11; supersedes “Broadsheet Terminal”): editorial serif
+over mono numerals, lavender morning-light wash, glass cards with soft depth, hairlines inside
+cards, one hero figure, two rooms (cool lavender Desk / warm cream Academy). Color is scarce
+and always means something. If it could be a template — austere OR glossy — it is wrong.
+Spec: UI-REDESIGN-PLAN.md Part 3 · checklist: its §3.10 v2 (replaces plan §3.10 greps).
 
 ## Timing (user lives on market time)
 User: Long Island, NY — America/New_York, observes DST. Crons UTC-fixed (DST-proof):

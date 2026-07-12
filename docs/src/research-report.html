@@ -1166,29 +1166,43 @@
   </ul>
 
   <h3>9.7 &nbsp;Visual language</h3>
+  <div class="callout"><span class="co-label">Amended 2026-07-11</span> By deliberate user
+  directive, the austere clauses of this section (no shadows, no gradients, neutral-only chips,
+  motion minimalism) are relaxed; the operative visual law is now <strong>UI-REDESIGN-PLAN.md</strong>
+  (“Morning Broadsheet”: gradients, soft elevation, rounded glass cards, colored chips, and general
+  UI motion are allowed, all tokenized and grepped). The clauses below are annotated in place.
+  Unchanged and non-negotiable: probability visuals are motionless; gain/loss is colorblind-safe
+  and never color-alone; amber stays reserved; position-and-length over angle-and-area; dark mode
+  stays Desk-only. §9.8’s anti-pattern table stands in full — every row of it was honesty, not taste.</div>
   <ul>
-    <li><strong>Data-ink maximalism:</strong> no card shadows, no decorative borders; hairline
-    dividers; if an element can disappear without losing data, it does<sup class="cite">[76,75]</sup>.</li>
+    <li><strong>Data-ink maximalism — amended 2026-07-11:</strong> soft tokenized elevation and
+    glass surfaces are now allowed; the heuristic that survives is the test itself — if an element
+    can disappear without losing data or structure, it does<sup class="cite">[76,75]</sup>.
+    Decoration must never impersonate data.</li>
     <li><strong>One reserved attention color</strong> (amber) for active alerts — at most 2–3
     visible before they aggregate into a count. Color communicates importance only when
-    scarce<sup class="cite">[75]</sup>. Setup-card tier badges do <em>not</em> draw from this
-    budget: tiers render as neutral chips (gray dot + lexicon word), so ten firing cards cannot
-    turn the Desk amber.</li>
-    <li><strong>Semantic-only, colorblind-safe gain/loss:</strong> blue #0072B2 / vermillion #D55E00
-    (Wong palette<sup class="cite">[93]</sup>), applied only to deltas and chart lines, always
+    scarce<sup class="cite">[75]</sup>. <em>Amended 2026-07-11:</em> tier badges are now colored
+    soft-wash chips with their own hues (never the alert amber) and always carry their word —
+    the amber budget still cannot be spent by tiers, so ten firing cards still cannot turn the
+    Desk amber.</li>
+    <li><strong>Semantic-only, colorblind-safe gain/loss:</strong> <em>amended 2026-07-11 —</em>
+    the pair is now blue #2563EB / orange #EA580C (with darkened AA text steps; previously Wong
+    #0072B2/#D55E00<sup class="cite">[93]</sup>), applied only to deltas and chart lines, always
     redundantly encoded with sign and direction; banned from buttons, links, and decoration —
     interactive elements use a distinct link color so a delta can never be mistaken for a
-    button.</li>
+    button. The rule is unchanged; only the hues moved.</li>
     <li><strong>Tabular lining numerals</strong> (a UI sans with <code>tnum</code> support — Inter
     or IBM Plex Sans class), right-aligned numeric columns, consistent decimals — aligned digits
     scan instantly. Reference tokens for the coding phase: Desk background near-white cool neutral,
     Academy warmer white, one hairline divider tone, a 4–5 step type scale per zone; exact values
     are the first task of the build’s design pass, constrained by this section.</li>
-    <li><strong>Calm technology:</strong> no blinking, no ticker tape, no toasts, no badges; data
-    refreshes fade in over ~500ms with no color flash — and in v1 the data is as-of the last US
-    close, so the calm is structural, not just stylistic. Market open/closed (US session state) and
-    data freshness render as small static peripheral indicators<sup class="cite">[89]</sup>.
-    Probability visuals are motionless — the election-needle lesson.</li>
+    <li><strong>Calm technology — amended 2026-07-11:</strong> general UI motion (page
+    transitions, hover states, one-time chart draw-ins, micro-interactions) is now allowed;
+    calm is preserved as <em>no blinking, no ticker tape, no toasts, no badges, no loops, no
+    autoplay, no urgency</em> — and in v1 the data is as-of the last US close, so the calm is
+    structural, not just stylistic. Market open/closed (US session state) and data freshness
+    render as small static peripheral indicators<sup class="cite">[89]</sup>.
+    <strong>Probability visuals are motionless — the election-needle lesson. Unchanged.</strong></li>
     <li><strong>Position and length over angle and area:</strong> bars, lines, sparklines, small
     multiples everywhere; gauges, donuts, and speedometers nowhere<sup class="cite">[77]</sup>.</li>
     <li><strong>Dark mode is Desk-only</strong> (optional, for evening use); the Academy stays
