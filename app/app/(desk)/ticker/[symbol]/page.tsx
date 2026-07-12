@@ -1,12 +1,11 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
-import { CandleChart } from "@/components/ticker/CandleChart";
+import { CandleChartLoader } from "@/components/ticker/CandleChartLoader";
 import { RangeBands } from "@/components/ticker/RangeBands";
 import { StatFigure } from "@/components/StatFigure";
 import { Surface } from "@/components/Surface";
-import { getTicker } from "@/lib/ticker";
-import { db } from "@/lib/db";
+import { getLatestVolBands, getTicker } from "@/lib/ticker";
 
 /**
  * /ticker/[symbol] — drill level 3, the full page (§5.5).
@@ -25,26 +24,40 @@ import { db } from "@/lib/db";
  * the reader drilled into) shows an honest note, never a blank chart.
  */
 
-export const dynamic = "force-dynamic";
+/**
+ * Cached per symbol, rendered on demand the first time each one is asked for (§5.3 P-1).
+ *
+ * This was the slowest page in the app: 1237ms, because it awaited FOUR database queries one after
+ * another and each one crossed the country. Now the loader is a single parallel stage (P-2), and the
+ * result is cached, so the reader pays it once per symbol per publish rather than once per tap.
+ */
+export const revalidate = 600;
+
+/**
+ * The empty array is not a placeholder — it is what turns runtime ISR ON for this route.
+ *
+ * The pinned framework's own documentation is explicit, and it is the kind of detail that silently
+ * costs you the entire benefit: "You must always return an array from generateStaticParams, even if
+ * it's empty. Otherwise, the route will be dynamically rendered." An earlier draft of the plan
+ * omitted this and would have shipped a `revalidate` that never cached a thing, with the flagship
+ * budget failing forever and no obvious reason why.
+ *
+ * Empty, specifically, because there is no useful set to prerender: the universe is ~6,000 symbols
+ * and the reader visits a handful. Each one renders once, on first request, and is cached from then
+ * on. Unknown symbols still 404 through the existing notFound().
+ */
+export async function generateStaticParams(): Promise<{ symbol: string }[]> {
+  return [];
+}
 
 export default async function TickerPage({ params }: { params: Promise<{ symbol: string }> }) {
   const { symbol } = await params;
   const decoded = decodeURIComponent(symbol);
-  const ticker = await getTicker(decoded);
-  if (!ticker) notFound();
 
-  // The empirical vol bands for this symbol's latest run — the one forward-looking number, always
-  // shown as a range with its regime-break caveat (RangeBands).
-  const latestBand = await db.volBand.findFirst({ where: { symbol: decoded }, orderBy: { runDate: "desc" }, select: { runDate: true } });
-  const bandRows = latestBand
-    ? await db.volBand.findMany({
-        where: { symbol: decoded, runDate: latestBand.runDate },
-        select: {
-          horizonDays: true, coverage: true, lo: true, hi: true, label: true,
-          n: true, windowDays: true,
-        },
-      })
-    : [];
+  // One parallel stage instead of four sequential round trips. The bands do not depend on the
+  // ticker, and never did — they were simply awaited after it.
+  const [ticker, bandRows] = await Promise.all([getTicker(decoded), getLatestVolBands(decoded)]);
+  if (!ticker) notFound();
 
   // A band with no sample size cannot be shown: the ladder prints N on every row, and a range
   // without its N is an assertion. Rows written before the column existed are simply dropped.
@@ -79,7 +92,7 @@ export default async function TickerPage({ params }: { params: Promise<{ symbol:
 
       {ticker.candles.length > 0 ? (
         <Surface as="section" aria-label="Price and volume" className="p-5">
-          <CandleChart candles={ticker.candles} volumes={ticker.volumes} />
+          <CandleChartLoader candles={ticker.candles} volumes={ticker.volumes} />
         </Surface>
       ) : null}
 

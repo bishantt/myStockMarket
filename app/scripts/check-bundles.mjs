@@ -39,11 +39,42 @@ const EVIDENCE = join(ROOT, "..", "docs", "feel-evidence");
 const SLACK_KB = 10;
 
 /**
- * The F0 baselines, in gzipped KB, recorded before the feel plan changed anything.
- * Empty until F0 records them; F1 arms the gate by filling this in.
+ * The baselines, in gzipped KB. A route may not grow more than SLACK_KB past its number.
+ *
+ * READ THIS BEFORE COMPARING THESE TO THE F0 TABLE — the numbers moved for a reason that is not a
+ * regression. At F0 the eight force-dynamic routes had no prerendered HTML, so they could only be
+ * measured as UPPER BOUNDS from their client-reference manifests (~142KB each). Since F1 they
+ * prerender, so they are measured EXACTLY, from the script tags their own HTML actually asks for
+ * (~180KB each). The bundles did not grow by 38KB; the instrument stopped guessing. Baselining the
+ * exact figures against the old bounds would have every cured route failing its budget forever, for
+ * having become measurable.
+ *
+ * So the baselines below are the first honest measurement of each route, taken at F1, and the two
+ * routes where the method did NOT change are the control that proves the rest of the story:
+ *
+ *   · `/`                  exact → exact:  179.6 → 179.7 KB   (unchanged, as expected)
+ *   · `/ticker/[symbol]`   bound → bound:  193.0 → 143.1 KB   (−49.9 KB — the chart, code-split)
+ *
+ * That second line is P-6 doing exactly what it was supposed to do: `lightweight-charts` no longer
+ * loads for a reader who opens a ticker page, only for one who looks at the chart.
+ *
  * @type {Record<string, number>}
  */
-const BASELINE_KB = {};
+const BASELINE_KB = {
+  "/": 179.7,
+  "/academy": 169.6,
+  "/academy/[slug]": 145.0,
+  "/academy/glossary": 169.0,
+  "/academy/review": 170.2,
+  "/login": 164.1,
+  "/offline": 163.0,
+  "/paper": 184.2,
+  "/scans": 180.8,
+  "/settings": 181.7,
+  "/styleguide": 163.0,
+  "/ticker/[symbol]": 143.1,
+  "/track-record": 179.7,
+};
 
 const reporting = process.argv.includes("--report");
 

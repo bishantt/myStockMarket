@@ -173,6 +173,28 @@ const RULES = [
         line,
       ),
   },
+  {
+    id: 13,
+    name: "PERF — no route may go back to force-dynamic (every room is served from a cache)",
+    // Rule 13's full form is `npm run check:routes`, which reads the build's own manifest and is the
+    // real gate. This grep is the cheap half: it catches the one-line edit that would undo F1 —
+    // someone reaching for `force-dynamic` to make a page "always fresh", not realising that every
+    // write already busts its own cache and that the cost is a frozen screen on every tap.
+    // /api routes are exempt: a route handler is not a page and has nothing to prerender.
+    skip: [],
+    match: (line, file) =>
+      /export\s+const\s+dynamic\s*=\s*["']force-dynamic["']/.test(line) && !file.startsWith("app/api/"),
+  },
+  {
+    id: 14,
+    name: "PERF — internal links go through next/link, and nobody turns prefetch off",
+    // A raw <a href="/..."> is a full document reload: the service worker re-runs, the fonts
+    // re-request, React re-hydrates from scratch. Two of them survived in the Desk until F1 and cost
+    // the reader a whole page load each. `prefetch={false}` is the other way to lose the same thing:
+    // once a route is static, the default prefetch is exactly what makes the tap feel instant.
+    skip: [],
+    match: (line) => /<a\s+href=["']\/(?!\/)/.test(line) || /prefetch=\{false\}/.test(line),
+  },
 ];
 
 let failures = 0;
@@ -189,7 +211,7 @@ for (const rule of RULES) {
       continue; // a P2 file that does not exist in this phase yet
     }
     text.split("\n").forEach((line, i) => {
-      if (rule.match(line)) hits.push(`${file}:${i + 1}  ${line.trim().slice(0, 96)}`);
+      if (rule.match(line, file)) hits.push(`${file}:${i + 1}  ${line.trim().slice(0, 96)}`);
     });
   }
 
@@ -206,4 +228,4 @@ if (failures > 0) {
   console.error(`\n${failures} anti-drift violation(s). The design system does not bend here.`);
   process.exit(1);
 }
-console.log("\nAll 11 anti-drift rules pass.");
+console.log(`\nAll ${RULES.length} anti-drift rules pass.`);

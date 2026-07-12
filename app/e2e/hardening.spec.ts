@@ -45,7 +45,24 @@ test.describe("touch targets (phone)", () => {
   for (const route of ROUTES) {
     test(`every control on ${route} is at least 44px`, async ({ page }) => {
       await page.goto(route);
-      await page.waitForLoadState("networkidle");
+
+      // Wait for the LAYOUT to settle, which is the only thing this sweep actually depends on — it
+      // measures the size of every control, and a control's size is not final until its text is in
+      // its real font.
+      //
+      // This used to wait for "networkidle", and that stopped working at F1 — not because anything
+      // broke, but because the cure worked. Every room is a static route now, so the router
+      // prefetches the links on screen as the browser goes idle; the network keeps trickling, and
+      // "500ms with nothing in flight" may simply never arrive. It timed out on the busiest pages.
+      //
+      // Fonts are the honest wait here. A button measured mid-swap, still in the fallback face, is a
+      // button measured at the wrong width. (Waiting on the tab bar instead would have been wrong for
+      // a different reason: /styleguide has no tab bar, so the sweep would hang on the one page whose
+      // whole job is to show every control in the system.)
+      await page.waitForLoadState("load");
+      await page.evaluate(async () => {
+        await document.fonts.ready;
+      });
 
       const small = await page.evaluate(() => {
         const MIN = 44;

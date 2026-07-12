@@ -14,14 +14,29 @@ import { ReviewSession } from "@/components/academy/ReviewSession";
  * one brings it back tomorrow. Skipping carries no penalty. No prices, no streaks, no score to chase.
  */
 
-export const dynamic = "force-dynamic";
+/**
+ * Served from the cache (§5.3 P-1). The review actions already bust this path on every answer, so
+ * the queue a reader sees is always the queue their last answer produced.
+ */
+export const revalidate = 600;
 
 function todayDate(): Date {
   return new Date(new Date().toISOString().slice(0, 10));
 }
 
+/** The reader's concept states — or none, if the database is unreachable (the route prerenders, and
+ *  CI builds without a database). An empty queue is the page's own honest "nothing due" state. */
+async function conceptStates() {
+  try {
+    return await db.conceptState.findMany();
+  } catch (error) {
+    console.error("ReviewPage: could not read concept states", error);
+    return [];
+  }
+}
+
 export default async function ReviewPage() {
-  const rows = await db.conceptState.findMany();
+  const rows = await conceptStates();
   const states: ConceptState[] = rows.map((row) => ({
     concept: row.concept,
     box: row.box,

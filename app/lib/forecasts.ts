@@ -25,11 +25,21 @@ export type ForecastRecord = {
 };
 
 export async function getForecastRecord(): Promise<ForecastRecord> {
-  const rows = await db.journalEntry.findMany({
-    where: { probability: { not: null } },
-    orderBy: { date: "desc" },
-    select: { id: true, forecast: true, probability: true, resolvesOn: true, outcome: true },
-  });
+  // An unreachable database means "no forecasts on record", not a broken page. The track-record
+  // route prerenders since F1, so this query now runs at build time too — and CI builds with no
+  // database at all. A forecast record that cannot be read degrades to an empty one, which the page
+  // already renders honestly.
+  let rows: { id: string; forecast: string | null; probability: number | null; resolvesOn: Date | null; outcome: string | null }[];
+  try {
+    rows = await db.journalEntry.findMany({
+      where: { probability: { not: null } },
+      orderBy: { date: "desc" },
+      select: { id: true, forecast: true, probability: true, resolvesOn: true, outcome: true },
+    });
+  } catch (error) {
+    console.error("getForecastRecord: could not read the journal's forecasts", error);
+    rows = [];
+  }
 
   const resolved: ResolvedForecast[] = [];
   const open: OpenForecast[] = [];

@@ -103,9 +103,18 @@ export async function toggleFocus(_prev: ActionResult, formData: FormData): Prom
   }
 }
 
-/** Refresh the two routes that render the watchlist so a write shows up at once — the Desk (its
- * cached ISR render) and this settings page. */
+/**
+ * Refresh everything a watchlist write changes (§5.3 P-7).
+ *
+ * The Desk gets LAYOUT scope, not page scope, and the difference is load-bearing: the ⌘K command
+ * palette is built in the Desk's layout, not in any page, and its index includes every watchlist
+ * ticker. A page-scoped refresh would update the Desk's watchlist module while leaving the palette
+ * still offering yesterday's names — and since the layout wraps every room, "yesterday's names"
+ * would follow the reader around the whole app.
+ *
+ * The settings page renders the manager itself, so it is refreshed too.
+ */
 function revalidateWatchlist(): void {
-  revalidatePath("/");
+  revalidatePath("/", "layout");
   revalidatePath("/settings");
 }

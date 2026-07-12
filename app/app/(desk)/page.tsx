@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 import { SectionMasthead } from "@/components/SectionMasthead";
 import { StatFigure } from "@/components/StatFigure";
 import { Surface } from "@/components/Surface";
@@ -231,9 +233,9 @@ export default async function DeskPage() {
           <SectionMasthead index={7} title="Sectors & scans" />
           <p className="pt-4 font-ui text-sm text-muted">
             The five scan presets, with their criteria and evidence grades, live on the{" "}
-            <a href="/scans" className="text-accent-deep underline-offset-2 hover:underline">
+            <Link href="/scans" className="text-accent-deep underline-offset-2 hover:underline">
               Scans page
-            </a>
+            </Link>
             . Sector small-multiples arrive in a later phase.
           </p>
         </Surface>

@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { compileMDX } from "next-mdx-remote/rsc";
 
-import { getLessonMeta, getLessonSource } from "@/lib/academy";
+import { getLessonManifest, getLessonMeta, getLessonSource } from "@/lib/academy";
 import { isLessonSoftGated, M3_SLUGS } from "@/lib/academy-progress";
 import { db } from "@/lib/db";
 import { LessonReadBeacon } from "@/components/academy/LessonReadBeacon";
@@ -16,8 +16,40 @@ import { LessonReadBeacon } from "@/components/academy/LessonReadBeacon";
  * the top and bottom, so a doorway is never a trap.
  */
 
-// Lessons are static content; render them fresh so a new lesson appears without a rebuild.
-export const dynamic = "force-dynamic";
+/**
+ * Every lesson is prerendered at build time, and revalidated every ten minutes (§5.3 P-1).
+ *
+ * The old comment here said lessons were rendered fresh "so a new lesson appears without a rebuild",
+ * which was true and expensive: a lesson is an MDX file on disk, and it was being COMPILED on every
+ * single visit — `compileMDX` at request time, per reader, per page view, for content that cannot
+ * change without a deploy. Since all 25 slugs are known at build, they are compiled once, here.
+ *
+ * A lesson still cannot go stale: the read beacon busts this path when you finish one, and shipping
+ * a new lesson means shipping a file, which means a deploy, which means a build.
+ */
+export const revalidate = 600;
+
+/**
+ * The 25 authored lessons, from the manifest — the same list the Academy index reads.
+ *
+ * This is what moves the MDX compile from request time to build time. It also means an unknown slug
+ * is rendered on demand and 404s through the existing notFound() path, rather than being invented.
+ */
+export async function generateStaticParams(): Promise<{ slug: string }[]> {
+  return getLessonManifest().map((lesson) => ({ slug: lesson.slug }));
+}
+
+/** The reader's finished lessons, or none if the database is unreachable — the M3 soft gate then
+ *  simply does not fire. Every lesson is still readable; a build with no database still succeeds. */
+async function completedLessons(): Promise<string[]> {
+  try {
+    const rows = await db.lessonProgress.findMany({ select: { slug: true } });
+    return rows.map((row) => row.slug);
+  } catch (error) {
+    console.error("LessonPage: could not read lesson progress", error);
+    return [];
+  }
+}
 
 /**
  * The MDX element → styled component map: the Academy's reading typography (§5.6).
@@ -57,7 +89,7 @@ export default async function LessonPage({ params }: { params: Promise<{ slug: s
   if (!meta || source === null) notFound();
 
   // The M3 soft gate: a pattern lesson (M4/M5) shows a "risk first" notice until M3 is complete.
-  const completed = (await db.lessonProgress.findMany({ select: { slug: true } })).map((row) => row.slug);
+  const completed = await completedLessons();
   const gated = isLessonSoftGated(meta.module, completed);
 
   const { content } = await compileMDX({

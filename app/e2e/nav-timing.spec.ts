@@ -30,11 +30,11 @@ import { join } from "node:path";
 test.describe.configure({ retries: 0, mode: "serial" });
 
 /**
- * F0 ships this in REPORT MODE: it measures, prints, and records — and asserts nothing. The budgets
- * arm in F1, once the speed layer exists for them to protect. Measuring the disease before curing it
- * is the whole point of building the instruments first.
+ * ARMED as of F1. F0 ran this in report mode — it measured the disease (Scans 1342ms, Paper 824ms)
+ * and asserted nothing, because a budget armed before the cure exists is a red gate you learn to
+ * walk past. The speed layer now exists, so the gate has something to protect.
  */
-const ARMED = false;
+const ARMED = true;
 
 const MEDIAN_CEILING_MS = 400;
 const SAMPLE_CEILING_MS = 1000;
@@ -119,6 +119,26 @@ function report(tab: string, samples: number[], shift: number) {
 // reached from the top bar and `.tap()` is not available at all — an earlier draft of this spec
 // crashed on exactly that.
 test.skip(({ isMobile }) => !isMobile, "the tab bar is the phone's navigation");
+
+/**
+ * Seeded databases only, and this is a correctness requirement rather than convenience.
+ *
+ * A navigation timing is only meaningful against known data. In CI this runs against the seeded
+ * Postgres in the same container: 32 scan matches, a handful of trades, everything local. On a
+ * developer's laptop there is no local database at all (there is no way to run Postgres on this
+ * machine — LESSONS 2026-07-12), so `next start` reads the PRODUCTION Supabase, three time zones
+ * away, holding 1,825 live scan matches. Timing a tap into /scans there measures a cross-country
+ * round trip against a table 57× larger than the fixture — it is a measurement of Supabase, not of
+ * this app's navigation, and it swings between 40ms and 815ms depending on whether the router's
+ * prefetch beat the tap.
+ *
+ * So the gate lives where its data is deterministic. The same rule the seeded Desk journeys already
+ * follow, for the same reason.
+ */
+test.skip(
+  process.env.MSM_SEEDED !== "1",
+  "a navigation timing needs a seeded database — CI has one, this laptop does not",
+);
 
 for (const { tab, heading } of DESTINATIONS) {
   test(`soft-nav timing — Desk → ${tab}`, async ({ page }) => {

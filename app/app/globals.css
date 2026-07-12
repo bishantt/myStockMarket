@@ -324,6 +324,14 @@ body { font-family: var(--font-ui); font-size: var(--text-sm); line-height: var(
 @keyframes quiet-shimmer { 0%, 100% { opacity: 0.5; } 50% { opacity: 0.8; } }
 .shimmer { animation: quiet-shimmer 1.6s var(--ease-quiet) infinite; }
 
+/* A skeleton bone: the grey of a thing that has not arrived yet. Used by components/Skeleton.tsx,
+ * and only there. It carries no animation of its own — whether a bone shimmers is a decision the
+ * component makes per variant, because ruling M4 says a bone may stand for a CONTAINER but never
+ * for a figure: a shimmering bar where a price is about to appear reads as "a number is coming,
+ * look here", which is exactly the anticipation the stillness rule exists to kill. Container bones
+ * shimmer. Figure slots render a still em-dash. Chart reservations are still geometry. */
+.skeleton-bone { background-color: color-mix(in oklab, var(--color-faint) 22%, transparent); }
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     animation-duration: 0ms !important; animation-iteration-count: 1 !important;

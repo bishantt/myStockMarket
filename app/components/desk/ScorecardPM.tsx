@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 import { formatAsOf } from "@/lib/time";
 import { JournalPrompt } from "@/components/desk/JournalPrompt";
 
@@ -37,9 +39,9 @@ export function ScorecardPM({ asOf, resolved }: { asOf?: Date; resolved?: Scorec
           The app&rsquo;s record so far: {resolved.hits} hit{resolved.hits === 1 ? "" : "s"} and{" "}
           {resolved.misses} miss{resolved.misses === 1 ? "" : "es"}
           {resolved.hitRate ? ` (hit rate ${resolved.hitRate})` : ""}.{" "}
-          <a href="/track-record" className="text-ink underline underline-offset-2 hover:text-accent">
+          <Link href="/track-record" className="text-ink underline underline-offset-2 hover:text-accent">
             See the full track record →
-          </a>
+          </Link>
         </p>
       ) : (
         <p className="pt-4 font-ui text-sm text-muted">

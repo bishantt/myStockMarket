@@ -58,21 +58,29 @@ export function barsToSeries(bars: BarRow[]): { candles: Candle[]; volumes: Volu
  * Load a symbol's ticker view. Returns null when the symbol is not in the universe at all; returns
  * a data object with empty series (and the header figures null) when the symbol is known but has no
  * served bars, so the page can say "no chart data" honestly.
+ *
+ * The two reads run in PARALLEL (§5.3 P-2). They used to be awaited one after the other, which read
+ * naturally — look the instrument up, then fetch its bars — but the second query never actually used
+ * the first one's result: it filters on the symbol we already had. So the sequence bought nothing
+ * and cost a full cross-region round trip, every time. The instrument check still gates the return;
+ * it just no longer gates the request.
  */
 export async function getTicker(symbol: string): Promise<TickerData | null> {
   const normalized = symbol.trim().toUpperCase();
   try {
-    const instrument = await db.instrument.findUnique({
-      where: { symbol: normalized },
-      select: { symbol: true, name: true },
-    });
+    const [instrument, bars] = await Promise.all([
+      db.instrument.findUnique({
+        where: { symbol: normalized },
+        select: { symbol: true, name: true },
+      }),
+      db.priceBar.findMany({
+        where: { symbol: normalized },
+        orderBy: { date: "asc" },
+        select: { date: true, open: true, high: true, low: true, close: true, vol: true },
+      }),
+    ]);
     if (!instrument) return null;
 
-    const bars = await db.priceBar.findMany({
-      where: { symbol: normalized },
-      orderBy: { date: "asc" },
-      select: { date: true, open: true, high: true, low: true, close: true, vol: true },
-    });
     const { candles, volumes } = barsToSeries(bars);
 
     return {
@@ -86,6 +94,64 @@ export async function getTicker(symbol: string): Promise<TickerData | null> {
   } catch (error) {
     console.error(`getTicker: could not load ${normalized}`, error);
     return null;
+  }
+}
+
+/** One row of the empirical vol bands, as the Range Ladder consumes them. */
+export type VolBandRow = {
+  horizonDays: number;
+  coverage: number;
+  lo: number;
+  hi: number;
+  label: string;
+  n: number | null;
+  windowDays: number | null;
+};
+
+/**
+ * The latest run's vol bands for a symbol, in ONE query (§5.3 P-2).
+ *
+ * This replaces a genuine two-step: find the newest runDate, then fetch that run's rows. Those two
+ * really were dependent — the second filtered on the first's answer — so they could not simply be
+ * put in a Promise.all, and an earlier draft of the plan that claimed otherwise was wrong on the
+ * arithmetic. The fix is to not ask twice: take the most recent rows and keep the ones sharing the
+ * newest runDate in JavaScript.
+ *
+ * Twelve rows is deliberate slack. A run publishes at most three horizons × two coverages = six
+ * rows per symbol, so twelve reaches back through the previous run as well — enough that the newest
+ * run is always complete inside the window, without reading the symbol's whole history.
+ */
+export async function getLatestVolBands(symbol: string): Promise<VolBandRow[]> {
+  const normalized = symbol.trim().toUpperCase();
+  try {
+    const rows = await db.volBand.findMany({
+      where: { symbol: normalized },
+      orderBy: { runDate: "desc" },
+      take: 12,
+      select: {
+        runDate: true,
+        horizonDays: true,
+        coverage: true,
+        lo: true,
+        hi: true,
+        label: true,
+        n: true,
+        windowDays: true,
+      },
+    });
+    if (rows.length === 0) return [];
+
+    const newest = rows[0].runDate.getTime();
+    return rows
+      .filter((row) => row.runDate.getTime() === newest)
+      .map((row) => {
+        const { runDate, ...band } = row;
+        void runDate; // the row is filtered by it above; the ladder does not render it
+        return band;
+      });
+  } catch (error) {
+    console.error(`getLatestVolBands: could not load bands for ${normalized}`, error);
+    return [];
   }
 }
 

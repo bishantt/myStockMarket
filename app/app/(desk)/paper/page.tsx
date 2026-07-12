@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import Link from "next/link";
 
 import { db } from "@/lib/db";
@@ -5,7 +6,7 @@ import { buildLedgerView, type PaperTradeRow } from "@/lib/ledger";
 import { Surface } from "@/components/Surface";
 import { costMirrorDrag } from "@/lib/paper";
 import { isM3Complete, M3_SLUGS } from "@/lib/academy-progress";
-import { PaperEntryForm } from "@/components/desk/PaperEntryForm";
+import { PaperEntryIsland } from "@/components/desk/PaperEntryIsland";
 import { PaperLedger } from "@/components/desk/PaperLedger";
 
 /**
@@ -18,23 +19,42 @@ import { PaperLedger } from "@/components/desk/PaperLedger";
  * suggestion to read it first (a nudge, never a lock).
  */
 
-export const dynamic = "force-dynamic";
+/**
+ * Served from the cache (§5.3 P-1), busted by the paper actions on every write, so the ledger a
+ * reader sees is always the ledger their last trade produced.
+ *
+ * The page no longer reads `searchParams` on the server — that is what made it un-cacheable. The two
+ * parameters the ticket needs (`?symbol=`, `?signalViewedAt=`) are read in the client island below.
+ */
+export const revalidate = 600;
 
 function nowDate(): Date {
   return new Date();
 }
 
-export default async function PaperPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ symbol?: string; signalViewedAt?: string }>;
-}) {
-  const params = await searchParams;
-  const rows = (await db.paperTrade.findMany({ orderBy: { openedAt: "desc" } })) as unknown as PaperTradeRow[];
+/**
+ * The ledger rows and the reader's lesson progress, in one parallel stage — and degrading to empty
+ * if the database cannot be reached, because this route prerenders now and CI builds with no
+ * database at all. An unreadable ledger shows the page's existing empty state; an unreadable
+ * progress list simply means the M3 nudge does not fire.
+ */
+async function paperData() {
+  try {
+    const [rows, progress] = await Promise.all([
+      db.paperTrade.findMany({ orderBy: { openedAt: "desc" } }),
+      db.lessonProgress.findMany({ select: { slug: true } }),
+    ]);
+    return { rows: rows as unknown as PaperTradeRow[], completed: progress.map((r) => r.slug) };
+  } catch (error) {
+    console.error("PaperPage: could not read the ledger or lesson progress", error);
+    return { rows: [] as PaperTradeRow[], completed: [] as string[] };
+  }
+}
+
+export default async function PaperPage() {
+  const { rows, completed } = await paperData();
   const now = nowDate();
   const ledger = buildLedgerView(rows, now);
-
-  const completed = (await db.lessonProgress.findMany({ select: { slug: true } })).map((r) => r.slug);
   const m3Done = isM3Complete(completed);
 
   // Cost mirror: a round trip pays the cost twice (entry + exit). Project the observed weekly pace
@@ -75,10 +95,15 @@ export default async function PaperPage({
       <section aria-label="Place a paper trade">
         <h2 className="font-mono text-xs font-medium uppercase tracking-[0.08em] text-muted">New paper trade</h2>
         <div className="mt-2 h-px bg-hairline" />
-        <PaperEntryForm
-          defaultSymbol={params.symbol ?? ""}
-          signalViewedAt={params.signalViewedAt ?? null}
-        />
+        {/*
+         * useSearchParams() suspends during prerendering, so the ticket sits behind a boundary and
+         * the rest of the page stays static. The fallback reserves the form's height rather than
+         * collapsing to nothing — a shell that grows when the form arrives would shove the cost
+         * mirror and the ledger down the page (budget B5). Same pattern, same reason, as /login.
+         */}
+        <Suspense fallback={<div className="h-[420px]" aria-hidden="true" />}>
+          <PaperEntryIsland />
+        </Suspense>
       </section>
 
       {/*

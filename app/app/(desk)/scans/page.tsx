@@ -26,17 +26,40 @@ const PRESET_GLOSSARY: Record<string, string> = {
  * hit, not a base rate.
  */
 
-export const dynamic = "force-dynamic";
+/**
+ * Served from the cache, revalidated every ten minutes, and busted outright by the nightly publish
+ * (§5.3 P-1). The scans change once a night; re-rendering them on every tap cost the reader ~850ms
+ * of frozen screen and bought nothing. The as-of stamp on the page is what keeps a cached page
+ * honest (ruling M5).
+ */
+export const revalidate = 600;
+
+/**
+ * The latest run's matches — or none, if the database cannot be reached.
+ *
+ * The wrapping is not defensive habit, it is a build requirement: now that this route prerenders,
+ * this query runs at `next build`, and CI builds the app on every push with NO database. An
+ * unreachable table degrades the page to its honest empty state ("the filter ran and found
+ * nothing"); it does not fail the build. Same pattern as the Desk layout's palette read, and for
+ * exactly the same reason (LESSONS 2026-07-12).
+ */
+async function latestMatches() {
+  try {
+    const latest = await db.scanResult.findFirst({ orderBy: { runDate: "desc" }, select: { runDate: true } });
+    if (!latest) return [];
+    return await db.scanResult.findMany({
+      where: { runDate: latest.runDate },
+      orderBy: [{ presetKey: "asc" }, { rank: "asc" }],
+      select: { presetKey: true, symbol: true },
+    });
+  } catch (error) {
+    console.error("ScansPage: could not read the latest scan matches", error);
+    return [];
+  }
+}
 
 export default async function ScansPage() {
-  const latest = await db.scanResult.findFirst({ orderBy: { runDate: "desc" }, select: { runDate: true } });
-  const matches = latest
-    ? await db.scanResult.findMany({
-        where: { runDate: latest.runDate },
-        orderBy: [{ presetKey: "asc" }, { rank: "asc" }],
-        select: { presetKey: true, symbol: true },
-      })
-    : [];
+  const matches = await latestMatches();
 
   const bySymbol = new Map<string, string[]>();
   for (const m of matches) {

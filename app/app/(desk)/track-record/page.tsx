@@ -14,12 +14,20 @@ import { ForecastResolver } from "@/components/desk/ForecastResolver";
  * only. No calibration chart yet — that arrives in P6; this is the plain ledger it will be built on.
  */
 
-// Dynamic: the log grows as horizons pass; render it fresh rather than from a long-lived cache.
-export const dynamic = "force-dynamic";
+/**
+ * Served from the cache, revalidated every ten minutes (§5.3 P-1).
+ *
+ * The log grows as horizons pass — which happens in the nightly job, not while the reader is
+ * looking. The publish busts this path, and so does every write that changes it: resolving a
+ * forecast, and (as of F1) FILING one, which used to bust only the Desk even though this page is
+ * where open forecasts are read. Two writes, one cache, no stale record.
+ */
+export const revalidate = 600;
 
 export default async function TrackRecordPage() {
-  const { rows, summary } = await getTrackRecord();
-  const forecasts = await getForecastRecord();
+  // One parallel stage rather than two sequential awaits: these two reads have nothing to say to
+  // each other, and at revalidation time each one pays the full cross-region round trip.
+  const [{ rows, summary }, forecasts] = await Promise.all([getTrackRecord(), getForecastRecord()]);
 
   return (
     <div className="flex flex-col gap-6">

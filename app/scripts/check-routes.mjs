@@ -10,13 +10,31 @@
  * machine to notice when someone takes it away.
  *
  * A route passes when the build says it will be served from the cache:
- *   - it appears in prerender-manifest `routes` with initialRevalidateSeconds in (0, 600], or
- *   - it appears in prerender-manifest `dynamicRoutes` with fallbackRevalidate in (0, 600].
  *
- * The second branch is where the on-demand families live (`/ticker/[symbol]`): they are not
- * prerendered at build time, so they never appear under `routes` — they are rendered once on
- * first request and cached from then on. A check that only read `routes` would fail them
- * forever and teach its executor to ignore it.
+ *   - A PLAIN ROUTE passes when it appears in prerender-manifest `routes` with an
+ *     initialRevalidateSeconds inside (0, 600] — or `false`, meaning fully static.
+ *
+ *   - A [param] FAMILY (`/ticker/[symbol]`, `/academy/[slug]`) passes when it appears in
+ *     `dynamicRoutes` at all. That membership is the signal, and it is a strong one: a
+ *     force-dynamic route never appears there. Before F1 this app had eight dynamic routes and
+ *     `dynamicRoutes` was an empty object; the families only entered it once they were cacheable.
+ *
+ * WHY THE FAMILY BRANCH IS NOT WRITTEN THE WAY THE PLAN SPECIFIED IT. The plan said to read
+ * `dynamicRoutes[r].fallbackRevalidate`. That field does not exist in this build's manifest — the
+ * entries carry `fallback`, `fallbackRootParams` and `fallbackRouteParams`, and no revalidate at
+ * all. (This is the second time a plan draft has named a build artifact that isn't there; the
+ * lesson is the same both times — read the manifest, do not recall it.) So the family's staleness
+ * ceiling is proved from the two places it genuinely lives:
+ *
+ *   · its PRERENDERED CHILDREN, if it has any — the 25 lessons each carry their own
+ *     initialRevalidateSeconds and name `/academy/[slug]` as their srcRoute; and
+ *   · its `revalidate` export, read from the page source, for a family with no children at all
+ *     (`/ticker/[symbol]` prerenders nothing by design: 6,000 symbols, a handful ever visited).
+ *
+ * `fallback` is the last piece: `null` means an unknown param renders on demand and is then cached,
+ * which is what an on-demand family needs. `false` means only prerendered params exist and anything
+ * else 404s — correct for a closed set like `/scans/[preset]`, but broken for a family that
+ * prerenders nothing, since it could then serve nothing at all. Both cases are checked.
  *
  * An exception must be declared in ALLOWLIST with a written reason, and an allowlisted dynamic
  * route MUST still ship a loading.tsx — if the reader has to wait for the server, they are at
@@ -96,25 +114,51 @@ function routeInventory() {
     .sort((a, b) => a.route.localeCompare(b.route));
 }
 
+/** The `export const revalidate = N` a page declares, or null if it declares none. */
+function declaredRevalidate(file) {
+  try {
+    const match = readFileSync(join(ROOT, file), "utf8").match(/export\s+const\s+revalidate\s*=\s*(\d+)/);
+    return match ? Number(match[1]) : null;
+  } catch {
+    return null;
+  }
+}
+
 /** How the build says this route will be served, and whether that counts as cached. */
-function verdictFor(route) {
+function verdictFor(route, file) {
   const stat = prerender.routes[route];
-  if (stat && stat.initialRevalidateSeconds > 0 && stat.initialRevalidateSeconds <= MAX_REVALIDATE_SECONDS) {
-    return { ok: true, how: `ISR ${stat.initialRevalidateSeconds}s (prerendered)` };
-  }
-  if (stat && stat.initialRevalidateSeconds === false) {
-    return { ok: true, how: "static (no revalidate)" };
-  }
-  if (stat && stat.initialRevalidateSeconds > MAX_REVALIDATE_SECONDS) {
-    return { ok: false, how: `ISR ${stat.initialRevalidateSeconds}s — over the ${MAX_REVALIDATE_SECONDS}s staleness ceiling (M5)` };
+  if (stat) {
+    const seconds = stat.initialRevalidateSeconds;
+    if (seconds === false) return { ok: true, how: "static (no revalidate)" };
+    if (seconds > 0 && seconds <= MAX_REVALIDATE_SECONDS) return { ok: true, how: `ISR ${seconds}s (prerendered)` };
+    return { ok: false, how: `ISR ${seconds}s — over the ${MAX_REVALIDATE_SECONDS}s staleness ceiling (M5)` };
   }
 
-  const dyn = prerender.dynamicRoutes[route];
-  if (dyn && dyn.fallbackRevalidate > 0 && dyn.fallbackRevalidate <= MAX_REVALIDATE_SECONDS) {
-    return { ok: true, how: `ISR ${dyn.fallbackRevalidate}s (on-demand family)` };
-  }
-  if (dyn && dyn.fallbackRevalidate > MAX_REVALIDATE_SECONDS) {
-    return { ok: false, how: `ISR ${dyn.fallbackRevalidate}s — over the ${MAX_REVALIDATE_SECONDS}s ceiling (M5)` };
+  const family = prerender.dynamicRoutes[route];
+  if (family) {
+    // The children this family prerendered at build time, each carrying its own revalidate.
+    const children = Object.values(prerender.routes).filter((child) => child.srcRoute === route);
+
+    if (children.length > 0) {
+      const worst = Math.max(...children.map((c) => (c.initialRevalidateSeconds === false ? 0 : c.initialRevalidateSeconds)));
+      if (worst > MAX_REVALIDATE_SECONDS) {
+        return { ok: false, how: `ISR ${worst}s — over the ${MAX_REVALIDATE_SECONDS}s ceiling (M5)` };
+      }
+      const onDemand = family.fallback === null ? " + on demand" : " (closed set)";
+      return { ok: true, how: `ISR ${worst}s · ${children.length} prerendered${onDemand}` };
+    }
+
+    // No children: an on-demand-only family. It must be able to render an unknown param, or it can
+    // serve nothing at all.
+    if (family.fallback === false) {
+      return { ok: false, how: "prerenders no params AND refuses unknown ones — this route can serve nothing" };
+    }
+    const seconds = declaredRevalidate(file);
+    if (seconds === null) return { ok: false, how: "on-demand family with no `export const revalidate`" };
+    if (seconds > MAX_REVALIDATE_SECONDS) {
+      return { ok: false, how: `ISR ${seconds}s — over the ${MAX_REVALIDATE_SECONDS}s ceiling (M5)` };
+    }
+    return { ok: true, how: `ISR ${seconds}s (on demand, cached per param)` };
   }
 
   return { ok: false, how: "dynamic — re-rendered on every request" };
@@ -128,7 +172,7 @@ const failures = [];
 const rows = [];
 
 for (const { route, file } of product) {
-  const { ok, how } = verdictFor(route);
+  const { ok, how } = verdictFor(route, file);
   const allowed = ALLOWLIST.find((a) => a.route === route);
 
   if (ok) {
@@ -158,8 +202,8 @@ console.log("B1 — route serving modes (product rooms)\n");
 for (const r of rows) console.log(`  ${r.mark} ${r.route.padEnd(width)}  ${r.how}`);
 
 console.log("\n  controls (not product rooms — reported, never gated)\n");
-for (const { route } of controls) {
-  const { how } = verdictFor(route);
+for (const { route, file } of controls) {
+  const { how } = verdictFor(route, file);
   console.log(`  · ${route.padEnd(width)}  ${how}`);
 }
 

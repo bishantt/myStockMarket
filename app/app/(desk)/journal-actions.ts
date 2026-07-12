@@ -45,6 +45,16 @@ export async function writeJournalEntry(_prev: JournalResult, formData: FormData
       },
     });
     revalidatePath("/");
+
+    // A FILED forecast also changes /track-record, which renders the open ones (§5.3 P-7).
+    //
+    // This was a real freshness hole, and it was invisible until F1: /track-record used to
+    // re-render on every request, so it always happened to show a new forecast whether or not
+    // anything had told it to. The moment the page became cached, a forecast filed on the Desk
+    // would have taken up to ten minutes to appear on the page whose entire job is to show it.
+    // The write that changes a page is the write that must bust it.
+    if (forecastData) revalidatePath("/track-record");
+
     return { ok: true };
   } catch (error) {
     console.error("writeJournalEntry failed", error);

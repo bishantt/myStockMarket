@@ -25,14 +25,34 @@ import { db } from "@/lib/db";
  * Same light. Different furniture. That is the whole thesis of the one-palette decision, and this
  * page is where it either works or it does not.
  */
-export const dynamic = "force-dynamic";
+/**
+ * Served from the cache (§5.3 P-1). The curriculum is a file on disk; the only thing here that ever
+ * changes is which lessons the reader has finished, and the read-beacon that records that now busts
+ * this path itself (P-7). So the page is cached, and it is still never wrong about your progress.
+ */
+export const revalidate = 600;
+
+/**
+ * Which lessons the reader has completed — or none, if the database is unreachable.
+ *
+ * The route prerenders now, so this runs at build time, and CI builds without a database. An
+ * Academy that cannot read your progress still teaches every lesson; it just shows none of them
+ * ticked. That is a degraded feature, not a broken room.
+ */
+async function completedLessons(): Promise<string[]> {
+  try {
+    const rows = await db.lessonProgress.findMany({ select: { slug: true } });
+    return rows.map((row) => row.slug);
+  } catch (error) {
+    console.error("AcademyIndex: could not read lesson progress", error);
+    return [];
+  }
+}
 
 export default async function AcademyIndex() {
   const lessons = getLessonManifest();
   const byModule = groupByModule(lessons);
-  const completed = new Set(
-    (await db.lessonProgress.findMany({ select: { slug: true } })).map((r) => r.slug),
-  );
+  const completed = new Set(await completedLessons());
   const m3Done = isM3Complete([...completed]);
 
   return (

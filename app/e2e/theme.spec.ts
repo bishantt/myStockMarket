@@ -32,14 +32,19 @@ test.describe("Midnight — one theme, every room", () => {
     await page.goto("/settings");
     await page.getByRole("button", { name: "Dark", exact: true }).click();
 
-    // Wait for the server action to have actually landed. Clicking the button posts a form and sets
-    // a cookie; navigating away before that round-trip completes means the next page renders with
-    // the OLD theme, and the test fails for a reason that has nothing to do with theming. The
-    // toggle's own pressed state is the honest signal that the write is done.
-    await expect(page.getByRole("button", { name: "Dark", exact: true })).toHaveAttribute(
-      "aria-pressed",
-      "true",
-    );
+    // Wait for the server action to have actually landed. Clicking the button posts a form that sets
+    // the theme cookie; navigating away before that round trip completes means the next page renders
+    // with the OLD theme, and the test then fails for a reason that has nothing to do with theming.
+    //
+    // WAIT ON THE COOKIE ITSELF, not on the button's pressed state. The pressed state used to be a
+    // fair proxy for "the write landed", because the toggle was a server component and could not
+    // look pressed until the server had re-rendered it. Since F1 it is a client component (the
+    // server-side cookie read was the last thing forcing this whole route to re-render on every
+    // visit), and it now marks itself pressed the moment you click — which is right for the reader
+    // and useless as a synchronization signal. The cookie is the write. Assert the write.
+    await expect
+      .poll(async () => (await page.context().cookies()).find((c) => c.name === THEME_COOKIE)?.value)
+      .toBe("dark");
   });
 
   test("dark themes the Desk AND the Academy — the room no longer opts out", async ({ page }) => {

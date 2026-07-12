@@ -51,9 +51,26 @@ jobs:
 
       # The production build uses webpack, because Serwist's service-worker injection is a webpack
       # plugin and Next 16 defaults to Turbopack (see next.config.ts). `npm run build` already
-      # carries the --webpack flag. No secrets are needed: env values are read at request time,
-      # not at build time.
+      # carries the --webpack flag.
+      #
+      # THIS JOB BUILDS WITH NO DATABASE, ON PURPOSE, AND THE BUILD MUST SURVIVE IT. Since F1 every
+      # read route prerenders, which means every page's database reads now run at BUILD time, not
+      # only at request time — the old comment here ("env values are read at request time, not at
+      # build time") stopped being true the moment the routes were cached. Every one of those loaders
+      # is wrapped to catch an unreachable database and degrade to its honest empty state, so a
+      # DB-less build produces empty-but-valid prerenders and still type-checks and compiles.
+      #
+      # That is exactly what we want this job to prove. The e2e job below seeds a real Postgres
+      # before it builds, so the SEEDED prerenders get their own coverage there, and Vercel's
+      # production build has DATABASE_URL and renders the real morning. Three builds, three honest
+      # answers, no secrets needed here.
       - run: npm run build
+
+      - name: Route budget B1 — every product route is served from a cache (APP-FEEL-PLAN §5.4)
+        run: npm run check:routes
+
+      - name: Bundle budget B4 — per-route first-load JS
+        run: npm run check:bundles
 
       - name: Font budget (plan §4.5)
         run: npm run check:fonts
