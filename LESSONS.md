@@ -41,3 +41,51 @@ YYYY-MM-DD · symptom → root cause → fix → guard added
 2026-07-10 · A REVOKE UPDATE/DELETE on signal_log did not make it insert-only — an UPDATE still succeeded → the app connects as the table OWNER on Supabase, and a table owner bypasses GRANT/REVOKE entirely → enforced insert-only with a BEFORE UPDATE OR DELETE trigger that RAISES an exception, which applies to the owner too (verified UPDATE and DELETE both rejected) → guard: the guardrail is a trigger, not a grant; a future test should assert both are blocked. Also: I verified this against the real Supabase DB and it left an undeletable junk row I had to TRUNCATE away — app-side DB checks should use a throwaway/test database, not production (the plan already calls for a seeded test DB and dockerised Postgres for pipeline tests).
 
 2026-07-11 · Tried to spin up a local dockerized Postgres for publish.py tests; `docker --version` works but `docker ps` fails "Cannot connect to the Docker daemon" → the Docker CLI is installed but Docker Desktop (the daemon) is not running, and I can't start a GUI app autonomously → publish integration tests target TEST_DATABASE_URL and SKIP when it is unset; a Postgres service container in ci.yml runs them on every push, which is the plan's harness anyway (§6.1). To run them locally, start Docker Desktop first → guard: the tests never silently pass — they skip loudly (pytest skip) when there is no test DB, and CI always has one.
+
+## The UI redesign (R0–R6, 2026-07-12)
+
+**A guard that cannot fail is worse than no guard.** The visual-regression suite's "fonts
+blocked" shot — the one meant to lock the pre-swap fallback layout — was passing while testing
+absolutely nothing. Signing in first had loaded the fonts into the browser's memory cache, so the
+later navigation made no network request, the route interception never fired, and the
+"fonts-blocked" screenshot was quietly an ordinary one. What gave it away was that the file was
+byte-identical to its neighbour. It now asserts that it actually intercepted a font request.
+Whenever a test is supposed to capture an UNUSUAL state — offline, fonts blocked, an empty table,
+an error boundary — assert that the unusual state actually happened.
+
+**Measure before you take the fallback ladder.** Lighthouse came back at performance 86, and the
+plan had a ready-made remedy: strip the card translucency, then remove the orbs. It would have
+been easy, plausible, and completely wrong. Total Blocking Time was 20ms — the glass, the wash
+and the orbs cost nothing measurable — while the page was pulling ten font files totalling 429KB
+against a budget that claimed 273KB. The weight was in bytes, not pixels. Cutting two font
+weights took performance from 86 to 93 and left the design intact. The plan's fallback ladder was
+a reasonable guess written before anyone had measured; the measurement is what actually knows.
+
+**A budget that measures the wrong thing is worse than no budget, because it reassures you.** The
+font-budget script counted basic-latin faces and reported 273KB, and it passed. The browser
+fetched 429KB, because Google splits every family into latin AND latin-ext and a real browser
+takes both. The check was not wrong — it was NARROW — and it had been quietly flattering us by
+about sixty percent for two phases.
+
+**Screenshots catch what tests cannot.** Three real bugs in the redesign were invisible to a
+green test suite and obvious in a picture: the Desk rendering module 02 above module 01 (the grid's
+dense backfill pulling the Brief into an empty cell); the header reading "Jul 10" while the module
+beneath it read "Jul 11" from the same value (a bare calendar date formatted in Eastern time,
+which shifts it back a day — a trap that lib/time.ts already documented, and that I walked into
+anyway); and every quantile dot in the Range Ladder squashed into an overlapping ellipse by
+`preserveAspectRatio="none"`. A dot you cannot count is not a dotplot. Look at the thing.
+
+**Removing an accident can expose a bug that was hiding behind it.** Taking the `cookies()` call
+out of the Desk layout (so the theme could live on `<html>`) made the route statically
+prerenderable — which is what the plan always wanted, and which the cookie read had been silently
+preventing. It also meant the layout's watchlist query started running at BUILD time, on a machine
+with no DATABASE_URL, and the build died. The query had never been wrapped in a try/catch, unlike
+every other read in the app, and it had got away with that for six phases purely because the route
+happened to be dynamic. The bug was always there. The fix just stopped hiding it.
+
+**The plan's own rules will collide, and the collision is information.** The anti-drift grep bans
+the word `transition` anywhere inside a P2 file. The motion spec explicitly permits a chevron to
+rotate on a `<details>` summary. SetupCards is a P2 file with a chevron. Rather than carve an
+exception into the grep — where the next reader would find it and not know why — the chevron moved
+into its own component file. A coarse rule that is easy to verify beats a subtle one that is easy
+to get wrong.

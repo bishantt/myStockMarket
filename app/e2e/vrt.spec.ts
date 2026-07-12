@@ -76,15 +76,48 @@ test.describe("visual regression — the design system", () => {
     await shoot(page, "/styleguide", "styleguide-light");
   });
 
-  /**
-   * The Midnight shots arrive in R2, not here.
-   *
-   * Dark is not app-wide yet: `data-theme` still sits on the Desk shell, so a dark cookie changes
-   * nothing on this route, and a "Midnight" baseline captured today would be a light screenshot
-   * wearing a dark filename. A baseline that lies is worse than a baseline that is missing — the
-   * missing one fails loudly; the lying one passes forever. R2 moves the attribute to <html> and
-   * the Midnight rows of the shot list open then.
-   */
+  test("styleguide — Midnight", async ({ page }) => {
+    await useTheme(page, "dark");
+    await shoot(page, "/styleguide", "styleguide-dark");
+  });
+
+  // ── the rooms ────────────────────────────────────────────────────────────────────────────
+  //
+  // Seeded data only (MSM_SEEDED), so the numbers are fixed by prisma/seed.mjs and a diff means a
+  // STYLE change rather than a data change. Without the seed these shots would fail every night for
+  // the most boring possible reason.
+
+  const SEEDED_ROOMS = [
+    { path: "/", name: "desk" },
+    { path: "/scans", name: "scans" },
+    { path: "/paper", name: "paper" },
+    { path: "/track-record", name: "track-record" },
+    { path: "/academy", name: "academy" },
+    { path: "/academy/glossary", name: "academy-glossary" },
+    { path: "/academy/review", name: "academy-review" },
+  ];
+
+  for (const room of SEEDED_ROOMS) {
+    for (const theme of ["light", "dark"] as const) {
+      test(`${room.name} — ${theme === "light" ? "Morning" : "Midnight"}`, async ({ page }) => {
+        test.skip(!process.env.MSM_SEEDED, "needs the seeded database");
+        await useTheme(page, theme);
+        await shoot(page, room.path, `${room.name}-${theme}`);
+      });
+    }
+  }
+
+  test("ticker with the Range Ladder — Morning", async ({ page }) => {
+    test.skip(!process.env.MSM_SEEDED, "needs the seeded database");
+    await useTheme(page, "light");
+    await shoot(page, "/ticker/AAPL", "ticker-light");
+  });
+
+  test("ticker with the Range Ladder — Midnight", async ({ page }) => {
+    test.skip(!process.env.MSM_SEEDED, "needs the seeded database");
+    await useTheme(page, "dark");
+    await shoot(page, "/ticker/AAPL", "ticker-dark");
+  });
 
 
   // ── login: the first thing anyone sees ───────────────────────────────────────────────────
