@@ -179,17 +179,21 @@ def _replace_setup_cards(cur, run_date, setup_cards, rate_ids) -> None:
 
 
 def _replace_vol_bands(cur, run_date, vol_bands) -> None:
+    # `n` and `window_days` ride with every band: the Range Ladder prints them on each row, because
+    # a range without its sample size is an assertion rather than evidence (redesign §3.8).
     cur.execute("DELETE FROM vol_band WHERE run_date = %s", (run_date,))
     rows = [
-        (b["runDate"], b["symbol"], b["horizonDays"], b["lo"], b["hi"], b["coverage"], b["label"])
+        (b["runDate"], b["symbol"], b["horizonDays"], b["lo"], b["hi"], b["coverage"], b["label"],
+         b.get("n"), b.get("windowDays"))
         for b in vol_bands
     ]
     if not rows:
         return
     cur.executemany(
         """
-        INSERT INTO vol_band (id, run_date, symbol, horizon_days, lo, hi, coverage, label)
-        VALUES (gen_random_uuid()::text, %s, %s, %s, %s, %s, %s, %s)
+        INSERT INTO vol_band
+            (id, run_date, symbol, horizon_days, lo, hi, coverage, label, n, window_days)
+        VALUES (gen_random_uuid()::text, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         """,
         rows,
     )

@@ -52,6 +52,11 @@ def compute_vol_bands(symbol: str, closes: list[float], *, window: int = _DEFAUL
                 "hi": hi,
                 "coverage": coverage,
                 "label": _label(coverage, horizon),
+                # The sample size and the window travel WITH the band. A range without its N is an
+                # assertion rather than evidence, and the Range Ladder prints both on every row
+                # (UI-REDESIGN-PLAN §3.8). Both were already computed here and thrown away.
+                "n": len(returns),
+                "windowDays": window,
             })
     return rows
 

@@ -25,7 +25,7 @@ export default async function TrackRecordPage() {
     <div className="flex flex-col gap-6">
       <header className="pt-3">
         <div className="pb-2">
-          <h1 className="font-ui text-xl font-bold uppercase tracking-[0.06em] text-ink">
+          <h1 className="font-display text-display font-bold text-ink">
             Track record
           </h1>
         </div>
@@ -150,8 +150,34 @@ function Td({ children, mono }: { children: React.ReactNode; mono?: boolean }) {
   return <td className={`py-2 pr-4 ${mono ? "font-mono" : "font-ui"} text-sm text-ink-2`}>{children}</td>;
 }
 
-/** The outcome, in ink — hits and misses read equally, no green/red celebration (calm tech, §3.3). */
+/**
+ * The outcome chip.
+ *
+ * The redesign lets these carry colour, where they used to be plain ink — but the rules that make
+ * them honest did not move an inch:
+ *
+ *  · **The word is inside the chip.** Outcome may never ride on colour alone (§3.3, P7). A
+ *    colourblind reader reads "Miss", not a hue they cannot distinguish.
+ *  · **A miss is the same SIZE and the same WEIGHT as a hit.** Only the hue differs. This is the
+ *    page that keeps the whole product honest — it exists to show the app's own failures — and the
+ *    moment a miss renders smaller, quieter, or greyer than a hit, the page has started editorialising
+ *    in its own favour (§5.4, P5).
+ *
+ * There is no celebration state. A hit is a fact, not a win.
+ */
 function Outcome({ outcome }: { outcome: "hit" | "miss" | "na" }) {
-  const label = outcome === "hit" ? "Hit" : outcome === "miss" ? "Miss" : "Unresolvable";
-  return <span className="font-ui text-sm text-ink">{label}</span>;
+  const CHIP: Record<typeof outcome, { label: string; className: string }> = {
+    hit: { label: "Hit", className: "bg-up-wash text-up-text" },
+    miss: { label: "Miss", className: "bg-down-wash text-down-text" },
+    na: { label: "Unresolvable", className: "bg-surface text-muted" },
+  };
+  const { label, className } = CHIP[outcome];
+
+  return (
+    <span
+      className={`inline-flex items-center rounded-chip border border-hairline px-2 py-0.5 font-mono text-2xs font-medium uppercase tracking-[0.04em] ${className}`}
+    >
+      {label}
+    </span>
+  );
 }

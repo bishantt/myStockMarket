@@ -54,8 +54,6 @@ const P2_FILES = [
   "components/desk/SetupCards.tsx",
   "components/desk/MacroPulse.tsx",
   "components/ticker/RangeBands.tsx",
-  "components/ticker/QuantileDotplot.tsx",
-  "components/ticker/VolBandPanel.tsx",
 ];
 
 const SEARCH_DIRS = ["app", "components", "lib"];
@@ -188,7 +186,7 @@ for (const rule of RULES) {
     try {
       text = read(file);
     } catch {
-      continue; // a P2 file that does not exist yet (RangeBands lands in R4)
+      continue; // a P2 file that does not exist in this phase yet
     }
     text.split("\n").forEach((line, i) => {
       if (rule.match(line)) hits.push(`${file}:${i + 1}  ${line.trim().slice(0, 96)}`);

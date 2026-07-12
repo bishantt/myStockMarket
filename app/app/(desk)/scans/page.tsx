@@ -1,7 +1,10 @@
+import Link from "next/link";
+
 import { db } from "@/lib/db";
 import { GlossaryTerm } from "@/components/GlossaryTerm";
+import { Surface } from "@/components/Surface";
 import { Tag } from "@/components/Tag";
-import { SCAN_PRESETS } from "@/lib/scan-presets";
+import { SCAN_PRESETS, criteriaClauses } from "@/lib/scan-presets";
 import { capMatches } from "@/lib/scan-view";
 
 /** Each preset's core concept, so its label carries a glossary doorway into the Academy. */
@@ -46,9 +49,7 @@ export default async function ScansPage() {
     <div className="flex flex-col gap-6">
       <header className="pt-3">
         <div className="pb-2">
-          <h1 className="font-ui text-xl font-bold uppercase tracking-[0.06em] text-ink">
-            Scans
-          </h1>
+          <h1 className="font-display text-display font-bold text-ink">Scans</h1>
         </div>
         <div className="h-px bg-hairline-strong" />
         <p className="max-w-[62ch] pt-3 font-prose text-base text-ink-2">
@@ -61,42 +62,79 @@ export default async function ScansPage() {
       <ul className="flex flex-col gap-6">
         {SCAN_PRESETS.map((preset) => {
           const hits = bySymbol.get(preset.key) ?? [];
+          const clauses = criteriaClauses(preset.criteria);
+          const capped = capMatches(hits);
+
           return (
-            <li key={preset.key} className="border-t border-hairline pt-4 first:border-t-0 first:pt-0">
-              <div className="flex flex-wrap items-baseline gap-3">
-                <h2 className="font-ui text-base font-semibold text-ink">
-                  {PRESET_GLOSSARY[preset.key] ? (
-                    <GlossaryTerm term={PRESET_GLOSSARY[preset.key]}>{preset.label}</GlossaryTerm>
+            <li key={preset.key}>
+              <Surface as="article" className="p-5 desk:p-6">
+                <div className="flex flex-wrap items-baseline gap-3">
+                  <h2 className="font-display text-title font-semibold text-ink">
+                    {PRESET_GLOSSARY[preset.key] ? (
+                      <GlossaryTerm term={PRESET_GLOSSARY[preset.key]}>{preset.label}</GlossaryTerm>
+                    ) : (
+                      preset.label
+                    )}
+                  </h2>
+                  {preset.folklore ? (
+                    <Tag variant="folklore" />
                   ) : (
-                    preset.label
+                    <Tag variant="grade" grade={preset.grade}>
+                      {preset.grade}
+                    </Tag>
                   )}
-                </h2>
-                {preset.folklore ? (
-                  <Tag variant="folklore" />
-                ) : (
-                  <Tag variant="grade" grade={preset.grade}>
-                    {preset.grade}
-                  </Tag>
-                )}
-              </div>
-              <p className="max-w-[62ch] pt-1 font-prose text-base text-ink-2">{preset.criteria}</p>
-              <p className="pt-2 font-ui text-2xs uppercase tracking-[0.06em] text-muted">
-                {hits.length === 0 ? "No matches today" : `${hits.length} match${hits.length === 1 ? "" : "es"} today`}
-              </p>
-              {hits.length > 0
-                ? (() => {
-                    // Show a calm, capped run of tickers with an honest "+ N more" tail — never a wall.
-                    const capped = capMatches(hits);
-                    return (
-                      <p className="pt-1 font-mono text-sm text-ink-2">
-                        {capped.shown.join(" · ")}
-                        {capped.more > 0 ? (
-                          <span className="text-muted"> · + {capped.more} more</span>
-                        ) : null}
-                      </p>
-                    );
-                  })()
-                : null}
+                </div>
+
+                {/*
+                 * The recipe, as a recipe. Each criterion gets its own numbered, hairline-separated
+                 * row — something a reader can check off by eye, rather than a paragraph they have
+                 * to parse. The words are the scan's own, verbatim: the promise of this page is that
+                 * you see exactly what the filter did.
+                 */}
+                <ol className="pt-4">
+                  {clauses.map((clause, index) => (
+                    <li
+                      key={clause}
+                      className="flex items-baseline gap-3 border-b border-hairline py-2 last:border-b-0"
+                    >
+                      <span className="shrink-0 font-mono text-2xs text-faint">
+                        {String(index + 1).padStart(2, "0")}
+                      </span>
+                      <span className="max-w-[62ch] font-ui text-sm text-ink-2">{clause}</span>
+                    </li>
+                  ))}
+                </ol>
+
+                {/*
+                 * The result. A scan that fires nothing is information — "0 matches today" stays
+                 * visible with the recipe, because knowing the filter found nothing is knowing
+                 * something. There are no percentages anywhere on this page: a match is a filter
+                 * hit, not a base rate.
+                 */}
+                <p className="pt-4 font-mono text-sm text-ink">
+                  {hits.length} match{hits.length === 1 ? "" : "es"} today
+                </p>
+
+                {hits.length > 0 ? (
+                  <ul className="flex flex-wrap gap-2 pt-3">
+                    {capped.shown.map((symbol) => (
+                      <li key={symbol}>
+                        <Link
+                          href={`/ticker/${symbol}`}
+                          className="flex min-h-11 items-center rounded-chip border border-hairline bg-surface px-3 font-mono text-sm text-ink transition-colors duration-(--duration-quick) ease-(--ease-quiet) hover:border-hairline-strong hover:text-accent-deep"
+                        >
+                          {symbol}
+                        </Link>
+                      </li>
+                    ))}
+                    {capped.more > 0 ? (
+                      <li className="flex min-h-11 items-center font-mono text-sm text-faint">
+                        + {capped.more} more
+                      </li>
+                    ) : null}
+                  </ul>
+                ) : null}
+              </Surface>
             </li>
           );
         })}

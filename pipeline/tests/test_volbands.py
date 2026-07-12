@@ -63,3 +63,29 @@ def test_bands_widen_with_horizon():
     bands = vb.compute_vol_bands("ACME", _rising_closes(), window=500)
     width = lambda h: next(b["hi"] - b["lo"] for b in bands if b["horizonDays"] == h and b["coverage"] == 0.8)
     assert width(20) > width(5)
+
+
+def test_every_band_carries_its_sample_size_and_window():
+    # A range without its sample size is an assertion, not evidence. The Range Ladder prints N and
+    # the window on every row (UI-REDESIGN-PLAN §3.8), so the pipeline has to persist them — it was
+    # computing both and throwing them away.
+    bands = vb.compute_vol_bands("ACME", _rising_closes(), window=500)
+    assert bands
+    for band in bands:
+        assert band["n"] > 0
+        assert band["windowDays"] == 500
+
+
+def test_the_sample_size_is_the_count_of_paths_the_band_was_drawn_from():
+    # 300 closes, a 20-day horizon, a 500-session window: every overlapping 20-day path in the data.
+    closes = _rising_closes(300)
+    bands = vb.compute_vol_bands("ACME", closes, window=500)
+    twenty = next(b for b in bands if b["horizonDays"] == 20)
+    # len(closes) - horizon overlapping start bars, capped by the window.
+    assert twenty["n"] == len(closes) - 20
+
+
+def test_a_shorter_horizon_has_more_paths_than_a_longer_one():
+    bands = vb.compute_vol_bands("ACME", _rising_closes(300), window=500)
+    by_horizon = {b["horizonDays"]: b["n"] for b in bands if b["coverage"] == 0.8}
+    assert by_horizon[5] > by_horizon[10] > by_horizon[20]

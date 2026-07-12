@@ -356,6 +356,13 @@ model VolBand {
   hi          Float
   coverage    Float
   label       String
+  /// How many historical paths this band was drawn from, and over what trailing window.
+  ///
+  /// The Range Ladder prints both on every row (UI-REDESIGN-PLAN §3.8): a range shown without its
+  /// sample size is an assertion, not evidence. The pipeline was already computing them and
+  /// throwing them away. Nullable only for rows written before this column existed.
+  n           Int?
+  windowDays  Int?     @map("window_days")
 
   @@index([runDate])
   @@map("vol_band")

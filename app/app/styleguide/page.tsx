@@ -2,9 +2,11 @@ import { AppWash } from "@/components/AppWash";
 import { BaseRate } from "@/components/BaseRate";
 import { SectionMasthead } from "@/components/SectionMasthead";
 import { StatFigure } from "@/components/StatFigure";
+import { RangeBands } from "@/components/ticker/RangeBands";
 import { Surface } from "@/components/Surface";
 import { Tag } from "@/components/Tag";
 import { copy, fill } from "@/lib/copy";
+import type { LadderBand } from "@/lib/range-ladder";
 
 /**
  * /styleguide — the design system as a page you can look at.
@@ -462,13 +464,46 @@ function Figures() {
           <p className="max-w-[70ch] pt-2 font-ui text-2xs text-muted">
             No other component may render a base rate. The N-gate, the interval, the always-up
             baseline, and the WEAK cap have to travel with the number — so the number lives where
-            they live.
+            they live. The proportion bar and the dot array are base-rate displays too, which is
+            exactly why they live INSIDE it.
+          </p>
+        </div>
+
+        {/*
+         * The Range Ladder — the app's visual centrepiece, and the drawing most likely to go wrong.
+         * It renders here on fixture data so it can be reviewed and screenshotted without a seeded
+         * database, and so the two honesty locks (no median mark, no connecting cone) can be checked
+         * with actual eyes at every phase exit, not only by the tests.
+         */}
+        <div>
+          <p className="pb-2 font-mono text-2xs uppercase tracking-[0.08em] text-muted">
+            the range ladder — the honest fan, sliced
+          </p>
+          <Surface level="card" as="div" className="max-w-[68ch] p-5">
+            <RangeBands bands={LADDER_SPECIMEN} />
+          </Surface>
+          <p className="max-w-[70ch] pt-2 font-ui text-2xs text-muted">
+            A forward-widening cone is the visual grammar of a projection — the eye reads it as “the
+            future goes that way”, whatever the caption says. So the same information is sliced into
+            discrete horizons on a signed-return axis. Uncertainty visibly grows with time, and
+            nothing points forward. There is no 50th-percentile mark of any kind, and nothing joins
+            the rows.
           </p>
         </div>
       </div>
     </Section>
   );
 }
+
+/** Fixture bands for the ladder specimen above — realistic shape, obviously synthetic numbers. */
+const LADDER_SPECIMEN: LadderBand[] = [
+  { horizonDays: 5, coverage: 0.8, lo: -0.043, hi: 0.048, label: "5-day", n: 495, windowDays: 500 },
+  { horizonDays: 5, coverage: 0.5, lo: -0.018, hi: 0.021, label: "5-day", n: 495, windowDays: 500 },
+  { horizonDays: 10, coverage: 0.8, lo: -0.062, hi: 0.071, label: "10-day", n: 490, windowDays: 500 },
+  { horizonDays: 10, coverage: 0.5, lo: -0.027, hi: 0.031, label: "10-day", n: 490, windowDays: 500 },
+  { horizonDays: 20, coverage: 0.8, lo: -0.089, hi: 0.104, label: "20-day", n: 480, windowDays: 500 },
+  { horizonDays: 20, coverage: 0.5, lo: -0.038, hi: 0.045, label: "20-day", n: 480, windowDays: 500 },
+];
 
 /** The motion spec, including the list of things that must never move. */
 function MotionSpec() {

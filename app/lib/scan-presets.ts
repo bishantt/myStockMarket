@@ -51,3 +51,22 @@ export const SCAN_PRESETS: ScanPreset[] = [
     grade: "weak",
   },
 ];
+
+/**
+ * Break a preset's criteria into its numbered clauses, for the recipe-card list on /scans.
+ *
+ * The scan page's identity IS this product's anti-black-box stance: the recipe is public. So the
+ * criteria are laid out as a numbered list a reader can check off by eye, rather than a paragraph
+ * they have to parse.
+ *
+ * The WORDS are never changed — the criteria render verbatim, because the promise is that you see
+ * exactly what the scan applied. This only breaks them at the "AND" joints and drops the trailing
+ * full stop, so the union of the clauses is the original sentence.
+ */
+export function criteriaClauses(criteria: string): string[] {
+  return criteria
+    .replace(/\.$/, "")
+    .split(/\s+AND\s+/)
+    .map((clause) => clause.trim())
+    .filter((clause) => clause.length > 0);
+}

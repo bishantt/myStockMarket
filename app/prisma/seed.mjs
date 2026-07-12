@@ -208,10 +208,18 @@ const SETUP_CARDS = [
 ];
 
 /** Vol bands for a watchlist name (AAPL), horizons 5/10/20, both coverage levels. */
+/**
+ * The vol bands the Range Ladder renders. Three horizons, each with its nested 50%/80% pair, and
+ * each carrying the sample size and the window it was drawn from — a range without its N is an
+ * assertion, and the ladder prints both on every row.
+ */
 const VOL_BANDS = [
-  { runDate: RUN_DATE, symbol: "AAPL", horizonDays: 5, coverage: 0.5, lo: -0.02, hi: 0.021, label: "5 in 10 5-day paths stayed in this range" },
-  { runDate: RUN_DATE, symbol: "AAPL", horizonDays: 5, coverage: 0.8, lo: -0.04, hi: 0.043, label: "8 in 10 5-day paths stayed in this range" },
-  { runDate: RUN_DATE, symbol: "AAPL", horizonDays: 20, coverage: 0.8, lo: -0.09, hi: 0.10, label: "8 in 10 20-day paths stayed in this range" },
+  { runDate: RUN_DATE, symbol: "AAPL", horizonDays: 5, coverage: 0.5, lo: -0.018, hi: 0.021, label: "5 in 10 5-day paths stayed in this range", n: 495, windowDays: 500 },
+  { runDate: RUN_DATE, symbol: "AAPL", horizonDays: 5, coverage: 0.8, lo: -0.043, hi: 0.048, label: "8 in 10 5-day paths stayed in this range", n: 495, windowDays: 500 },
+  { runDate: RUN_DATE, symbol: "AAPL", horizonDays: 10, coverage: 0.5, lo: -0.027, hi: 0.031, label: "5 in 10 10-day paths stayed in this range", n: 490, windowDays: 500 },
+  { runDate: RUN_DATE, symbol: "AAPL", horizonDays: 10, coverage: 0.8, lo: -0.062, hi: 0.071, label: "8 in 10 10-day paths stayed in this range", n: 490, windowDays: 500 },
+  { runDate: RUN_DATE, symbol: "AAPL", horizonDays: 20, coverage: 0.5, lo: -0.038, hi: 0.045, label: "5 in 10 20-day paths stayed in this range", n: 480, windowDays: 500 },
+  { runDate: RUN_DATE, symbol: "AAPL", horizonDays: 20, coverage: 0.8, lo: -0.089, hi: 0.104, label: "8 in 10 20-day paths stayed in this range", n: 480, windowDays: 500 },
 ];
 
 /** Fired signals and their resolved outcomes — the track record fills with hits and a miss. */

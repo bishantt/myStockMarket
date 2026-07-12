@@ -2,6 +2,7 @@ import Link from "next/link";
 
 import { db } from "@/lib/db";
 import { buildLedgerView, type PaperTradeRow } from "@/lib/ledger";
+import { Surface } from "@/components/Surface";
 import { costMirrorDrag } from "@/lib/paper";
 import { isM3Complete, M3_SLUGS } from "@/lib/academy-progress";
 import { PaperEntryForm } from "@/components/desk/PaperEntryForm";
@@ -80,25 +81,62 @@ export default async function PaperPage({
         />
       </section>
 
-      {/* COST MIRROR — the arithmetic, spelled out (plan §8.1). */}
-      <section aria-label="Cost mirror" className="max-w-[62ch]">
-        <h2 className="font-mono text-xs font-medium uppercase tracking-[0.08em] text-muted">Cost mirror</h2>
-        <div className="mt-2 h-px bg-hairline" />
-        <p className="pt-3 font-prose text-base text-ink-2">
-          At {ledger.roundTripsThisWeek} round trip{ledger.roundTripsThisWeek === 1 ? "" : "s"} this week
-          ({turnoverPerYear} a year at this pace) and an average round-trip cost of{" "}
-          {avgRoundTripBps.toFixed(0)} basis points, the projected annual drag is{" "}
-          <span className="font-mono text-ink">{drag.annualDragBps.toFixed(0)} bps</span> —{" "}
-          <span className="font-mono text-ink">{(drag.annualDragFraction * 100).toFixed(2)}%</span> of
-          capital, paid whether the trades win or lose.
-        </p>
+      {/*
+       * COST MIRROR — the app's most honest artifact, and it is styled like what it is: a receipt.
+       *
+       * Dashed tape edges, the factors right-aligned in mono the way a register prints them, a rule,
+       * and then the total — set large, in loss colour, with the WORD "drag" beside it so the
+       * meaning never rides on colour alone.
+       *
+       * The punchline lands with the weight of a bill because it IS one. This is the number nobody
+       * shows a beginner: the cost of trading at this pace, paid whether the trades win or lose,
+       * certain in a way that no edge on this Desk is certain. It is deliberately the largest thing
+       * on this page.
+       *
+       * (The P&L-is-never-the-hero rule is intact: this is a COST, on /paper, at num-lg rather than
+       * the 64px hero scale.)
+       */}
+      <Surface level="tinted" as="section" aria-label="Cost mirror" className="max-w-[62ch] p-6">
+        <h2 className="font-mono text-xs font-medium uppercase tracking-[0.08em] text-muted">
+          Cost mirror
+        </h2>
+
+        <div className="mt-4 border-y-2 border-dashed border-hairline-strong py-4">
+          <dl className="flex flex-col gap-2">
+            <ReceiptLine
+              label={`Round trips this week (${ledger.roundTripsThisWeek})`}
+              value={`${turnoverPerYear} / yr at this pace`}
+            />
+            <ReceiptLine
+              label="Average round-trip cost"
+              value={`${avgRoundTripBps.toFixed(0)} bps`}
+            />
+            <ReceiptLine
+              label="Projected annual drag"
+              value={`${drag.annualDragBps.toFixed(0)} bps`}
+            />
+          </dl>
+        </div>
+
+        <div className="flex items-baseline justify-between gap-4 pt-4">
+          <span className="font-ui text-sm text-muted">Paid whether the trades win or lose</span>
+          <span className="flex items-baseline gap-2">
+            <span className="font-mono text-num-lg text-down-text">
+              −{(drag.annualDragFraction * 100).toFixed(1)}%
+            </span>
+            <span className="font-ui text-sm font-medium text-down-text">/ yr drag</span>
+          </span>
+        </div>
+
         {ledger.frequencyMirrorTriggered ? (
-          <p className="pt-2 font-prose text-base text-ink">
+          // The frequency mirror stays plain prose — never amber. Amber has two consumers, and a
+          // behavioural nudge is neither of them.
+          <p className="max-w-[58ch] pt-4 font-prose text-base text-ink">
             You have made more than five paper round trips this week. The most active retail traders
             underperform by about their trading costs — worth sitting on the next one until tomorrow.
           </p>
         ) : null}
-      </section>
+      </Surface>
 
       <section aria-label="Ledger">
         <h2 className="flex items-baseline gap-3 font-ui text-xs font-bold uppercase tracking-[0.07em] text-ink">
@@ -111,6 +149,16 @@ export default async function PaperPage({
         <div className="mt-2 h-px bg-hairline" />
         <PaperLedger open={ledger.openTrades} closed={ledger.closedTrades} />
       </section>
+    </div>
+  );
+}
+
+/** One factor on the receipt tape: the label on the left, the figure right-aligned in mono. */
+function ReceiptLine({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex items-baseline justify-between gap-4">
+      <dt className="font-ui text-sm text-muted">{label}</dt>
+      <dd className="shrink-0 font-mono text-sm text-ink-2">{value}</dd>
     </div>
   );
 }
