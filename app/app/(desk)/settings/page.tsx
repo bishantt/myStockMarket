@@ -1,4 +1,5 @@
 import { db } from "@/lib/db";
+import { Surface } from "@/components/Surface";
 import { FOCUS_CAP } from "@/lib/watchlist";
 import { ThemeToggle } from "@/components/desk/ThemeToggle";
 import { AddWatchlistForm } from "./AddWatchlistForm";
@@ -62,22 +63,27 @@ export default async function SettingsPage() {
         </p>
       </header>
 
-      <section aria-label="Add a name">
+      {/*
+       * Three cards, because this page has always been three things — add a name, curate the list,
+       * pick a look — and it was rendering them as three unbounded runs of prose down one column.
+       * The cards do not add anything; they admit what was already there.
+       */}
+      <Surface as="section" aria-label="Add a name" className="p-5 desk:p-6">
         <AddWatchlistForm />
-      </section>
+      </Surface>
 
-      <section aria-label="Your watchlist">
+      <Surface as="section" aria-label="Your watchlist" className="p-5 desk:p-6">
         <WatchlistManager items={items} focusCount={focusCount} />
-      </section>
+      </Surface>
 
-      <section aria-label="Theme">
+      <Surface as="section" aria-label="Theme" className="p-5 desk:p-6">
         <h2 className="font-mono text-xs font-medium uppercase tracking-[0.08em] text-muted">Theme</h2>
         <div className="mt-1 h-px bg-hairline-strong" />
         <p className="pt-3 font-ui text-sm text-muted">
           Applies everywhere — Morning or Midnight, one look at a time. System follows your device.
         </p>
         <ThemeToggle />
-      </section>
+      </Surface>
     </div>
   );
 }

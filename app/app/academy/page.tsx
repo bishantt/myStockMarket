@@ -5,7 +5,7 @@ import { MODULE_TITLES, getLessonManifest, type LessonMeta } from "@/lib/academy
 import { GATED_MODULES, isM3Complete } from "@/lib/academy-progress";
 import { MODULE_HUE } from "@/lib/academy-style";
 import { Surface } from "@/components/Surface";
-import { copy } from "@/lib/copy";
+import { copy, fill } from "@/lib/copy";
 import { db } from "@/lib/db";
 
 /**
@@ -83,9 +83,13 @@ export default async function AcademyIndex() {
       {lessons.length === 0 ? (
         <p className="font-ui text-sm text-muted">Lessons are being written — check back soon.</p>
       ) : (
-        <div className="flex flex-col gap-6">
+        // Two-up from lg. Seven module cards in one flat column is a receipt with serifs; the odd
+        // seventh keeps its column width in flow, exactly like the scans index's fifth preset — a
+        // full-width last card would read as emphasis, and no module has earned any.
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
           {Object.entries(byModule).map(([moduleKey, moduleLessons]) => {
-            const allRead = moduleLessons.every((l) => completed.has(l.slug));
+            const readCount = moduleLessons.filter((l) => completed.has(l.slug)).length;
+            const allRead = readCount === moduleLessons.length;
             const gated = GATED_MODULES.includes(moduleKey) && !m3Done;
 
             return (
@@ -109,12 +113,15 @@ export default async function AcademyIndex() {
                         <span className="font-mono text-sm not-italic text-muted">{moduleKey}</span>{" "}
                         {MODULE_TITLES[moduleKey] ?? moduleKey}
                       </h2>
-                      {allRead ? (
-                        <span className="inline-flex items-center gap-1 font-ui text-2xs text-muted">
-                          <Check size={12} strokeWidth={2} aria-hidden="true" />
-                          read
-                        </span>
-                      ) : null}
+                      {/*
+                       * Position, stated as a count — never a progress bar or a ring (P13: position
+                       * and length over angle and area). "2 of 4 read" is a fact; a 50%-full ring is
+                       * a nudge to complete it, and this is a reading room, not a game.
+                       */}
+                      <span className="inline-flex items-center gap-1 font-mono text-2xs text-muted">
+                        {allRead ? <Check size={12} strokeWidth={2} aria-hidden="true" /> : null}
+                        {fill(copy.academy.readCount, { read: readCount, n: moduleLessons.length })}
+                      </span>
                       {gated ? (
                         <span className="font-ui text-2xs text-muted">
                           — finish M3 first (suggested)

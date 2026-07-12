@@ -4,6 +4,7 @@ import { formatUtcDate } from "@/lib/time";
 import { decimal } from "@/lib/format";
 import { copy } from "@/lib/copy";
 import { CalibrationScatter } from "@/components/desk/CalibrationScatter";
+import { TrackRecordTable } from "@/components/desk/TrackRecordTable";
 import { ForecastResolver } from "@/components/desk/ForecastResolver";
 
 /**
@@ -61,35 +62,24 @@ export default async function TrackRecordPage() {
             <Stat label="Hit rate" value={summary.hitRate ?? "—"} />
           </dl>
 
-          {/* The ledger. */}
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[36rem] border-collapse">
-              <thead>
-                <tr className="border-b border-ink text-left">
-                  <Th>Fired</Th>
-                  <Th>Symbol</Th>
-                  <Th>Pattern</Th>
-                  <Th>Horizon</Th>
-                  <Th>Outcome</Th>
-                  <Th>Resolved</Th>
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map((row) => (
-                  <tr key={row.id} className="border-b border-hairline">
-                    <Td mono>{formatUtcDate(row.firedDate)}</Td>
-                    <Td mono>{row.symbol}</Td>
-                    <Td>{row.patternLabel}</Td>
-                    <Td mono>{row.horizonDays}d</Td>
-                    <Td>
-                      <Outcome outcome={row.outcome} />
-                    </Td>
-                    <Td mono>{formatUtcDate(row.resolvedAt)}</Td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          {/*
+           * The ledger, as the house table (F6). This kills the app's last `overflow-x-auto` table —
+           * a six-column grid peeked through a 390px keyhole was the phone experience here.
+           *
+           * The filter defaults to ALL. A default of "hits" would be a product grading its own
+           * homework, and the misses ride the same table at the same weight (P5).
+           */}
+          <TrackRecordTable
+            rows={rows.map((row) => ({
+              id: row.id,
+              firedDate: formatUtcDate(row.firedDate),
+              symbol: row.symbol,
+              patternLabel: row.patternLabel,
+              horizonDays: row.horizonDays,
+              outcome: row.outcome,
+              resolvedAt: formatUtcDate(row.resolvedAt),
+            }))}
+          />
         </>
       )}
 
@@ -153,42 +143,5 @@ function Stat({ label, value }: { label: string; value: string }) {
   );
 }
 
-function Th({ children }: { children: React.ReactNode }) {
-  return <th className="py-2 pr-4 font-ui text-2xs font-semibold uppercase tracking-[0.06em] text-muted">{children}</th>;
-}
 
-function Td({ children, mono }: { children: React.ReactNode; mono?: boolean }) {
-  return <td className={`py-2 pr-4 ${mono ? "font-mono" : "font-ui"} text-sm text-ink-2`}>{children}</td>;
-}
 
-/**
- * The outcome chip.
- *
- * The redesign lets these carry colour, where they used to be plain ink — but the rules that make
- * them honest did not move an inch:
- *
- *  · **The word is inside the chip.** Outcome may never ride on colour alone (§3.3, P7). A
- *    colourblind reader reads "Miss", not a hue they cannot distinguish.
- *  · **A miss is the same SIZE and the same WEIGHT as a hit.** Only the hue differs. This is the
- *    page that keeps the whole product honest — it exists to show the app's own failures — and the
- *    moment a miss renders smaller, quieter, or greyer than a hit, the page has started editorialising
- *    in its own favour (§5.4, P5).
- *
- * There is no celebration state. A hit is a fact, not a win.
- */
-function Outcome({ outcome }: { outcome: "hit" | "miss" | "na" }) {
-  const CHIP: Record<typeof outcome, { label: string; className: string }> = {
-    hit: { label: "Hit", className: "bg-up-wash text-up-text" },
-    miss: { label: "Miss", className: "bg-down-wash text-down-text" },
-    na: { label: "Unresolvable", className: "bg-surface text-muted" },
-  };
-  const { label, className } = CHIP[outcome];
-
-  return (
-    <span
-      className={`inline-flex items-center rounded-chip border border-hairline px-2 py-0.5 font-mono text-2xs font-medium uppercase tracking-[0.04em] ${className}`}
-    >
-      {label}
-    </span>
-  );
-}

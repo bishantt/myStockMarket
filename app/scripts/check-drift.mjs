@@ -244,10 +244,10 @@ const RULES = [
     id: 16,
     name: "one table, one set of ergonomics — <table> lives only in components/DataTable.tsx",
     // A second hand-rolled table is a second set of sort affordances, a second pagination grammar,
-    // and a second chance to ship a leaderboard by accident. The track-record page still has its own
-    // and is skip-listed until F6 converts it; when it does, its entry here comes off and the rule
-    // closes for good.
-    skip: ["components/DataTable.tsx", "app/(desk)/track-record/page.tsx"],
+    // and a second chance to ship a leaderboard by accident. The track-record page was skip-listed
+    // until F6 converted it; that entry is gone now and the rule is closed. There is one table in
+    // this app.
+    skip: ["components/DataTable.tsx"],
     match: (line) => /<table[\s>]/.test(line),
   },
   {
