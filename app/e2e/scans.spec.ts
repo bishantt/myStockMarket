@@ -31,6 +31,11 @@ async function signIn(page: Page) {
 
 test.describe("Scans", () => {
   test.skip(process.env.MSM_SEEDED !== "1", "needs a seeded test database (MSM_SEEDED=1)");
+  // Desktop: these assert the real <table>. The phone's card-row rendering has its own describe at
+  // the bottom of this file — and the two renderings are BOTH in the DOM at once (which one the
+  // reader sees is a CSS decision), so a test that does not say which one it means will happily
+  // resolve to the hidden one and fail for a reason that has nothing to do with the table.
+  test.skip(({ isMobile }) => !!isMobile, "the desktop table has its own assertions; the phone's are below");
 
   test.beforeEach(async ({ page }) => {
     await signIn(page);
@@ -90,9 +95,13 @@ test.describe("Scans", () => {
     // The footnote is M1's sentence, in its single home.
     await expect(page.getByText(/Matches are filter hits, not forecasts/)).toBeVisible();
 
-    // No leaderboard vocabulary anywhere on the page.
-    const body = (await page.locator("body").textContent()) ?? "";
-    expect(body).not.toMatch(/\b(top|best|hottest|winners)\b/i);
+    // No leaderboard vocabulary in what the READER actually sees.
+    //
+    // innerText, not textContent. textContent walks the whole DOM including <script> elements, and
+    // Next inlines its RSC payload as a script — which contains, among other things, the Tailwind
+    // class "sticky top-0". Grepping that for the word "top" was grepping JavaScript, not the page.
+    const visible = await page.locator("main").innerText();
+    expect(visible).not.toMatch(/\b(top|best|hottest|winners)\b/i);
   });
 
   test("EVERY match is reachable — page to the end and the last seeded symbol is there", async ({ page }) => {
@@ -100,13 +109,14 @@ test.describe("Scans", () => {
     // 32) exists only on page 2, and it must be reachable by a control the reader can actually press.
     await page.goto("/scans/unusual-volume");
 
+    const table = page.getByRole("table");
     await expect(page.getByText("Page 1 of 2 · 32 rows")).toBeVisible();
-    await expect(page.getByText("AVGO")).toHaveCount(0);
+    await expect(table.getByText("AVGO")).toHaveCount(0);
 
     await page.getByRole("button", { name: "Next" }).click();
 
     await expect(page.getByText("Page 2 of 2 · 32 rows")).toBeVisible();
-    await expect(page.getByText("AVGO").first()).toBeVisible();
+    await expect(table.getByText("AVGO")).toBeVisible();
   });
 
   test("sorting re-orders today's matches, and the honest order is one control away", async ({ page }) => {
@@ -125,13 +135,13 @@ test.describe("Scans", () => {
     // The pipeline has been setting this flag since P4 and nothing has ever rendered it. SNDL (rank
     // 9, sub-$5) carries it in the fixture.
     await page.goto("/scans/unusual-volume");
-    await expect(page.getByText("lottery risk").first()).toBeVisible();
+    await expect(page.getByRole("table").getByText("lottery risk").first()).toBeVisible();
   });
 
   test("an unknown metric renders an em-dash, never an invented zero", async ({ page }) => {
     // CHPT's dollar volume is null in the fixture — the pipeline coerces a NaN to null, not to 0.
     await page.goto("/scans/unusual-volume");
-    await expect(page.getByText("—").first()).toBeVisible();
+    await expect(page.getByRole("table").getByText("—").first()).toBeVisible();
   });
 
   test("a scan that does not exist 404s rather than inventing an empty one", async ({ page }) => {
