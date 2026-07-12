@@ -146,9 +146,9 @@ test.describe("visual regression — the design system", () => {
    * sort is instant (a FLIP-animated sort would be a screenful of money figures in motion, which is
    * banned — so there is no animation to wait out).
    */
-  test("scans table sorted by RVOL — the header state", async ({ page }) => {
+  test("scans table sorted by RVOL — the header state", async ({ page, isMobile }) => {
     test.skip(!process.env.MSM_SEEDED, "needs the seeded database");
-    test.skip(({ isMobile }) => isMobile, "the desktop table is the thing being locked here");
+    test.skip(!!isMobile, "the desktop table is the thing being locked here");
     await useTheme(page, "light");
     await page.goto("/scans/unusual-volume");
     await waitForFonts(page);
@@ -160,9 +160,9 @@ test.describe("visual regression — the design system", () => {
     });
   });
 
-  test("scans table page 2 — the pagination footer", async ({ page }) => {
+  test("scans table page 2 — the pagination footer", async ({ page, isMobile }) => {
     test.skip(!process.env.MSM_SEEDED, "needs the seeded database");
-    test.skip(({ isMobile }) => isMobile, "one shot is enough for the footer state");
+    test.skip(!!isMobile, "one shot is enough for the footer state");
     await useTheme(page, "light");
     await page.goto("/scans/unusual-volume");
     await waitForFonts(page);
