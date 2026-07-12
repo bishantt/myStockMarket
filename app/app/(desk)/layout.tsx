@@ -25,15 +25,37 @@ import { Wordmark } from "@/components/Wordmark";
  * This route group adds no URL segment: `(desk)/page.tsx` is `/`.
  */
 
+/**
+ * The watchlist symbols for the ⌘K palette, or an empty list if the database cannot be reached.
+ *
+ * Wrapped, like every other read in this app: an unreachable table degrades one feature, it does
+ * not take the page down. That rule was always the intent — but this particular read was NOT
+ * wrapped, and it got away with it only because the layout used to call `cookies()`, which forced
+ * the route dynamic and kept the query out of the build. Removing that cookie read (R2, so the
+ * theme could live on <html>) made the Desk statically prerenderable, the query started running at
+ * build time, and a build machine with no DATABASE_URL crashed on it.
+ *
+ * A degraded palette still finds every room and every lesson. It simply cannot jump to a ticker.
+ */
+async function watchlistSymbols(): Promise<string[]> {
+  try {
+    const rows = await db.watchlistItem.findMany({
+      select: { symbol: true },
+      orderBy: { symbol: "asc" },
+    });
+    return rows.map((row) => row.symbol);
+  } catch (error) {
+    console.error("DeskLayout: could not read the watchlist for the command palette", error);
+    return [];
+  }
+}
+
 export default async function DeskLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   // The ⌘K palette index: fixed routes + every authored lesson + the watchlist's tickers.
   const lessons = getLessonManifest();
-  const watchlist = await db.watchlistItem.findMany({
-    select: { symbol: true },
-    orderBy: { symbol: "asc" },
-  });
+  const watchlist = await watchlistSymbols();
   const paletteItems: PaletteItem[] = [
     ...ROUTE_ITEMS,
     ...lessons.map((l) => ({
@@ -42,11 +64,11 @@ export default async function DeskLayout({
       label: l.title,
       href: `/academy/${l.slug}`,
     })),
-    ...watchlist.map((w) => ({
+    ...watchlist.map((symbol) => ({
       kind: "ticker" as const,
       zone: "Desk" as const,
-      label: w.symbol,
-      href: `/ticker/${w.symbol}`,
+      label: symbol,
+      href: `/ticker/${symbol}`,
     })),
   ];
 

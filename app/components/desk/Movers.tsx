@@ -39,11 +39,17 @@ export type Mover = {
   catalyst?: Catalyst;
 };
 
-const DELTA_COLOUR: Record<Direction, string> = {
-  up: "text-up-text",
-  down: "text-down-text",
+/** The delta chip: semantic text on its own soft wash. Never colour alone — the triangle and the
+ * sign ride with it, always. */
+const DELTA_CHIP: Record<Direction, string> = {
+  up: "text-up-text bg-up-wash",
+  down: "text-down-text bg-down-wash",
   flat: "text-ink",
 };
+
+/** RVOL is emphasised once it clears 2x — the point at which "unusual volume" stops being a phrase
+ * and starts being a fact. It is accent, because it is the row's one interactive-grade signal. */
+const RVOL_EMPHASIS_THRESHOLD = 2;
 
 const GLYPH: Record<Direction, string> = { up: "▲", down: "▼", flat: "" };
 
@@ -53,7 +59,8 @@ export function Movers({ asOf, movers }: { asOf: Date; movers: Mover[] }) {
       <SectionMasthead index={4} title="Movers" asOf={asOf} />
 
       {movers.length === 0 ? (
-        <p className="pt-4 font-ui text-sm text-muted">No notable movers.</p>
+        // A day where nothing cleared the bar is information, not an empty shelf.
+        <p className="max-w-[46ch] pt-4 font-prose text-base text-ink-2">{copy.mover.quiet}</p>
       ) : (
         <ul className="pt-2">
           {movers.map((m) => (
@@ -67,15 +74,24 @@ export function Movers({ asOf, movers }: { asOf: Date; movers: Mover[] }) {
                   rvol: m.rvol,
                   note: m.catalyst ? m.catalyst.headline : copy.mover.noNews,
                 }}
-                className="flex flex-wrap items-baseline gap-x-4 gap-y-1 py-2 hover:bg-paper"
+                // The hover feedback is a BACKGROUND shift, never a lift: this row contains a delta
+                // chip, and a transform on an ancestor would move a money visual (P2, §3.6).
+                className="flex flex-wrap items-baseline gap-x-4 gap-y-1 rounded-panel px-2 py-2.5 transition-colors duration-(--duration-quick) ease-(--ease-quiet) hover:bg-accent-muted"
               >
-                <span className="w-14 shrink-0 font-ui text-sm font-semibold text-ink">{m.symbol}</span>
+                <span className="w-14 shrink-0 font-mono text-sm font-semibold text-ink">{m.symbol}</span>
                 <span className="hidden min-w-0 flex-1 truncate font-ui text-sm text-muted sm:block">{m.name}</span>
-                <span className={cx("flex w-20 shrink-0 items-baseline justify-end gap-0.5 font-mono text-sm", DELTA_COLOUR[m.direction])}>
+                <span className={cx("flex shrink-0 items-baseline gap-0.5 rounded-chip px-1.5 py-0.5 font-mono text-sm", DELTA_CHIP[m.direction])}>
                   {m.direction !== "flat" ? <span aria-hidden="true">{GLYPH[m.direction]}</span> : null}
                   {m.changePct}
                 </span>
-                <span className="w-14 shrink-0 text-right font-mono text-sm text-ink-2">{m.rvol}</span>
+                <span
+                  className={cx(
+                    "w-14 shrink-0 text-right font-mono text-sm",
+                    parseFloat(m.rvol) >= RVOL_EMPHASIS_THRESHOLD ? "font-semibold text-accent-deep" : "text-ink-2",
+                  )}
+                >
+                  {m.rvol}
+                </span>
                 {/* The catalyst — chip, headline, source link — or the noise line. Full-width on a
                  * phone (wraps to its own line so the row never overflows); a fixed column on desktop. */}
                 <span className="flex w-full min-w-0 shrink-0 items-baseline gap-2 sm:w-72">
@@ -85,12 +101,12 @@ export function Movers({ asOf, movers }: { asOf: Date; movers: Mover[] }) {
                       <span className="min-w-0 flex-1 font-ui text-2xs text-ink-2 sm:truncate" title={m.catalyst.headline}>
                         {m.catalyst.headline}
                       </span>
-                      <ExternalLink href={m.catalyst.url} className="shrink-0 font-ui text-2xs text-ink">
+                      <ExternalLink href={m.catalyst.url} className="shrink-0 font-ui text-2xs text-accent-deep">
                         {m.catalyst.source}
                       </ExternalLink>
                     </>
                   ) : (
-                    <span className="min-w-0 flex-1 font-ui text-2xs text-muted sm:truncate" title={copy.mover.noNews}>
+                    <span className="min-w-0 flex-1 font-prose text-2xs italic text-muted sm:truncate" title={copy.mover.noNews}>
                       {copy.mover.noNews}
                     </span>
                   )}
@@ -100,6 +116,10 @@ export function Movers({ asOf, movers }: { asOf: Date; movers: Mover[] }) {
           ))}
         </ul>
       )}
+
+      {movers.length > 0 ? (
+        <p className="max-w-[70ch] pt-4 font-ui text-2xs text-muted">{copy.mover.relvolNote}</p>
+      ) : null}
     </section>
   );
 }

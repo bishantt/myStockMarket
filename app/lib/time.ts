@@ -106,6 +106,25 @@ export function formatUtcDate(date: Date): string {
 }
 
 /**
+ * The same bare calendar date, written out in full: "Friday, July 10, 2026".
+ *
+ * The Desk's serif headline needs the long form — a broadsheet's masthead carries the date of the
+ * edition, spelled out. It reads the UTC components for exactly the reason above: a run date is a
+ * trading day, not an instant, and formatting it in ET would print the day before.
+ */
+const utcDateLongFormatter = new Intl.DateTimeFormat("en-US", {
+  timeZone: "UTC",
+  weekday: "long",
+  month: "long",
+  day: "numeric",
+  year: "numeric",
+});
+
+export function formatUtcDateLong(date: Date): string {
+  return utcDateLongFormatter.format(date);
+}
+
+/**
  * The exact provenance line every SectionMasthead renders: "as of 16:05 ET".
  *
  * Every module on the Desk shows one. It is what makes stale data self-identifying, which is

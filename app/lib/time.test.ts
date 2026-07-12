@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { etAbbreviation, formatAsOf, formatEtClock, formatEtDate } from "./time";
+import { etAbbreviation, formatAsOf, formatEtClock, formatEtDate, formatUtcDateLong } from "./time";
 
 /**
  * The user lives on market time: Long Island, New York. Every timestamp in this product is
@@ -77,5 +77,16 @@ describe("formatAsOf", () => {
     // CLAUDE.md, "Timing": display timezone is ET year-round, so the reader never has to
     // decode whether tonight is EDT or EST. etAbbreviation() exists for provenance contexts.
     expect(formatAsOf(new Date("2026-01-15T21:05:00Z"))).toBe("as of 16:05 ET");
+  });
+});
+
+describe("formatUtcDateLong", () => {
+  it("writes a trading day out in full, by its UTC components", () => {
+    // A run date is a bare calendar date stored at UTC midnight. Formatting it in Eastern time
+    // would shift it back a day and the Desk's masthead would carry the wrong date — which is
+    // exactly the bug this function exists to prevent (the header once read "Jul 10" while the
+    // pipeline module beneath it read "Jul 11", from the same value).
+    expect(formatUtcDateLong(new Date("2026-07-10T00:00:00.000Z"))).toBe("Friday, July 10, 2026");
+    expect(formatUtcDateLong(new Date("2026-01-02T00:00:00.000Z"))).toBe("Friday, January 2, 2026");
   });
 });

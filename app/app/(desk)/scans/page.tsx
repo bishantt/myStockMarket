@@ -50,7 +50,7 @@ export default async function ScansPage() {
             Scans
           </h1>
         </div>
-        <div className="h-0.5 bg-ink" />
+        <div className="h-px bg-hairline-strong" />
         <p className="max-w-[62ch] pt-3 font-prose text-base text-ink-2">
           Each scan is a filter with a stated, gradeable basis — you can see exactly what it looked
           for. A match is a filter hit, not a forecast; the evidence grade says how much weight the

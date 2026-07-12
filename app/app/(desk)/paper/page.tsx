@@ -72,7 +72,7 @@ export default async function PaperPage({
       ) : null}
 
       <section aria-label="Place a paper trade">
-        <h2 className="font-ui text-xs font-bold uppercase tracking-[0.07em] text-ink">New paper trade</h2>
+        <h2 className="font-mono text-xs font-medium uppercase tracking-[0.08em] text-muted">New paper trade</h2>
         <div className="mt-2 h-px bg-hairline" />
         <PaperEntryForm
           defaultSymbol={params.symbol ?? ""}
@@ -82,7 +82,7 @@ export default async function PaperPage({
 
       {/* COST MIRROR — the arithmetic, spelled out (plan §8.1). */}
       <section aria-label="Cost mirror" className="max-w-[62ch]">
-        <h2 className="font-ui text-xs font-bold uppercase tracking-[0.07em] text-ink">Cost mirror</h2>
+        <h2 className="font-mono text-xs font-medium uppercase tracking-[0.08em] text-muted">Cost mirror</h2>
         <div className="mt-2 h-px bg-hairline" />
         <p className="pt-3 font-prose text-base text-ink-2">
           At {ledger.roundTripsThisWeek} round trip{ledger.roundTripsThisWeek === 1 ? "" : "s"} this week

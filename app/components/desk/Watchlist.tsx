@@ -26,32 +26,75 @@ export type WatchRow = {
   spark: number[];
 };
 
-const DELTA_COLOUR: Record<Direction, string> = {
-  up: "text-up-text",
-  down: "text-down-text",
+/** The delta chip — semantic text on its own wash, with the sign always inside it. */
+const DELTA_CHIP: Record<Direction, string> = {
+  up: "text-up-text bg-up-wash",
+  down: "text-down-text bg-down-wash",
   flat: "text-ink",
 };
 
 /**
- * A tiny inline sparkline: a single hairline path, no axes, no colour — a shape, not a chart.
- * Drawn as a normalised SVG polyline so it scales with the row. Purely decorative to a screen
- * reader (the numbers it summarises are on the row), so it is aria-hidden.
+ * A tiny inline sparkline: a stroke in the direction's colour, over a soft area fill.
+ *
+ * Two things about it are worth stating, because they look like rule violations and are not:
+ *
+ * 1. **It is coloured by direction, and colour is its only channel.** That is legal HERE, and only
+ *    here, because the price and the delta chip sit immediately beside it — carrying the triangle,
+ *    the sign, and the number. The sparkline is a shape that a redundant, colourblind-safe delta is
+ *    already saying out loud. Move it away from that delta and it stops being legal. (§3.8.)
+ *
+ * 2. **It is a record, not a forecast**, so it may render at all: fourteen days of history, drawn
+ *    complete. It never sweeps or draws in — a left-to-right reveal on a price series reads as
+ *    momentum, as "…and then", which is precisely the expectation this product refuses to create.
+ *
+ * It is aria-hidden: the numbers it summarises are already on the row in text.
  */
-function Sparkline({ points }: { points: number[] }) {
+function Sparkline({ points, direction }: { points: number[]; direction: Direction }) {
   if (points.length < 2) return null;
+
   const min = Math.min(...points);
   const max = Math.max(...points);
   const range = max - min || 1;
-  const path = points
-    .map((p, i) => {
-      const x = (i / (points.length - 1)) * 100;
-      const y = 100 - ((p - min) / range) * 100;
-      return `${i === 0 ? "M" : "L"}${x.toFixed(1)},${y.toFixed(1)}`;
-    })
+
+  const coords = points.map((p, i) => ({
+    x: (i / (points.length - 1)) * 100,
+    y: 100 - ((p - min) / range) * 100,
+  }));
+
+  const line = coords
+    .map((c, i) => `${i === 0 ? "M" : "L"}${c.x.toFixed(1)},${c.y.toFixed(1)}`)
     .join(" ");
+  // The area closes the path down to the baseline, so the fill has something to fill.
+  const area = `${line} L100,100 L0,100 Z`;
+
+  const stroke = direction === "down" ? "text-down" : "text-up";
+  const fill = direction === "down" ? "url(#spark-down)" : "url(#spark-up)";
+
   return (
-    <svg viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true" className="h-6 w-20 text-muted">
-      <path d={path} fill="none" stroke="currentColor" strokeWidth={4} vectorEffect="non-scaling-stroke" />
+    <svg
+      viewBox="0 0 100 100"
+      preserveAspectRatio="none"
+      aria-hidden="true"
+      className={cx("h-9 w-20 shrink-0", stroke)}
+    >
+      <defs>
+        <linearGradient id="spark-up" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="var(--color-up)" stopOpacity="0.12" />
+          <stop offset="100%" stopColor="var(--color-up)" stopOpacity="0" />
+        </linearGradient>
+        <linearGradient id="spark-down" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="var(--color-down)" stopOpacity="0.12" />
+          <stop offset="100%" stopColor="var(--color-down)" stopOpacity="0" />
+        </linearGradient>
+      </defs>
+      <path d={area} fill={fill} stroke="none" />
+      <path
+        d={line}
+        fill="none"
+        stroke="currentColor"
+        strokeWidth={1.5}
+        vectorEffect="non-scaling-stroke"
+      />
     </svg>
   );
 }
@@ -78,23 +121,26 @@ export function Watchlist({ asOf, rows }: { asOf: Date; rows: WatchRow[] }) {
                   rvol: r.rvol,
                   note: r.reason,
                 }}
-                className="flex items-center gap-4 py-2 hover:bg-paper"
+                className="flex items-center gap-3 rounded-panel px-2 py-2.5 transition-colors duration-(--duration-quick) ease-(--ease-quiet) hover:bg-accent-muted"
               >
-                <div className="w-20 shrink-0">
+                <div className="min-w-0 flex-1">
                   <div className="flex items-baseline gap-1.5">
-                    <span className="font-ui text-sm font-semibold text-ink">{r.symbol}</span>
+                    <span className="font-mono text-sm font-semibold text-ink">{r.symbol}</span>
                     {r.isFocus ? (
-                      <span className="font-ui text-2xs uppercase tracking-[0.06em] text-muted">focus</span>
+                      <span className="font-mono text-2xs uppercase tracking-[0.06em] text-muted">focus</span>
                     ) : null}
                   </div>
-                  <span className="font-ui text-2xs text-muted">{r.name}</span>
+                  <span className="block truncate font-ui text-2xs text-muted">{r.reason}</span>
                 </div>
-                <span className="min-w-0 flex-1 truncate font-ui text-2xs text-ink-2">{r.reason}</span>
-                <Sparkline points={r.spark} />
-                <span className={cx("w-16 shrink-0 text-right font-mono text-sm", DELTA_COLOUR[r.direction])}>
+                <Sparkline points={r.spark} direction={r.direction} />
+                <span
+                  className={cx(
+                    "shrink-0 rounded-chip px-1.5 py-0.5 text-right font-mono text-sm",
+                    DELTA_CHIP[r.direction],
+                  )}
+                >
                   {r.changePct}
                 </span>
-                <span className="w-14 shrink-0 text-right font-mono text-sm text-ink-2">{r.rvol}</span>
               </RailTrigger>
             </li>
           ))}

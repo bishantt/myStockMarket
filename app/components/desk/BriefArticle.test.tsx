@@ -33,12 +33,23 @@ const PUBLISHED: BriefView = {
 };
 
 describe("BriefArticle", () => {
-  it("renders the briefing-unavailable line and no article when held", () => {
+  it("renders the unavailable line and NO prose when held — but keeps the slot skeleton", () => {
+    // A held briefing means the verification gate refused to print a number it could not check.
+    // None of the LLM's prose may survive that — but the STRUCTURE does, deliberately (§5.1). The
+    // shape of a market note (what happened / why it matters / by the numbers / yes, but) is part
+    // of what this module teaches, and a reader on a held night still learns the shape and still
+    // sees exactly what is missing. An empty paragraph teaches nothing.
     const held: BriefView = { ...PUBLISHED, status: "held" };
     render(<BriefArticle asOf={ASOF} brief={held} />);
+
     expect(screen.getByText(copy.brief.unavailable)).toBeInTheDocument();
+
+    // Not one word of the withheld briefing appears.
     expect(screen.queryByText("AI-server demand carried the tape")).not.toBeInTheDocument();
-    expect(screen.queryByText("What happened")).not.toBeInTheDocument();
+
+    // But the slot skeleton does — as labels over empty rules, never as content.
+    expect(screen.getByText("What happened")).toBeInTheDocument();
+    expect(screen.getByText("Yes, but")).toBeInTheDocument();
   });
 
   it("renders the headline, the labeled slots, and a source superscript link when published", () => {

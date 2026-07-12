@@ -38,7 +38,7 @@ export default async function SettingsPage() {
     <div className="flex flex-col gap-8 py-6">
       <header>
         <h1 className="font-ui text-sm font-bold uppercase tracking-[0.08em] text-ink">Watchlist</h1>
-        <div className="mt-1 h-0.5 bg-ink" />
+        <div className="mt-1 h-px bg-hairline-strong" />
         <p className="pt-3 font-ui text-sm text-muted">
           Add a name and the reason you are watching it. Mark up to {FOCUS_CAP} as focus — the list
           the Desk keeps in front of you.

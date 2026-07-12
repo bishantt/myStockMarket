@@ -94,7 +94,7 @@ export default async function LessonPage({ params }: { params: Promise<{ slug: s
       {/* Retrieval questions — the lesson's own check, from its frontmatter. */}
       {meta.questions.length > 0 ? (
         <section className="mt-10 border-t border-hairline pt-6" aria-label="Check yourself">
-          <h2 className="font-ui text-xs font-bold uppercase tracking-[0.07em] text-ink">Check yourself</h2>
+          <h2 className="font-mono text-xs font-medium uppercase tracking-[0.08em] text-muted">Check yourself</h2>
           <dl className="pt-3">
             {meta.questions.map((question, index) => (
               <div key={index} className="max-w-[65ch] pt-4">

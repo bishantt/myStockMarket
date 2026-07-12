@@ -32,7 +32,7 @@ export function BriefArticle({ asOf, brief }: { asOf: Date; brief: BriefView }) 
       <SectionMasthead index={2} title="Daily brief" asOf={asOf} />
 
       {brief.status === "held" ? (
-        <p className="pt-4 font-ui text-sm text-muted">{copy.brief.unavailable}</p>
+        <HeldState />
       ) : (
         <div className="pt-4">
           {/* Today's focus — the display-italic headline and the lede paragraph. */}
@@ -134,5 +134,41 @@ function Superscripts({ numbers, footnotes }: { numbers: number[]; footnotes: Br
         );
       })}
     </sup>
+  );
+}
+
+/**
+ * The held state — designed, not merely worded.
+ *
+ * When the verification gate holds tonight's briefing (an LLM sentence carried a number the gate
+ * could not verify against the database), the module does NOT collapse to a one-line apology. It
+ * renders the full slot skeleton — every slot masthead, in faint, with a quiet rule where the prose
+ * would sit — and the honest line beneath the first.
+ *
+ * The reason is pedagogical. The briefing's structure IS part of what it teaches: a market note has
+ * a what-happened, a why-it-might-matter, a by-the-numbers, and a yes-but. A reader who sees that
+ * shape on a held night still learns the shape, and still sees exactly what is missing. An empty
+ * paragraph teaches nothing.
+ *
+ * It is never amber. A held briefing is the gate WORKING — the system refusing to print a number it
+ * could not check — and the two amber consumers are spoken for (§3.3, P11).
+ */
+function HeldState() {
+  return (
+    <div className="pt-4">
+      <p className="max-w-[62ch] font-prose text-base text-ink-2">{copy.brief.unavailable}</p>
+
+      <div aria-hidden="true" className="flex flex-col gap-4 pt-6">
+        {SLOTS.map(({ key, label }) => (
+          <div key={String(key)} className="flex flex-col gap-2">
+            <span className="font-mono text-2xs uppercase tracking-[0.08em] text-faint">
+              {label}
+            </span>
+            <div className="h-px w-full bg-hairline" />
+            <div className="h-px w-3/4 bg-hairline" />
+          </div>
+        ))}
+      </div>
+    </div>
   );
 }

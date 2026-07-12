@@ -20,7 +20,7 @@ export function ScorecardPM({ asOf, resolved }: { asOf?: Date; resolved?: Scorec
     <section aria-label="Evening scorecard">
       <header className="pt-3">
         <div className="flex items-baseline justify-between gap-4 pb-2">
-          <h2 className="font-ui text-xs font-bold uppercase tracking-[0.07em] text-ink">
+          <h2 className="font-mono text-xs font-medium uppercase tracking-[0.08em] text-muted">
             Evening — scorecard &amp; journal
           </h2>
           {asOf ? (
@@ -29,7 +29,7 @@ export function ScorecardPM({ asOf, resolved }: { asOf?: Date; resolved?: Scorec
             </time>
           ) : null}
         </div>
-        <div className="h-0.5 bg-ink" />
+        <div className="h-px bg-hairline-strong" />
       </header>
 
       {resolved && resolved.total > 0 ? (

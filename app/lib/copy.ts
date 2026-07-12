@@ -54,6 +54,16 @@ export const copy = {
     caveat: "Ranges assume the recent regime holds — sudden stress can exceed them.",
   },
 
+  /** The dot array inside BaseRate. Every dot is one case — the misses are the point. */
+  dotarray: {
+    caption: "Each dot is one historical case. Misses are intentionally visible.",
+  },
+
+  /** The quantile dotplot: 20 dots, each one-in-twenty of the historical outcomes. */
+  dotplot: {
+    caption: "Each dot: 1 in 20 past outcomes.",
+  },
+
   /**
    * The macro strip (redesign §6.1). These four strings exist because an ETF is not its index:
    * SPY traded near 755 while the S&P 500 was near 6,800, and the Desk printed the former under

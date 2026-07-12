@@ -29,7 +29,7 @@ export default async function TrackRecordPage() {
             Track record
           </h1>
         </div>
-        <div className="h-0.5 bg-ink" />
+        <div className="h-px bg-hairline-strong" />
         <p className="max-w-[62ch] pt-3 font-prose text-base text-ink-2">
           The app&rsquo;s own resolved signals, misses and all. A signal &ldquo;hit&rdquo; when the price was
           higher ten trading days after it fired. Nothing here is a recommendation — it is the record.

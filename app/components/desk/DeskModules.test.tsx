@@ -35,9 +35,9 @@ describe("Movers", () => {
     expect(screen.getByText(copy.mover.noNews)).toBeInTheDocument();
   });
 
-  it("handles an empty movers list", () => {
+  it("handles an empty movers list — a quiet day is information, not an empty shelf", () => {
     render(<Movers asOf={ASOF} movers={[]} />);
-    expect(screen.getByText(/No notable movers/i)).toBeInTheDocument();
+    expect(screen.getByText(copy.mover.quiet)).toBeInTheDocument();
   });
 });
 
