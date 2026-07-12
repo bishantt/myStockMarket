@@ -18,6 +18,8 @@ export type WatchRow = {
   name: string;
   /** The user's written reason for watching it (required). */
   reason: string;
+  /** The last close, already formatted. */
+  price: string;
   changePct: string;
   direction: Direction;
   rvol: string;
@@ -133,13 +135,17 @@ export function Watchlist({ asOf, rows }: { asOf: Date; rows: WatchRow[] }) {
                   <span className="block truncate font-ui text-2xs text-muted">{r.reason}</span>
                 </div>
                 <Sparkline points={r.spark} direction={r.direction} />
-                <span
-                  className={cx(
-                    "shrink-0 rounded-chip px-1.5 py-0.5 text-right font-mono text-sm",
-                    DELTA_CHIP[r.direction],
-                  )}
-                >
-                  {r.changePct}
+
+                <span className="flex shrink-0 flex-col items-end gap-0.5">
+                  <span className="font-mono text-sm text-ink">{r.price}</span>
+                  <span
+                    className={cx(
+                      "rounded-chip px-1.5 py-0.5 font-mono text-2xs",
+                      DELTA_CHIP[r.direction],
+                    )}
+                  >
+                    {r.changePct}
+                  </span>
                 </span>
               </RailTrigger>
             </li>

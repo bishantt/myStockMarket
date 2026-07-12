@@ -50,7 +50,8 @@ test.describe("Desk — the seeded morning", () => {
 
     // The Russell has no free FRED series, so its slot is an ETF — and says so, on the surface.
     await expect(macro.getByText("Russell 2000 · IWM (ETF proxy)")).toBeVisible();
-    await expect(macro.getByText("ETF proxy")).toBeVisible();
+    // The chip itself, exactly — the label above also contains the words "ETF proxy", and it should.
+    await expect(macro.getByText("ETF proxy", { exact: true })).toBeVisible();
 
     // The two FRED context cells.
     await expect(macro.getByText("15.84")).toBeVisible();
@@ -86,7 +87,12 @@ test.describe("Desk — the seeded morning", () => {
     // The chip is the allowlist's CODE — the calendar's one vocabulary (redesign §6.2).
     await expect(calendar.getByText("EARNINGS").first()).toBeVisible();
     await expect(calendar.getByText(/AAPL earnings/)).toBeVisible();
-    await expect(calendar.getByText(/cons\. 1\.28/)).toBeVisible();
+
+    // The consensus figure is deliberately ABSENT here. On the Desk the calendar renders in its
+    // compact rail variant (§5.1): a reader glances at the rail to see what is coming, they do not
+    // study it, so consensus/prior drop to the row's drill. This asserts the design rather than
+    // tolerating its absence.
+    await expect(calendar.getByText(/cons\./)).toHaveCount(0);
 
     // The market-wide catalysts, each marked with the word "high" beside an ink dot.
     await expect(calendar.getByText("CPI")).toBeVisible();
@@ -115,7 +121,9 @@ test.describe("Desk — the seeded morning", () => {
     // Exact match: a bare "focus" would also hit the module masthead "Focus watchlist".
     await expect(watch.getByText("focus", { exact: true })).toBeVisible();
     await expect(watch.getByText("+2.10%")).toBeVisible();
-    await expect(watch.getByText("2.4×")).toBeVisible();
+    // The row is sparkline + PRICE + delta chip (§5.1). RelVol is not on it: the watchlist answers
+    // "how are my names doing", and the volume question belongs to Movers, which is where it lives.
+    await expect(watch.getByText("221.27")).toBeVisible();
     // The two non-focus names are present too.
     await expect(watch.getByText("NVDA")).toBeVisible();
     await expect(watch.getByText("MSFT")).toBeVisible();

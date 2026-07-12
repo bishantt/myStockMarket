@@ -44,7 +44,7 @@ describe("Movers", () => {
 describe("Watchlist", () => {
   const rows = [
     {
-      symbol: "AAPL", name: "Apple", reason: "Earnings next week", changePct: "+0.4%",
+      symbol: "AAPL", name: "Apple", reason: "Earnings next week", price: "212.40", changePct: "+0.4%",
       direction: "up" as const, rvol: "1.1×", isFocus: true, spark: [10, 11, 10.5, 12, 11.8],
     },
   ];

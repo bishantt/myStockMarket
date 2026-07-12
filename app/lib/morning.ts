@@ -358,10 +358,14 @@ export function buildWatchlist(sources: WatchSource[]): WatchRow[] {
     const latestVolume = s.volumes[s.volumes.length - 1];
     const rvol =
       prior.length > 0 ? multiple(latestVolume / (prior.reduce((a, b) => a + b, 0) / prior.length)) : "—";
+    const lastClose = s.closes[s.closes.length - 1];
     return {
       symbol: s.symbol,
       name: s.name,
       reason: s.reason,
+      // The last close, formatted. The row shows a price beside its delta (§5.1) — a percentage
+      // with nothing to be a percentage OF is a number the reader cannot check.
+      price: lastClose === undefined ? "—" : price(lastClose),
       changePct: quote.deltaPct,
       direction: quote.direction,
       rvol,
