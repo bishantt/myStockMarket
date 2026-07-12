@@ -8,6 +8,69 @@ Format: newest first. I mark each as [FYI], [VETO?], or [NEED] so you can scan.
 
 ---
 
+## 2026-07-12 — the app-feel build (F0–F7)
+
+Nothing here blocks me. I have made the most reasonable call on each item, marked in the code and
+in DECISIONS.md what was built on that assumption, and kept going — per your standing directive.
+A veto of any one of these changes only its own sections; none of them ripple.
+
+### The three judgment calls I would most like you to check
+
+- **[VETO?] Horizontal swipe is not "motion" (plan Part 0.4, ruling M3).** The constitution says
+  probability and money figures never move. I have read that as a rule about the UI moving things
+  by itself, not about the reader moving the paper: the page already scrolls vertically past every
+  money figure and nobody has ever read that as the number moving. So a *shelf* — a swipeable rail
+  of figures, used once, for the macro pulse on phones — is allowed to hold money figures. It may
+  never autoplay, auto-advance, or animate itself; those are all banned by grep. **If you disagree,
+  say so and the pulse figures go back to their grid at every width — it is one table row in §4.1
+  and nothing else in the plan moves.**
+
+- **[VETO?] The paper ticket pre-selects NO side (Part 0.5, ruling M9).** Buy/Sell becomes a
+  two-button control with neither pressed. Every other field keeps a sensible default, because
+  every other field is a parameter — side is the *decision*, and the old form quietly defaulted it
+  to "buy" on the one surface whose entire design (cooling-off, cost mirror) exists to slow that
+  decision down. **This changes current behaviour**, so it gets a veto line. Cost if you disagree:
+  one tap per trade, and restoring it is one line.
+
+- **[VETO?] A "Practice on paper →" link on expanded setup cards (Part 0.7, ruling M10).** This is
+  the biggest philosophy call of the three, so here is the honest case both ways. Against: it is the
+  app's first one-tap path from an evidence surface (which has just shown you a base rate) to an
+  order ticket, and it sits at the moment of maximum conviction. For: the cooling-off interstitial —
+  built, tested, and protective — currently has NO producer at all. Nothing in the product
+  constructs the URL that fires it; only the e2e test does. Today's organic path (setup card → tab →
+  ticket) reaches the same ticket with no cooling-off whatsoever. The link carries the
+  `signalViewedAt` timestamp, so it is the one path that actually *arms* the protection. It is
+  strictly more protective than the walk it replaces. Four conditions bind it (M10): paper room only,
+  timestamp always carried, no side default at the destination, and a plain mechanical label — never
+  a button. And its boundary bites: mover rows and scan-table rows get no such link, ever, because
+  they are filter hits with no base rate and no weakener list. **Veto and the link disappears; M10
+  stays on the books as the rule that would govern any future attempt.**
+
+### Heads-ups, no action needed
+
+- **[FYI] Pages will be served from a cache, up to 10 minutes stale.** Every read route moves to
+  ISR (revalidate 600s) — that is what takes the app from ~400–1340ms per tap to ~50ms. The honesty
+  contract (ruling M5) is that every module already prints its own as-of timestamp, the data only
+  changes once a night, and the nightly publish actively busts every cached page. **The one regime
+  worth knowing about:** right after the ~8:40pm publish, your first tap into each room pays one
+  regeneration (roughly 400–900ms, with a skeleton rather than a frozen screen). Every tap after
+  that is instant. I measure that first-tap case explicitly and record it, rather than quoting you
+  the flattering steady-state number alone.
+
+- **[FYI] A new route exists: `/scans/[preset]`.** The "+123 more" on the scans page was never
+  clickable, and 1,825 matches were unreachable on the night the pipeline first ran. Each preset now
+  gets its own page with the full match set as a sortable, paginated table — every match reachable
+  up to a stated 500-row cap (above it, the cut is named and sorting is disabled, because sorting a
+  silent subset is an unlabelled ranking). Logged as a route-map amendment.
+
+- **[FYI] The seeded test data grew a lot.** 52 scan matches across the presets (one preset seeded
+  deliberately EMPTY, so the "0 matches today — that is information" state is actually tested), and
+  six paper trades. This is test/dev data only — the seed still refuses to run against Supabase.
+  Your Desk will show eight movers instead of three in the seeded screenshots; production is
+  unaffected, since it reads the real pipeline.
+
+---
+
 ## 2026-07-11 — UI redesign plan ("Morning Broadsheet")
 
 The four blocking items below were **all answered on 2026-07-12**; the plan (Part 0), the

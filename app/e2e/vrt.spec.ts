@@ -39,6 +39,35 @@ async function signIn(page: Page) {
 }
 
 /**
+ * Wait until the page's real fonts are on screen — not merely until the browser says it is idle.
+ *
+ * `await document.fonts.ready` is NOT sufficient on its own, and this cost us a baseline. That
+ * promise settles against the font loads that are PENDING at the moment it is awaited, so if it runs
+ * before the browser has begun fetching the faces, it resolves immediately against an empty set. The
+ * screenshot then catches the page mid-swap, in its fallback sans, and the resulting baseline is a
+ * picture of a bug. (Caught at F0: a regenerated track-record baseline came back with its body prose
+ * in a fallback font — visibly re-wrapped from two lines to three — while its own dark-theme twin,
+ * shot in the same run, was correct. Committing it would have made the pixel oracle lie.)
+ *
+ * So we force the issue: ask for each family the page actually uses, wait for those loads to finish,
+ * and only then wait for the set to settle. `document.fonts.load()` resolves when the face is
+ * genuinely usable, which is the thing we actually care about.
+ */
+async function waitForFonts(page: Page) {
+  await page.evaluate(async () => {
+    const families = new Set<string>();
+    for (const el of document.querySelectorAll("body, h1, h2, h3, p, li, td, th, span, a, button")) {
+      const family = getComputedStyle(el).fontFamily;
+      if (family) families.add(family);
+    }
+    await Promise.all(
+      [...families].map((family) => document.fonts.load(`1rem ${family}`).catch(() => undefined)),
+    );
+    await document.fonts.ready;
+  });
+}
+
+/**
  * Take one baseline shot.
  *
  * Timestamps and as-of stamps are masked: they are honest, load-bearing content — this product puts
@@ -47,9 +76,7 @@ async function signIn(page: Page) {
  */
 async function shoot(page: Page, path: string, name: string) {
   await page.goto(path);
-  await page.evaluate(async () => {
-    await document.fonts.ready;
-  });
+  await waitForFonts(page);
   const masks = page.locator('[data-vrt="mask"], time');
   await expect(page).toHaveScreenshot(`${name}.png`, { fullPage: true, mask: [masks] });
 }
