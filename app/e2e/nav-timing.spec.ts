@@ -54,10 +54,10 @@ const SOFT_NAV_CLS_BUDGET = 0.05;
  * silently starts matching the origin page fails the test instead of flattering it.
  */
 const DESTINATIONS = [
-  { tab: "Scans", heading: "Scans" },
-  { tab: "Paper", heading: "Paper desk" },
-  { tab: "Track", heading: "Track record" },
-  { tab: "Academy", heading: "The Academy" },
+  { tab: "Scans", heading: "Scans", path: "/scans" },
+  { tab: "Paper", heading: "Paper desk", path: "/paper" },
+  { tab: "Track", heading: "Track record", path: "/track-record" },
+  { tab: "Academy", heading: "The Academy", path: "/academy" },
 ] as const;
 
 const SAMPLES = 8; // the first is discarded — it carries first-compile and warm-up noise
@@ -140,7 +140,7 @@ test.skip(
   "a navigation timing needs a seeded database — CI has one, this laptop does not",
 );
 
-for (const { tab, heading } of DESTINATIONS) {
+for (const { tab, heading, path } of DESTINATIONS) {
   test(`soft-nav timing — Desk → ${tab}`, async ({ page }) => {
     await signIn(page);
 
@@ -157,9 +157,23 @@ for (const { tab, heading } of DESTINATIONS) {
       ).toHaveCount(0);
     };
 
-    // Warm the destination once, explicitly. The first visit to any route pays costs the reader only
-    // ever pays once (compile in dev, a fresh regeneration after a publish), and averaging that into
-    // a steady-state number would slander the steady state.
+    /*
+     * WARM THE SERVER'S CACHE ENTRY FIRST, with a real navigation to the destination.
+     *
+     * This measures the STEADY STATE — the tap a reader makes into a room that is already cached —
+     * and the steady state has to be established before it can be measured. A client-side warm (tap
+     * the tab, look at the heading) does not reliably do that: it can be served from the router's
+     * prefetch without the server's ISR entry ever being touched, which leaves the entry cold or
+     * stale for the samples that follow. The result was a bimodal set — 111ms when the prefetch had
+     * landed, 890ms when the tap had to wait on a regeneration — and a median that described neither
+     * regime honestly.
+     *
+     * The regeneration cost is real and the plan says so out loud (the first tap after the ~8:40pm
+     * publish is ~400–900ms, with a skeleton rather than a frozen screen). It is simply not what THIS
+     * budget is for. B2 measures the server; this measures the reader's steady-state navigation.
+     */
+    await page.goto(path); // a full navigation to the destination populates its server cache entry…
+    await page.goto("/"); // …and then we come back and measure the tap the reader actually makes.
     await assertNotAlreadyVisible();
     await link.tap();
     await expect(destination).toBeVisible();

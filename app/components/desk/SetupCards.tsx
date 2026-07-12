@@ -126,15 +126,28 @@ function SetupCard({ card }: { card: SetupCardView }) {
         {/*
          * The footer doorways. Both are plain links at footnote weight — never buttons.
          */}
-        <p className="flex flex-wrap items-center gap-x-5 gap-y-1">
+        {/*
+         * A PARAGRAPH of inline links — deliberately not a flex row.
+         *
+         * A flex item is BLOCKIFIED: `display: inline` becomes `display: block`, whatever the class
+         * says. That matters here because both of these are footnote links sitting in running text,
+         * and the touch sweep exempts exactly that (WCAG 2.5.8: a target "in a sentence or block of
+         * text" is sized by its line, and padding it to 44px would wreck the paragraph for no
+         * accessibility gain — a reader taps the word where the word is). Wrapping them in a flex
+         * container silently revoked that exemption and the sweep failed them both, correctly.
+         */}
+        <p className="font-ui text-2xs leading-relaxed text-muted">
           {/* The Academy doorway, only when the lesson manifest knows the slug. */}
           {card.learnSlug ? (
-            <Link
-              href={`/academy/${card.learnSlug}`}
-              className="font-ui text-2xs text-ink underline underline-offset-2 hover:text-accent"
-            >
-              Learn: how this pattern is judged →
-            </Link>
+            <>
+              <Link
+                href={`/academy/${card.learnSlug}`}
+                className="text-ink underline underline-offset-2 hover:text-accent"
+              >
+                Learn: how this pattern is judged →
+              </Link>
+              <span aria-hidden="true"> · </span>
+            </>
           ) : null}
 
           {/*

@@ -151,8 +151,13 @@ test.describe("The ticket", () => {
 
     // A loss renders with the WORD in the chip, not colour alone (P7) — and with a TRUE minus.
     await page.getByText(/Closed trades/).click();
-    await expect(page.getByText("loss").first()).toBeVisible();
-    await expect(page.getByText("gain").first()).toBeVisible();
-    await expect(page.getByText(/−77\.50/)).toBeVisible(); // U+2212, not a hyphen
+
+    // Scoped to the desktop table: the DataTable renders BOTH the phone card-rows and the real table
+    // into the DOM, and which one the reader sees is a CSS decision, so an unscoped match resolves to
+    // the hidden one.
+    const table = page.getByRole("table").filter({ hasText: "Realized" });
+    await expect(table.getByText("loss").first()).toBeVisible();
+    await expect(table.getByText("gain").first()).toBeVisible();
+    await expect(table.getByText(/−77\.50/)).toBeVisible(); // U+2212, not a hyphen
   });
 });

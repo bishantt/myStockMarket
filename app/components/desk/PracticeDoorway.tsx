@@ -39,7 +39,10 @@ export function PracticeDoorway({ symbol }: { symbol: string }) {
       }}
       // Styled as the footnote link it is. A button element is used only because the destination is
       // computed at the moment of the click; it must not LOOK like a call to action, and it does not.
-      className="font-ui text-2xs text-ink-2 underline underline-offset-2 hover:text-accent"
+      // `inline`, not the button default of inline-block: it sits in running text beside the Learn
+      // link, and it is sized by its line like any other footnote link (the touch sweep's WCAG
+      // inline exception). It must not look — or measure — like a call to action.
+      className="inline text-ink-2 underline underline-offset-2 hover:text-accent"
     >
       {copy.paper.practiceDoorway}
     </button>
