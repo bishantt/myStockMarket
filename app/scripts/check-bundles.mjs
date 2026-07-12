@@ -71,7 +71,12 @@ const BASELINE_KB = {
   "/paper": 184.2,
   "/scans": 180.8,
   "/settings": 181.7,
-  "/styleguide": 163.0,
+  // Rebaselined at F2: 163.0 → 173.3. The styleguide is the LIVING SPEC — its job is to render one
+  // of everything, so it necessarily grows whenever the design system does, and section 9 added the
+  // whole kit (the table, the disclosure, the form controls) to it. It is not a product room; no
+  // reader ever loads it on a phone. Growth here is the page working, not a regression — but it is
+  // still baselined, so a surprise 40KB would still be caught.
+  "/styleguide": 173.3,
   "/ticker/[symbol]": 143.1,
   "/track-record": 179.7,
 };

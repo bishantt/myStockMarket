@@ -1,6 +1,7 @@
 import { AppWash } from "@/components/AppWash";
 import { BaseRate } from "@/components/BaseRate";
 import { SectionMasthead } from "@/components/SectionMasthead";
+import { KitSpecimens } from "./KitSpecimens";
 import { StatFigure } from "@/components/StatFigure";
 import { RangeBands } from "@/components/ticker/RangeBands";
 import { Surface } from "@/components/Surface";
@@ -51,6 +52,7 @@ export default function StyleguidePage() {
           <Controls />
           <Figures />
           <MotionSpec />
+          <Kit />
           <CopyDeck />
         </div>
       </div>
@@ -606,6 +608,26 @@ function CopyDeck() {
         Rendered at a frozen instant so the visual-regression baseline is stable:{" "}
         {FROZEN_INSTANT.toISOString()}
       </p>
+    </Section>
+  );
+}
+
+/**
+ * 9 — The kit (APP-FEEL-PLAN Part 3). The primitives that turned the receipt into rooms.
+ *
+ * Every specimen here is deterministic, which is the point: this section is the VRT anchor for the
+ * whole kit. Photographing a skeleton by racing a real page load would be a flaky test with extra
+ * steps; photographing one here is a pixel lock.
+ */
+function Kit() {
+  return (
+    <Section
+      id="kit"
+      index={9}
+      title="Tables & disclosure"
+      intro="The six primitives the app-feel plan added, and the rulings they carry. A table states the order it is in and never calls it 'top'. A disclosure says how much it is hiding and as of when. A shelf moves only when the reader pushes it. A skeleton may stand for a container, never for a number: figure slots load as a still em-dash, and the chart reservation is still geometry — because a pulsing rectangle where a price is about to appear manufactures exactly the anticipation the stillness rule exists to forbid."
+    >
+      <KitSpecimens />
     </Section>
   );
 }

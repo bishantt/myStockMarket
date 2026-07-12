@@ -186,6 +186,30 @@ const RULES = [
       /export\s+const\s+dynamic\s*=\s*["']force-dynamic["']/.test(line) && !file.startsWith("app/api/"),
   },
   {
+    id: 15,
+    name: "M3 — nothing scrolls itself (no mandatory snap, no smooth scroll, no autoplay)",
+    // Ruling M3 draws its line at INITIATION. A reader pushing a shelf sideways is the reader moving
+    // the paper, and that is not "motion" in the sense P2 forbids — the page already scrolls
+    // vertically past every price and nobody reads that as the number moving. What is banned is the
+    // UI moving the paper BY ITSELF: an autoplaying rail, a programmatic smooth scroll, an
+    // auto-advance. `snap-mandatory` is here for a related reason — it fights iOS momentum and feels
+    // like the interface grabbing the wheel out of your hand. Proximity snapping cooperates with it.
+    skip: [],
+    match: (line) =>
+      /snap-mandatory|scroll-behavior\s*:\s*smooth|\bautoplay\b|auto-advance/i.test(line) &&
+      !/^\s*(\*|\/\/)/.test(line),
+  },
+  {
+    id: 16,
+    name: "one table, one set of ergonomics — <table> lives only in components/DataTable.tsx",
+    // A second hand-rolled table is a second set of sort affordances, a second pagination grammar,
+    // and a second chance to ship a leaderboard by accident. The track-record page still has its own
+    // and is skip-listed until F6 converts it; when it does, its entry here comes off and the rule
+    // closes for good.
+    skip: ["components/DataTable.tsx", "app/(desk)/track-record/page.tsx"],
+    match: (line) => /<table[\s>]/.test(line),
+  },
+  {
     id: 14,
     name: "PERF — internal links go through next/link, and nobody turns prefetch off",
     // A raw <a href="/..."> is a full document reload: the service worker re-runs, the fonts

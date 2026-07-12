@@ -305,8 +305,66 @@ body { font-family: var(--font-ui); font-size: var(--text-sm); line-height: var(
   .surface-bar, .surface-overlay { background: var(--color-surface-solid); }
 }
 
-.no-scrollbar { scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+/* `-webkit-overflow-scrolling: touch` used to sit here. It is ignored on modern iOS and has a long
+ * history of creating stray stacking contexts, so it went with the shelf work (APP-FEEL-PLAN §3.2). */
+.no-scrollbar { scrollbar-width: none; }
 .no-scrollbar::-webkit-scrollbar { display: none; }
+
+/*
+ * THE KIT (APP-FEEL-PLAN Part 3). Two class bodies live here rather than in Tailwind utilities
+ * because one of them is a gradient, and gradients live only in this sheet (drift rule 2).
+ *
+ * .shelf — a horizontal rail the READER pushes. Ruling M3: user scrolling is not motion. The page
+ * already scrolls vertically past every money figure and nobody has ever read that as the number
+ * moving; a shelf is the same gesture turned sideways. What is banned is motion with no initiating
+ * gesture — autoplay, auto-advance, programmatic scrollTo, `scroll-behavior: smooth`. The UI never
+ * moves the paper by itself. `proximity` snapping, never `mandatory`: mandatory fights iOS momentum
+ * and feels like the interface grabbing the wheel out of your hand (drift rule 15 greps for both).
+ *
+ * The `padding-inline` is load-bearing geometry, not spacing taste. Without it the mask below veils
+ * the FIRST card's left edge at rest, and the LAST card's right edge at full scroll — permanently.
+ * On the pulse shelf that last card holds a money figure, so it would sit under a translucency ramp
+ * forever. With 16px of padding, the resting first card and the fully-scrolled last card both sit
+ * inside the opaque band, and the fade only ever falls on the peeking NEXT card, which is the whole
+ * point of having it.
+ */
+.shelf {
+  display: flex;
+  gap: 12px;
+  overflow-x: auto;
+  scroll-snap-type: x proximity;
+  overscroll-behavior-x: contain;
+  padding-inline: 16px;
+  scroll-padding-inline: 16px;
+}
+
+/*
+ * .shelf-frame — the edge fade. The mask lives on the NON-SCROLLING wrapper, deliberately.
+ *
+ * WebKit has a long history of mis-compositing a mask applied to a scrolling box: stale frames
+ * during momentum, and the fade riding along with the content instead of staying put. There is no
+ * mask-image anywhere else in this tree to prove otherwise, so this is not a bet worth taking. The
+ * wrapper is pixel-identical in Chromium and removes the iOS gamble entirely. Do not "simplify"
+ * this onto .shelf.
+ */
+.shelf-frame {
+  mask-image: linear-gradient(90deg, transparent 0, black 16px, black calc(100% - 16px), transparent 100%);
+}
+
+/*
+ * Older WebKit ignores `list-style: none` on a summary and renders its own triangle beside our
+ * chevron. Tailwind's `list-none` handles every other engine; this handles that one.
+ */
+summary::-webkit-details-marker { display: none; }
+
+/*
+ * iOS keeps double-tap-to-zoom alive because this app rightly refuses `maximum-scale` (the
+ * accessibility stance in layout.tsx stands). But the kit's core gestures ARE literal double taps —
+ * tapping a sort header twice to flip its direction, hitting the stepper's + three times — and each
+ * of those would otherwise smart-zoom the page out from under the reader. `manipulation` disables
+ * the double-tap zoom on these controls only. Pinch zoom is untouched.
+ */
+.touch-manipulation { touch-action: manipulation; }
 
 :focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; }
 
@@ -318,6 +376,22 @@ body { font-family: var(--font-ui); font-size: var(--text-sm); line-height: var(
  */
 @keyframes route-fade { from { opacity: 0; } to { opacity: 1; } }
 .route-fade { animation: route-fade var(--duration-fade) var(--ease-quiet) both; }
+
+/*
+ * The DISCLOSURE content fade — deliberately NOT the route fade, even though the animation is
+ * identical, and the difference is the whole point.
+ *
+ * `.route-fade` is exempted by name from the P2 ancestor walk: it is the one sanctioned animation
+ * that may contain a probability visual, because it wraps the entire page and therefore moves
+ * nothing RELATIVE to anything else. A disclosure fade is a different animal — it wraps a subtree,
+ * and if that subtree holds a base rate then the base rate is fading in, which is a probability
+ * arriving, which is the exact thing P2 forbids.
+ *
+ * Reusing `.route-fade` here would have inherited an exemption this class has not earned, and the
+ * violation would have passed the guard silently. It has its own name so the walk can catch it, and
+ * `Disclosure`'s `fade` prop is opt-in so the safe path is also the lazy path.
+ */
+.content-fade { animation: route-fade var(--duration-fade) var(--ease-quiet) both; }
 
 /* The single quiet shimmer, for loading placeholders only — never on a probability or money
  * placeholder, which loads as text (§3.6). Low-contrast, slow, and reduced-motion-aware. */

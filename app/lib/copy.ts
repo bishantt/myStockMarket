@@ -102,6 +102,8 @@ export const copy = {
      */
     empty: "A quiet stretch — no scheduled catalysts in the next 14 days.",
     emptySub: "Curated from the full FRED release feed; the rest was noise.",
+    /** M8 (app-feel): the cut is named — the reader is told what they are seeing and through when. */
+    next: "Next {k} of {n} · through {date}",
   },
 
   brief: {
@@ -128,6 +130,8 @@ export const copy = {
   academy: {
     quote:
       "“The first step to understanding markets is understanding that no one fully understands markets.”",
+    /** Position, stated as a count — never a progress bar (P13: position over area). */
+    readCount: "{read} of {n} read",
   },
 
   palette: {
@@ -176,6 +180,82 @@ export const copy = {
   update: {
     /** The service worker's update prompt. Calm: a footer line, never a toast or a modal. */
     ready: "Updated — refresh when convenient.",
+  },
+
+  /**
+   * The app-feel additions (APP-FEEL-PLAN Appendix B). Same rule as everything above: these are
+   * not labels, they are the honesty rules in their final human form.
+   */
+  scans: {
+    /**
+     * Ruling M1, spoken. It is the sentence that separates a scan table from a leaderboard, and it
+     * has exactly one home: under the table, as the DataTable's footnote.
+     */
+    tableNote:
+      "Matches are filter hits, not forecasts. Sorting re-orders today’s matches; it never ranks tomorrow.",
+    /** The name of the pipeline's own order. Never "top", never "best". */
+    order: "scan order",
+    /** M8: a preview states its rule. Never "highlights", never an unlabelled slice. */
+    preview: "First {k} of {n} by scan order",
+    allMatches: "All {n} matches →",
+    /**
+     * The 500-row cap. It is an honest editorial as much as a limit: a filter that matches this
+     * many names out of ~6,000 has stopped filtering. Sorting is disabled above it, because sorting
+     * a silent subset would present "the biggest movers among the most salient" as "the biggest
+     * movers" — an unlabelled ranking, which is the exact species ruling M1 exists to kill.
+     */
+    cap: "Showing the first 500 of {n} by scan order — a filter matching this many names is closer to noise than a signal. Sorting is off above the cap.",
+    /** An empty scan is a result, not a shelf to apologise for. */
+    empty: "0 matches today — the filter ran and found nothing. That is information.",
+    lotteryChip: "lottery risk",
+  },
+
+  table: {
+    /** M6: position as words, never a progress bar (P13). */
+    page: "Page {p} of {t} · {n} rows",
+    sortHint: "Sort",
+  },
+
+  disclosure: {
+    /**
+     * M2's contract in one string: a collapsed summary must always say HOW MUCH it is hiding and
+     * as of WHEN. A disclosure that hides an unstated number of things is a disclosure that can
+     * hide a miss.
+     */
+    more: "+ {n} more · {context}",
+    calendar: "Full calendar",
+    movers: "All movers",
+    watchlist: "Full watchlist",
+    sources: "Per-provider detail",
+  },
+
+  pulse: {
+    /** M8, for the shelf: the reader is told what is off-screen and how to reach it. */
+    swipe: "5 figures — swipe",
+  },
+
+  journal: {
+    /** A collapsed journal still reports its state honestly — a zero is state, not an offer. */
+    savedNone: "none saved tonight",
+    savedOne: "1 saved tonight",
+  },
+
+  sources: {
+    allOk: "{n} sources · all reporting · ran {window}",
+  },
+
+  paper: {
+    /**
+     * The date is load-bearing, not decoration. A served bar can be days old around a holiday or a
+     * data gap, and "last close" without its date is an implicit freshness claim the reader cannot
+     * check. The disclaimer covers liveness; the date covers age. They are different lies to prevent.
+     */
+    lastClose: "Use last close ({date}) · {price} — a reference, not a quote",
+    /** M9: side has no default, so missing it is a plain validation message, not a nudge. */
+    sideRequired: "Choose buy or sell.",
+    /** Ruling M10: mechanical, practice-framed, and never styled as a button. */
+    practiceDoorway: "Practice on paper →",
+    closedTrades: "Closed trades",
   },
 } as const;
 

@@ -5,6 +5,9 @@ import { StatFigure } from "@/components/StatFigure";
 import { SetupCards } from "@/components/desk/SetupCards";
 import type { SetupCardView } from "@/components/desk/SetupCards";
 import type { BaseRateData } from "@/lib/baserate";
+import { DataTable } from "@/components/DataTable";
+import { Disclosure } from "@/components/Disclosure";
+import type { Column } from "@/lib/table";
 
 /**
  * p2-motion.test.tsx — the structural enforcement of the app's hardest visual rule.
@@ -36,7 +39,7 @@ const SANCTIONED_ANIMATION = "route-fade";
 
 /** Tailwind utilities that would move, morph, or fade a subtree. */
 const MOTION_CLASS =
-  /^(transition|animate-|duration-|motion-safe:|group-hover:scale|hover:scale|hover:-translate|translate-|scale-|rotate-|skew-)/;
+  /^(transition|animate-|duration-|motion-safe:|group-hover:scale|hover:scale|hover:-translate|translate-|scale-|rotate-|skew-|content-fade$)/;
 
 /**
  * Walk from a node to the document root, collecting any ancestor that would move it.
@@ -154,5 +157,71 @@ describe("probability and money visuals never move (P2)", () => {
       </div>,
     );
     expectNothingMoves(container);
+  });
+});
+
+/**
+ * THE KIT (APP-FEEL-PLAN F2). The new primitives are dragged through the same walk, and two of these
+ * are NEGATIVE CONTROLS — they prove the guard can still fail. A guard that silently stopped matching
+ * would pass forever, and this codebase has been bitten by exactly that once already (the VRT shot
+ * that tested nothing).
+ */
+describe("the kit does not move the numbers it carries", () => {
+  const columns: Column<{ symbol: string; ret: number }>[] = [
+    { key: "symbol", header: "Symbol", kind: "mono", priority: 1, value: (r) => r.symbol },
+    { key: "ret", header: "1-day move", kind: "signedPercent", priority: 1, value: (r) => r.ret },
+  ];
+  const rows = [{ symbol: "SMCI", ret: 0.184 }];
+
+  it("a DataTable's delta chips have no moving ancestor", () => {
+    const { container } = render(
+      <DataTable
+        columns={columns}
+        rows={rows}
+        defaultSort={{ key: "symbol", dir: "asc" }}
+        rowKey={(r) => r.symbol}
+        ariaLabel="matches"
+      />,
+    );
+    // The chips must actually be marked, or this test is asserting nothing at all.
+    expect(container.querySelectorAll("[data-p2]").length).toBeGreaterThan(0);
+    expectNothingMoves(container);
+  });
+
+  it("a Disclosure over a money figure reveals it INSTANTLY, with no fade", () => {
+    const { container } = render(
+      <Disclosure label="All movers" count={3} context="by rank" defaultOpen>
+        <StatFigure label="Last close" value="$41.20" scale="body" />
+      </Disclosure>,
+    );
+    expectNothingMoves(container);
+  });
+
+  // ---- Negative controls: the guard must BITE ------------------------------------------------
+
+  it("NEGATIVE CONTROL — a table row given the movers' hover motion FAILS the walk", () => {
+    // This is the exact shortcut a hurried consumer takes: copy the movers row's hover treatment,
+    // which is `transition-colors duration-...`, onto a table row. The movers row gets away with it
+    // only because its delta chips are unmarked. The kit marks them, so the same classes over the
+    // same chips are now a violation — and the walk has to say so.
+    const { container } = render(
+      <div className="transition-colors duration-(--duration-quick)">
+        <span data-p2="true">+18.40%</span>
+      </div>,
+    );
+    const offenders = movingAncestorsOf(container.querySelector("[data-p2]")!);
+    expect(offenders.length).toBeGreaterThan(0);
+  });
+
+  it("NEGATIVE CONTROL — a faded Disclosure over a base rate FAILS the walk", () => {
+    // `fade` is opt-in for exactly this reason: switched on over a P2 subtree it animates the
+    // arrival of a probability, and the default (instant) is what keeps the safe path the lazy path.
+    const { container } = render(
+      <Disclosure label="Evidence" count={1} fade defaultOpen>
+        <span data-p2="true">55%</span>
+      </Disclosure>,
+    );
+    const offenders = movingAncestorsOf(container.querySelector("[data-p2]")!);
+    expect(offenders, "a fade over a data-p2 subtree must be caught").not.toHaveLength(0);
   });
 });
