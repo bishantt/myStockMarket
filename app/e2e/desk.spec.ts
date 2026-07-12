@@ -194,8 +194,13 @@ test.describe("The Desk, chunked", () => {
     await page.goto("/");
     const scorecard = page.getByRole("region", { name: "Evening scorecard" });
 
-    // Collapsed, it reports its state honestly — a zero is a state, not an offer of more (M2).
-    await expect(scorecard.getByText("none saved tonight")).toBeVisible();
+    // Collapsed, it REPORTS ITS STATE — which is the whole of M2's count contract. Either wording is
+    // correct; what may never happen is a disclosure that hides an unstated number of things.
+    //
+    // The number is deliberately not pinned: briefing.spec writes a journal entry, and it runs before
+    // this file, so tonight's count is 1 there and 0 in isolation. Asserting "none saved tonight"
+    // would be asserting the test ORDER, not the product.
+    await expect(scorecard.getByText(/(none|1) saved tonight/)).toBeVisible();
 
     // And it is exactly one tap to write.
     await scorecard.getByText(/What did today/).first().click();
