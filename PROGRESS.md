@@ -1,36 +1,47 @@
 # PROGRESS.md — resumable state
 
-**STANDING DIRECTIVE (user, 2026-07-11):** run the whole plan to completion autonomously — no
-pausing at phase boundaries, roll straight into the next phase. Only stop on a genuine unworkable
-blocker; otherwise write the question to QUESTIONS-FOR-BISHANT.md, assume, mark it, and keep going.
-Now in CLAUDE.md ("Autonomy"). P3's five-night gate is observed in parallel; P4+ proceed regardless.
+**UI REDESIGN COMPLETE (2026-07-12) — R0 through R6 shipped, tagged `redesign-final`.**
+The app is now "Morning Broadsheet": an editorial serif over mono numerals, one lavender
+morning-light wash across both rooms, glass cards on the Desk and solid paper in the Academy, one
+theme at a time (Morning or Midnight) governing every route. Every honesty rule in the plan's Part 2
+ledger survived, and several got teeth they did not have before.
 
-**UI REDESIGN PLAN AUTHORED (2026-07-11, post-P6) — the four gate decisions were ANSWERED by
-the user on 2026-07-12 and folded into the plan: ONE theme app-wide (Academy-stays-light
-repealed — dark themes everything; inline pre-paint stamping on `<html>`, never a root-layout
-cookie read), bottom tab bar on phones, keep the name + adopt the gradient mark, one unified
-lavender palette (Academy identity is structural, not chromatic). NOTHING IS BLOCKED — the
-next session starts the build at R0 (the two content bugs, before any styling).** The user directed a deliberate aesthetic amendment ("Morning Broadsheet", from a
-Figma Make export in `FigmaDesignRef/`): gradients, glass, soft elevation, rounded cards, colored
-chips, and general UI motion are now allowed; every honesty rule is preserved verbatim (no point
-predictions, no motion on probability/money visuals + a new no-animated-ancestor rule, N+CI,
-misses-first, no gamification, colorblind-safe redundant deltas, amber's two consumers). What
-exists now:
-- **UI-REDESIGN-PLAN.md** (repo root; typeset copy docs/UI-Redesign-Plan.pdf from
-  docs/src/ui-redesign-plan.html) — the design authority for looks. Self-driving: full token
-  sheet (Appendix A, paste-ready incl. Midnight Desk + warm Academy columns), component + page
-  specs, TWO P0 content-bug fixes (Macro Pulse ETF-mislabeled-as-index → FRED true levels;
-  Session Calendar FRED-firehose → 7-release allowlist), mobile/PWA contract (bottom tab bar,
-  safe areas, iOS keyboard/z-ladder/theme-color fixes), phases R0–R6 with gates, and a new
-  Playwright visual-regression suite. Revised after a four-lens adversarial review (stall /
-  honesty / mobile / traced-vs-designed) — ~60 findings integrated.
-- **Constitution amended in five coordinated places** (no doc contradicts another): CLAUDE.md
-  (one-liner, non-negotiables digest, authority line), DEVELOPMENT-PLAN.md §3 via dp-02/dp-06
-  sources + regeneration, RR §9.7 via rr-04.html + combined (dated amendment callouts, honesty
-  clauses untouched), both PDFs re-rendered. DECISIONS.md carries the superseding entry.
-- **D1–D4 RESOLVED (2026-07-12, recorded in plan Part 0 + DECISIONS.md + QUESTIONS):** one
-  theme app-wide · bottom tab bar · keep name + gradient mark · unified lavender. The build
-  starts at R0.
+**The two content bugs are dead (R0), and they mattered more than any of the styling.**
+- The Macro Pulse printed the SPY ETF's price under the label "S&P 500" — the Desk's hero numeral
+  read ~755 while the index sat near 6,800. It now reads true index levels from FRED (SP500,
+  NASDAQCOM, DJIA), and where no free index series exists (the Russell 2000) the slot shows an ETF
+  and SAYS so, with a chip. A unit test locks the coupling: a slot may claim an index name ONLY when
+  its number came from the index series. There is no third path.
+- The Session Calendar ingested every FRED release in the window — Coinbase Cryptocurrencies,
+  Commercial Paper, daily Treasury quotes. A seven-release allowlist now filters at the write path.
+  On the recorded FRED window: 40 rows in, 3 real catalysts out.
+
+**What the redesign added to the honesty layer, beyond keeping it:**
+- The proportion bar and the dot array moved INSIDE BaseRate. They ARE base-rate displays, so the
+  N-gate, the interval, the baseline and the WEAK cap now travel with them. The collapsed setup card
+  carries `n=108` and nothing else numeric.
+- The Range Ladder replaced the fan-cone that was never built. Discrete horizon rows on a
+  signed-return axis, twenty countable quantile dots per row, no 50th-percentile mark of any kind,
+  and nothing joining the rows. Two locks: the geometry function cannot RETURN a median or a
+  connector, and a DOM test counts the elements.
+- `data-p2` + a jsdom ancestor walk: probability visuals never move, and no ancestor may move them
+  either. That rule was unenforceable before the redesign allowed general UI motion; it is enforced
+  now, structurally, with a negative control proving the guard can fail.
+- The vol_band table gained `n` and `window_days`. A range without its sample size is an assertion,
+  so a band that lacks them does not render at all.
+
+**Gate status at `redesign-final`:** app typecheck/lint/291 unit tests · pipeline 214 pytest ·
+100 e2e (incl. the touch-target sweep across every route, the iOS keyboard rule, and the one-theme
+assertions) · 40 VRT baselines · anti-drift 11/11 · Lighthouse on the deployed app: **performance 93,
+accessibility 100, CLS 0.000, first-load JS 128KB**. LCP 3.09s remains above its 2.5s target and
+remains ADVISORY (synthetic-4G lab artifact, user-accepted 2026-07-11).
+
+**One thing worth knowing before you touch performance:** the plan's fallback ladder (strip card
+translucency, then the orbs) was NOT taken, and should not be. Measured: Total Blocking Time 20ms —
+the glass costs nothing. The LCP was ten font files at 429KB. Cutting two font weights took
+performance from 86 to 93 with the design intact. Measure before you cut.
+
+---
 
 **P4 COMPLETE — tagged `phase-4` (2026-07-11). CI-green on the tag: app (typecheck/lint/120 unit/
 build), pipeline (190 pytest incl. the P4 DB tests), and the full e2e + PWA gate (journeys 1–4

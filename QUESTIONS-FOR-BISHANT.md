@@ -110,3 +110,27 @@ constitution docs, and the PDFs are reconciled to the answers. Nothing here is o
   lands. The FRED release *ids* recorded beside each entry are documentation only — nothing
   matches on them, so a stale id cannot silently drop a real CPI print.
   **When the FRED key lands**, I will run the one-time verification and report.
+
+---
+
+## After the redesign (2026-07-12) — three things for you
+
+- **[FYI] The live calendar will still show noise until the next pipeline run.** The allowlist
+  filters at the WRITE path, which is the right place — but the rows already in your database were
+  written by the old ingest, so the Desk's calendar keeps showing "Coinbase Cryptocurrencies" until
+  Job A next runs and replaces the forward calendar. Nothing to do; it cleans itself.
+
+- **[FYI] Same for the Range Ladder on the ticker page.** The vol_band rows in your database predate
+  the new `n` / `window_days` columns, and a band without its sample size does not render at all
+  (deliberately — a range without its N is an assertion). So the ladder is currently invisible on
+  /ticker/[symbol] and will appear after the next nightly run. You can see it now on /styleguide,
+  which renders it on fixture data.
+
+- **[NEED, low stakes] LCP is 3.09s against a 2.5s target, and it is the last thing not green.**
+  Every other budget passes and passes well (performance 93, accessibility 100, CLS 0.000, first-load
+  JS 128KB). LCP has been advisory since 2026-07-11 by your own call — it is a synthetic cold-4G lab
+  artifact, and real TTFB is ~100ms. I cut two font weights at R6 and took it from 3.97s to 3.09s.
+  **Getting under 2.5s from here means dropping a font family**, most plausibly Newsreader (the
+  Academy's reading serif) — and I do not think that trade is worth it, because the Academy being a
+  genuine reading room is a large part of what makes the two-room split work. Tell me if you disagree
+  and I will do it.
