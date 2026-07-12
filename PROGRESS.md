@@ -30,11 +30,23 @@ ledger survived, and several got teeth they did not have before.
 - The vol_band table gained `n` and `window_days`. A range without its sample size is an assertion,
   so a band that lacks them does not render at all.
 
-**Gate status at `redesign-final`:** app typecheck/lint/291 unit tests · pipeline 214 pytest ·
-100 e2e (incl. the touch-target sweep across every route, the iOS keyboard rule, and the one-theme
-assertions) · 40 VRT baselines · anti-drift 11/11 · Lighthouse on the deployed app: **performance 93,
-accessibility 100, CLS 0.000, first-load JS 128KB**. LCP 3.09s remains above its 2.5s target and
-remains ADVISORY (synthetic-4G lab artifact, user-accepted 2026-07-11).
+**Gate status at `redesign-final`: CI GREEN on the tag, all three jobs.**
+- app — typecheck, lint, **291 unit tests**, build
+- pipeline — **233 pytest** (the DB integration tests run here; 19 of them skip locally for want of
+  a throwaway Postgres, which is why the tag gate is the only place the full suite is real)
+- e2e + VRT + PWA — **173 passed**, including the 40 visual baselines, the touch-target sweep across
+  every route, the iOS keyboard rule, the seeded-Desk honesty locks, and the PWA/offline assertions
+- anti-drift 11/11 · Lighthouse on the deployed app: **performance 93, accessibility 100,
+  CLS 0.000, first-load JS 128KB**
+
+LCP 3.09s remains above its 2.5s target and remains ADVISORY (synthetic-4G lab artifact,
+user-accepted 2026-07-11). It is the only budget not green, and QUESTIONS-FOR-BISHANT.md says what
+it would cost to fix.
+
+**The tag gate earned its keep.** It caught seven failures that no local run could have found,
+because they all needed the seeded Postgres that only CI has: a watchlist row that had silently lost
+its price in the restyle, a mover's source link that was a 15px touch target, and the setup cards'
+14px checkboxes. Three of those were real product regressions, not stale assertions.
 
 **One thing worth knowing before you touch performance:** the plan's fallback ladder (strip card
 translucency, then the orbs) was NOT taken, and should not be. Measured: Total Blocking Time 20ms —
