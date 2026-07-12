@@ -50,7 +50,10 @@ test.describe("Drill & return", () => {
     await openFull.click({ force: true });
 
     await expect(page).toHaveURL(/\/ticker\/AAPL$/);
-    await expect(page.getByRole("heading", { name: "AAPL" })).toBeVisible();
+    // The page is headed by the company NAME, with the symbol above it as a mono eyebrow (§5.5) —
+    // a page about Apple should say "Apple", not only "AAPL". Both are on the page.
+    await expect(page.getByRole("heading", { name: /Apple/ })).toBeVisible();
+    await expect(page.getByText("AAPL", { exact: true })).toBeVisible();
     // The candles render from price_bar — the chart canvas mounts.
     await expect(page.getByRole("img", { name: "Price chart" })).toBeVisible();
 
@@ -61,7 +64,7 @@ test.describe("Drill & return", () => {
   test("a name with no served bars shows an honest no-chart note, not a blank grid", async ({ page }) => {
     // SMCI is a seeded mover (in scan_result) but not served (no price_bar rows).
     await page.goto("/ticker/SMCI");
-    await expect(page.getByRole("heading", { name: "SMCI" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: /Super Micro/ })).toBeVisible();
     await expect(page.getByText(/No chart data/)).toBeVisible();
   });
 });

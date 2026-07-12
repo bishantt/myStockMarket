@@ -95,9 +95,10 @@ test.describe("Desk — the seeded morning", () => {
     await expect(calendar.getByText(/cons\./)).toHaveCount(0);
 
     // The market-wide catalysts, each marked with the word "high" beside an ink dot.
-    await expect(calendar.getByText("CPI")).toBeVisible();
-    await expect(calendar.getByText("FOMC")).toBeVisible();
-    await expect(calendar.getByText("JOBS")).toBeVisible();
+    // Exact: the chip says "FOMC" and the title says "FOMC decision", and both should.
+    await expect(calendar.getByText("CPI", { exact: true })).toBeVisible();
+    await expect(calendar.getByText("FOMC", { exact: true })).toBeVisible();
+    await expect(calendar.getByText("JOBS", { exact: true })).toBeVisible();
     await expect(calendar.getByText("high").first()).toBeVisible();
 
     // And the firehose the allowlist exists to stop: none of FRED's daily non-catalyst releases

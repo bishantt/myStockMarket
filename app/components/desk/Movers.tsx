@@ -101,7 +101,7 @@ export function Movers({ asOf, movers }: { asOf: Date; movers: Mover[] }) {
                       <span className="min-w-0 flex-1 font-ui text-2xs text-ink-2 sm:truncate" title={m.catalyst.headline}>
                         {m.catalyst.headline}
                       </span>
-                      <ExternalLink href={m.catalyst.url} className="shrink-0 font-ui text-2xs text-accent-deep">
+                      <ExternalLink href={m.catalyst.url} className="flex min-h-11 shrink-0 items-center font-ui text-2xs text-accent-deep md:min-h-0">
                         {m.catalyst.source}
                       </ExternalLink>
                     </>
