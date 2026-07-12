@@ -63,6 +63,12 @@ test.describe("Daily brief — the seeded evening briefing", () => {
     // phone e2e concerns are auth/PWA/offline/back-gesture, not this bottom-of-page write.
     test.skip(testInfo.project.name === "phone", "journal write covered on desktop; phone writes via settings.spec");
     const scorecard = page.getByRole("region", { name: "Evening scorecard" });
+
+    // Since F5 the journal folds behind one labelled tap, and the summary row IS the prompt. That
+    // tap is the reader's, so the test makes it too — the friction to write is unchanged (one tap,
+    // which is what it took to scroll to the bottom of the page anyway).
+    await scorecard.getByText(/What did today/).click();
+
     const entry = scorecard.getByRole("textbox");
     await entry.fill("I waited for confirmation instead of chasing the open.");
     const save = scorecard.getByRole("button", { name: "Save entry" });
