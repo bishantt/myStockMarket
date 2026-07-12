@@ -10,24 +10,20 @@ Format: newest first. I mark each as [FYI], [VETO?], or [NEED] so you can scan.
 
 ## 2026-07-11 — UI redesign plan ("Morning Broadsheet")
 
-These four are the ONLY blocking items in the redesign plan (UI-REDESIGN-PLAN.md Part 0). The
-plan is written assuming the recommendations, so "all as recommended" is a complete answer.
-Everything else is decided and logged (plan Appendix E + DECISIONS.md).
+The four blocking items below were **all answered on 2026-07-12**; the plan (Part 0), the
+constitution docs, and the PDFs are reconciled to the answers. Nothing here is open.
 
-- **[NEED] D1 — Dark Desk.** Keep dark mode, re-skinned to the new palette ("Midnight Desk",
-  Desk-only as today)? **Recommended: keep.** Dropping it deletes a working P6 feature; keeping
-  it doubles the Desk visual-regression matrix.
-- **[NEED] D2 — Mobile navigation.** On phones, move the five rooms into a bottom tab bar
-  (Settings → gear in the top bar), keeping the restrained top bar on desktop? **Recommended:
-  bottom tab bar.** Plan B (improved top scroll-strip) is specced in §4.2 if you'd rather keep
-  everything up top.
-- **[NEED] D3 — Wordmark.** Keep the name "myStockMarket" and adopt the Figma's gradient
-  logomark tile, or rename to the Figma's "Market Desk"? **Recommended: keep the name, adopt
-  the mark.** A rename touches nav, login, manifest, PWA icons, docs.
-- **[NEED] D4 — The two rooms.** Keep the warm-Academy/cool-Desk contrast (translated into the
-  new system: lavender glass Desk, warm solid-paper Academy), or unify both rooms on the
-  Figma's single lavender look? **Recommended: keep two rooms.** The felt room-switch is a
-  product idea the Academy and the Dark-Desk-only rule were built around.
+- **[RESOLVED 2026-07-12] D1 — Theme.** User chose neither offered option: **one theme
+  app-wide** — dark means the ENTIRE app is dark (Academy included), light means all light,
+  one setting. The "Academy stays light / dark is Desk-only" rule is repealed (docs amended
+  with dated notes; supersedes the RR §9.7 positive-polarity rationale). Rooms stay distinct
+  via structure/type/spacing within the active theme.
+- **[RESOLVED 2026-07-12] D2 — Mobile navigation.** Bottom tab bar, as recommended.
+- **[RESOLVED 2026-07-12] D3 — Wordmark.** Keep "myStockMarket" + adopt the gradient mark, as
+  recommended.
+- **[RESOLVED 2026-07-12] D4 — Rooms.** **Unify on lavender** — one palette everywhere; the
+  Academy's identity is structural (solid cards, serif kickers, reading typography), never
+  chromatic.
 
 - **[FYI]** The aesthetic constitution was amended today per your directive: CLAUDE.md, plan §3
   (via dp-*.html + regeneration), and RR §9.7 (dated amendment callout) now all agree with

@@ -5,8 +5,12 @@ pausing at phase boundaries, roll straight into the next phase. Only stop on a g
 blocker; otherwise write the question to QUESTIONS-FOR-BISHANT.md, assume, mark it, and keep going.
 Now in CLAUDE.md ("Autonomy"). P3's five-night gate is observed in parallel; P4+ proceed regardless.
 
-**UI REDESIGN PLAN AUTHORED (2026-07-11, post-P6) — awaiting four user decisions before the
-build starts.** The user directed a deliberate aesthetic amendment ("Morning Broadsheet", from a
+**UI REDESIGN PLAN AUTHORED (2026-07-11, post-P6) — the four gate decisions were ANSWERED by
+the user on 2026-07-12 and folded into the plan: ONE theme app-wide (Academy-stays-light
+repealed — dark themes everything; inline pre-paint stamping on `<html>`, never a root-layout
+cookie read), bottom tab bar on phones, keep the name + adopt the gradient mark, one unified
+lavender palette (Academy identity is structural, not chromatic). NOTHING IS BLOCKED — the
+next session starts the build at R0 (the two content bugs, before any styling).** The user directed a deliberate aesthetic amendment ("Morning Broadsheet", from a
 Figma Make export in `FigmaDesignRef/`): gradients, glass, soft elevation, rounded cards, colored
 chips, and general UI motion are now allowed; every honesty rule is preserved verbatim (no point
 predictions, no motion on probability/money visuals + a new no-animated-ancestor rule, N+CI,
@@ -24,9 +28,9 @@ exists now:
   (one-liner, non-negotiables digest, authority line), DEVELOPMENT-PLAN.md §3 via dp-02/dp-06
   sources + regeneration, RR §9.7 via rr-04.html + combined (dated amendment callouts, honesty
   clauses untouched), both PDFs re-rendered. DECISIONS.md carries the superseding entry.
-- **BLOCKED ON:** D1–D4 in QUESTIONS-FOR-BISHANT.md (dark desk / mobile nav / wordmark / two
-  rooms) — plan Part 0. The build (R0 first: the two content bugs, before any styling) starts on
-  the user's answer; "all as recommended" suffices.
+- **D1–D4 RESOLVED (2026-07-12, recorded in plan Part 0 + DECISIONS.md + QUESTIONS):** one
+  theme app-wide · bottom tab bar · keep name + gradient mark · unified lavender. The build
+  starts at R0.
 
 **P4 COMPLETE — tagged `phase-4` (2026-07-11). CI-green on the tag: app (typecheck/lint/120 unit/
 build), pipeline (190 pytest incl. the P4 DB tests), and the full e2e + PWA gate (journeys 1–4

@@ -64,11 +64,13 @@ End: update PROGRESS.md → log DECISIONS/LESSONS ([claude]-marked) → push.
 Phase exit: plan §6.4 gate → tag.
 
 ## Design one-liner
-“Morning Broadsheet” (amended 2026-07-11; supersedes “Broadsheet Terminal”): editorial serif
-over mono numerals, lavender morning-light wash, glass cards with soft depth, hairlines inside
-cards, one hero figure, two rooms (cool lavender Desk / warm cream Academy). Color is scarce
-and always means something. If it could be a template — austere OR glossy — it is wrong.
-Spec: UI-REDESIGN-PLAN.md Part 3 · checklist: its §3.10 v2 (replaces plan §3.10 greps).
+“Morning Broadsheet” (amended 2026-07-11/12; supersedes “Broadsheet Terminal”): editorial
+serif over mono numerals, ONE lavender morning-light wash across the whole app, glass cards
+with soft depth, hairlines inside cards, one hero figure. One theme at a time — light
+“Morning” or dark “Midnight” — governs every room including the Academy (the Academy-stays-
+light rule was repealed by the user, 2026-07-12); rooms differ by structure and pace, never
+by palette. Color is scarce and always means something. If it could be a template — austere
+OR glossy — it is wrong. Spec: UI-REDESIGN-PLAN.md Part 3 · checklist: its §3.10 v2.
 
 ## Timing (user lives on market time)
 User: Long Island, NY — America/New_York, observes DST. Crons UTC-fixed (DST-proof):

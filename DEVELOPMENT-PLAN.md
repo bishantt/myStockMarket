@@ -180,7 +180,7 @@ Part 3
 
 ### 3.1 The manifesto (read before styling anything)
 
-**This app is a financial broadsheet set by a typographer, not a SaaS dashboard.** Its ancestors are the print business page and the terminal screen: ink on paper, hairline rules, columns, dense tabular numerals, restrained color used only where it means something. Boldness comes from *scale contrast* (a 64px mono numeral against 13px labels), *editorial structure* (numbered section mastheads, 2px rules, asymmetric grids, generous margins), and *two distinct room tones* (the Desk cool and dense; the Academy warm and literary) — and, since the 2026-07-11 amendment, from morning-light gradients and soft glass depth used as material, never as noise. The design must pass one test: **if a screenshot could be mistaken for a default template — austere admin panel or glossy AI dashboard — it is wrong.**
+**This app is a financial broadsheet set by a typographer, not a SaaS dashboard.** Its ancestors are the print business page and the terminal screen: ink on paper, hairline rules, columns, dense tabular numerals, restrained color used only where it means something. Boldness comes from *scale contrast* (a 64px mono numeral against 13px labels), *editorial structure* (numbered section mastheads, 2px rules, asymmetric grids, generous margins), and *two structurally distinct rooms* (the Desk dense and instrumental; the Academy spacious and literary — since the 2026-07-12 amendment they share one palette and one theme, and differ by structure, not tone) — and, since the 2026-07-11 amendment, from morning-light gradients and soft glass depth used as material, never as noise. The design must pass one test: **if a screenshot could be mistaken for a default template — austere admin panel or glossy AI dashboard — it is wrong.**
 
 **Banned outright — amended 2026-07-11.** The original taste bans (gradients and glassmorphism; card shadows; radii above 2px; colored chips; purple; skeleton shimmer) are repealed; the amended aesthetic law is UI-REDESIGN-PLAN.md §2.1 and its §3.10 v2 greps replace the enforcement below. Still banned, because they were never taste: decorative icons and emoji; colored chips that carry no meaning (“confetti”); count-up number animations; default-shadcn visual identity (its Radix primitives may be used headless, its look may not); synthesized small-caps. **Required (unchanged):** uppercase mastheads with index numbers (“01 — MACRO PULSE”), mono numerals everywhere data appears, one hero figure per view maximum, whitespace treated as a material — hairlines now live inside cards rather than standing in for elevation.
 
@@ -957,10 +957,12 @@ End: update PROGRESS.md → log DECISIONS/LESSONS ([claude]-marked) → push.
 Phase exit: plan §6.4 gate → tag.
 
 ## Design one-liner
-“Morning Broadsheet” (amended 2026-07-11; supersedes “Broadsheet Terminal”): editorial serif
-over mono numerals, lavender morning-light wash, glass cards with soft depth, hairlines inside
-cards, one hero figure, two rooms (cool lavender Desk / warm cream Academy). If it could be a
-template — austere OR glossy — it is wrong. Spec: UI-REDESIGN-PLAN.md Part 3 · checklist §3.10 v2.
+“Morning Broadsheet” (amended 2026-07-11/12; supersedes “Broadsheet Terminal”): editorial serif
+over mono numerals, ONE lavender morning-light wash across the whole app, glass cards with soft
+depth, hairlines inside cards, one hero figure. One theme at a time — Morning or Midnight —
+governs every room incl. the Academy (Academy-stays-light repealed by the user, 2026-07-12);
+rooms differ by structure and pace, never by palette. If it could be a template — austere OR
+glossy — it is wrong. Spec: UI-REDESIGN-PLAN.md Part 3 · checklist §3.10 v2.
 ```
 
 Development Plan compiled July 2026 for executor Claude Opus 4.8; revised after a five-lens adversarial review (stall-hunter, hidden-global-decision, PWA, design-collision, blueprint-fidelity). Companions: *Research-Report.pdf* (evidence + product) and *Build-Blueprint.pdf* (architecture + roadmap). The markdown working copy at `DEVELOPMENT-PLAN.md` is generated from these sources — regenerate with `docs/src/build-plan-md.py` after edits.

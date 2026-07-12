@@ -1,5 +1,5 @@
-<!-- UI-REDESIGN-PLAN.md — authored 2026-07-11. Companion to DEVELOPMENT-PLAN.md.
-     The typeset version of this document is docs/UI-Redesign-Plan.pdf. -->
+<!-- UI-REDESIGN-PLAN.md — authored 2026-07-11, decisions resolved 2026-07-12.
+     Companion to DEVELOPMENT-PLAN.md. Typeset copy: docs/UI-Redesign-Plan.pdf. -->
 
 # UI REDESIGN PLAN — "Morning Broadsheet"
 
@@ -18,50 +18,46 @@ the Figma export > DEVELOPMENT-PLAN.md Part 3 (now amended) > judgment.
 
 ---
 
-## Part 0 — Decisions I need from you
+## Part 0 — The four global decisions (RESOLVED by the user, 2026-07-12)
 
-*Four choices ripple through everything. Each has a recommendation and the plan is written
-assuming the recommendation, so answering "all as recommended" costs you one sentence. Every
-other decision in this redesign is local; I made it and logged it in Appendix E.*
+*The plan paused on four rippling choices; the user answered all four. The answers below are
+binding; every section of this plan has been reconciled to them. Nothing here is open — the
+build starts at R0.*
 
-**D1 — Dark Desk: keep it, re-skinned. (Recommended: KEEP.)**
-The Figma is light-only, but the Dark Desk shipped in P6 and the toggle exists. I recommend
-keeping dark mode Desk-only and re-deriving it from the new palette ("Midnight Desk" — deep
-indigo-night glass, same geometry, dimmed orbs; full token column in Appendix A). Cost: every
-color token needs a dark twin and the visual-regression matrix doubles for Desk pages. The
-alternative — dropping dark mode — deletes a working P6 feature and its e2e coverage.
-**Ripples:** token sheet, VRT matrix, `lib/tokens.ts` status-bar colors, theme e2e.
+**D1 — Theme: ONE theme, app-wide. (User decision — supersedes both offered options.)**
+A single setting governs the entire app: dark means everything is dark — Desk, Academy, Track
+Record, Scans, Paper, Settings, login; light means everything is light. **The "Academy stays
+light" / "dark is Desk-only" rule is repealed** and the constitution amended accordingly
+(Part 2 A11) — this deliberately supersedes RR §9.7's long-form-reading (positive-polarity)
+rationale, by user directive. Dark mode itself survives, re-derived from the new palette
+("Midnight", §3.3), and the two rooms still feel distinct — through typography, spacing,
+density, and pace (§5.6), never through different palettes or themes. Mechanically: the
+`data-theme` attribute moves from the Desk shell to `<html>`, stamped by a **tiny inline
+pre-paint script in the root layout** that reads the existing theme cookie — NOT by a server
+cookie read, which would force every route dynamic and break the `force-static` login/offline
+pages the service worker precaches (§7.3). One token sheet themes every route, no flash.
 
-**D2 — Mobile navigation: bottom tab bar on phones. (Recommended: BOTTOM TAB BAR.)**
-You asked me to keep the top navigation and make its mobile collapse genuinely better. On
-desktop the top bar stays (restyled, same restraint). On phones I recommend moving the five
-rooms into a fixed glass bottom tab bar (Desk · Scans · Paper · Track · Academy — icons +
-labels, 44px+ targets, safe-area padded), with Settings behind a gear in the top bar. This is
-the standard PWA ergonomic answer: rooms live where thumbs are, nothing hides off-screen, and
-the top bar shrinks to brand + date + gear. The alternative (keep the top scroll-strip,
-add edge-fade + auto-centering of the active room) is specced in §4.2 as Plan B — it stays
-one-handed-hostile for the far rooms, which is why it is Plan B.
-**Ripples:** shell layout, e2e nav spec, safe-area work, VRT phone baselines.
+**D2 — Mobile navigation: bottom tab bar. (As recommended.)**
+Desktop keeps the restrained top bar. Phones move the five rooms into a fixed glass bottom tab
+bar (Desk · Scans · Paper · Track · Academy), Settings behind a gear in the top bar. Full spec
+including the iOS keyboard rule and the z-ladder: §4.2. Plan B (the improved top strip) stays
+in the document only as the record of the alternative.
 
-**D3 — Wordmark: keep the name, adopt the mark. (Recommended: KEEP "myStockMarket" + new mark.)**
-The Figma brands itself "Market Desk" with a 28px indigo-gradient "M" logomark. Renaming the
-product is your call, not mine. I recommend keeping the name and adopting the mark: gradient
-"M" tile + "myStockMarket" in tracked mono caps. If you prefer "Market Desk" (it reads better
-in the split-screen login), say so — it touches the nav, login, manifest, PWA icons, and copy.
-**Ripples:** nav, login, `manifest.ts`, PWA icon set, README/docs.
+**D3 — Wordmark: keep "myStockMarket", adopt the gradient mark. (As recommended.)**
+28px `--gradient-brand` "M" tile + "myStockMarket" in tracked mono caps; PWA icons regenerate
+from the mark (§7.3). No rename anywhere.
 
-**D4 — The two rooms: keep warm/cool contrast, translated. (Recommended: KEEP TWO ROOMS.)**
-The Figma paints one lavender world. Our constitution deliberately makes the Academy a
-different, warmer room so the switch from "reading data" to "learning" is felt. I recommend
-keeping that: Desk = cool lavender morning light (the Figma), Academy = warm cream light with
-rose-gold orbs, same glass grammar, same indigo interactive accents (links/focus never change
-meaning between rooms). Unifying on lavender everywhere is simpler but erases a product idea
-the Academy was built around (and the Dark-Desk-only rule leans on it).
-**Ripples:** Academy token column, academy layout, theme e2e, the design one-liner in CLAUDE.md.
+**D4 — One material world: unified lavender. (User decision.)**
+Both rooms live on the same wash, the same tokens, the same light. There is no warm-cream
+Academy palette and no room-scoped token remapping. The Academy's identity is **structural,
+not chromatic** (§5.6): solid paper cards instead of glass, serif kickers instead of terminal
+mastheads, reading typography, more whitespace. "Warmer and calmer" is achieved by type,
+spacing, and hierarchy inside whichever theme is active.
 
-> **How to answer:** a single message like "D1 keep, D2 bottom bar, D3 keep name, D4 two rooms"
-> (or just "all as recommended") unblocks the build. Vetoes change bounded, named sections:
-> D1→Appendix A dark column + §8 R1; D2→§4.2; D3→§4.2/§5.7; D4→§5.6 + Appendix A academy column.
+> **Interlock note:** D1+D4 together simplify the system — one token sheet, two theme columns
+> (light "Morning" / dark "Midnight"), zero room palettes. The Desk/Academy *separation*
+> (distinct shells, doorways, return rails) is a preserved honesty-adjacent product rule and
+> is untouched (Part 2 P10); only the palette split is gone.
 
 ---
 ## Part 1 — The design vision
@@ -131,10 +127,12 @@ survived the restyle. What changed is the **material and the light**:
 
 ### 1.4 The one-liner (replaces "Broadsheet Terminal" in CLAUDE.md)
 
-**"Morning Broadsheet":** editorial serif over mono numerals, morning-light lavender wash,
-glass cards with soft depth, hairlines inside cards, one hero figure, honesty furniture on
-every claim, two rooms (cool lavender Desk / warm cream Academy). Color is scarce and always
-means something. If it could be a template — austere *or* glossy — it is wrong.
+**"Morning Broadsheet":** editorial serif over mono numerals, one morning-light lavender wash
+across the whole app, glass cards with soft depth, hairlines inside cards, one hero figure,
+honesty furniture on every claim. One theme at a time — light "Morning" or dark "Midnight" —
+governs every room; the Desk and the Academy differ in structure and pace (instrument vs
+reading room), never in palette. Color is scarce and always means something. If it could be a
+template — austere *or* glossy — it is wrong.
 
 ---
 ## Part 2 — The constitution: what is amended, what is preserved, and why
@@ -157,7 +155,8 @@ executed with this plan (Part 10) — Opus never has to reconcile two constituti
 | A7 | "Data refreshes fade in over ~500ms" / calm-tech framing of §9.7 | `rr-04.html` §9.7 | Calm is preserved as **no urgency, no loops, no autoplay** — not as "no motion." Rewritten in the amendment note. |
 | A8 | Skeleton shimmer banned (plan §3.1) | same | A single quiet shimmer (1.6s, low-contrast, reduced-motion-aware) is allowed on loading placeholders. Never on probability/money placeholders — those load as text. |
 | A9 | "If it could be a default template, it is wrong" aimed at SaaS gloss | CLAUDE.md one-liner; plan §3.1 | Kept, but re-aimed at both failure modes: default-austere and default-glossy (§1.4). |
-| A10 | Dark values #131412 family ("dark bone") | `globals.css`, plan §3.3 dark column | Re-derived as "Midnight Desk" (deep indigo night), still Desk-only (D1/D4). |
+| A10 | Dark values #131412 family ("dark bone") | `globals.css`, plan §3.3 dark column | Re-derived as "Midnight" (deep indigo night), now app-wide per A11. |
+| A11 | **"Dark mode is Desk-only; the Academy stays light — long-form reading favors positive polarity"** (RR §9.7 last clause; DECISIONS 2026-07-11 P6 entry; `theme.spec.ts`) | `rr-04.html` §9.7; DECISIONS.md; e2e | **Repealed by user directive (2026-07-12, D1/D4): one theme governs the entire app** — dark means everything is dark, Academy included. This knowingly supersedes the positive-polarity reading rationale; the user chose a single coherent theme over it. Room distinction becomes structural (type, spacing, density — §5.6), never palette. `data-theme` moves to `<html>`; `theme.spec.ts` now asserts the Academy DOES theme. |
 
 ### 2.2 PRESERVED — honesty rules that survive unchanged (non-negotiable)
 
@@ -172,7 +171,7 @@ executed with this plan (Part 10) — Opus never has to reconcile two constituti
 | P7 | **Gain/loss is colorblind-safe and redundantly encoded.** A delta never relies on color alone. | plan §3.3; RR §9.7 | New pair #2563eb/#ea580c is colorblind-safe; triangles + signs + words remain mandatory. Hollow/filled candles kept. Dot arrays: filled hit vs **hollow** miss (shape channel added, §3.8). |
 | P8 | **Movers need a catalyst or the noise line.** | plan §1.5; `copy.mover.noNews` | Row anatomy keeps the catalyst zone; noise renders muted italic, never hidden. |
 | P9 | **LLM narrates, never computes; the verification gate blocks unverified numbers.** | plan Appendix E | Pure pipeline concern; untouched by the redesign. Amber gate flag keeps its reserved color (P11). |
-| P10 | **Desk/Academy separated, doorways + return rails; paper-first; login wall.** | plan §1.5; `proxy.ts` | Rooms keep separate shells and backgrounds (D4). Return rails restyle, never disappear. |
+| P10 | **Desk/Academy separated, doorways + return rails; paper-first; login wall.** | plan §1.5; `proxy.ts` | Rooms keep separate shells, routes, doorways, and return rails — the separation is navigational and structural. Per D1/D4 they now share one palette and one theme; the felt switch comes from material and typography (§5.6), not color temperature. |
 | P11 | **Amber is reserved.** Exactly two consumers: the verification-gate inline flag and the fired-signal watchlist marker. | plan §3.3 | Survives the colored-chip amendment: tier-moderate and grade-mixed get their **own** amber-adjacent hexes so no chip shares the alert token. Grep stays. |
 | P12 | **Mechanical voice; all copy from `copy.ts`; timestamps everywhere; numbers only via `BaseRate`/`format`.** | CLAUDE.md; plan §3.9 | New copy strings (Appendix B) follow the deck's voice. Every surface keeps its as-of stamp. |
 | P13 | **Position/length over angle/area** — no gauges, donuts, speedometers. | RR §9.7 last clause | Kept verbatim; it is an honesty-of-perception rule, not an austerity rule. |
@@ -277,21 +276,24 @@ mixed **`#0f766e`** (same reasoning — "middle of the evidence scale" reads con
 across both taxonomies), weak `#a13d22`, folklore `#b91c1c`. Rust/red sit outside the
 reserved amber–orange band's center and always carry their word.
 
-**Midnight Desk (D1).** Paper `#14121f`; wash `#14121f → #191627 → #151329`; surface glass
-`rgba(30,27,48,0.72)`; ink `#ece9f8`; ink-2 `#c3c0d6`; muted `#918ea6`; hairline
-`rgba(167,157,210,0.16)`; accent `#818cf8`, accent-deep(text) `#a5b4fc`; band `#8f86b8`; up
-`#60a5fa` / up-text `#93c5fd`; down `#fb923c` / down-text `#fdba74`; alert `#e0a83e` / wash
-`#3a2f14`; tier-moderate `#2dd4bf`-family (Appendix A); grade dots keep the P6 dark values
-except mixed → teal. Orb opacity halves. Shadows deepen (`rgba(0,0,0,0.45)`) and every glass
-surface gains a visible hairline (shadows barely read on dark; the border carries the edge).
+**Midnight (D1 — app-wide).** One dark column themes every route, the Academy included (the
+"Academy stays light" rule is repealed — Part 2 A11). Paper `#14121f`; wash `#14121f →
+#191627 → #151329`; surface glass `rgba(30,27,48,0.72)`; ink `#ece9f8`; ink-2 `#c3c0d6`;
+muted `#918ea6`; hairline `rgba(167,157,210,0.16)`; accent `#818cf8`, accent-deep(text)
+`#a5b4fc`; band `#8f86b8`; up `#60a5fa` / up-text `#93c5fd`; down `#fb923c` / down-text
+`#fdba74`; alert `#e0a83e` / wash `#3a2f14`; tier-moderate teal family; grade dots keep the
+P6 dark values except mixed → teal. Orb opacity halves. Shadows deepen (`rgba(0,0,0,0.45)`)
+and every glass surface gains a visible hairline (shadows barely read on dark; the border
+carries the edge). **Mechanism:** `data-theme` is stamped on `<html>` by the root layout from
+the theme cookie, pre-paint — the Desk-shell scoping from P6 is retired (§8 R2).
 
-**Warm Academy (D4).** Paper `#fbf6ee`; wash `#fbf6ee → #f8efdf → #faf3e8`; hairline
-`rgba(143,110,72,0.15)`; orbs rose `rgba(217,119,87,0.08)` + gold `rgba(217,164,65,0.07)`;
-surface **solid `#fffdf8`** — the Academy deliberately does NOT use glass (§5.6: it is a
-reading room, not a control surface). Ink/muted shared with Desk light. Interactive accents
-stay indigo. Module category hues (decorative only, §5.6): foundations dusk-blue `#4a5a8c`,
-structure sage `#5b7a4f`, patterns plum `#7a4a6b`, risk rose `#9c4460` — none in the
-amber–orange band, none equal to the accent.
+**The Academy on the shared palette (D4 — one material world).** No Academy tokens exist:
+both rooms read the same sheet in both themes. The room's identity is structural (§5.6) —
+its cards are **solid** (`--color-surface-solid`) instead of glass, its headers are serif
+kickers instead of terminal mastheads, its type is set for reading. Module category hues
+(decorative only, §5.6): foundations dusk-blue `#4a5a8c`, structure sage `#5b7a4f`, patterns
+plum `#7a4a6b`, risk rose `#9c4460`; dark twins `#8ba3e8` / `#93b587` / `#b98bb0` / `#d081a0`
+— none in the amber–orange band, none equal to the accent.
 
 **Contrast contract.** Every text token/surface pair above was hand-computed to ≥4.5:1 (or
 ≥3:1 for ≥21px figures). R1 adds a **contrast table to `/styleguide`** (computed live from
@@ -326,9 +328,10 @@ blur on phones. **iOS radius clipping:** Safari does not clip `backdrop-filter` 
 inner element with `overflow:hidden` (the `.surface-bar`/`.surface-overlay` recipes in
 Appendix A encode this shape). `prefers-reduced-transparency` falls back to solid surfaces
 **at every theme scope** — the override must be declared for `:root`, `[data-theme="dark"]`,
-`[data-theme="system"]`, and the Academy shell alike, because a custom property resolves at
-the nearest defining ancestor and a `:root`-only override loses to the theme blocks
-(Appendix A encodes this too).
+and `[data-theme="system"]` alike, because a custom property resolves at the nearest defining
+ancestor and a `:root`-only override loses to the theme blocks (Appendix A encodes this too;
+the Academy needs no extra scope — its surfaces are solid by design and it shares the one
+sheet).
 
 ### 3.5 Shape
 
@@ -499,11 +502,10 @@ panel). Migration is incremental: each phase converts the surfaces it touches; t
 leftover `border-hairline bg-surface` combos happens at R6, not before.
 
 **`components/AppWash.tsx`** — the L0 wash layer: `<div aria-hidden class="app-wash">` with
-two orb children. **Mounting rule (load-bearing):** the wash div must render *inside* the
-element that carries `data-theme` (and inside the Academy shell that remaps the room tokens),
-as the first child, with all content in a sibling `relative z-10` wrapper — a wash mounted
-outside the theme scope reads the light `--gradient-wash` forever. Room decides hue via the
-token scope it sits in; no props needed.
+two orb children. `data-theme` lives on `<html>` (D1), so the wash reads the active theme's
+`--gradient-wash` from anywhere in the body; mount it once per room layout as the first
+child, with all content in a sibling `relative z-10` wrapper. One wash, both rooms, both
+themes — no props.
 
 **`SectionMasthead` v2** — anatomy unchanged (index number · title · rule · timestamp).
 Restyle: title stays mono uppercase **in `--color-muted`** (the Figma's eyebrow voice —
@@ -575,8 +577,8 @@ if needed (the html-level overflow guard stays either way; log the outcome). Res
 accent-deep 150ms. Right cluster: market-state static dot (muted closed / ink open — status is
 not an affordance, §3.3) + its text label + mono date + **⌘K hint chip** (mono 2xs "⌘K" in a
 faint-bordered chip; click opens the palette) — hidden <md. The Academy top bar keeps its
-separate minimal shell restyled with the same recipes over the warm wash; **on phone (<md) it
-drops the "← Back to Desk" text link** (the bottom bar's Desk tab is the return path; two
+separate minimal shell restyled with the same recipes over the shared wash; **on phone (<md)
+it drops the "← Back to Desk" text link** (the bottom bar's Desk tab is the return path; two
 doorways on a 375px row is one too many) and keeps it ≥md.
 
 **Phone (<md), D2 recommended: bottom tab bar.** New `components/desk/TabBar.tsx`, mounted in
@@ -774,18 +776,20 @@ above the ladder, never hides it. Polish budget: perfect band-edge typography wi
 lines, its own `/styleguide` section, dedicated VRT shots both themes. The geometry is a pure
 function (TDD, R4); the SVG renders the computed geometry.
 
-### 5.6 Academy — a reading room, not a tinted dashboard (D4)
+### 5.6 Academy — a reading room, not a tinted dashboard (D1/D4)
 
-The room switch must be felt in the furniture, not just the wallpaper. Academy diverges from
-the Desk in four deliberate ways: **(1) solid warm paper cards** — `--color-academy-surface
-#fffdf8`, hairline border, NO glass, NO blur, NO shadow (a reading room is not a control
-surface; the Desk's material says "instrument", the Academy's says "book"); **(2) serif
-kickers instead of terminal mastheads** — module and section headers drop the numbered mono
-masthead for a Newsreader italic kicker over a hairline (the index numbers stay in the
-curriculum map where sequence matters, as plain mono prefixes); **(3) reading typography** —
-prose lh rises to 1.7, measure stays 65ch, lesson H1 in Playfair display; **(4) warm light** —
-cream wash + rose-gold orbs (§3.3). Interactive accents stay indigo everywhere (links mean
-one thing in both rooms).
+One palette, one theme, two rooms — so the room switch must be felt entirely in the
+furniture. The Academy shares the Desk's wash, tokens, and whichever theme is active (dark
+included — the "Academy stays light" rule is repealed, Part 2 A11), and diverges structurally
+in three deliberate ways: **(1) solid paper cards** — `--color-surface-solid`, hairline
+border, NO glass, NO blur, NO shadow (a reading room is not a control surface; the Desk's
+material says "instrument", the Academy's says "book" — in Midnight the same move reads as
+matte page vs glass panel); **(2) serif kickers instead of terminal mastheads** — module and
+section headers drop the numbered mono masthead for a Newsreader italic kicker over a
+hairline (the index numbers stay in the curriculum map where sequence matters, as plain mono
+prefixes); **(3) reading typography and pace** — prose lh rises to 1.7, measure stays 65ch,
+lesson H1 in Playfair display, section spacing a step more generous than the Desk's.
+Interactive accents stay indigo everywhere (links mean one thing in both rooms).
 
 **Home:** module groups as solid cards with a 4px category bar per module — **decorative
 only** (the module title beside it carries the information; the bar is never the sole
@@ -815,17 +819,19 @@ ladder protects, §3.1), the licensing/product explanation re-set in Inter on in
 the Templeton quote block (`copy.login.*` — mechanical voice, quote attributed). Right: the
 form at `max-w-[400px]` per §4.1 inputs (16px on touch), primary gradient submit "Open my
 desk →", the "personal tool, no advice" line kept. Phone: brand panel collapses to logomark +
-one headline above the form. Constraint honored: page stays `force-static` (SW precache) —
-all decoration is CSS, no images. `auth.spec.ts` assertions (wall text, error equality,
-cookie) unchanged.
+one headline above the form. The page themes with the app like every other route (D1): the
+brand gradient panel is already midnight-toned, and the form side sits on the active theme's
+paper. Constraint honored: page stays `force-static` (SW precache) — all decoration is CSS,
+no images; the theme lands via the root layout's inline pre-paint script (§7.3), which is
+static-safe — no server cookie read touches this page. `auth.spec.ts` assertions (wall text,
+error equality, cookie) unchanged.
 
 ### 5.8 Settings, Offline, Styleguide
 
 **Settings:** Surface cards per section; watchlist rows per §4.1. The theme control is
-labeled **"Desk theme"** — segmented pill (System / Light / Dark), active segment raised —
-with helper text stating its scope plainly: "Applies to the Desk. The Academy is always
-light." (D1/D4 made legible at the control, not in a doc). Same form posts, no client JS
-added. **Offline:** neutral Surface card + masthead, unchanged copy. **Styleguide:**
+labeled **"Theme"** — segmented pill (System / Light / Dark), active segment raised — and it
+governs the entire app (D1); helper text: "Applies everywhere — Morning or Midnight, one look
+at a time." Same form posts, no client JS added. **Offline:** neutral Surface card + masthead, unchanged copy. **Styleguide:**
 re-organized to the new system — tokens (with the live contrast table §3.3), surfaces, type
 specimens (all four families incl. the serif floor demo), chips/tags, buttons/inputs, chart
 specimens (range ladder, dotplot, dot array, proportion-in-BaseRate, calibration, sparkline),
@@ -1013,18 +1019,22 @@ one of the worst phone bugs found in review is iOS-specific and invisible to it.
   `#f9f8ff` (install-time frozen light value — unchanged policy; consequence stated: a
   Midnight-Desk user sees one light splash frame at cold launch. Accepted and documented —
   the alternative is per-theme install prompts we don't control).
-- **Status bar / theme-color — must follow the chosen theme, not the OS.** Today the Desk
-  layout keys `viewport.themeColor` on `prefers-color-scheme`, but the page theme comes from
-  the **cookie**; with the new high-contrast palettes any mismatch (OS light + Desk dark, or
-  the reverse) paints a glaring wrong-colored system strip. Fix in R2: the Desk layout
-  already reads the theme cookie server-side — when the cookie is `light` or `dark`, emit a
-  single explicit `themeColor` (`#f9f8ff` / `#14121f`); only when it is `system` keep the
-  `prefers-color-scheme` media pair. The Academy layout gains its own
-  `export const viewport = { themeColor: ACADEMY_BG }` (single value — the room has no dark
-  mode; today it silently inherits the Desk root's and can go dark over cream). `lib/tokens.ts`
-  constants: `DESK_BG "#f9f8ff"`, `DESK_BG_DARK "#14121f"`, `ACADEMY_BG "#fbf6ee"`. e2e:
-  with a `dark` cookie under an emulated light OS, the rendered `theme-color` meta equals
-  `DESK_BG_DARK`; the Academy route reports `ACADEMY_BG` under both OS schemes.
+- **The one-theme mechanism (D1) — inline pre-paint stamping.** The theme is app-wide, so
+  `data-theme` moves to `<html>` — but the root layout must NOT read the cookie server-side:
+  a `cookies()` call in the root layout would force every route dynamic and break the
+  `force-static` login/offline pages the SW precaches. Instead the root layout injects a
+  ≤10-line inline script in `<head>` (before paint) that reads the theme cookie from
+  `document.cookie` and sets `document.documentElement.dataset.theme` — the classic no-flash
+  snippet; static pages stay static and still theme. The Desk layout's server-side stamping
+  and its per-room `viewport.themeColor` are removed in R2.
+- **Status bar / theme-color — must follow the chosen theme, not the OS.** With the theme
+  stamped client-side pre-paint, the `theme-color` meta follows the same way: the inline
+  script also rewrites the `theme-color` meta to the active paper (`#f9f8ff` light /
+  `#14121f` dark; on `system` it leaves the SSR default media pair in place). SSR default:
+  the media pair, emitted once from the root layout. `lib/tokens.ts` constants: `PAPER
+  "#f9f8ff"`, `PAPER_DARK "#14121f"` (the `ACADEMY_BG` constant is deleted — one palette,
+  D4). e2e: with a `dark` cookie under an emulated light OS, the effective `theme-color`
+  equals `PAPER_DARK`, on the Academy route too.
 - **Icons:** regenerate the set (192, 512, maskable-512, monochrome-96) from a new source
   SVG: `--gradient-brand` rounded-16px tile + white mono letter (D3). Keep filenames/paths so
   the manifest and precache don't churn. Maskable: 20% safe zone.
@@ -1114,13 +1124,14 @@ that window; what it looks like is the old geometry in the new palette — accep
 and burned down room by room in R2–R5.
 
 ### R2 · Shell: nav, tab bar, wash, login, PWA chrome, palette [1–1.5 days]
-Steps: AppWash into both room layouts (inside the theme scope, §4.1) + `relative z-10`
-wrappers; top bar restyle + newly-sticky verification (§4.2); D2 bottom tab bar + z-ladder +
-keyboard hide + safe areas (top/bottom/left/right) + content padding; route-transition
-`template.tsx` (opacity-only, §3.6) in both rooms; `CommandPalette` restyle + typed result
-groups + ⌘K hint chip + phone search trigger + visualViewport cap; login split-screen
-(§5.7); theme-color-from-cookie + Academy viewport export + manifest/status-bar/icon set
-(§7.3); OfflineRibbon restyle.
+Steps: AppWash into both room layouts + `relative z-10` wrappers; **the one-theme mechanism
+(D1):** inline pre-paint theme script in the root layout, `data-theme` on `<html>`, Desk
+layout's server stamping and per-room `viewport.themeColor` removed, theme-color follow +
+`lib/tokens.ts` rename (§7.3); top bar restyle + newly-sticky verification (§4.2); D2 bottom
+tab bar + z-ladder + keyboard hide + safe areas (top/bottom/left/right) + content padding;
+route-transition `template.tsx` (opacity-only, §3.6) in both rooms; `CommandPalette` restyle
++ typed result groups + ⌘K hint chip + phone search trigger + visualViewport cap; login
+split-screen (§5.7); manifest/icon set (§7.3); OfflineRibbon restyle.
 **Gate additions:** `nav.spec.ts` extended (tab bar cases per D2 incl. keyboard-hide) green
 on phone project; `auth.spec.ts`/`pwa.spec.ts`/`offline.spec.ts` green (login stayed static,
 icons resolve, SW behavior unchanged); theme-color e2e (§7.3); safe-area checks per §7.2;
@@ -1149,11 +1160,14 @@ connects band rows (the no-median, no-cone locks); VRT: all four rooms, both
 themes/viewports.
 
 ### R5 · The Academy [1–1.5 days]
-Steps per §5.6 (solid warm cards, serif kickers, module palette, reading typography, review
-ritual, glossary-as-hero, quote card; phone top-bar doorway drop per §4.2). Academy stays
-light-only; `theme.spec.ts` assertion kept + Academy theme-color case.
+Steps per §5.6 (solid cards, serif kickers, module palette, reading typography, review
+ritual, glossary-as-hero, quote card; phone top-bar doorway drop per §4.2). **The Academy
+themes with the app (D1): `theme.spec.ts` is REWRITTEN** — a dark cookie must theme the
+Academy too; the old "Dark applies to Desk but never Academy" assertion is deleted, replaced
+by "one theme everywhere" + the structural-divergence checks (solid cards, serif kickers
+present in both themes).
 **Gate additions:** `academy.spec.ts` green; no-price-in-Academy check unchanged; VRT:
-academy home/lesson/review/glossary, phone + desktop.
+academy home/lesson/review/glossary, phone + desktop, light + dark.
 
 ### R6 · Hardening & drift-proofing [1 day]
 Steps: touch-target sweep (§7.1); axe pass on every route (existing e2e axe hooks); Lighthouse
@@ -1212,7 +1226,7 @@ two projects: `desktop` 1366×768 Chromium, `phone` Pixel 7). New spec file `e2e
 | /paper (form + receipt + interstitial open) | both | light + dark |
 | /track-record seeded | both | light + dark |
 | /ticker/[seed symbol] (candle + FanChart) | both | light + dark |
-| /academy home · lesson · review · glossary | both | light (Academy has no dark) |
+| /academy home · lesson · review · glossary | both | light + dark (one theme app-wide, D1) |
 | bottom tab bar states (per D2) | phone | light + dark |
 | rail bottom sheet open (grab handle + inset) | phone | light |
 | /login with fonts BLOCKED (fallback layout lock, §7.4) | phone | light |
@@ -1364,10 +1378,8 @@ sheet is paste-COMPLETE — the dark and system blocks are both written out in f
   --color-grade-weak: #a13d22;
   --color-grade-folklore: #b91c1c;
 
-  /* Academy (warm room, D4) — solid paper, no glass (§5.6); interactives stay indigo */
-  --color-academy-paper: #fbf6ee;
-  --color-academy-surface: #fffdf8;                /* SOLID — the reading room isn't glass */
-  --color-academy-hairline: rgb(143 110 72 / 0.15);
+  /* The Academy shares this sheet in full (D4 — one material world). Its identity is
+   * structural (§5.6): solid cards via --color-surface-solid, serif kickers, reading type. */
 
   /* Academy module hues — DECORATIVE ONLY (§5.6); none amber, none the accent */
   --color-module-foundations: #4a5a8c;
@@ -1413,8 +1425,9 @@ sheet is paste-COMPLETE — the dark and system blocks are both written out in f
   --scrim: rgb(15 13 26 / 0.4);
 }
 
-/* ── Midnight Desk (D1) — Desk-only via [data-theme]; Academy never darkens ──────────
- * The [data-theme="system"] block below MUST stay byte-identical to this one. */
+/* ── Midnight (D1) — APP-WIDE via [data-theme] on <html>, stamped pre-paint by the root
+ * layout's inline script (§7.3; never a server cookie read — static routes must stay
+ * static). The [data-theme="system"] block below MUST stay byte-identical to this one. */
 [data-theme="dark"] {
   --color-paper: #14121f;
   --color-surface: rgb(30 27 48 / 0.72);
@@ -1448,6 +1461,10 @@ sheet is paste-COMPLETE — the dark and system blocks are both written out in f
   --color-grade-mixed: #45c7b8;
   --color-grade-weak: #d07b5b;
   --color-grade-folklore: #e06c6c;
+  --color-module-foundations: #8ba3e8;
+  --color-module-structure: #93b587;
+  --color-module-patterns: #b98bb0;
+  --color-module-risk: #d081a0;
   --gradient-wash: linear-gradient(145deg, #14121f 0%, #191627 40%, #151329 70%, #14121f 100%);
   --gradient-spark-up: linear-gradient(180deg, rgb(96 165 250 / 0.14) 0%, rgb(96 165 250 / 0) 100%);
   --gradient-spark-down: linear-gradient(180deg, rgb(251 146 60 / 0.14) 0%, rgb(251 146 60 / 0) 100%);
@@ -1527,11 +1544,9 @@ body { font-family: var(--font-ui); font-size: var(--text-sm); line-height: var(
 }
 ```
 
-*(The Academy layout applies its room by re-declaring `--color-paper:
-var(--color-academy-paper)`, `--color-surface: var(--color-academy-surface)`,
-`--color-hairline: var(--color-academy-hairline)`, and its orb/wash tokens on the academy
-shell element — the same scoped-override mechanism as dark mode; the reduced-transparency
-block above already covers it because the academy surface is solid by design.)*
+*(There is no Academy token scope (D4): both rooms read this one sheet in both themes. The
+Academy's solid cards use `--color-surface-solid` directly, so the reduced-transparency
+override never needs to touch it.)*
 
 ---
 
@@ -1677,9 +1692,16 @@ Seeded shots gate on `MSM_SEEDED=1` like the existing data specs.
     silently drops utilities whose tokens vanish, so aliases would hide drift; the rename +
     grep #9 make the cut visible and complete in one commit. Rejected: aliases until R6
     (invisible rot).
-16. **The Academy diverges structurally, not just chromatically** — solid paper cards (no
-    glass), serif kickers instead of terminal mastheads, reading line-height. The first
-    draft's "same glass, warmer hexes" was rightly called a tinted dashboard in review.
-17. **Charts appear as completed wholes** (200ms fade max); no directional draw-in anywhere —
+16. **The Academy diverges structurally, never chromatically** — solid paper cards (no
+    glass), serif kickers instead of terminal mastheads, reading line-height, wider spacing —
+    inside the one shared palette and theme (user decisions D1/D4). The first draft's "same
+    glass, warmer hexes" was rightly called a tinted dashboard in review; the user then
+    resolved the palette question entirely by unifying it.
+17. **Theme stamping is an inline pre-paint script on `<html>`, never a root-layout cookie
+    read** — a server `cookies()` call in the root layout would force every route dynamic and
+    break the `force-static` login/offline pages the service worker precaches. Rejected:
+    per-room server stamping (leaves the Academy unthemed, violating D1), client-effect
+    stamping (theme flash).
+18. **Charts appear as completed wholes** (200ms fade max); no directional draw-in anywhere —
     a left-to-right sweep on a price series reads as momentum next to visuals that insist
     they are not forecasts.
