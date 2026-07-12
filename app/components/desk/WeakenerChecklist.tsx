@@ -27,14 +27,16 @@ export function WeakenerChecklist({
 
   return (
     <fieldset className="flex flex-col gap-2">
-      <legend className="pb-1 font-ui text-2xs font-medium uppercase tracking-[0.06em] text-muted">
+      <legend className="pb-1 font-ui text-2xs font-semibold uppercase tracking-[0.06em] text-muted">
         Weakeners — tick what applies
       </legend>
       {items.map((item) => (
         <form key={item.key} action={formAction}>
           <input type="hidden" name="cardId" value={cardId} />
           <input type="hidden" name="key" value={item.key} />
-          <label className="flex cursor-pointer items-start gap-2">
+          {/* The LABEL carries the 44px touch target, not the checkbox. A 14px native control cannot grow
+              to 44px without wrecking the row — and the label is what a thumb actually hits anyway. */}
+            <label className="flex min-h-11 cursor-pointer items-start gap-2 py-2">
             <input
               type="checkbox"
               name="checkbox"

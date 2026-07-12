@@ -29,7 +29,7 @@ export const dynamic = "force-dynamic";
  */
 const mdxComponents = {
   h2: (props: React.HTMLAttributes<HTMLHeadingElement>) => (
-    <h2 className="max-w-[65ch] pt-10 font-display text-title font-semibold text-ink" {...props} />
+    <h2 className="max-w-[65ch] pt-10 font-display text-title font-bold text-ink" {...props} />
   ),
   p: (props: React.HTMLAttributes<HTMLParagraphElement>) => (
     <p className="max-w-[65ch] pt-4 font-prose text-prose leading-[1.7] text-ink-2" {...props} />

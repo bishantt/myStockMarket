@@ -25,7 +25,7 @@ export function AddWatchlistForm() {
     <form ref={formRef} action={formAction} className="flex flex-col gap-4">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end">
         <label className="flex flex-col gap-1.5 sm:w-40">
-          <span className="font-ui text-2xs font-medium uppercase tracking-[0.06em] text-muted">Symbol</span>
+          <span className="font-ui text-2xs font-semibold uppercase tracking-[0.06em] text-muted">Symbol</span>
           <input
             name="symbol"
             type="text"
@@ -34,12 +34,12 @@ export function AddWatchlistForm() {
             autoCapitalize="characters"
             maxLength={20}
             placeholder="AAPL"
-            className="rounded-control border border-hairline bg-surface px-3 py-2 font-mono text-sm uppercase text-ink placeholder:text-muted"
+            className="min-h-11 rounded-control border border-hairline bg-surface px-3 py-2 font-mono text-input-touch md:text-sm uppercase text-ink placeholder:text-muted"
           />
         </label>
 
         <label className="flex flex-1 flex-col gap-1.5">
-          <span className="font-ui text-2xs font-medium uppercase tracking-[0.06em] text-muted">
+          <span className="font-ui text-2xs font-semibold uppercase tracking-[0.06em] text-muted">
             Why you are watching it
           </span>
           <input
@@ -48,14 +48,14 @@ export function AddWatchlistForm() {
             required
             maxLength={280}
             placeholder="Earnings next week — watching the reaction."
-            className="rounded-control border border-hairline bg-surface px-3 py-2 font-ui text-sm text-ink placeholder:text-muted"
+            className="min-h-11 rounded-control border border-hairline bg-surface px-3 py-2 font-ui text-input-touch md:text-sm text-ink placeholder:text-muted"
           />
         </label>
 
         <button
           type="submit"
           disabled={pending}
-          className="rounded-control border border-ink bg-ink px-4 py-2 font-ui text-xs font-medium uppercase tracking-[0.06em] text-surface disabled:opacity-60"
+          className="min-h-11 rounded-control border border-ink bg-ink px-4 py-2 font-ui text-xs font-semibold uppercase tracking-[0.06em] text-surface disabled:opacity-60"
         >
           {pending ? "Adding…" : "Add"}
         </button>

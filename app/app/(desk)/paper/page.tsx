@@ -124,7 +124,7 @@ export default async function PaperPage({
             <span className="font-mono text-num-lg text-down-text">
               −{(drag.annualDragFraction * 100).toFixed(1)}%
             </span>
-            <span className="font-ui text-sm font-medium text-down-text">/ yr drag</span>
+            <span className="font-ui text-sm font-semibold text-down-text">/ yr drag</span>
           </span>
         </div>
 

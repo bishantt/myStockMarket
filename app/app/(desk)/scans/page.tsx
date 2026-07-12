@@ -69,7 +69,7 @@ export default async function ScansPage() {
             <li key={preset.key}>
               <Surface as="article" className="p-5 desk:p-6">
                 <div className="flex flex-wrap items-baseline gap-3">
-                  <h2 className="font-display text-title font-semibold text-ink">
+                  <h2 className="font-display text-title font-bold text-ink">
                     {PRESET_GLOSSARY[preset.key] ? (
                       <GlossaryTerm term={PRESET_GLOSSARY[preset.key]}>{preset.label}</GlossaryTerm>
                     ) : (

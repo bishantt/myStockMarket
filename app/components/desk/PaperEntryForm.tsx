@@ -54,26 +54,26 @@ export function PaperEntryForm({
       <form ref={formRef} action={formAction} onSubmit={onSubmit} className="flex flex-col gap-3">
         {signalViewedAt ? <input type="hidden" name="signalViewedAt" value={signalViewedAt} /> : null}
 
-        <div className="flex flex-wrap gap-3">
+        <div className="min-h-11 flex flex-wrap gap-3 text-input-touch md:text-sm">
           <label className="flex flex-col gap-1">
             <span className="font-ui text-2xs uppercase tracking-[0.06em] text-muted">Symbol</span>
             <input
               name="symbol"
               defaultValue={defaultSymbol}
               required
-              className="w-28 rounded-control border border-hairline bg-surface px-2 py-1 font-mono text-sm uppercase text-ink"
+              className="min-h-11 w-28 rounded-control border border-hairline bg-surface px-2 py-1 font-mono text-input-touch md:text-sm uppercase text-ink"
             />
           </label>
           <label className="flex flex-col gap-1">
             <span className="font-ui text-2xs uppercase tracking-[0.06em] text-muted">Side</span>
-            <select name="side" className="rounded-control border border-hairline bg-surface px-2 py-1 font-ui text-sm text-ink">
+            <select name="side" className="min-h-11 rounded-control border border-hairline bg-surface px-2 py-1 font-ui text-input-touch md:text-sm text-ink">
               <option value="buy">Buy</option>
               <option value="sell">Sell (short)</option>
             </select>
           </label>
           <label className="flex flex-col gap-1">
             <span className="font-ui text-2xs uppercase tracking-[0.06em] text-muted">Bucket</span>
-            <select name="bucket" className="rounded-control border border-hairline bg-surface px-2 py-1 font-ui text-sm text-ink">
+            <select name="bucket" className="min-h-11 rounded-control border border-hairline bg-surface px-2 py-1 font-ui text-input-touch md:text-sm text-ink">
               <option value="large-mid">Large / mid (20bp)</option>
               <option value="small">Small (60bp)</option>
             </select>
@@ -86,7 +86,7 @@ export function PaperEntryForm({
               min="1"
               defaultValue="10"
               required
-              className="w-24 rounded-control border border-hairline bg-surface px-2 py-1 font-mono text-sm text-ink"
+              className="min-h-11 w-24 rounded-control border border-hairline bg-surface px-2 py-1 font-mono text-input-touch md:text-sm text-ink"
             />
           </label>
           <label className="flex flex-col gap-1">
@@ -97,7 +97,7 @@ export function PaperEntryForm({
               step="0.01"
               min="0.01"
               required
-              className="w-28 rounded-control border border-hairline bg-surface px-2 py-1 font-mono text-sm text-ink"
+              className="min-h-11 w-28 rounded-control border border-hairline bg-surface px-2 py-1 font-mono text-input-touch md:text-sm text-ink"
             />
           </label>
         </div>
@@ -105,7 +105,7 @@ export function PaperEntryForm({
         <div>
           <button
             type="submit"
-            className="rounded-control border border-hairline px-4 py-1.5 font-ui text-xs uppercase tracking-[0.05em] text-ink hover:border-accent"
+            className="min-h-11 rounded-control border border-hairline px-4 py-1.5 font-ui text-xs uppercase tracking-[0.05em] text-ink hover:border-accent"
           >
             Place paper trade
           </button>
@@ -127,14 +127,14 @@ export function PaperEntryForm({
             <button
               type="button"
               onClick={proceed}
-              className="rounded-control border border-hairline px-3 py-1.5 font-ui text-xs uppercase tracking-[0.05em] text-ink hover:border-accent"
+              className="min-h-11 rounded-control border border-hairline px-3 py-1.5 font-ui text-xs uppercase tracking-[0.05em] text-ink hover:border-accent"
             >
               Proceed
             </button>
             <button
               type="button"
               onClick={() => setShowCoolOff(false)}
-              className="px-3 py-1.5 font-ui text-xs uppercase tracking-[0.05em] text-muted hover:text-ink"
+              className="min-h-11 px-3 py-1.5 font-ui text-xs uppercase tracking-[0.05em] text-muted hover:text-ink"
             >
               Sit with it
             </button>
@@ -158,7 +158,7 @@ export function PaperEntryForm({
               max="100"
               value={winPct}
               onChange={(e) => setWinPct(Number(e.target.value))}
-              className="w-24 rounded-control border border-hairline bg-surface px-2 py-1 font-mono text-sm text-ink"
+              className="min-h-11 w-24 rounded-control border border-hairline bg-surface px-2 py-1 font-mono text-input-touch md:text-sm text-ink"
             />
           </label>
           <label className="flex flex-col gap-1">
@@ -169,7 +169,7 @@ export function PaperEntryForm({
               min="0"
               value={payoff}
               onChange={(e) => setPayoff(Number(e.target.value))}
-              className="w-24 rounded-control border border-hairline bg-surface px-2 py-1 font-mono text-sm text-ink"
+              className="min-h-11 w-24 rounded-control border border-hairline bg-surface px-2 py-1 font-mono text-input-touch md:text-sm text-ink"
             />
           </label>
           <p className="font-prose text-sm text-ink">

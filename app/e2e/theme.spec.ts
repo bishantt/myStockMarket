@@ -30,7 +30,16 @@ test.describe("Midnight — one theme, every room", () => {
     await expect(page).toHaveURL("/");
 
     await page.goto("/settings");
-    await page.getByRole("button", { name: "Dark" }).click();
+    await page.getByRole("button", { name: "Dark", exact: true }).click();
+
+    // Wait for the server action to have actually landed. Clicking the button posts a form and sets
+    // a cookie; navigating away before that round-trip completes means the next page renders with
+    // the OLD theme, and the test fails for a reason that has nothing to do with theming. The
+    // toggle's own pressed state is the honest signal that the write is done.
+    await expect(page.getByRole("button", { name: "Dark", exact: true })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
   });
 
   test("dark themes the Desk AND the Academy — the room no longer opts out", async ({ page }) => {

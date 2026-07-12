@@ -15,6 +15,17 @@
  *
  * Budget for the four, latin subset: ≤ 560KB woff2 (§3.1, raised from 320KB with the fourth
  * family). `npm run check:fonts` prints the per-file sizes and fails the build if the total is over.
+ *
+ * A NOTE ON WHAT THE BUDGET ACTUALLY MEASURES, learned the hard way at R6. The check counts the
+ * basic-latin faces — the ones any English page is guaranteed to need. But Google splits every
+ * family into latin AND latin-ext, and a real browser fetches both: measured on the deployed app,
+ * ten woff2 files totalling 429KB, against a budget that read 273KB. The budget is not wrong, it is
+ * NARROW, and the gap is the reason the LCP sat at 3.8s while the Speed Index sat at 1.8s.
+ *
+ * Total blocking time was 20ms in the same run, which is the other half of the finding: the glass,
+ * the wash and the orbs cost nothing measurable. Stripping them — the fallback ladder §7.4 offers —
+ * would have degraded the design for no gain at all. The weight is in the fonts, so the fonts are
+ * where the weight came off.
  */
 import { Inter, JetBrains_Mono, Newsreader, Playfair_Display } from "next/font/google";
 
@@ -33,7 +44,10 @@ import { Inter, JetBrains_Mono, Newsreader, Playfair_Display } from "next/font/g
  */
 export const playfair = Playfair_Display({
   subsets: ["latin"],
-  weight: ["600", "700"],
+  // 700 alone. The budget ladder in §3.1 names Playfair 600 as the second thing to drop, and the
+  // R6 measurement called it in: ten font files, 429KB, and an LCP three times the Speed Index.
+  // 700 sets every title in the product; 600 was never doing separate work.
+  weight: ["700"],
   style: ["normal", "italic"],
   display: "swap",
   variable: "--font-playfair",
@@ -46,7 +60,9 @@ export const playfair = Playfair_Display({
  */
 export const inter = Inter({
   subsets: ["latin"],
-  weight: ["400", "500", "600"],
+  // 500 is gone — the first rung of the §3.1 drop ladder. 600 covers every emphasis in the UI, and
+  // the difference between 500 and 600 at 13.5px is not a difference a reader can name.
+  weight: ["400", "600"],
   display: "optional",
   variable: "--font-inter",
 });

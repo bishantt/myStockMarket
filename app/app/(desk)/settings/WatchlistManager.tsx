@@ -69,8 +69,10 @@ function WatchlistManagerRow({ item }: { item: ManagedItem }) {
             type="submit"
             disabled={focusPending}
             className={cx(
-              "rounded-control border px-3 py-1 font-ui text-2xs uppercase tracking-[0.06em] disabled:opacity-60",
-              item.isFocus ? "border-ink bg-ink text-surface" : "border-hairline text-ink hover:text-accent",
+              "min-h-11 rounded-control border px-3 py-1 font-ui text-2xs uppercase tracking-[0.06em] transition-colors duration-(--duration-quick) disabled:opacity-60",
+              item.isFocus
+                ? "border-transparent bg-accent-soft font-semibold text-accent-deep"
+                : "border-hairline text-ink-2 hover:border-hairline-strong",
             )}
           >
             {item.isFocus ? "Unfocus" : "Focus"}
@@ -82,7 +84,7 @@ function WatchlistManagerRow({ item }: { item: ManagedItem }) {
           <button
             type="submit"
             disabled={removePending}
-            className="rounded-control border border-hairline px-3 py-1 font-ui text-2xs uppercase tracking-[0.06em] text-ink hover:text-down-text disabled:opacity-60"
+            className="min-h-11 rounded-control border border-hairline px-3 py-1 font-ui text-2xs uppercase tracking-[0.06em] text-ink hover:text-down-text disabled:opacity-60"
           >
             Remove
           </button>

@@ -53,7 +53,7 @@ export function RangeBands({ bands }: { bands: LadderBand[] }) {
 
   return (
     <section data-p2 aria-label="Typical range" className="flex flex-col gap-3">
-      <h2 className="font-display text-title font-semibold text-ink">Typical range</h2>
+      <h2 className="font-display text-title font-bold text-ink">Typical range</h2>
 
       {/*
        * Uniform scaling — no preserveAspectRatio override. The SVG fills the available width and

@@ -20,7 +20,7 @@ export default function GlossaryIndex() {
     <section className="flex flex-col">
       <Link
         href="/academy"
-        className="font-ui text-sm text-ink-2 transition-colors duration-(--duration-quick) hover:text-accent-deep"
+        className="flex min-h-11 w-fit items-center font-ui text-sm text-ink-2 transition-colors duration-(--duration-quick) hover:text-accent-deep"
       >
         ← All lessons
       </Link>
@@ -48,11 +48,11 @@ export default function GlossaryIndex() {
             className="mb-6 break-inside-avoid border-t border-hairline pt-4"
           >
             <dt className="flex flex-wrap items-baseline gap-3">
-              <span className="font-display text-title font-semibold text-ink">{term.term}</span>
+              <span className="font-display text-title font-bold text-ink">{term.term}</span>
               {term.lesson ? (
                 <Link
                   href={`/academy/${term.lesson}`}
-                  className="font-ui text-2xs text-accent-deep transition-colors duration-(--duration-quick) hover:underline"
+                  className="inline-flex min-h-11 items-center font-ui text-2xs text-accent-deep transition-colors duration-(--duration-quick) hover:underline"
                 >
                   Lesson →
                 </Link>

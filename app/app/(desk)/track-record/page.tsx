@@ -143,7 +143,7 @@ function Stat({ label, value }: { label: string; value: string }) {
 }
 
 function Th({ children }: { children: React.ReactNode }) {
-  return <th className="py-2 pr-4 font-ui text-2xs font-medium uppercase tracking-[0.06em] text-muted">{children}</th>;
+  return <th className="py-2 pr-4 font-ui text-2xs font-semibold uppercase tracking-[0.06em] text-muted">{children}</th>;
 }
 
 function Td({ children, mono }: { children: React.ReactNode; mono?: boolean }) {

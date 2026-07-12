@@ -81,7 +81,7 @@ export function StatFigure({
 }: StatFigureProps) {
   return (
     <div data-p2 className="flex flex-col gap-1">
-      <span className="font-ui text-2xs font-medium uppercase tracking-[0.06em] text-muted">
+      <span className="font-ui text-2xs font-semibold uppercase tracking-[0.06em] text-muted">
         {label}
       </span>
 

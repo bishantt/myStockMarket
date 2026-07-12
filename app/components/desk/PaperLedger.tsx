@@ -76,11 +76,11 @@ function CloseForm({ tradeId }: { tradeId: string }) {
         min="0.01"
         placeholder="exit"
         required
-        className="w-20 rounded-control border border-hairline bg-surface px-2 py-0.5 font-mono text-2xs text-ink"
+        className="min-h-11 w-20 rounded-control border border-hairline bg-surface px-2 py-0.5 font-mono text-input-touch md:text-sm text-ink"
       />
       <button
         type="submit"
-        className="rounded-control border border-hairline px-2 py-0.5 font-ui text-2xs uppercase tracking-[0.05em] text-ink hover:border-accent"
+        className="min-h-11 rounded-control border border-hairline px-2 py-0.5 font-ui text-2xs uppercase tracking-[0.05em] text-ink hover:border-accent"
       >
         Close
       </button>

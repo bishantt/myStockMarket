@@ -31,13 +31,13 @@ export function JournalPrompt() {
           rows={4}
           maxLength={4000}
           placeholder="A few honest words about today."
-          className="max-w-[62ch] rounded-control border border-hairline bg-surface px-3 py-2 font-prose text-base text-ink placeholder:text-muted"
+          className="min-h-11 max-w-[62ch] rounded-control border border-hairline bg-surface px-3 py-2 font-prose text-base text-ink placeholder:text-muted text-input-touch md:text-sm"
         />
       </label>
 
       {/* An optional forecast — a call, a probability, and when it resolves. Scored on /track-record. */}
       <details className="max-w-[62ch]">
-        <summary className="cursor-pointer font-ui text-2xs uppercase tracking-[0.06em] text-ink-2 hover:text-accent">
+        <summary className="flex min-h-11 cursor-pointer items-center font-ui text-2xs uppercase tracking-[0.06em] text-ink-2 transition-colors duration-(--duration-quick) hover:text-accent-deep">
           Add a forecast (optional)
         </summary>
         <div className="flex flex-col gap-3 pt-3">
@@ -45,7 +45,7 @@ export function JournalPrompt() {
             name="forecast"
             maxLength={500}
             placeholder="The call you are making, e.g. this setup resolves higher."
-            className="rounded-control border border-hairline bg-surface px-3 py-2 font-prose text-base text-ink placeholder:text-muted"
+            className="min-h-11 rounded-control border border-hairline bg-surface px-3 py-2 font-prose text-base text-ink placeholder:text-muted text-input-touch md:text-sm"
           />
           <div className="flex flex-wrap gap-3">
             <label className="flex flex-col gap-1">
@@ -55,7 +55,7 @@ export function JournalPrompt() {
                 type="number"
                 min="1"
                 max="99"
-                className="w-24 rounded-control border border-hairline bg-surface px-2 py-1 font-mono text-sm text-ink"
+                className="min-h-11 w-24 rounded-control border border-hairline bg-surface px-2 py-1 font-mono text-input-touch md:text-sm text-ink"
               />
             </label>
             <label className="flex flex-col gap-1">
@@ -63,7 +63,7 @@ export function JournalPrompt() {
               <input
                 name="resolvesOn"
                 type="date"
-                className="rounded-control border border-hairline bg-surface px-2 py-1 font-mono text-sm text-ink"
+                className="min-h-11 rounded-control border border-hairline bg-surface px-2 py-1 font-mono text-input-touch md:text-sm text-ink"
               />
             </label>
           </div>
@@ -74,7 +74,7 @@ export function JournalPrompt() {
         <button
           type="submit"
           disabled={pending}
-          className="rounded-control border border-ink bg-ink px-4 py-2 font-ui text-xs font-medium uppercase tracking-[0.06em] text-surface disabled:opacity-60"
+          className="min-h-11 rounded-control border border-ink bg-ink px-4 py-2 font-ui text-xs font-semibold uppercase tracking-[0.06em] text-surface disabled:opacity-60"
         >
           {pending ? "Saving…" : "Save entry"}
         </button>

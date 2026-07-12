@@ -249,7 +249,7 @@ function Typography() {
             display · Playfair Display
           </p>
           <p className="font-display text-display font-bold text-ink">Friday, July 11, 2026</p>
-          <p className="font-display text-title font-semibold text-ink">
+          <p className="font-display text-title font-bold text-ink">
             A card title at the serif floor — 19px
           </p>
         </div>
@@ -362,7 +362,7 @@ function Controls() {
         <div className="flex flex-wrap items-center gap-3">
           <button
             type="button"
-            className="min-h-11 rounded-control bg-[image:var(--gradient-brand)] px-4 py-2 font-ui text-sm font-medium text-white transition-[filter] duration-(--duration-quick) ease-(--ease-quiet) hover:brightness-105"
+            className="min-h-11 rounded-control bg-[image:var(--gradient-brand)] px-4 py-2 font-ui text-sm font-semibold text-white transition-[filter] duration-(--duration-quick) ease-(--ease-quiet) hover:brightness-105"
           >
             Open my desk →
           </button>
@@ -392,12 +392,12 @@ function Controls() {
             <span className="font-mono text-2xs uppercase tracking-[0.06em] text-muted">Symbol</span>
             <input
               defaultValue="AAPL"
-              className="rounded-control border border-hairline bg-surface px-3 py-2 font-mono text-input-touch uppercase text-ink md:text-sm"
+              className="min-h-11 rounded-control border border-hairline bg-surface px-3 py-2 font-mono text-input-touch uppercase text-ink md:text-sm"
             />
           </label>
           <label className="flex flex-col gap-1">
             <span className="font-mono text-2xs uppercase tracking-[0.06em] text-muted">Side</span>
-            <select className="rounded-control border border-hairline bg-surface px-3 py-2 font-ui text-input-touch text-ink md:text-sm">
+            <select className="min-h-11 rounded-control border border-hairline bg-surface px-3 py-2 font-ui text-input-touch text-ink md:text-sm">
               <option>long</option>
               <option>short</option>
             </select>

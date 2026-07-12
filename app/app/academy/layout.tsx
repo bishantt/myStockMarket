@@ -35,7 +35,7 @@ export default function AcademyLayout({ children }: { children: React.ReactNode 
             >
               <Link
                 href="/academy"
-                className="font-display text-title font-semibold text-ink transition-colors duration-(--duration-quick) hover:text-accent-deep"
+                className="flex min-h-11 items-center font-display text-title font-bold text-ink transition-colors duration-(--duration-quick) hover:text-accent-deep"
               >
                 Academy
               </Link>
@@ -47,7 +47,7 @@ export default function AcademyLayout({ children }: { children: React.ReactNode 
                */}
               <Link
                 href="/"
-                className="hidden font-ui text-sm text-ink-2 transition-colors duration-(--duration-quick) hover:text-accent-deep md:inline"
+                className="hidden min-h-11 items-center font-ui text-sm text-ink-2 transition-colors duration-(--duration-quick) hover:text-accent-deep md:flex"
               >
                 ← Back to Desk
               </Link>

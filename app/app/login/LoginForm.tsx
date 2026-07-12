@@ -55,7 +55,7 @@ export function LoginForm() {
       <button
         type="submit"
         disabled={pending}
-        className="mt-1 min-h-11 rounded-control bg-[image:var(--gradient-brand)] px-4 py-2.5 font-ui text-sm font-medium text-on-brand transition-[filter] duration-(--duration-quick) ease-(--ease-quiet) hover:brightness-105 disabled:opacity-60"
+        className="mt-1 min-h-11 rounded-control bg-[image:var(--gradient-brand)] px-4 py-2.5 font-ui text-sm font-semibold text-on-brand transition-[filter] duration-(--duration-quick) ease-(--ease-quiet) hover:brightness-105 disabled:opacity-60"
       >
         {pending ? "Checking…" : "Sign in"}
       </button>
@@ -84,7 +84,7 @@ function Field({
 }) {
   return (
     <label className="flex flex-col gap-1.5">
-      <span className="font-ui text-2xs font-medium uppercase tracking-[0.06em] text-muted">
+      <span className="font-ui text-2xs font-semibold uppercase tracking-[0.06em] text-muted">
         {label}
       </span>
       <input

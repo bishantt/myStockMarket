@@ -79,7 +79,7 @@ export function SetupCards({ asOf, cards }: { asOf: Date; cards: SetupCardView[]
 function SetupCard({ card }: { card: SetupCardView }) {
   return (
     <details className="group py-3">
-      <summary className="flex cursor-pointer list-none flex-wrap items-baseline gap-x-3 gap-y-1">
+      <summary className="flex min-h-11 cursor-pointer list-none flex-wrap items-baseline gap-x-3 gap-y-1 py-1">
         {/*
          * The pattern name is set in Newsreader italic, not Playfair: the serif floor (§3.1) puts
          * the display face at 19px and above, and a display serif's hairlines collapse below it.

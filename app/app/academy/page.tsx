@@ -47,13 +47,13 @@ export default async function AcademyIndex() {
         <nav className="flex gap-5 pt-5" aria-label="Academy sections">
           <Link
             href="/academy/glossary"
-            className="font-ui text-sm text-accent-deep transition-colors duration-(--duration-quick) hover:underline"
+            className="flex min-h-11 items-center font-ui text-sm text-accent-deep transition-colors duration-(--duration-quick) hover:underline"
           >
             Glossary →
           </Link>
           <Link
             href="/academy/review"
-            className="font-ui text-sm text-accent-deep transition-colors duration-(--duration-quick) hover:underline"
+            className="flex min-h-11 items-center font-ui text-sm text-accent-deep transition-colors duration-(--duration-quick) hover:underline"
           >
             Review →
           </Link>

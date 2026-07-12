@@ -12,7 +12,11 @@ import Link from "next/link";
  */
 export function Wordmark() {
   return (
-    <Link href="/" className="flex shrink-0 items-center gap-2" aria-label="myStockMarket — the Desk">
+    <Link
+      href="/"
+      aria-label="myStockMarket — the Desk"
+      className="flex min-h-11 shrink-0 items-center gap-2"
+    >
       <span
         aria-hidden="true"
         className="flex size-7 items-center justify-center rounded-chip bg-[image:var(--gradient-brand)] font-mono text-sm font-semibold text-white"

@@ -42,7 +42,7 @@ export default async function ReviewPage() {
 
   return (
     <section className="flex flex-col" aria-label="Review queue">
-      <Link href="/academy" className="font-ui text-xs uppercase tracking-[0.06em] text-ink-2 hover:text-accent">
+      <Link href="/academy" className="flex min-h-11 w-fit items-center font-ui text-sm text-ink-2 transition-colors duration-(--duration-quick) hover:text-accent-deep">
         ← All lessons
       </Link>
 
