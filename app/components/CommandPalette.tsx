@@ -71,7 +71,7 @@ export function CommandPalette({ items }: { items: PaletteItem[] }) {
       <div
         role="dialog"
         aria-label="Command palette"
-        className="w-full max-w-lg rounded-edge border border-hairline bg-surface"
+        className="w-full max-w-lg rounded-panel border border-hairline bg-surface"
         onClick={(e) => e.stopPropagation()}
       >
         <input
@@ -99,7 +99,7 @@ export function CommandPalette({ items }: { items: PaletteItem[] }) {
                   aria-current={index === active}
                   className={
                     "flex w-full items-center justify-between gap-3 px-4 py-2 text-left " +
-                    (index === active ? "bg-desk-bg" : "")
+                    (index === active ? "bg-paper" : "")
                   }
                 >
                   <span className="font-ui text-sm text-ink">{item.label}</span>

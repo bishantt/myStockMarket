@@ -19,7 +19,7 @@ import { buildBaseRate, type BaseRateData } from "@/lib/baserate";
 export function BaseRate({ data }: { data: BaseRateData }) {
   const view = buildBaseRate(data);
   return (
-    <div className="flex flex-col gap-1.5">
+    <div data-p2 className="flex flex-col gap-1.5">
       {view.decay ? <DecayStamp decay={view.decay} /> : null}
 
       <p className="max-w-[58ch] font-prose text-base text-ink">{view.sentence}</p>

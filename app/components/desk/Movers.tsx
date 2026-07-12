@@ -67,7 +67,7 @@ export function Movers({ asOf, movers }: { asOf: Date; movers: Mover[] }) {
                   rvol: m.rvol,
                   note: m.catalyst ? m.catalyst.headline : copy.mover.noNews,
                 }}
-                className="flex flex-wrap items-baseline gap-x-4 gap-y-1 py-2 hover:bg-desk-bg"
+                className="flex flex-wrap items-baseline gap-x-4 gap-y-1 py-2 hover:bg-paper"
               >
                 <span className="w-14 shrink-0 font-ui text-sm font-semibold text-ink">{m.symbol}</span>
                 <span className="hidden min-w-0 flex-1 truncate font-ui text-sm text-muted sm:block">{m.name}</span>

@@ -40,7 +40,7 @@ export function WeakenerChecklist({
               name="checkbox"
               defaultChecked={!!checked[item.key]}
               onChange={(event) => event.currentTarget.form?.requestSubmit()}
-              className="mt-0.5 h-3.5 w-3.5 shrink-0 rounded-edge border-hairline accent-ink"
+              className="mt-0.5 h-3.5 w-3.5 shrink-0 border-hairline accent-ink"
             />
             <span className="max-w-[52ch] font-ui text-2xs text-ink-2">{item.label}</span>
           </label>

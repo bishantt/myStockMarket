@@ -39,7 +39,7 @@ export function WorkedExampleDrawer({ example }: { example: WorkedExample }) {
       </button>
 
       {open ? (
-        <div className="mt-3 rounded-edge border border-hairline p-4" role="group" aria-label="Worked example">
+        <div className="mt-3 rounded-panel border border-hairline p-4" role="group" aria-label="Worked example">
           {/* The schematic price path with numbered markers. aria-hidden: the steps carry the meaning. */}
           <svg viewBox="0 0 208 80" className="h-20 w-full" aria-hidden="true">
             <path d={PATH_D} fill="none" stroke="var(--color-hairline)" strokeWidth="1.5" />
@@ -87,7 +87,7 @@ export function WorkedExampleDrawer({ example }: { example: WorkedExample }) {
                 <p className="flex items-baseline gap-2">
                   <span
                     className={
-                      "inline-flex size-4 shrink-0 items-center justify-center rounded-edge border font-mono text-2xs " +
+                      "inline-flex size-4 shrink-0 items-center justify-center rounded-pill border font-mono text-2xs " +
                       (active === step.n ? "border-accent bg-accent text-surface" : "border-hairline text-ink-2")
                     }
                     aria-hidden="true"

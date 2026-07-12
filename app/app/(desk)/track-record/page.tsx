@@ -25,7 +25,7 @@ export default async function TrackRecordPage() {
     <div className="flex flex-col gap-6">
       <header className="pt-3">
         <div className="pb-2">
-          <h1 className="font-ui text-xl font-bold uppercase tracking-[0.06em] font-stretch-[110%] text-ink">
+          <h1 className="font-ui text-xl font-bold uppercase tracking-[0.06em] text-ink">
             Track record
           </h1>
         </div>

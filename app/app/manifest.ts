@@ -1,5 +1,5 @@
 import type { MetadataRoute } from "next";
-import { DESK_BG } from "@/lib/tokens";
+import { PAPER } from "@/lib/tokens";
 
 /**
  * The web app manifest (plan §5.1). Next serves this at /manifest.webmanifest, and the proxy
@@ -22,8 +22,8 @@ export default function manifest(): MetadataRoute.Manifest {
     start_url: "/",
     display: "standalone",
     orientation: "portrait",
-    background_color: DESK_BG,
-    theme_color: DESK_BG,
+    background_color: PAPER,
+    theme_color: PAPER,
     description: "US-market command center & learning hub",
     icons: [
       { src: "/icons/icon-192.png", sizes: "192x192", type: "image/png", purpose: "any" },

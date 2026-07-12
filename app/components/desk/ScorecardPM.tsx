@@ -20,7 +20,7 @@ export function ScorecardPM({ asOf, resolved }: { asOf?: Date; resolved?: Scorec
     <section aria-label="Evening scorecard">
       <header className="pt-3">
         <div className="flex items-baseline justify-between gap-4 pb-2">
-          <h2 className="font-ui text-xs font-bold uppercase tracking-[0.07em] font-stretch-[120%] text-ink">
+          <h2 className="font-ui text-xs font-bold uppercase tracking-[0.07em] text-ink">
             Evening — scorecard &amp; journal
           </h2>
           {asOf ? (

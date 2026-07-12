@@ -10,13 +10,13 @@ import Link from "next/link";
  */
 export default function AcademyLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="min-h-dvh bg-academy-bg text-ink">
+    <div className="min-h-dvh bg-paper text-ink">
       <header className="border-b border-hairline">
         <nav
           aria-label="Academy"
           className="mx-auto flex max-w-[1360px] items-center justify-between gap-6 px-5 py-3 desk:px-8"
         >
-          <Link href="/academy" className="font-ui text-sm font-bold uppercase tracking-[0.08em] font-stretch-[115%]">
+          <Link href="/academy" className="font-ui text-sm font-bold uppercase tracking-[0.08em]">
             Academy
           </Link>
           {/* The return rail — always a way back to the Desk (plan §9.1, doorways + return rails). */}

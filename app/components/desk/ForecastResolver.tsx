@@ -22,7 +22,7 @@ export function ForecastResolver({ id }: { id: string }) {
         type="submit"
         name="happened"
         value="yes"
-        className="rounded-edge border border-hairline px-2 py-0.5 font-ui text-2xs uppercase tracking-[0.05em] text-ink hover:border-accent"
+        className="rounded-control border border-hairline px-2 py-0.5 font-ui text-2xs uppercase tracking-[0.05em] text-ink hover:border-accent"
       >
         Happened
       </button>
@@ -30,7 +30,7 @@ export function ForecastResolver({ id }: { id: string }) {
         type="submit"
         name="happened"
         value="no"
-        className="rounded-edge border border-hairline px-2 py-0.5 font-ui text-2xs uppercase tracking-[0.05em] text-ink hover:border-accent"
+        className="rounded-control border border-hairline px-2 py-0.5 font-ui text-2xs uppercase tracking-[0.05em] text-ink hover:border-accent"
       >
         Did not
       </button>

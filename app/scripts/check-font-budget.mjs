@@ -1,9 +1,14 @@
 /**
  * check-font-budget.mjs — fails the build gate if the fonts grow past their contract.
  *
- * Plan §4.5 budgets the three self-hosted families at 320 KB of woff2, latin subset. That
+ * UI-REDESIGN-PLAN §3.1 budgets the FOUR self-hosted families at 560 KB of woff2, latin subset
+ * (raised from 320 KB when Playfair Display joined Inter, JetBrains Mono and Newsreader). That
  * number is not decoration: it is what keeps LCP under 2.5s on a Moto-G-class phone over 4G,
  * which is the device the phase-exit Lighthouse run measures.
+ *
+ * If the total ever exceeds it, the drop order is fixed in advance so the decision is not made at
+ * 2am under pressure: Inter 500 first (600 covers emphasis), then Playfair 600 (700 covers titles).
+ * NEVER Playfair italic 400 — the login headline and the pull quotes are set in it.
  *
  * "What a latin reader downloads" is the honest way to count. next/font emits a woff2 for
  * every unicode-range Google offers (cyrillic, vietnamese, greek...), but a browser fetches
@@ -15,7 +20,7 @@
 import { globSync, readFileSync, statSync } from "node:fs";
 import { basename } from "node:path";
 
-const BUDGET_KB = 320;
+const BUDGET_KB = 560;
 const BUILD_DIR = ".next";
 
 /** Every stylesheet Next emitted for the production build. */
@@ -75,7 +80,7 @@ if (files.length === 0) {
 const totalBytes = files.reduce((sum, f) => sum + sizeOnDisk(f), 0);
 const totalKb = Math.round(totalBytes / 1024);
 
-console.log(`Font budget (plan §4.5): latin woff2 across the three families`);
+console.log(`Font budget (redesign §3.1): latin woff2 across the four families`);
 for (const f of files.sort()) {
   console.log(`  ${String(Math.round(sizeOnDisk(f) / 1024)).padStart(4)} KB  ${f}`);
 }

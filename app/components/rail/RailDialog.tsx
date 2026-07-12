@@ -60,7 +60,7 @@ function RailBody({ payload }: { payload: RailPayload }) {
         </div>
         <Dialog.Close
           aria-label="Close"
-          className="rounded-edge border border-hairline px-2 py-1 font-ui text-2xs uppercase tracking-[0.06em] text-ink-2 hover:text-accent"
+          className="rounded-control border border-hairline px-2 py-1 font-ui text-2xs uppercase tracking-[0.06em] text-ink-2 hover:text-accent"
         >
           Close
         </Dialog.Close>

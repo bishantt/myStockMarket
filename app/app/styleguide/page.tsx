@@ -1,22 +1,25 @@
+import { AppWash } from "@/components/AppWash";
+import { BaseRate } from "@/components/BaseRate";
 import { SectionMasthead } from "@/components/SectionMasthead";
 import { StatFigure } from "@/components/StatFigure";
+import { Surface } from "@/components/Surface";
 import { Tag } from "@/components/Tag";
 import { copy, fill } from "@/lib/copy";
 
 /**
  * /styleguide — the design system as a page you can look at.
  *
- * This route is the anti-drift instrument (plan §3.10). Every token and every primitive renders
- * here, the visual-regression suite screenshots it, and the phase-exit checklist is run against
- * it with actual eyes. If a token silently changes value or a primitive quietly grows a shadow,
- * this page is where it becomes visible.
+ * This route is the anti-drift instrument (§3.10, §5.8). Every token and every primitive renders
+ * here, the visual-regression suite screenshots each section, and the phase-exit checklist is run
+ * against it with actual eyes. If a token silently changes value or a primitive quietly grows a
+ * shadow, this page is where it becomes visible.
  *
  * It lives behind the login wall with everything else and is excluded from navigation. It is a
  * development and CI surface, not a product surface.
  *
  * The one fixed timestamp below is intentional: a styleguide whose clock moves produces a new
- * screenshot every run, and a visual-regression baseline that always differs is a baseline
- * that tells you nothing.
+ * screenshot every run, and a visual-regression baseline that always differs is a baseline that
+ * tells you nothing.
  */
 
 /** Frozen so the visual-regression baseline is stable. 16:05 ET on 9 July 2026. */
@@ -24,343 +27,550 @@ const FROZEN_INSTANT = new Date("2026-07-09T20:05:00Z");
 
 export default function StyleguidePage() {
   return (
-    <div className="min-h-dvh bg-desk-bg px-5 pb-24 text-ink desk:px-8">
-      <div className="mx-auto flex max-w-[1360px] flex-col gap-10 pt-6">
-        <header>
-          <h1 className="font-ui text-2xl font-bold uppercase tracking-[0.06em] font-stretch-[120%]">
-            Broadsheet Terminal
-          </h1>
-          <p className="pt-2 max-w-[62ch] font-prose text-prose text-ink-2">
-            The living specification. Ink on bone paper, hairline rules, mono numerals, 2px
-            corners. Colour is nearly absent so that the few semantic uses carry real
-            information. If a screenshot of this app could be mistaken for a default admin
-            template, the design is wrong.
-          </p>
-        </header>
+    <>
+      <AppWash />
+      <div className="relative z-10 min-h-dvh px-5 pb-24 text-ink desk:px-8">
+        <div className="mx-auto flex max-w-[1360px] flex-col gap-12 pt-8">
+          <header>
+            <h1 className="font-display text-display font-bold text-ink">Morning Broadsheet</h1>
+            <p className="max-w-[62ch] pt-3 font-prose text-prose text-ink-2">
+              The living specification. An editorial serif over mono numerals, one lavender
+              morning-light wash across the whole app, glass cards with soft depth, hairlines inside
+              cards, one hero figure per view. Colour is scarce and always means something. If a
+              screenshot of this app could be mistaken for a template — austere <em>or</em> glossy —
+              the design is wrong.
+            </p>
+          </header>
 
-        <Colours />
-        <Typography />
-        <Mastheads />
-        <Tags />
-        <Figures />
-        <CopyDeck />
+          <Colours />
+          <Surfaces />
+          <Typography />
+          <Chips />
+          <Controls />
+          <Figures />
+          <MotionSpec />
+          <CopyDeck />
+        </div>
       </div>
-    </div>
+    </>
   );
 }
 
-/* ────────────────────────────────────────────────────────────────────────────────────────── */
-
-/**
- * Every colour token, with its role. The swatches are squares with the app's 2px radius, and
- * each names the rule that governs where it may be used — because the rules, not the hexes,
- * are what stop this palette from drifting.
- */
-function Colours() {
-  const surfaces = [
-    { name: "desk-bg", className: "bg-desk-bg", note: "Desk page plane — cool bone" },
-    { name: "surface", className: "bg-surface", note: "module surfaces, cards" },
-    { name: "academy-bg", className: "bg-academy-bg", note: "Academy paper — warm" },
-    { name: "hairline", className: "bg-hairline", note: "1px rules — the only elevation" },
-  ];
-  const inks = [
-    { name: "ink", className: "bg-ink", note: "primary text, 2px section rules" },
-    { name: "ink-2", className: "bg-ink-2", note: "secondary text" },
-    { name: "muted", className: "bg-muted", note: "provenance, ticks, placeholders" },
-    { name: "accent", className: "bg-accent", note: "petrol — focus, active, link hover. Never on data." },
-  ];
-  const semantic = [
-    { name: "up", className: "bg-up", note: "chart strokes, triangles, text ≥ 21px" },
-    { name: "down", className: "bg-down", note: "same, downward" },
-    { name: "up-text", className: "bg-up-text", note: "delta text ≤ 18px (AA)" },
-    { name: "down-text", className: "bg-down-text", note: "same, downward" },
-  ];
-  const reserved = [
-    { name: "alert", className: "bg-alert", note: "exactly two consumers app-wide" },
-    { name: "alert-wash", className: "bg-alert-wash", note: "the wash behind them" },
-  ];
-  const grades = [
-    { name: "grade-supported", className: "bg-grade-supported", note: "ledger: supported" },
-    { name: "grade-mixed", className: "bg-grade-mixed", note: "ledger: mixed" },
-    { name: "grade-weak", className: "bg-grade-weak", note: "ledger: weak" },
-    { name: "grade-folklore", className: "bg-grade-folklore", note: "ledger: folklore" },
-  ];
-
-  return (
-    <section>
-      <SectionMasthead index={1} title="Colour" />
-      <div className="grid grid-cols-1 gap-x-8 gap-y-6 pt-5 md:grid-cols-2 desk:grid-cols-3">
-        <Swatches title="Surfaces" items={surfaces} />
-        <Swatches title="Ink & interaction" items={inks} />
-        <Swatches title="Semantic (Wong, colourblind-safe)" items={semantic} />
-        <Swatches title="Reserved attention" items={reserved} />
-        <Swatches title="Evidence grades" items={grades} />
-      </div>
-    </section>
-  );
-}
-
-function Swatches({
+/** A section wrapper. Each part of the spec is its own screenshot target for the VRT. */
+function Section({
+  id,
+  index,
   title,
-  items,
+  intro,
+  children,
 }: {
+  id: string;
+  index: number;
   title: string;
-  items: ReadonlyArray<{ name: string; className: string; note: string }>;
+  intro: string;
+  children: React.ReactNode;
 }) {
   return (
-    <div>
-      <h3 className="font-ui text-2xs font-medium uppercase tracking-[0.06em] text-muted">
-        {title}
-      </h3>
-      <ul className="flex flex-col gap-2 pt-3">
-        {items.map((item) => (
-          <li key={item.name} className="flex items-start gap-3">
-            <span
-              aria-hidden="true"
-              className={`mt-0.5 size-5 shrink-0 rounded-edge border border-hairline ${item.className}`}
-            />
-            <span className="flex flex-col">
-              <code className="font-mono text-2xs text-ink">{item.name}</code>
-              <span className="font-ui text-2xs text-muted">{item.note}</span>
-            </span>
-          </li>
-        ))}
-      </ul>
-    </div>
+    <section id={id} data-vrt-section={id} aria-label={title}>
+      <SectionMasthead index={index} title={title} />
+      <p className="max-w-[70ch] pt-3 font-ui text-sm text-ink-2">{intro}</p>
+      <div className="pt-5">{children}</div>
+    </section>
   );
 }
 
 /* ────────────────────────────────────────────────────────────────────────────────────────── */
 
 /**
- * The type scale, and the one rule that governs it: every number is IBM Plex Mono, every label
- * is Archivo, every paragraph is Newsreader. A number set in Archivo is a bug.
+ * Every colour token, with the RULE that governs where it may be used — because the rules, not the
+ * hexes, are what stop a palette from drifting. The reserved-region row is the one that matters
+ * most, and it is spelled out rather than implied.
  */
-function Typography() {
-  const scale = [
-    { token: "text-2xs", cls: "text-2xs", use: "provenance, axis ticks, footnotes" },
-    { token: "text-xs", cls: "text-xs", use: "mastheads, tags, table headers" },
-    { token: "text-sm", cls: "text-sm", use: "Desk body UI, table cells" },
-    { token: "text-base", cls: "text-base", use: "drawers, settings" },
-    { token: "text-lg", cls: "text-lg", use: "card titles, lesson H2" },
-    { token: "text-xl", cls: "text-xl", use: "page titles, brief headline" },
-    { token: "text-2xl", cls: "text-2xl", use: "zone titles, lesson H1" },
+function Colours() {
+  const groups: Array<{
+    heading: string;
+    note: string;
+    swatches: Array<{ name: string; className: string; note: string }>;
+  }> = [
+    {
+      heading: "Neutrals",
+      note: "The paper, the ink, and the hairlines. Whitespace is still the main material.",
+      swatches: [
+        { name: "paper", className: "bg-paper", note: "the page plane, under the wash" },
+        { name: "ink", className: "bg-ink", note: "primary text; the hero numeral, always" },
+        { name: "ink-2", className: "bg-ink-2", note: "secondary text" },
+        { name: "muted", className: "bg-muted", note: "PROVENANCE — clears 4.5:1, by test" },
+        { name: "faint", className: "bg-faint", note: "placeholders; never body text" },
+        { name: "hairline", className: "bg-hairline", note: "borders and rules inside cards" },
+        { name: "hairline-strong", className: "bg-hairline-strong", note: "the masthead rule" },
+      ],
+    },
+    {
+      heading: "Accent — interactive only",
+      note: "Indigo means “you can act here”. It never appears on data and never on status. Eight indigo mastheads down the Desk would teach the reader that indigo means “chrome”, and the accent would stop meaning anything at all.",
+      swatches: [
+        { name: "accent", className: "bg-accent", note: "washes, icons, marks" },
+        { name: "accent-deep", className: "bg-accent-deep", note: "links and interactive text" },
+        { name: "accent-soft", className: "bg-accent-soft", note: "the active-pill wash" },
+        { name: "accent-muted", className: "bg-accent-muted", note: "tinted panels" },
+      ],
+    },
+    {
+      heading: "Semantic pair — data only",
+      note: "Blue/orange, colourblind-safe. Always redundantly encoded: a triangle, a sign, and the word. Colour is never the only channel. The plain variants are for chart strokes and ≥21px figures; the -text variants are darkened to clear AA in small type.",
+      swatches: [
+        { name: "up", className: "bg-up", note: "gain — strokes, candles, ≥21px" },
+        { name: "up-text", className: "bg-up-text", note: "gain, in small type" },
+        { name: "down", className: "bg-down", note: "loss — strokes, candles, ≥21px" },
+        { name: "down-text", className: "bg-down-text", note: "loss, in small type" },
+      ],
+    },
+    {
+      heading: "Band — uncertainty, non-directional",
+      note: "Deliberately greyer than the accent, so an uncertainty band never reads as clickable — and deliberately not the up/down pair, so a symmetric historical range carries no directional valence.",
+      swatches: [
+        { name: "band", className: "bg-band", note: "range-band fills, and nothing else" },
+        { name: "band-inner", className: "bg-band-inner", note: "the 50% range" },
+        { name: "band-outer", className: "bg-band-outer", note: "the 80% range" },
+      ],
+    },
+    {
+      heading: "RESERVED — the amber–orange region",
+      note: "The REGION is reserved, not merely the hex. Its only occupants are losses and amber's two consumers: the verification-gate flag and the fired-signal marker. No chip, tier, grade, or module hue may sit anywhere in this band — a Desk full of amber-ish “moderate” chips would drown the gate flag even with no hex collision. A unit test measures the hues; a grep counts the consumers.",
+      swatches: [
+        { name: "alert", className: "bg-alert", note: "gate flag + fired signal. Nothing else." },
+        { name: "alert-wash", className: "bg-alert-wash", note: "the wash behind them" },
+        { name: "down", className: "bg-down", note: "a loss — the region's other rightful tenant" },
+      ],
+    },
+    {
+      heading: "Tiers and grades",
+      note: "Moderate and mixed are TEAL, not amber — pushed out of the reserved region above. Green → teal → grey is an ordinal ramp, which is what an evidence scale wants anyway.",
+      swatches: [
+        { name: "tier-strong", className: "bg-tier-strong", note: "strong" },
+        { name: "tier-moderate", className: "bg-tier-moderate", note: "moderate — teal" },
+        { name: "tier-weak", className: "bg-tier-weak", note: "weak" },
+        { name: "grade-supported", className: "bg-grade-supported", note: "supported" },
+        { name: "grade-mixed", className: "bg-grade-mixed", note: "mixed — teal" },
+        { name: "grade-weak", className: "bg-grade-weak", note: "weak — rust" },
+        { name: "grade-folklore", className: "bg-grade-folklore", note: "folklore — red" },
+      ],
+    },
   ];
 
   return (
-    <section>
-      <SectionMasthead index={2} title="Type" />
-
-      <div className="grid grid-cols-1 gap-8 pt-5 desk:grid-cols-3">
-        <div>
-          <h3 className="font-ui text-2xs font-medium uppercase tracking-[0.06em] text-muted">
-            Archivo — structure &amp; UI
-          </h3>
-          <p className="pt-2 font-ui text-base">
-            Labels, table headers, buttons, nav. Never a number.
-          </p>
-          <p className="pt-2 font-ui text-xs font-bold uppercase tracking-[0.07em] font-stretch-[120%]">
-            Expanded, uppercase, tracked — the masthead voice
-          </p>
-        </div>
-
-        <div>
-          <h3 className="font-ui text-2xs font-medium uppercase tracking-[0.06em] text-muted">
-            IBM Plex Mono — data &amp; numerals
-          </h3>
-          <p className="pt-2 font-mono text-base">
-            Every figure in the product, without exception.
-          </p>
-          <table className="pt-2 font-mono text-sm">
-            <tbody>
-              <tr><td className="pr-4 text-right">1,204.55</td><td className="text-muted">aligns</td></tr>
-              <tr><td className="pr-4 text-right">98.10</td><td className="text-muted">by</td></tr>
-              <tr><td className="pr-4 text-right">7.02</td><td className="text-muted">construction</td></tr>
-            </tbody>
-          </table>
-        </div>
-
-        <div>
-          <h3 className="font-ui text-2xs font-medium uppercase tracking-[0.06em] text-muted">
-            Newsreader — prose
-          </h3>
-          <p className="max-w-[62ch] pt-2 font-prose text-prose text-ink-2">
-            Academy lesson bodies and the briefing paragraphs, set at a comfortable measure.
-          </p>
-          <p className="pt-2 font-prose text-xl italic">
-            Today’s focus — the one literary flourish
-          </p>
-        </div>
-      </div>
-
-      <ul className="flex flex-col gap-3 pt-8">
-        {scale.map((step) => (
-          <li key={step.token} className="flex items-baseline gap-5 border-b border-hairline pb-2">
-            <code className="w-28 shrink-0 font-mono text-2xs text-muted">{step.token}</code>
-            <span className={`font-ui ${step.cls}`}>The quick brown fox</span>
-            <span className="ml-auto font-ui text-2xs text-muted">{step.use}</span>
-          </li>
+    <Section
+      id="tokens"
+      index={1}
+      title="Colour"
+      intro="Every colour in the product, and the rule that governs it. Both rooms and both themes read this one sheet; there is no room palette and no second column."
+    >
+      <div className="flex flex-col gap-7">
+        {groups.map((group) => (
+          <div key={group.heading}>
+            <h3 className="font-mono text-2xs uppercase tracking-[0.08em] text-muted">
+              {group.heading}
+            </h3>
+            <p className="max-w-[70ch] pt-1 font-ui text-2xs text-muted">{group.note}</p>
+            <ul className="flex flex-wrap gap-4 pt-3">
+              {group.swatches.map((s) => (
+                <li key={`${group.heading}-${s.name}`} className="flex items-start gap-2">
+                  <span
+                    className={`mt-0.5 size-5 shrink-0 rounded-chip border border-hairline ${s.className}`}
+                  />
+                  <span className="flex flex-col">
+                    <span className="font-mono text-2xs text-ink">{s.name}</span>
+                    <span className="font-ui text-2xs text-muted">{s.note}</span>
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </div>
         ))}
-      </ul>
-    </section>
-  );
-}
-
-/* ────────────────────────────────────────────────────────────────────────────────────────── */
-
-function Mastheads() {
-  return (
-    <section>
-      <SectionMasthead index={3} title="Section masthead" asOf={FROZEN_INSTANT} />
-      <p className="max-w-[62ch] pt-4 font-ui text-sm text-ink-2">
-        Every Desk module opens with one. The index number names its fixed place in the daily
-        ritual; the right-aligned timestamp is what lets stale data identify itself, which is
-        why offline mode can be an honest state rather than an apology.
-      </p>
-      <div className="pt-6">
-        <SectionMasthead index={4} title="Movers with reason" asOf={FROZEN_INSTANT} />
-        <p className="pt-3 font-ui text-sm text-muted">—</p>
       </div>
-    </section>
+    </Section>
   );
 }
 
-/* ────────────────────────────────────────────────────────────────────────────────────────── */
-
-function Tags() {
+/** The surface levels, rendered as themselves. */
+function Surfaces() {
   return (
-    <section>
-      <SectionMasthead index={5} title="Tag" />
-      <p className="max-w-[62ch] pt-4 font-ui text-sm text-ink-2">
-        The only coloured chip in the app. Tiers are neutral grey by law — ten firing setup
-        cards must never turn the Desk amber. An evidence-grade square never appears without
-        its word beside it, because a coloured square is not a claim.
-      </p>
+    <Section
+      id="surfaces"
+      index={2}
+      title="Surfaces and elevation"
+      intro="Depth is atmospheric, never skeuomorphic. Cards NEVER blur — stacked backdrop-filters are a GPU tax that shows up as scroll jank on a mid-range phone, and over a static wash, translucency alone looks near-identical. Blur is spent only on the sticky bars and the overlays."
+    >
+      <div className="grid gap-4 md:grid-cols-2 desk:grid-cols-4">
+        <Surface level="card" as="div" className="p-5">
+          <p className="font-mono text-2xs uppercase tracking-[0.06em] text-muted">L1 · card</p>
+          <p className="pt-2 font-ui text-sm text-ink-2">
+            Translucent glass, hairline border, 16px radius. Every Desk module.
+          </p>
+        </Surface>
+        <Surface level="raised" as="div" className="p-5">
+          <p className="font-mono text-2xs uppercase tracking-[0.06em] text-muted">L2 · raised</p>
+          <p className="pt-2 font-ui text-sm text-ink-2">
+            More opaque, soft shadow. Stat cards, and cards the layout wants to lift.
+          </p>
+        </Surface>
+        <Surface level="tinted" as="div" className="p-5">
+          <p className="font-mono text-2xs uppercase tracking-[0.06em] text-muted">tinted</p>
+          <p className="pt-2 font-ui text-sm text-ink-2">
+            An accent-washed nested panel. Base-rate panels, the cost mirror, helper boxes.
+          </p>
+        </Surface>
+        <Surface level="solid" as="div" className="p-5">
+          <p className="font-mono text-2xs uppercase tracking-[0.06em] text-muted">solid</p>
+          <p className="pt-2 font-ui text-sm text-ink-2">
+            Opaque paper, no glass. The Academy&rsquo;s material — and every decision moment, where
+            the surface stops being atmospheric and becomes a page.
+          </p>
+        </Surface>
+      </div>
+    </Section>
+  );
+}
 
-      <div className="flex flex-col gap-5 pt-5">
-        <TagRow label="Tier (neutral, always)">
-          <Tag variant="tier">Strong</Tag>
-          <Tag variant="tier">Moderate</Tag>
-          <Tag variant="tier">Weak</Tag>
-        </TagRow>
+/** The four families, and the serif floor that explains why there are two serifs. */
+function Typography() {
+  return (
+    <Section
+      id="type"
+      index={3}
+      title="Typography"
+      intro="Four families. Playfair Display sets titles and never a number. Inter is every label and control. JetBrains Mono is every numeral in the product, without exception. Newsreader is prose — and the small editorial italics Playfair is too fragile to set."
+    >
+      <div className="flex flex-col gap-6">
+        <div>
+          <p className="font-mono text-2xs uppercase tracking-[0.08em] text-muted">
+            display · Playfair Display
+          </p>
+          <p className="font-display text-display font-bold text-ink">Friday, July 11, 2026</p>
+          <p className="font-display text-title font-semibold text-ink">
+            A card title at the serif floor — 19px
+          </p>
+        </div>
 
-        <TagRow label="Evidence grade (Research Report Part 4 ledger)">
-          <Tag variant="grade" grade="supported">Supported</Tag>
-          <Tag variant="grade" grade="mixed">Mixed</Tag>
-          <Tag variant="grade" grade="weak">Weak</Tag>
-        </TagRow>
+        <div>
+          <p className="font-mono text-2xs uppercase tracking-[0.08em] text-muted">
+            the serif floor — why two serifs exist
+          </p>
+          <p className="max-w-[62ch] pt-1 font-ui text-2xs text-muted">
+            Playfair renders at 19px and above, and never in italic below the display sizes. A
+            display serif&rsquo;s hairlines collapse at text sizes. Editorial italics at card sizes
+            are Newsreader:
+          </p>
+          <p className="pt-2 font-prose text-base italic text-ink">
+            Golden cross — a text serif holds its hairlines at 15px, where a display serif would not.
+          </p>
+        </div>
 
-        <TagRow label="Folklore, labelled as folklore">
+        <div>
+          <p className="font-mono text-2xs uppercase tracking-[0.08em] text-muted">ui · Inter</p>
+          <p className="font-ui text-base text-ink">
+            Every label, control, table cell, and nav item. Never a number.
+          </p>
+        </div>
+
+        <div>
+          <p className="font-mono text-2xs uppercase tracking-[0.08em] text-muted">
+            mono · JetBrains Mono
+          </p>
+          <p className="font-mono text-num-lg text-ink">6,812.34</p>
+          <p className="font-mono text-sm text-ink-2">
+            61 of 108 — 56.5% (47–65% CI) · tabular by construction
+          </p>
+        </div>
+
+        <div>
+          <p className="font-mono text-2xs uppercase tracking-[0.08em] text-muted">
+            prose · Newsreader
+          </p>
+          <p className="max-w-[65ch] font-prose text-prose text-ink">
+            The Academy is a reading room, not a tinted dashboard. It shares this palette and this
+            theme; what changes is the furniture — solid paper cards, serif kickers, a longer line,
+            and more air.
+          </p>
+        </div>
+      </div>
+    </Section>
+  );
+}
+
+/** Chips: colour allowed, the word mandatory. */
+function Chips() {
+  return (
+    <Section
+      id="chips"
+      index={4}
+      title="Chips and tags"
+      intro="Colour is allowed on a chip. The WORD inside it is not optional. A coloured dot is not a claim — the word beside it is — so colour is always the redundant channel, and a colourblind reader loses nothing."
+    >
+      <div className="flex flex-col gap-5">
+        <div className="flex flex-wrap items-center gap-3">
+          <span className="w-28 font-mono text-2xs uppercase tracking-[0.06em] text-muted">tier</span>
+          <Tag variant="tier" tier="strong">
+            worth a closer look
+          </Tag>
+          <Tag variant="tier" tier="moderate">
+            note it; check the weakeners
+          </Tag>
+          <Tag variant="tier" tier="weak">
+            watch only
+          </Tag>
+        </div>
+        <div className="flex flex-wrap items-center gap-3">
+          <span className="w-28 font-mono text-2xs uppercase tracking-[0.06em] text-muted">grade</span>
+          <Tag variant="grade" grade="supported">
+            supported
+          </Tag>
+          <Tag variant="grade" grade="mixed">
+            mixed
+          </Tag>
+          <Tag variant="grade" grade="weak">
+            weak
+          </Tag>
           <Tag variant="folklore" />
-        </TagRow>
-
-        <TagRow label="Catalyst type">
-          <Tag variant="catalyst">Earnings</Tag>
-          <Tag variant="catalyst">Analyst</Tag>
-          <Tag variant="catalyst">Macro</Tag>
-        </TagRow>
+        </div>
+        <div className="flex flex-wrap items-center gap-3">
+          <span className="w-28 font-mono text-2xs uppercase tracking-[0.06em] text-muted">
+            catalyst
+          </span>
+          <Tag variant="catalyst">CPI</Tag>
+          <Tag variant="catalyst">FOMC</Tag>
+          <Tag variant="catalyst">EARNINGS</Tag>
+          <Tag variant="catalyst">ETF proxy</Tag>
+        </div>
       </div>
-    </section>
+    </Section>
   );
 }
 
-function TagRow({ label, children }: { label: string; children: React.ReactNode }) {
+/** Buttons and inputs — recipes, not a component library. */
+function Controls() {
   return (
-    <div className="flex flex-col gap-2">
-      <span className="font-ui text-2xs uppercase tracking-[0.06em] text-muted">{label}</span>
-      <div className="flex flex-wrap items-center gap-2">{children}</div>
-    </div>
+    <Section
+      id="controls"
+      index={5}
+      title="Buttons and inputs"
+      intro="Recipes rather than components, matching the current architecture. Every control is at least 44px tall on touch, and every input renders at 16px below md — iOS zooms on any focused control under 16px and never zooms back."
+    >
+      <div className="flex flex-col gap-6">
+        <div className="flex flex-wrap items-center gap-3">
+          <button
+            type="button"
+            className="min-h-11 rounded-control bg-[image:var(--gradient-brand)] px-4 py-2 font-ui text-sm font-medium text-white transition-[filter] duration-(--duration-quick) ease-(--ease-quiet) hover:brightness-105"
+          >
+            Open my desk →
+          </button>
+          <button
+            type="button"
+            className="min-h-11 rounded-control border border-hairline bg-surface px-4 py-2 font-ui text-sm text-ink transition-colors duration-(--duration-quick) hover:border-hairline-strong"
+          >
+            Secondary
+          </button>
+          <button
+            type="button"
+            className="min-h-11 rounded-control border border-hairline px-4 py-2 font-ui text-sm text-down-text transition-colors duration-(--duration-quick) hover:border-hairline-strong"
+          >
+            Destructive, quietly
+          </button>
+          <button
+            type="button"
+            disabled
+            className="min-h-11 rounded-control border border-hairline bg-surface px-4 py-2 font-ui text-sm text-ink disabled:opacity-60"
+          >
+            Disabled
+          </button>
+        </div>
+
+        <div className="flex flex-wrap items-end gap-4">
+          <label className="flex flex-col gap-1">
+            <span className="font-mono text-2xs uppercase tracking-[0.06em] text-muted">Symbol</span>
+            <input
+              defaultValue="AAPL"
+              className="rounded-control border border-hairline bg-surface px-3 py-2 font-mono text-input-touch uppercase text-ink md:text-sm"
+            />
+          </label>
+          <label className="flex flex-col gap-1">
+            <span className="font-mono text-2xs uppercase tracking-[0.06em] text-muted">Side</span>
+            <select className="rounded-control border border-hairline bg-surface px-3 py-2 font-ui text-input-touch text-ink md:text-sm">
+              <option>long</option>
+              <option>short</option>
+            </select>
+          </label>
+        </div>
+
+        <p className="max-w-[70ch] font-ui text-2xs text-muted">
+          One exception, and it is a product rule rather than a style one: in the cooling-off
+          interstitial, <em>Sit with it</em> takes the primary style and <em>Proceed</em> the
+          secondary. The friction is the point.
+        </p>
+      </div>
+    </Section>
   );
 }
 
-/* ────────────────────────────────────────────────────────────────────────────────────────── */
-
-/**
- * The hero rule, made visible: the 64px numeral is ink, and its direction lives beside it in
- * small type. Wong colour never exceeds text-num-lg. A big red number is a mood; a big ink
- * number with a small red triangle is a fact.
- */
+/** Figures — including the one hero, and the base rate that may never appear without its context. */
 function Figures() {
   return (
-    <section>
-      <SectionMasthead index={6} title="Stat figure" asOf={FROZEN_INSTANT} />
-
-      <div className="flex flex-col gap-10 pt-6">
-        <div>
-          <span className="font-ui text-2xs uppercase tracking-[0.06em] text-muted">
-            Hero — exactly one per view, and only on the Desk
-          </span>
-          <div className="pt-3">
-            <StatFigure
-              label="S&P 500"
-              value="5,412.88"
-              scale="hero"
-              delta={{ value: "+0.42%", direction: "up" }}
-            />
-          </div>
+    <Section
+      id="charts"
+      index={6}
+      title="Figures and base rates"
+      intro="The hero numeral is ink at every scale — never the up/down colour. The largest thing on a screen is never emotional colour: a 64px orange number is a mood; a 64px ink number with a small orange triangle is a fact."
+    >
+      <div className="flex flex-col gap-8">
+        <div className="flex flex-wrap items-end gap-10">
+          <StatFigure
+            label="S&P 500"
+            value="6,812.34"
+            scale="hero"
+            delta={{ value: "+0.34%", direction: "up" }}
+          />
+          <StatFigure
+            label="Dow"
+            value="44,210.55"
+            scale="body"
+            delta={{ value: "−0.25%", direction: "down" }}
+          />
+          <StatFigure label="VIX" value="15.84" scale="body" />
         </div>
 
-        <div className="flex flex-wrap gap-12">
-          <StatFigure label="Nasdaq" value="17,204.10" scale="figure" delta={{ value: "-0.31%", direction: "down" }} />
-          <StatFigure label="VIX" value="13.84" scale="figure" delta={{ value: "0.00%", direction: "flat" }} />
-          <StatFigure label="10-year" value="4.21%" scale="body" delta={{ value: "+2bp", direction: "up" }} />
+        <div>
+          <p className="pb-2 font-mono text-2xs uppercase tracking-[0.08em] text-muted">
+            the one base-rate renderer
+          </p>
+          <Surface level="tinted" as="div" className="max-w-[62ch] p-5">
+            <BaseRate
+              data={{
+                n: 108,
+                wins: 61,
+                winRate: 0.565,
+                ciLow: 0.47,
+                ciHigh: 0.65,
+                baseline: 0.54,
+                horizonDays: 10,
+                refClass: "US large/mid",
+                years: 20,
+                publicationYear: 2019,
+                evidenceGrade: "mixed",
+              }}
+            />
+          </Surface>
+          <p className="max-w-[70ch] pt-2 font-ui text-2xs text-muted">
+            No other component may render a base rate. The N-gate, the interval, the always-up
+            baseline, and the WEAK cap have to travel with the number — so the number lives where
+            they live.
+          </p>
         </div>
       </div>
-    </section>
+    </Section>
   );
 }
 
-/* ────────────────────────────────────────────────────────────────────────────────────────── */
-
-/**
- * The copy deck, rendered. These sentences are the honesty rules in their final human form,
- * and seeing them together is the fastest way to notice if one has drifted.
- */
-function CopyDeck() {
-  const lines: ReadonlyArray<[string, string]> = [
-    [
-      "baseRate.sentence",
-      fill(copy.baseRate.sentence, {
-        years: 5,
-        n: 110,
-        refClass: "US large caps",
-        h: 10,
-        wins: 62,
-        pct: "56%",
-      }),
-    ],
-    ["baseRate.insufficient", fill(copy.baseRate.insufficient, { n: 12 })],
-    ["baseRate.baseline", fill(copy.baseRate.baseline, { h: 10, pct: "55%" })],
-    ["volband.label", fill(copy.volband.label, { h: 10 })],
-    ["volband.caveat", copy.volband.caveat],
-    ["mover.noNews", copy.mover.noNews],
-    ["calendar.noEdge", copy.calendar.noEdge],
-    ["brief.unavailable", copy.brief.unavailable],
-    ["offline.ribbon", fill(copy.offline.ribbon, { date: "Jul 9" })],
-    ["scope.line", copy.scope.line],
-    ["decision.disclaimer", copy.decision.disclaimer],
-    ["brier.anchor", copy.brier.anchor],
-    ["degraded.source", fill(copy.degraded.source, { source: "Marketaux" })],
-    ["save.offline", copy.save.offline],
-    ["update.ready", copy.update.ready],
-    ["attribution.fred", copy.attribution.fred],
+/** The motion spec, including the list of things that must never move. */
+function MotionSpec() {
+  const still = [
+    "BaseRate — the sentence, the interval, the baseline",
+    "Dot arrays — every dot is one case; misses are hollow",
+    "CalibrationScatter",
+    "RangeBands — the range ladder",
+    "QuantileDotplot",
+    "Proportion and breadth bars",
+    "Brier figures",
+    "StatFigure deltas — money",
   ];
 
   return (
-    <section>
-      <SectionMasthead index={7} title="Copy deck" />
-      <p className="max-w-[62ch] pt-4 font-ui text-sm text-ink-2">
-        Mechanical third person, sentence case, no exclamation marks, no “I”. Changing any of
-        these strings is a structural decision — they are the guardrails, spoken.
+    <Section
+      id="motion-static"
+      index={7}
+      title="Motion"
+      intro="General UI motion is allowed now: hover lifts, drawer slides, a 200ms route fade, the provenance reveal. One easing, no springs, no bounce. Nothing loops, nothing autoplays, and nothing moves to attract attention."
+    >
+      <div className="grid gap-6 md:grid-cols-2">
+        <Surface level="card" as="div" className="p-5">
+          <h3 className="font-mono text-2xs uppercase tracking-[0.08em] text-muted">Allowed</h3>
+          <ul className="flex flex-col gap-1 pt-3 font-ui text-sm text-ink-2">
+            <li>Hover and focus colour shifts — 150ms</li>
+            <li>Hover lift — only where no probability visual sits inside</li>
+            <li>Route transition — 200ms, opacity only, never a translate</li>
+            <li>Rail and sheet slides — 240ms</li>
+            <li>Charts appear as completed wholes — a fade, never a sweep</li>
+            <li>One quiet shimmer on loading placeholders</li>
+            <li>The provenance reveal — the signature gesture</li>
+          </ul>
+        </Surface>
+
+        <Surface level="card" as="div" className="p-5">
+          <h3 className="font-mono text-2xs uppercase tracking-[0.08em] text-muted">
+            Never moves — and neither may its ancestors
+          </h3>
+          <ul className="flex flex-col gap-1 pt-3 font-ui text-sm text-ink-2">
+            {still.map((item) => (
+              <li key={item}>{item}</li>
+            ))}
+          </ul>
+          <p className="pt-3 font-ui text-2xs text-muted">
+            Each of these carries <code className="font-mono">data-p2</code>, and a jsdom test walks
+            up from every marked node to prove nothing above it animates or transforms. An animated
+            probability implies the probability is <em>arriving</em> — that something is happening
+            right now that the reader might be late for. This product exists to say the opposite.
+          </p>
+          <p className="pt-2 font-ui text-2xs text-muted">
+            A candle chart may fade in while a range band may not even do that: a chart is a record,
+            and fading in a completed record is showing a photograph. A range band is a claim about
+            uncertainty, and any entrance treatment reads as “the forecast is arriving”. Records may
+            appear. Claims are simply there.
+          </p>
+        </Surface>
+      </div>
+    </Section>
+  );
+}
+
+/** The copy deck, rendered — because the sentences are the honesty rules in their final form. */
+function CopyDeck() {
+  const lines: Array<[string, string]> = [
+    ["scope.line", copy.scope.line],
+    ["baseRate.baseline", fill(copy.baseRate.baseline, { h: "10", pct: "54%" })],
+    ["baseRate.insufficient", fill(copy.baseRate.insufficient, { n: "18" })],
+    ["volband.caveat", copy.volband.caveat],
+    ["mover.noNews", copy.mover.noNews],
+    ["macro.provenance", copy.macro.provenance],
+    ["calendar.empty", copy.calendar.empty],
+    ["calendar.emptySub", copy.calendar.emptySub],
+    ["brief.unavailable", copy.brief.unavailable],
+    ["decision.disclaimer", copy.decision.disclaimer],
+  ];
+
+  return (
+    <Section
+      id="copy"
+      index={8}
+      title="Copy"
+      intro="Every reader-facing sentence that carries a guardrail lives in lib/copy.ts, verbatim. Components never inline a sentence of their own — these strings ARE the honesty rules, in their final human form."
+    >
+      <Surface level="card" as="div" className="p-5">
+        <dl className="flex flex-col gap-3">
+          {lines.map(([key, text]) => (
+            <div
+              key={key}
+              className="flex flex-col gap-0.5 border-b border-hairline pb-3 last:border-b-0 last:pb-0"
+            >
+              <dt className="font-mono text-2xs text-muted">{key}</dt>
+              <dd className="max-w-[70ch] font-prose text-base text-ink">{text}</dd>
+            </div>
+          ))}
+        </dl>
+      </Surface>
+
+      <p className="pt-4 font-mono text-2xs text-muted">
+        Rendered at a frozen instant so the visual-regression baseline is stable:{" "}
+        {FROZEN_INSTANT.toISOString()}
       </p>
-      <dl className="flex flex-col gap-4 pt-5">
-        {lines.map(([key, text]) => (
-          <div key={key} className="flex flex-col gap-1 border-b border-hairline pb-3">
-            <dt className="font-mono text-2xs text-muted">{key}</dt>
-            <dd className="max-w-[68ch] font-prose text-prose text-ink">{text}</dd>
-          </div>
-        ))}
-      </dl>
-    </section>
+    </Section>
   );
 }

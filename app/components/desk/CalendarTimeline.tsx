@@ -72,7 +72,7 @@ export function CalendarTimeline({ asOf, events }: { asOf: Date; events: Calenda
                 {e.title}
                 {e.high ? (
                   <span className="ml-2 inline-flex items-center gap-1 whitespace-nowrap">
-                    <span aria-hidden="true" className="inline-block size-1.5 rounded-edge bg-ink" />
+                    <span aria-hidden="true" className="inline-block size-1.5 rounded-pill bg-ink" />
                     <span className="font-mono text-2xs uppercase tracking-[0.04em] text-muted">
                       {copy.calendar.importanceHigh}
                     </span>

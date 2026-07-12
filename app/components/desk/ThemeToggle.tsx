@@ -24,7 +24,7 @@ export function ThemeToggle({ current }: { current: Theme }) {
               type="submit"
               aria-pressed={active}
               className={cx(
-                "rounded-edge border px-3 py-1.5 font-ui text-xs uppercase tracking-[0.05em]",
+                "rounded-control border px-3 py-1.5 font-ui text-xs uppercase tracking-[0.05em]",
                 active
                   ? "border-ink bg-ink text-surface"
                   : "border-hairline text-ink hover:border-accent",

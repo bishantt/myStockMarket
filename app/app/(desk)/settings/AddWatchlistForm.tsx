@@ -34,7 +34,7 @@ export function AddWatchlistForm() {
             autoCapitalize="characters"
             maxLength={20}
             placeholder="AAPL"
-            className="rounded-edge border border-hairline bg-surface px-3 py-2 font-mono text-sm uppercase text-ink placeholder:text-muted"
+            className="rounded-control border border-hairline bg-surface px-3 py-2 font-mono text-sm uppercase text-ink placeholder:text-muted"
           />
         </label>
 
@@ -48,14 +48,14 @@ export function AddWatchlistForm() {
             required
             maxLength={280}
             placeholder="Earnings next week — watching the reaction."
-            className="rounded-edge border border-hairline bg-surface px-3 py-2 font-ui text-sm text-ink placeholder:text-muted"
+            className="rounded-control border border-hairline bg-surface px-3 py-2 font-ui text-sm text-ink placeholder:text-muted"
           />
         </label>
 
         <button
           type="submit"
           disabled={pending}
-          className="rounded-edge border border-ink bg-ink px-4 py-2 font-ui text-xs font-medium uppercase tracking-[0.06em] text-surface disabled:opacity-60"
+          className="rounded-control border border-ink bg-ink px-4 py-2 font-ui text-xs font-medium uppercase tracking-[0.06em] text-surface disabled:opacity-60"
         >
           {pending ? "Adding…" : "Add"}
         </button>

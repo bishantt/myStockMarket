@@ -1,6 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { fontVariables } from "@/lib/fonts";
-import { DESK_BG } from "@/lib/tokens";
+import { PAPER } from "@/lib/tokens";
 import "./globals.css";
 
 /**
@@ -32,7 +32,7 @@ export const metadata: Metadata = {
  * requirement, not an annoyance to design away.
  */
 export const viewport: Viewport = {
-  themeColor: DESK_BG,
+  themeColor: PAPER,
   viewportFit: "cover",
   width: "device-width",
   initialScale: 1,

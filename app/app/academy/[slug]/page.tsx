@@ -74,7 +74,7 @@ export default async function LessonPage({ params }: { params: Promise<{ slug: s
 
       {/* SOFT GATE — a nudge, never a lock. The reader may keep going. */}
       {gated ? (
-        <aside className="mt-4 max-w-[65ch] rounded-edge border border-hairline bg-surface p-4" aria-label="Suggested order">
+        <aside className="mt-4 max-w-[65ch] rounded-panel border border-hairline bg-surface p-4" aria-label="Suggested order">
           <p className="font-ui text-2xs font-semibold uppercase tracking-[0.06em] text-ink">
             Risk before patterns
           </p>

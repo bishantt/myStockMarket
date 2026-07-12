@@ -3,21 +3,25 @@ import { cx } from "@/lib/cx";
 /**
  * StatFigure — a labelled number, and the rules that keep a number from lying.
  *
- * Anatomy (plan §3.6): an 11px uppercase Archivo label, the value beneath it in IBM Plex Mono
- * at one of three scales, and an optional delta.
+ * Anatomy (§4.1): an 11px uppercase Inter label, the value beneath it in JetBrains Mono at one of
+ * three scales, and an optional delta chip.
  *
  * The delta encodes direction three ways at once — a triangle, an explicit sign, and colour —
- * because colour alone fails for roughly one man in twelve. The Wong palette (§3.3) is
- * colourblind-safe, but redundancy is the actual guarantee.
+ * because colour alone fails for roughly one man in twelve. The blue/orange pair is colourblind-safe,
+ * but the redundancy is the actual guarantee, not the hue.
  *
  * The rule that matters most here, and the reason the hero variant exists as its own thing:
  *
- *     Wong colour NEVER exceeds --text-num-lg.
+ *     SEMANTIC COLOUR NEVER EXCEEDS --text-num-lg.
  *
- * The largest element on any screen is never emotional colour. The hero numeral — the S&P's
- * day change, 64px, the single biggest thing on the Desk — renders in plain ink, and its
- * direction lives beside it in small type. A 64px red number is a mood; a 64px ink number with
- * a small red triangle is a fact. (§3.6, and Research Report §9.7 on scarce colour.)
+ * The largest element on any screen is never emotional colour. The hero numeral — the S&P's level,
+ * 64px, the single biggest thing on the Desk — renders in plain ink, and its direction lives beside
+ * it in small type. A 64px red number is a mood; a 64px ink number with a small orange triangle is
+ * a fact. (§3.3, and Research Report §9.7 on scarce colour.)
+ *
+ * P2 (§3.6): the root carries `data-p2`. This is a money/probability visual — it renders complete
+ * on first paint, it never ticks or counts up, and no ancestor may animate or transform it. A jsdom
+ * test walks up from every `[data-p2]` node to prove it.
  */
 
 /** Which way the number moved. `flat` covers unchanged and doji — it renders in ink, no triangle. */
@@ -28,12 +32,12 @@ type StatFigureProps = {
   label: string;
   /**
    * The value, already formatted. StatFigure never formats a number: formatting lives in
-   * lib/format, and base rates render only through components/BaseRate (plan §4.3).
+   * lib/format, and base rates render only through components/BaseRate (§1.2).
    */
   value: string;
   /**
    * `hero` is the 64px numeral. Exactly ONE per route may use it, and only `/` does — the
-   * anti-drift checklist (§3.10, rule 2) greps for violations at every phase exit.
+   * anti-drift checklist greps for violations at every phase exit.
    * `figure` is the 44px module-level key figure. `body` is everything else.
    */
   scale?: "hero" | "figure" | "body";
@@ -44,7 +48,7 @@ type StatFigureProps = {
   };
 };
 
-/** Value type sizes. The hero drops to 48px below 768px — the phone ritual column (§3.8). */
+/** Value type sizes. The hero drops to 48px below 768px — the phone ritual column (§7.1). */
 const VALUE_SCALE: Record<NonNullable<StatFigureProps["scale"]>, string> = {
   hero: "text-hero-mobile md:text-hero",
   figure: "text-num-lg",
@@ -52,12 +56,13 @@ const VALUE_SCALE: Record<NonNullable<StatFigureProps["scale"]>, string> = {
 };
 
 /**
- * Delta colours. These are the `-text` Wong variants, darkened to clear AA at small sizes,
- * because a delta is always small type — never the hero. Flat is ink: no direction, no colour.
+ * The delta chip: semantic text on its own soft wash. These are the `-text` variants, darkened to
+ * clear AA at small sizes, because a delta is always small type — never the hero. Flat is ink on
+ * nothing: no direction, no colour, no wash.
  */
-const DELTA_COLOUR: Record<Direction, string> = {
-  up: "text-up-text",
-  down: "text-down-text",
+const DELTA_CHIP: Record<Direction, string> = {
+  up: "text-up-text bg-up-wash",
+  down: "text-down-text bg-down-wash",
   flat: "text-ink",
 };
 
@@ -75,15 +80,15 @@ export function StatFigure({
   delta,
 }: StatFigureProps) {
   return (
-    <div className="flex flex-col gap-1">
+    <div data-p2 className="flex flex-col gap-1">
       <span className="font-ui text-2xs font-medium uppercase tracking-[0.06em] text-muted">
         {label}
       </span>
 
       <div className="flex items-baseline gap-2">
         {/*
-         * Always ink, at every scale. There is no variant of this component in which the
-         * number itself carries the up/down colour — that is the whole point.
+         * Always ink, at every scale. There is no variant of this component in which the number
+         * itself carries the up/down colour — that is the whole point.
          */}
         <span className={cx("font-mono font-medium text-ink", VALUE_SCALE[scale])}>
           {value}
@@ -92,8 +97,8 @@ export function StatFigure({
         {delta ? (
           <span
             className={cx(
-              "flex items-baseline gap-0.5 font-mono text-sm",
-              DELTA_COLOUR[delta.direction],
+              "flex items-baseline gap-0.5 rounded-chip px-1.5 py-0.5 font-mono text-sm",
+              DELTA_CHIP[delta.direction],
             )}
           >
             {/*

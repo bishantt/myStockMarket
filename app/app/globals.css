@@ -1,239 +1,330 @@
 /*
  * globals.css — the single source of every design token in myStockMarket.
  *
- * The design system is "Broadsheet Terminal" (DEVELOPMENT-PLAN.md Part 3): a financial
- * broadsheet set by a typographer, not a SaaS dashboard. Ink on bone paper, hairline rules,
- * mono numerals, 2px corners, colour used only where it carries information.
+ * The design system is "Morning Broadsheet" (UI-REDESIGN-PLAN.md Part 3): editorial serif
+ * over mono numerals, a lavender morning-light wash, glass cards with soft depth, hairlines
+ * inside cards, one hero figure per view, color scarce and always meaningful.
  *
- * HARD RULE (plan §3.10, checked by a grep at every phase exit): no hex colour may appear
- * anywhere else in the codebase. If you need a colour, it is already here, or it does not
- * belong in the product. The same goes for font families, radii, and motion durations.
+ * HARD RULE (plan §3.10 v2, grepped at every phase exit): no hex color, raw gradient,
+ * arbitrary shadow, or arbitrary radius may appear anywhere else in the codebase
+ * (lib/tokens.ts holds the OS-facing constants). If you need a value, it is already
+ * here, or it does not belong in the product.
  *
- * Token naming: Tailwind v4 generates utilities from these namespaces, so
- *   --color-ink        gives  text-ink / bg-ink / border-ink
- *   --text-sm          gives  text-sm (with its paired line-height)
- *   --font-ui          gives  font-ui
- *   --radius-edge      gives  rounded-edge
- * The plan writes these as `--ink`, `--text-sm`, etc.; the `--color-` prefix is Tailwind's
- * requirement, not a change of meaning.
+ * Tailwind v4 caveat: rgb(r g b / a) tokens work as utilities (bg-surface) but the
+ * slash-opacity modifier (bg-surface/50) silently no-ops on them. Never use it; mint a token.
+ *
+ * `@theme static` (rather than a bare `@theme`) forces Tailwind to emit EVERY variable as a
+ * real custom property instead of tree-shaking the ones no utility references. The chart hook
+ * reads --color-ink / --color-up / --color-down off the computed style at runtime, and
+ * /styleguide renders the whole set as a living spec — Tailwind can see neither.
  */
 
 @import "tailwindcss";
 
-/*
- * `static` (rather than a bare `@theme`) forces Tailwind to emit EVERY variable below as a
- * real CSS custom property, instead of tree-shaking the ones no utility class happens to
- * reference. Two things in this app depend on that:
- *
- *   1. The Lightweight Charts hook themes candles, grid lines, and crosshairs by reading
- *      --color-ink / --color-up / --color-down off the computed style at runtime (plan §3.7).
- *      Tailwind cannot see those reads, so it would drop the tokens.
- *   2. /styleguide renders the token set as a living spec, and the visual-regression suite
- *      captures it. A token that vanishes when it is temporarily unused is a token that
- *      silently drifts.
- */
 @theme static {
-  /* ── Type families (§3.2) ────────────────────────────────────────────────────────────
-   * Three families, no more. The next/font loaders in lib/fonts.ts define the inner
-   * variables; the fallback stacks below keep layout stable before the fonts land.
-   *
-   * font-ui    Archivo       — every label, header, button, nav. Never a number.
-   * font-mono  IBM Plex Mono — every quantitative figure in the product, without exception.
-   *                            Mono means tabular by construction: columns align for free.
-   * font-prose Newsreader    — Academy lesson bodies and the briefing paragraphs.
-   */
-  --font-ui: var(--font-archivo), ui-sans-serif, system-ui, -apple-system, sans-serif;
-  --font-mono: var(--font-plex-mono), ui-monospace, "SF Mono", Menlo, monospace;
-  --font-prose: var(--font-newsreader), ui-serif, Georgia, serif;
+  /* ── Type families (§3.1) — four, no more ─────────────────────────────────────────── */
+  --font-display: var(--font-playfair), ui-serif, Georgia, serif;   /* titles; never numbers,
+                                                                       never body, never <19px */
+  --font-ui: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-jetbrains), ui-monospace, "SF Mono", Menlo, monospace;
+  --font-prose: var(--font-newsreader), ui-serif, Georgia, serif;   /* prose + small italics */
 
-  /* ── Type scale (§3.2) ───────────────────────────────────────────────────────────────
-   * Size / line-height pairs. Boldness in this design comes from the contrast between
-   * --text-hero (64px) and --text-2xs (11px), never from decoration.
-   */
-  --text-2xs: 11px;              /* provenance lines, axis ticks, footnotes */
-  --text-2xs--line-height: 1.35;
-  --text-xs: 12px;               /* mastheads (uppercase), tags, table headers */
-  --text-xs--line-height: 1.4;
-  --text-sm: 13.5px;             /* Desk body UI, table cells */
-  --text-sm--line-height: 1.5;
-  --text-base: 15px;             /* drawers, settings, longer UI copy */
-  --text-base--line-height: 1.55;
-  --text-prose: 17.5px;          /* Academy + brief prose (Newsreader) */
-  --text-prose--line-height: 1.65;
-  --text-lg: 21px;               /* card titles, lesson H2 */
-  --text-lg--line-height: 1.35;
-  --text-xl: 27px;               /* page titles, brief headline */
-  --text-xl--line-height: 1.25;
-  --text-2xl: 34px;              /* zone titles, Academy lesson H1 */
-  --text-2xl--line-height: 1.15;
-  --text-num-lg: 44px;           /* module-level key figures (mono) */
-  --text-num-lg--line-height: 1.1;
-  --text-hero: 64px;             /* THE hero numeral — exactly one per view */
-  --text-hero--line-height: 1;
-  --text-hero-mobile: 48px;      /* the same numeral in the phone ritual column (§3.8) */
-  --text-hero-mobile--line-height: 1;
+  /* ── Type scale (§3.2) — existing pairs kept, four additions ──────────────────────── */
+  --text-2xs: 11px;   --text-2xs--line-height: 1.35;
+  --text-xs: 12px;    --text-xs--line-height: 1.4;
+  --text-sm: 13.5px;  --text-sm--line-height: 1.5;
+  --text-base: 15px;  --text-base--line-height: 1.55;
+  --text-input-touch: 16px;                     /* every form control below md (iOS zoom) */
+  --text-prose: 17.5px; --text-prose--line-height: 1.65;
+  --text-title: 19px; --text-title--line-height: 1.3;        /* serif card titles (floor) */
+  --text-lg: 21px;    --text-lg--line-height: 1.35;
+  --text-xl: 27px;    --text-xl--line-height: 1.25;
+  --text-2xl: 34px;   --text-2xl--line-height: 1.15;
+  --text-display: clamp(30px, 4vw, 46px); --text-display--line-height: 1.1;
+  --text-display-hero: clamp(38px, 5vw, 56px); --text-display-hero--line-height: 1.05;
+  --text-num-lg: 44px; --text-num-lg--line-height: 1.1;
+  --text-hero: 64px;  --text-hero--line-height: 1;
+  --text-hero-mobile: 48px; --text-hero-mobile--line-height: 1;
 
-  /* ── Colour: the Desk room, light (§3.3) ─────────────────────────────────────────────
-   * Colour is nearly absent on purpose. That scarcity is what lets a single delta triangle
-   * or an amber flag mean something. Interactive elements are ink + underline, never colour.
-   */
-  --color-desk-bg: #f4f5f3;      /* Desk page plane — cool bone */
-  --color-surface: #fcfcfb;      /* module surfaces, cards */
-  --color-academy-bg: #faf6ef;   /* Academy paper — warm; the room switch must be felt */
-  --color-ink: #141511;          /* primary text; also the 2px section rules */
-  --color-ink-2: #4a4b45;        /* secondary text */
-  --color-muted: #6b6c64;        /* provenance, ticks, placeholders — clears 4.5:1 on both
-                                    light surfaces, because the honesty layer must never
-                                    be the least legible thing on screen */
-  --color-hairline: #ddded7;     /* 1px rules and borders — the only "elevation" we have */
+  /* ── Color: light ("Morning") (§3.3) ──────────────────────────────────────────────── */
+  --color-paper: #f9f8ff;                          /* page plane under the wash */
+  --color-surface: rgb(255 255 255 / 0.72);        /* L1 card (no blur on phones) */
+  --color-surface-raised: rgb(255 255 255 / 0.90); /* L2 */
+  --color-surface-bar: rgb(249 248 255 / 0.85);    /* L3 sticky bars (with blur) */
+  --color-surface-overlay: rgb(255 255 255 / 0.96);/* L4 overlays (with blur) */
+  --color-surface-solid: #ffffff;                  /* fallbacks + decision moments + Academy */
+  --color-ink: #0f0d1a;
+  --color-ink-2: #3d3a4f;
+  --color-muted: #6e6c80;            /* provenance — must clear 4.5:1 on paper */
+  --color-faint: #a9a7b8;            /* placeholders/disabled; never body text */
+  --color-hairline: rgb(99 88 143 / 0.13);
+  --color-hairline-strong: rgb(99 88 143 / 0.24);
 
-  /* Petrol. Focus rings, active nav, selected states, link hover. Never on data. */
-  --color-accent: #0e6e64;
+  /* Accent — interactive only; never on data, never on status (§3.3) */
+  --color-accent: #6366f1;
+  --color-accent-deep: #4f46e5;      /* link/label text on light */
+  --color-accent-soft: rgb(99 102 241 / 0.10);
+  --color-accent-muted: rgb(99 102 241 / 0.06);
 
-  /* ── Colour: the semantic channel (§3.3) ─────────────────────────────────────────────
-   * The Wong colourblind-safe pair. Used for chart strokes, candle bodies, and delta
-   * triangles, and for text at >= 21px where the 3:1 large-text threshold applies.
-   * ALWAYS paired with a redundant non-colour channel: a triangle and a sign for deltas,
-   * hollow vs filled bodies for candles. Banned from buttons, links, and decoration.
-   */
-  --color-up: #0072b2;
-  --color-down: #d55e00;
+  /* Band — non-directional uncertainty fills ONLY (range ladder). Grayer than accent
+   * on purpose: an uncertainty band must never look clickable or directional. */
+  --color-band: #6d648c;
+  --color-band-outer: rgb(109 100 140 / 0.10);
+  --color-band-inner: rgb(109 100 140 / 0.22);
+  --color-band-panel: rgb(109 100 140 / 0.14);     /* the flat typical-range fill */
 
-  /* Darkened Wong variants for delta TEXT at <= 18px (mover percentages, table deltas).
-   * Same hues, AA-compliant at small sizes. Charts keep the originals above. */
-  --color-up-text: #005a8e;
-  --color-down-text: #a84a00;
+  /* Semantic pair — data only, always redundantly encoded (§3.3) */
+  --color-up: #2563eb;      --color-up-text: #1d4ed8;   --color-up-wash: rgb(37 99 235 / 0.08);
+  --color-down: #ea580c;    --color-down-text: #c2410c; --color-down-wash: rgb(234 88 12 / 0.08);
+  --color-up-bar: rgb(37 99 235 / 0.35);   /* proportion/breadth segments — equal weight */
+  --color-down-bar: rgb(234 88 12 / 0.35);
 
-  /* Reserved attention. Exactly two consumers exist in the whole app (§3.3):
-   * the verification-gate flag on a briefing sentence, and a fired-signal marker on a
-   * focus-watchlist row. Amber anywhere else is a bug the anti-drift grep will catch. */
+  /* Reserved amber — the REGION is reserved, not just the hex (§3.3): only losses and
+   * these two consumers (gate flag, fired-signal) may sit in the amber–orange range. */
   --color-alert: #8a5200;
-  --color-alert-wash: #f6e3b4;
+  --color-alert-wash: #f7ead0;
 
-  /* Evidence-grade dots. These live inside the Tag component and nowhere else, always
-   * beside the word they grade — never alone, because a coloured dot is not a claim. */
-  --color-grade-supported: #0b7a3b;
-  --color-grade-mixed: #8a5200;
-  --color-grade-weak: #a64a32;
-  --color-grade-folklore: #a21c1c;
+  /* Tier chips (§3.3) — word always inside the chip; moderate is TEAL, not amber */
+  --color-tier-strong: #047857;   --color-tier-strong-wash: rgb(5 150 105 / 0.10);
+  --color-tier-moderate: #0f766e; --color-tier-moderate-wash: rgb(13 148 136 / 0.10);
+  --color-tier-weak: #6e6c80;     --color-tier-weak-wash: rgb(124 122 142 / 0.10);
 
-  /* ── Shape (§3.4) ────────────────────────────────────────────────────────────────────
-   * 2px everywhere. The near-square corner is a signature: any corner that reads as
-   * "rounded" is a bug. There is one radius token and it is used for everything.
-   */
-  --radius-edge: 2px;
+  /* Evidence grades — inside Tag only, never without their word; mixed is teal */
+  --color-grade-supported: #047857;
+  --color-grade-mixed: #0f766e;
+  --color-grade-weak: #a13d22;
+  --color-grade-folklore: #b91c1c;
 
-  /* ── Motion (§3.5) ───────────────────────────────────────────────────────────────────
-   * 160ms fades, 200ms sheet-and-rail slides, ease-out. Nothing else in the app moves.
-   * Numbers, probability visuals, and chart data are never animated at all.
-   */
-  --duration-fade: 160ms;
-  --duration-slide: 200ms;
+  /* The Academy shares this sheet in full (D4 — one material world). Its identity is
+   * structural (§5.6): solid cards via --color-surface-solid, serif kickers, reading type. */
+
+  /* Academy module hues — DECORATIVE ONLY (§5.6); none amber, none the accent */
+  --color-module-foundations: #4a5a8c;
+  --color-module-structure: #5b7a4f;
+  --color-module-patterns: #7a4a6b;
+  --color-module-risk: #9c4460;
+
+  /* ── Gradients (§3.4) — the only four; raw gradients grepped elsewhere ────────────── */
+  --gradient-brand: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+  --gradient-wash: linear-gradient(145deg, #f9f8ff 0%, #eef2ff 35%, #f0f4ff 65%, #faf8ff 100%);
+  --gradient-spark-up: linear-gradient(180deg, rgb(37 99 235 / 0.12) 0%, rgb(37 99 235 / 0) 100%);
+  --gradient-spark-down: linear-gradient(180deg, rgb(234 88 12 / 0.12) 0%, rgb(234 88 12 / 0) 100%);
+
+  /* Orbs (L0 wash depth) — re-derived for the real product (§1.3 #14): desktop values;
+   * phone halves size + opacity via the media block below */
+  --orb-1: radial-gradient(circle, rgb(139 92 246 / 0.08) 0%, transparent 70%);
+  --orb-2: radial-gradient(circle, rgb(99 102 241 / 0.06) 0%, transparent 70%);
+
+  /* ── Elevation (§3.4) ─────────────────────────────────────────────────────────────── */
+  --shadow-soft: 0 4px 24px rgb(99 88 143 / 0.08), 0 1px 4px rgb(0 0 0 / 0.04);
+  --shadow-lift: 0 6px 24px rgb(99 88 143 / 0.12);
+  --shadow-overlay: 0 8px 40px rgb(99 88 143 / 0.15);
+
+  /* ── Shape (§3.5) ─────────────────────────────────────────────────────────────────── */
+  --radius-card: 16px;
+  --radius-panel: 12px;
+  --radius-control: 10px;
+  --radius-chip: 8px;
+  --radius-pill: 999px;
+
+  /* ── Motion (§3.6) — probability/money visuals never consume these, nor their
+   *    ancestors: every P2 component root carries data-p2 and a jsdom test walks up. ── */
+  --duration-quick: 150ms;
+  --duration-fade: 200ms;
+  --duration-slide: 240ms;
   --ease-quiet: cubic-bezier(0, 0, 0.2, 1);
 
-  /* ── Layout (§3.4, §3.8) ─────────────────────────────────────────────────────────── */
-  --breakpoint-desk: 1366px;     /* the one-screen Desk claim applies at or above this */
+  /* ── Layout ───────────────────────────────────────────────────────────────────────── */
+  --breakpoint-desk: 1366px;
 }
-
-/* ── Non-token globals ────────────────────────────────────────────────────────────────
- * Everything below is behaviour, not palette. Colours here read from the tokens above.
- */
 
 :root {
-  /* The drawer scrim is the only shadow-like surface in the entire app (§3.4). */
-  --scrim: rgb(20 21 17 / 0.4);
+  --scrim: rgb(15 13 26 / 0.4);
 }
 
-/* ── Dark Desk (§3.3 dark column, P6) ─────────────────────────────────────────────────
- * Dark mode is DESK-ONLY: the Academy stays light so the room switch is always felt. The dark
- * values only take hold under a `data-theme="dark"` element (the toggle) or a `data-theme="system"`
- * element when the OS prefers dark — so nothing without that attribute (the Academy) ever darkens.
- * academy-bg is deliberately NOT overridden. Only the tokens change; every utility that reads them
- * (bg-desk-bg, text-ink, border-hairline, …) follows automatically. Dark grade dots spot-checked ≥3:1.
- */
+/* ── Midnight (D1) — APP-WIDE via [data-theme] on <html>, stamped pre-paint by the root
+ * layout's inline script (§7.3; never a server cookie read — static routes must stay
+ * static). The [data-theme="system"] block below is a byte-identical duplicate, and a unit
+ * test parses this file to prove the two never drift apart. */
 [data-theme="dark"] {
-  --color-desk-bg: #131412;
-  --color-surface: #1a1b19;
-  --color-ink: #f1f1ea;
-  --color-ink-2: #bdbeb4;
-  --color-muted: #8f9088;
-  --color-hairline: #2b2c29;
-  --color-accent: #2e9c90;
-  --color-up: #4ca5de;
-  --color-down: #e97f33;
-  --color-up-text: #6fb6e6;
-  --color-down-text: #f09456;
-  --color-alert: #e0a83e;
-  --color-alert-wash: #3a2f14;
+  --color-paper: #14121f;
+  --color-surface: rgb(30 27 48 / 0.72);
+  --color-surface-raised: rgb(36 32 56 / 0.90);
+  --color-surface-bar: rgb(20 18 31 / 0.85);
+  --color-surface-overlay: rgb(30 27 48 / 0.96);
+  --color-surface-solid: #1e1b30;
+  --color-ink: #ece9f8;
+  --color-ink-2: #c3c0d6;
+  --color-muted: #918ea6;
+  --color-faint: #6b6880;
+  --color-hairline: rgb(167 157 210 / 0.16);
+  --color-hairline-strong: rgb(167 157 210 / 0.28);
+  --color-accent: #818cf8;
+  --color-accent-deep: #a5b4fc;
+  --color-accent-soft: rgb(129 140 248 / 0.14);
+  --color-accent-muted: rgb(129 140 248 / 0.08);
+  --color-band: #8f86b8;
+  --color-band-outer: rgb(143 134 184 / 0.14);
+  --color-band-inner: rgb(143 134 184 / 0.28);
+  --color-band-panel: rgb(143 134 184 / 0.18);
+  --color-up: #60a5fa;   --color-up-text: #93c5fd;   --color-up-wash: rgb(96 165 250 / 0.12);
+  --color-down: #fb923c; --color-down-text: #fdba74; --color-down-wash: rgb(251 146 60 / 0.12);
+  --color-up-bar: rgb(96 165 250 / 0.38);
+  --color-down-bar: rgb(251 146 60 / 0.38);
+  --color-alert: #e0a83e; --color-alert-wash: #3a2f14;
+  --color-tier-strong: #4cbf7e;   --color-tier-strong-wash: rgb(76 191 126 / 0.14);
+  --color-tier-moderate: #45c7b8; --color-tier-moderate-wash: rgb(69 199 184 / 0.14);
+  --color-tier-weak: #918ea6;     --color-tier-weak-wash: rgb(145 142 166 / 0.14);
   --color-grade-supported: #4cbf7e;
-  --color-grade-mixed: #d9a03f;
+  --color-grade-mixed: #45c7b8;
   --color-grade-weak: #d07b5b;
   --color-grade-folklore: #e06c6c;
+  --color-module-foundations: #8ba3e8;
+  --color-module-structure: #93b587;
+  --color-module-patterns: #b98bb0;
+  --color-module-risk: #d081a0;
+  --gradient-wash: linear-gradient(145deg, #14121f 0%, #191627 40%, #151329 70%, #14121f 100%);
+  --gradient-spark-up: linear-gradient(180deg, rgb(96 165 250 / 0.14) 0%, rgb(96 165 250 / 0) 100%);
+  --gradient-spark-down: linear-gradient(180deg, rgb(251 146 60 / 0.14) 0%, rgb(251 146 60 / 0) 100%);
+  --orb-1: radial-gradient(circle, rgb(139 92 246 / 0.05) 0%, transparent 70%);
+  --orb-2: radial-gradient(circle, rgb(99 102 241 / 0.04) 0%, transparent 70%);
+  --shadow-soft: 0 4px 24px rgb(0 0 0 / 0.45), 0 1px 4px rgb(0 0 0 / 0.3);
+  --shadow-lift: 0 6px 24px rgb(0 0 0 / 0.5);
+  --shadow-overlay: 0 8px 40px rgb(0 0 0 / 0.5);
 }
 
 @media (prefers-color-scheme: dark) {
   [data-theme="system"] {
-    --color-desk-bg: #131412;
-    --color-surface: #1a1b19;
-    --color-ink: #f1f1ea;
-    --color-ink-2: #bdbeb4;
-    --color-muted: #8f9088;
-    --color-hairline: #2b2c29;
-    --color-accent: #2e9c90;
-    --color-up: #4ca5de;
-    --color-down: #e97f33;
-    --color-up-text: #6fb6e6;
-    --color-down-text: #f09456;
-    --color-alert: #e0a83e;
-    --color-alert-wash: #3a2f14;
+    --color-paper: #14121f;
+    --color-surface: rgb(30 27 48 / 0.72);
+    --color-surface-raised: rgb(36 32 56 / 0.90);
+    --color-surface-bar: rgb(20 18 31 / 0.85);
+    --color-surface-overlay: rgb(30 27 48 / 0.96);
+    --color-surface-solid: #1e1b30;
+    --color-ink: #ece9f8;
+    --color-ink-2: #c3c0d6;
+    --color-muted: #918ea6;
+    --color-faint: #6b6880;
+    --color-hairline: rgb(167 157 210 / 0.16);
+    --color-hairline-strong: rgb(167 157 210 / 0.28);
+    --color-accent: #818cf8;
+    --color-accent-deep: #a5b4fc;
+    --color-accent-soft: rgb(129 140 248 / 0.14);
+    --color-accent-muted: rgb(129 140 248 / 0.08);
+    --color-band: #8f86b8;
+    --color-band-outer: rgb(143 134 184 / 0.14);
+    --color-band-inner: rgb(143 134 184 / 0.28);
+    --color-band-panel: rgb(143 134 184 / 0.18);
+    --color-up: #60a5fa;   --color-up-text: #93c5fd;   --color-up-wash: rgb(96 165 250 / 0.12);
+    --color-down: #fb923c; --color-down-text: #fdba74; --color-down-wash: rgb(251 146 60 / 0.12);
+    --color-up-bar: rgb(96 165 250 / 0.38);
+    --color-down-bar: rgb(251 146 60 / 0.38);
+    --color-alert: #e0a83e; --color-alert-wash: #3a2f14;
+    --color-tier-strong: #4cbf7e;   --color-tier-strong-wash: rgb(76 191 126 / 0.14);
+    --color-tier-moderate: #45c7b8; --color-tier-moderate-wash: rgb(69 199 184 / 0.14);
+    --color-tier-weak: #918ea6;     --color-tier-weak-wash: rgb(145 142 166 / 0.14);
     --color-grade-supported: #4cbf7e;
-    --color-grade-mixed: #d9a03f;
+    --color-grade-mixed: #45c7b8;
     --color-grade-weak: #d07b5b;
     --color-grade-folklore: #e06c6c;
+    --color-module-foundations: #8ba3e8;
+    --color-module-structure: #93b587;
+    --color-module-patterns: #b98bb0;
+    --color-module-risk: #d081a0;
+    --gradient-wash: linear-gradient(145deg, #14121f 0%, #191627 40%, #151329 70%, #14121f 100%);
+    --gradient-spark-up: linear-gradient(180deg, rgb(96 165 250 / 0.14) 0%, rgb(96 165 250 / 0) 100%);
+    --gradient-spark-down: linear-gradient(180deg, rgb(251 146 60 / 0.14) 0%, rgb(251 146 60 / 0) 100%);
+    --orb-1: radial-gradient(circle, rgb(139 92 246 / 0.05) 0%, transparent 70%);
+    --orb-2: radial-gradient(circle, rgb(99 102 241 / 0.04) 0%, transparent 70%);
+    --shadow-soft: 0 4px 24px rgb(0 0 0 / 0.45), 0 1px 4px rgb(0 0 0 / 0.3);
+    --shadow-lift: 0 6px 24px rgb(0 0 0 / 0.5);
+    --shadow-overlay: 0 8px 40px rgb(0 0 0 / 0.5);
   }
 }
 
+/* ── Behavior globals ────────────────────────────────────────────────────────────────── */
 html {
-  background-color: var(--color-desk-bg);
+  background-color: var(--color-paper);
   color: var(--color-ink);
-  /* Mono numerals are tabular by construction, but Archivo's lining figures need asking. */
   font-variant-numeric: tabular-nums lining-nums;
   -webkit-text-size-adjust: 100%;
-  /* Calm tech: the page body never scrolls sideways. Wide content (the nav strip, a table) scrolls
-   * inside its own container; nothing is allowed to drag the whole page off-axis (§3, mobile fix). */
-  overflow-x: hidden;
+  overflow-x: hidden;                 /* the page never scrolls sideways */
+  overscroll-behavior-y: contain;     /* no pull-to-refresh surprise in standalone (§7.1) */
+}
+body { font-family: var(--font-ui); font-size: var(--text-sm); line-height: var(--text-sm--line-height); }
+
+/*
+ * L0 wash — the morning light. A fixed layer, NEVER background-attachment: fixed, which is
+ * broken on iOS Safari and would repaint the gradient on every scroll frame. The two orbs are
+ * ambience, not wallpaper: they are viewport-anchored, halved on phones, and composited.
+ */
+.app-wash { position: fixed; inset: 0; z-index: 0; pointer-events: none;
+  background: var(--gradient-wash); transform: translateZ(0); }
+.app-wash::before, .app-wash::after { content: ""; position: absolute; border-radius: 999px; }
+.app-wash::before { top: -140px; right: -100px; width: 620px; height: 620px; background: var(--orb-1); }
+.app-wash::after  { bottom: -120px; left: -80px; width: 420px; height: 420px; background: var(--orb-2); }
+@media (max-width: 767px) {
+  .app-wash::before { width: 340px; height: 340px; opacity: 0.6; }
+  .app-wash::after  { width: 240px; height: 240px; opacity: 0.6; }
 }
 
-/* A scroll strip with no visible scrollbar chrome — used by the nav's room links on narrow screens. */
-.no-scrollbar {
-  scrollbar-width: none;
-  -webkit-overflow-scrolling: touch;
-}
-.no-scrollbar::-webkit-scrollbar {
-  display: none;
+/*
+ * Surfaces (§3.4). L1/L2 never blur — stacked backdrop-filters are a GPU tax that shows up as
+ * scroll jank on mid-range phones, and over a static wash translucency alone looks near-identical.
+ * L3/L4 blur on an inner wrapper because Safari does not clip backdrop-filter to border-radius
+ * on the same element: without the wrapper, the blur bleeds square out of a rounded card.
+ */
+.surface { background: var(--color-surface); border: 1px solid var(--color-hairline);
+  border-radius: var(--radius-card); }
+.surface-raised { background: var(--color-surface-raised); border: 1px solid var(--color-hairline);
+  border-radius: var(--radius-card); box-shadow: var(--shadow-soft); }
+.surface-tinted { background: var(--color-accent-muted); border: 1px solid var(--color-accent-soft);
+  border-radius: var(--radius-panel); }
+.surface-solid { background: var(--color-surface-solid); border: 1px solid var(--color-hairline);
+  border-radius: var(--radius-card); }
+.surface-bar { background: var(--color-surface-bar); }
+.surface-bar > .bar-blur { backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+  overflow: hidden; }
+.surface-overlay { background: var(--color-surface-overlay); border: 1px solid var(--color-hairline-strong);
+  border-radius: var(--radius-panel); box-shadow: var(--shadow-overlay); overflow: hidden;
+  backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px); }
+@supports not (backdrop-filter: blur(1px)) {
+  .surface-bar, .surface-overlay { background: var(--color-surface-solid); }
 }
 
-body {
-  font-family: var(--font-ui);
-  font-size: var(--text-sm);
-  line-height: var(--text-sm--line-height);
-}
+.no-scrollbar { scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+.no-scrollbar::-webkit-scrollbar { display: none; }
 
-/* Focus is visible everywhere, in petrol, offset so it never crowds a hairline (§3.9). */
-:focus-visible {
-  outline: 2px solid var(--color-accent);
-  outline-offset: 2px;
-}
+:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; }
 
-/* Calm technology, taken literally: a reader who asks for less motion gets none.
- * Focus outlines survive because they are an accessibility affordance, not decoration. */
+/*
+ * The route fade (§3.6) — the ONE sanctioned animation that may contain a probability visual.
+ * It may, precisely because it contains no relative motion: opacity only, no translation, so
+ * every frame shows every visual complete and unmoving with respect to everything else. The
+ * jsdom ancestor test knows this class by name and exempts it.
+ */
+@keyframes route-fade { from { opacity: 0; } to { opacity: 1; } }
+.route-fade { animation: route-fade var(--duration-fade) var(--ease-quiet) both; }
+
+/* The single quiet shimmer, for loading placeholders only — never on a probability or money
+ * placeholder, which loads as text (§3.6). Low-contrast, slow, and reduced-motion-aware. */
+@keyframes quiet-shimmer { 0%, 100% { opacity: 0.5; } 50% { opacity: 0.8; } }
+.shimmer { animation: quiet-shimmer 1.6s var(--ease-quiet) infinite; }
+
 @media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
-    animation-duration: 0ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0ms !important;
-    scroll-behavior: auto !important;
+  *, *::before, *::after {
+    animation-duration: 0ms !important; animation-iteration-count: 1 !important;
+    transition-duration: 0ms !important; scroll-behavior: auto !important;
+  }
+}
+
+/* Reduced transparency must win at EVERY theme scope — a :root-only override loses to the
+ * theme blocks above, because a custom property resolves at the nearest defining ancestor. */
+@media (prefers-reduced-transparency: reduce) {
+  :root, [data-theme="dark"], [data-theme="system"] {
+    --color-surface: var(--color-surface-solid);
+    --color-surface-raised: var(--color-surface-solid);
+    --color-surface-bar: var(--color-surface-solid);
+    --color-surface-overlay: var(--color-surface-solid);
   }
 }

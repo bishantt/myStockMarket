@@ -32,7 +32,7 @@ export function VolBandPanel({ bands }: { bands: VolBandRow[] }) {
   const rows = wide.length > 0 ? wide : bands.sort((a, b) => a.horizonDays - b.horizonDays);
 
   return (
-    <section aria-label="Typical range" className="border-t border-hairline pt-4">
+    <section data-p2 aria-label="Typical range" className="border-t border-hairline pt-4">
       <h2 className="font-ui text-xs font-bold uppercase tracking-[0.07em] text-ink">Typical range</h2>
       <ul className="pt-3">
         {rows.map((band) => (

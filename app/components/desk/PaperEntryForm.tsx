@@ -61,19 +61,19 @@ export function PaperEntryForm({
               name="symbol"
               defaultValue={defaultSymbol}
               required
-              className="w-28 rounded-edge border border-hairline bg-surface px-2 py-1 font-mono text-sm uppercase text-ink"
+              className="w-28 rounded-control border border-hairline bg-surface px-2 py-1 font-mono text-sm uppercase text-ink"
             />
           </label>
           <label className="flex flex-col gap-1">
             <span className="font-ui text-2xs uppercase tracking-[0.06em] text-muted">Side</span>
-            <select name="side" className="rounded-edge border border-hairline bg-surface px-2 py-1 font-ui text-sm text-ink">
+            <select name="side" className="rounded-control border border-hairline bg-surface px-2 py-1 font-ui text-sm text-ink">
               <option value="buy">Buy</option>
               <option value="sell">Sell (short)</option>
             </select>
           </label>
           <label className="flex flex-col gap-1">
             <span className="font-ui text-2xs uppercase tracking-[0.06em] text-muted">Bucket</span>
-            <select name="bucket" className="rounded-edge border border-hairline bg-surface px-2 py-1 font-ui text-sm text-ink">
+            <select name="bucket" className="rounded-control border border-hairline bg-surface px-2 py-1 font-ui text-sm text-ink">
               <option value="large-mid">Large / mid (20bp)</option>
               <option value="small">Small (60bp)</option>
             </select>
@@ -86,7 +86,7 @@ export function PaperEntryForm({
               min="1"
               defaultValue="10"
               required
-              className="w-24 rounded-edge border border-hairline bg-surface px-2 py-1 font-mono text-sm text-ink"
+              className="w-24 rounded-control border border-hairline bg-surface px-2 py-1 font-mono text-sm text-ink"
             />
           </label>
           <label className="flex flex-col gap-1">
@@ -97,7 +97,7 @@ export function PaperEntryForm({
               step="0.01"
               min="0.01"
               required
-              className="w-28 rounded-edge border border-hairline bg-surface px-2 py-1 font-mono text-sm text-ink"
+              className="w-28 rounded-control border border-hairline bg-surface px-2 py-1 font-mono text-sm text-ink"
             />
           </label>
         </div>
@@ -105,7 +105,7 @@ export function PaperEntryForm({
         <div>
           <button
             type="submit"
-            className="rounded-edge border border-hairline px-4 py-1.5 font-ui text-xs uppercase tracking-[0.05em] text-ink hover:border-accent"
+            className="rounded-control border border-hairline px-4 py-1.5 font-ui text-xs uppercase tracking-[0.05em] text-ink hover:border-accent"
           >
             Place paper trade
           </button>
@@ -119,7 +119,7 @@ export function PaperEntryForm({
 
       {/* COOLING-OFF INTERSTITIAL — a pause, not a block (Appendix J coolingOff.body). */}
       {showCoolOff ? (
-        <div role="alertdialog" aria-label="Cooling-off" className="mt-3 max-w-[60ch] rounded-edge border border-hairline bg-surface p-4">
+        <div role="alertdialog" aria-label="Cooling-off" className="mt-3 max-w-[60ch] rounded-card border border-hairline bg-surface p-4">
           <p className="font-prose text-sm text-ink">
             {fill(copy.coolingOff.body, { min: COOLING_OFF_MINUTES, rate: "the one shown on the setup card" })}
           </p>
@@ -127,7 +127,7 @@ export function PaperEntryForm({
             <button
               type="button"
               onClick={proceed}
-              className="rounded-edge border border-hairline px-3 py-1.5 font-ui text-xs uppercase tracking-[0.05em] text-ink hover:border-accent"
+              className="rounded-control border border-hairline px-3 py-1.5 font-ui text-xs uppercase tracking-[0.05em] text-ink hover:border-accent"
             >
               Proceed
             </button>
@@ -143,7 +143,7 @@ export function PaperEntryForm({
       ) : null}
 
       {/* HALF-KELLY SIZING HELPER — a suggestion, capped at half-Kelly (plan §8.1). */}
-      <div className="mt-5 max-w-[60ch] rounded-edge border border-hairline p-4">
+      <div className="mt-5 max-w-[60ch] rounded-panel border border-hairline p-4">
         <p className="font-ui text-2xs font-semibold uppercase tracking-[0.06em] text-ink">Sizing helper</p>
         <p className="pt-1 font-prose text-sm text-ink-2">
           A size suggestion capped at half of Kelly, from a win rate (use the interval&rsquo;s lower
@@ -158,7 +158,7 @@ export function PaperEntryForm({
               max="100"
               value={winPct}
               onChange={(e) => setWinPct(Number(e.target.value))}
-              className="w-24 rounded-edge border border-hairline bg-surface px-2 py-1 font-mono text-sm text-ink"
+              className="w-24 rounded-control border border-hairline bg-surface px-2 py-1 font-mono text-sm text-ink"
             />
           </label>
           <label className="flex flex-col gap-1">
@@ -169,7 +169,7 @@ export function PaperEntryForm({
               min="0"
               value={payoff}
               onChange={(e) => setPayoff(Number(e.target.value))}
-              className="w-24 rounded-edge border border-hairline bg-surface px-2 py-1 font-mono text-sm text-ink"
+              className="w-24 rounded-control border border-hairline bg-surface px-2 py-1 font-mono text-sm text-ink"
             />
           </label>
           <p className="font-prose text-sm text-ink">

@@ -78,7 +78,7 @@ export function Watchlist({ asOf, rows }: { asOf: Date; rows: WatchRow[] }) {
                   rvol: r.rvol,
                   note: r.reason,
                 }}
-                className="flex items-center gap-4 py-2 hover:bg-desk-bg"
+                className="flex items-center gap-4 py-2 hover:bg-paper"
               >
                 <div className="w-20 shrink-0">
                   <div className="flex items-baseline gap-1.5">

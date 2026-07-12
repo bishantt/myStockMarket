@@ -31,7 +31,7 @@ export function JournalPrompt() {
           rows={4}
           maxLength={4000}
           placeholder="A few honest words about today."
-          className="max-w-[62ch] rounded-edge border border-hairline bg-surface px-3 py-2 font-prose text-base text-ink placeholder:text-muted"
+          className="max-w-[62ch] rounded-control border border-hairline bg-surface px-3 py-2 font-prose text-base text-ink placeholder:text-muted"
         />
       </label>
 
@@ -45,7 +45,7 @@ export function JournalPrompt() {
             name="forecast"
             maxLength={500}
             placeholder="The call you are making, e.g. this setup resolves higher."
-            className="rounded-edge border border-hairline bg-surface px-3 py-2 font-prose text-base text-ink placeholder:text-muted"
+            className="rounded-control border border-hairline bg-surface px-3 py-2 font-prose text-base text-ink placeholder:text-muted"
           />
           <div className="flex flex-wrap gap-3">
             <label className="flex flex-col gap-1">
@@ -55,7 +55,7 @@ export function JournalPrompt() {
                 type="number"
                 min="1"
                 max="99"
-                className="w-24 rounded-edge border border-hairline bg-surface px-2 py-1 font-mono text-sm text-ink"
+                className="w-24 rounded-control border border-hairline bg-surface px-2 py-1 font-mono text-sm text-ink"
               />
             </label>
             <label className="flex flex-col gap-1">
@@ -63,7 +63,7 @@ export function JournalPrompt() {
               <input
                 name="resolvesOn"
                 type="date"
-                className="rounded-edge border border-hairline bg-surface px-2 py-1 font-mono text-sm text-ink"
+                className="rounded-control border border-hairline bg-surface px-2 py-1 font-mono text-sm text-ink"
               />
             </label>
           </div>
@@ -74,7 +74,7 @@ export function JournalPrompt() {
         <button
           type="submit"
           disabled={pending}
-          className="rounded-edge border border-ink bg-ink px-4 py-2 font-ui text-xs font-medium uppercase tracking-[0.06em] text-surface disabled:opacity-60"
+          className="rounded-control border border-ink bg-ink px-4 py-2 font-ui text-xs font-medium uppercase tracking-[0.06em] text-surface disabled:opacity-60"
         >
           {pending ? "Saving…" : "Save entry"}
         </button>

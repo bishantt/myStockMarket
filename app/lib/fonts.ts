@@ -1,71 +1,79 @@
 /**
- * fonts.ts — the three typefaces of "Broadsheet Terminal" (plan §3.2), and only these three.
+ * fonts.ts — the four typefaces of "Morning Broadsheet" (UI-REDESIGN-PLAN §3.1), and only these four.
  *
- * All three are loaded through next/font, which downloads them at build time and serves them
- * from our own origin. That matters for two reasons the plan calls out: the installed PWA has
- * to work offline (a font fetched from Google's CDN would not be precacheable), and a
- * same-origin font makes no third-party request when the user opens the app.
+ * All four load through next/font, which downloads them at build time and serves them from our own
+ * origin. That matters for two reasons: the installed PWA has to work offline (a font fetched from
+ * Google's CDN could not be precached), and a same-origin font makes no third-party request when
+ * the user opens the app.
  *
- * Each loader exposes a CSS custom property. globals.css composes those into the `--font-ui`,
- * `--font-mono`, and `--font-prose` theme tokens together with their fallback stacks, so no
- * component ever names a font family directly.
+ * Each loader exposes a CSS custom property; globals.css composes those into the --font-display,
+ * --font-ui, --font-mono and --font-prose tokens with their fallback stacks, so no component ever
+ * names a family directly.
  *
- * Total budget for the three, latin subset: <= 320KB woff2 (plan §4.5).
+ * The signature pairing is an editorial serif over mono numerals. The law that survives every
+ * redesign: NUMBERS ARE MONO, WITHOUT EXCEPTION.
+ *
+ * Budget for the four, latin subset: ≤ 560KB woff2 (§3.1, raised from 320KB with the fourth
+ * family). `npm run check:fonts` prints the per-file sizes and fails the build if the total is over.
  */
-import { Archivo, IBM_Plex_Mono, Newsreader } from "next/font/google";
+import { Inter, JetBrains_Mono, Newsreader, Playfair_Display } from "next/font/google";
 
 /**
- * Archivo — structure and UI. Every label, table header, button, and nav item on the Desk.
+ * Playfair Display — the broadsheet made literal. Page titles, card titles, the Desk date, the
+ * login headline, pull quotes.
  *
- * We pull the `wdth` (width) axis in addition to the default `wght`, because section
- * mastheads are set in Archivo Expanded (`wdth` around 120) uppercase with wide tracking.
- * That masthead is the single component carrying half the app's identity, so its axis is
- * not optional.
+ * Never a number. Never body text. Never below 19px (the "serif floor", §3.1): a display serif's
+ * hairlines collapse at text sizes, which is precisely why Newsreader exists below it.
  *
- * Archivo is never used for a number. Numbers are Plex Mono, always.
+ * It loads `display: "swap"`, alone among the four. The others use `optional`, where a missed swap
+ * costs nothing structural because next/font's metric-adjusted fallbacks hold the line boxes. But
+ * Playfair SETS the headlines: with `optional`, one slow first load ships Georgia headlines for the
+ * whole session, and no metric-matched fallback can mask a display serif at 46–56px. One swap frame
+ * is the cheaper price, and it is a deliberate choice (§7.4).
  */
-export const archivo = Archivo({
+export const playfair = Playfair_Display({
   subsets: ["latin"],
-  axes: ["wdth"],
-  display: "optional",
-  variable: "--font-archivo",
+  weight: ["600", "700"],
+  style: ["normal", "italic"],
+  display: "swap",
+  variable: "--font-playfair",
 });
 
 /**
- * IBM Plex Mono — every quantitative figure in the product: prices, percentages, counts,
- * sample sizes, confidence intervals, timestamps, axis ticks.
+ * Inter — structure and UI. Every label, control, table cell, and nav item. Replaces Archivo.
  *
- * This is the strongest identity move in the design system and simultaneously the alignment
- * guarantee: a monospaced face is tabular by construction, so numeric columns line up
- * without any per-column fiddling.
- *
- * Plex Mono ships no variable version, so the three weights we use are requested explicitly.
+ * Inter is never used for a number. Numbers are JetBrains Mono, always.
  */
-export const plexMono = IBM_Plex_Mono({
+export const inter = Inter({
   subsets: ["latin"],
   weight: ["400", "500", "600"],
   display: "optional",
-  variable: "--font-plex-mono",
+  variable: "--font-inter",
 });
 
 /**
- * Newsreader — prose. Academy lesson bodies, the briefing paragraphs, worked-example text.
+ * JetBrains Mono — every quantitative figure in the product: prices, percentages, counts, sample
+ * sizes, confidence intervals, timestamps, axis ticks. Plus the mastheads, tags and provenance
+ * lines, which speak in the same terminal voice.
  *
- * We load the italic style because the briefing's "Today's focus" headline is set in display
- * italic — the one literary flourish permitted anywhere in the app (plan §3.2).
+ * This is both an identity move and an alignment guarantee: a monospaced face is tabular by
+ * construction, so numeric columns line up without any per-column fiddling.
+ */
+export const jetbrainsMono = JetBrains_Mono({
+  subsets: ["latin"],
+  weight: ["400", "500", "600"],
+  display: "optional",
+  variable: "--font-jetbrains",
+});
+
+/**
+ * Newsreader — the text serif. Academy lesson bodies, briefing paragraphs, and the small editorial
+ * italics (setup-card pattern names) that Playfair is too fragile to set.
  *
- * We deliberately do NOT load the optical-size (`opsz`) axis, even though plan §3.2 asks for
- * it. Measured against the Google Fonts API on the latin subset:
- *
- *     ital + opsz + wght   272 KB      <- what §3.2 literally specifies
- *     ital + wght          119 KB      <- what we ship
- *
- * That single axis costs 153 KB, more than Archivo and Plex Mono put together, and it would
- * push the three families to 388 KB against the 320 KB budget in plan §4.5. The budget exists
- * to protect LCP <= 2.5s on a Moto-G-class phone over 4G; optical sizing is a refinement of
- * letterform proportions that most readers will never consciously see. The budget wins, the
- * italic survives, and the total lands at 235 KB. Logged as a structural decision in
- * DECISIONS.md (2026-07-10) with a matching correction block in DEVELOPMENT-PLAN.md.
+ * The optical-size (`opsz`) axis is deliberately NOT loaded: measured on the latin subset it cost
+ * 153KB on its own, and it refines letterform proportions in a way most readers never consciously
+ * see. The display italic survives, which is the part the product actually depends on. (Structural
+ * decision, DECISIONS.md 2026-07-10, with a matching correction block in DEVELOPMENT-PLAN.md §3.2.)
  */
 export const newsreader = Newsreader({
   subsets: ["latin"],
@@ -75,13 +83,14 @@ export const newsreader = Newsreader({
 });
 
 /**
- * The class list that publishes all three font variables to the document.
+ * The class list that publishes all four font variables to the document.
  *
- * Applied once, on <html> in the root layout. Nothing else should attach a font variable:
- * a component that wants prose asks for `font-prose`, and the token resolves.
+ * Applied once, on <html> in the root layout. Nothing else should attach a font variable: a
+ * component that wants prose asks for `font-prose`, and the token resolves.
  */
 export const fontVariables = [
-  archivo.variable,
-  plexMono.variable,
+  playfair.variable,
+  inter.variable,
+  jetbrainsMono.variable,
   newsreader.variable,
 ].join(" ");

@@ -68,7 +68,7 @@ function SetupCard({ card }: { card: SetupCardView }) {
       <summary className="flex cursor-pointer list-none items-baseline gap-3">
         <span className="font-ui text-sm font-semibold text-ink">{card.patternLabel}</span>
         <span className="font-mono text-sm text-ink-2">{card.symbol}</span>
-        <Tag variant="tier">{TIER_COPY[card.tier]}</Tag>
+        <Tag variant="tier" tier={card.tier}>{TIER_COPY[card.tier]}</Tag>
         <span className="min-w-0 flex-1 truncate font-ui text-2xs text-muted">{card.cause}</span>
         <span className="shrink-0 font-ui text-2xs text-muted group-open:hidden">open</span>
       </summary>

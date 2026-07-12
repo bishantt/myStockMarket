@@ -1,7 +1,7 @@
 import type { Viewport } from "next";
 import Link from "next/link";
 import { cookies } from "next/headers";
-import { DESK_BG, DESK_BG_DARK } from "@/lib/tokens";
+import { PAPER, PAPER_DARK } from "@/lib/tokens";
 import { THEME_COOKIE, normaliseTheme } from "@/lib/theme";
 import { db } from "@/lib/db";
 import { getLessonManifest } from "@/lib/academy";
@@ -29,8 +29,8 @@ import { RoomNav } from "@/components/desk/RoomNav";
  */
 export const viewport: Viewport = {
   themeColor: [
-    { media: "(prefers-color-scheme: light)", color: DESK_BG },
-    { media: "(prefers-color-scheme: dark)", color: DESK_BG_DARK },
+    { media: "(prefers-color-scheme: light)", color: PAPER },
+    { media: "(prefers-color-scheme: dark)", color: PAPER_DARK },
   ],
 };
 
@@ -51,7 +51,7 @@ export default async function DeskLayout({
   ];
 
   return (
-    <div data-theme={theme} className="min-h-dvh bg-desk-bg text-ink">
+    <div data-theme={theme} className="min-h-dvh bg-paper text-ink">
       <CommandPalette items={paletteItems} />
       <DeskNav />
       {/*
@@ -78,7 +78,7 @@ function DeskNav() {
       >
         <Link
           href="/"
-          className="shrink-0 font-ui text-sm font-bold uppercase tracking-[0.08em] font-stretch-[115%]"
+          className="shrink-0 font-ui text-sm font-bold uppercase tracking-[0.08em]"
         >
           myStockMarket
         </Link>

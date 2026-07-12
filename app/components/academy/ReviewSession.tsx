@@ -56,7 +56,7 @@ export function ReviewSession({ cards }: { cards: ReviewCard[] }) {
         {index + 1} of {cards.length}
       </p>
 
-      <div className="mt-3 rounded-edge border border-hairline p-5">
+      <div className="mt-3 rounded-card border border-hairline p-5">
         <h2 className="font-prose text-xl text-ink">{card.term}</h2>
 
         {revealed ? (
@@ -75,7 +75,7 @@ export function ReviewSession({ cards }: { cards: ReviewCard[] }) {
                 type="button"
                 disabled={pending}
                 onClick={() => answer(true)}
-                className="rounded-edge border border-hairline px-3 py-1.5 font-ui text-xs uppercase tracking-[0.05em] text-ink hover:border-accent disabled:opacity-50"
+                className="rounded-control border border-hairline px-3 py-1.5 font-ui text-xs uppercase tracking-[0.05em] text-ink hover:border-accent disabled:opacity-50"
               >
                 I knew this
               </button>
@@ -83,7 +83,7 @@ export function ReviewSession({ cards }: { cards: ReviewCard[] }) {
                 type="button"
                 disabled={pending}
                 onClick={() => answer(false)}
-                className="rounded-edge border border-hairline px-3 py-1.5 font-ui text-xs uppercase tracking-[0.05em] text-ink hover:border-accent disabled:opacity-50"
+                className="rounded-control border border-hairline px-3 py-1.5 font-ui text-xs uppercase tracking-[0.05em] text-ink hover:border-accent disabled:opacity-50"
               >
                 Not yet
               </button>
@@ -105,7 +105,7 @@ export function ReviewSession({ cards }: { cards: ReviewCard[] }) {
             <button
               type="button"
               onClick={() => setRevealed(true)}
-              className="mt-4 rounded-edge border border-hairline px-3 py-1.5 font-ui text-xs uppercase tracking-[0.05em] text-ink hover:border-accent"
+              className="mt-4 rounded-control border border-hairline px-3 py-1.5 font-ui text-xs uppercase tracking-[0.05em] text-ink hover:border-accent"
             >
               Reveal
             </button>

@@ -69,7 +69,7 @@ function WatchlistManagerRow({ item }: { item: ManagedItem }) {
             type="submit"
             disabled={focusPending}
             className={cx(
-              "rounded-edge border px-3 py-1 font-ui text-2xs uppercase tracking-[0.06em] disabled:opacity-60",
+              "rounded-control border px-3 py-1 font-ui text-2xs uppercase tracking-[0.06em] disabled:opacity-60",
               item.isFocus ? "border-ink bg-ink text-surface" : "border-hairline text-ink hover:text-accent",
             )}
           >
@@ -82,7 +82,7 @@ function WatchlistManagerRow({ item }: { item: ManagedItem }) {
           <button
             type="submit"
             disabled={removePending}
-            className="rounded-edge border border-hairline px-3 py-1 font-ui text-2xs uppercase tracking-[0.06em] text-ink hover:text-down-text disabled:opacity-60"
+            className="rounded-control border border-hairline px-3 py-1 font-ui text-2xs uppercase tracking-[0.06em] text-ink hover:text-down-text disabled:opacity-60"
           >
             Remove
           </button>

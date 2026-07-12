@@ -15,7 +15,7 @@ export function CalibrationScatter({ buckets }: { buckets: CalibrationBucket[] }
   const scale = (v: number) => pad + v * (size - 2 * pad);
 
   return (
-    <svg viewBox={`0 0 ${size} ${size}`} className="h-56 w-56" role="img" aria-label="Calibration: predicted versus actual">
+    <svg data-p2 viewBox={`0 0 ${size} ${size}`} className="h-56 w-56" role="img" aria-label="Calibration: predicted versus actual">
       {/* Frame */}
       <rect x={pad} y={pad} width={size - 2 * pad} height={size - 2 * pad} fill="none" stroke="var(--color-hairline)" />
       {/* Perfect-calibration diagonal (bottom-left to top-right). */}

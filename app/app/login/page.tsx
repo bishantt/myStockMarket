@@ -17,10 +17,10 @@ export const dynamic = "force-static";
 
 export default function LoginPage() {
   return (
-    <main className="flex min-h-dvh items-center justify-center bg-desk-bg px-5">
+    <main className="flex min-h-dvh items-center justify-center bg-paper px-5">
       <div className="w-full max-w-[380px]">
         <header className="pb-6">
-          <h1 className="font-ui text-sm font-bold uppercase tracking-[0.08em] font-stretch-[115%] text-ink">
+          <h1 className="font-ui text-sm font-bold uppercase tracking-[0.08em] text-ink">
             myStockMarket
           </h1>
           <div className="mt-3 h-0.5 bg-ink" />

@@ -41,6 +41,27 @@ export default defineConfig({
     trace: "on-first-retry",
   },
 
+  /**
+   * Visual regression (UI-REDESIGN-PLAN Part 9). Styling at this scale without pixel locks drifts
+   * within a week, so the redesign is exactly when the VRT becomes real.
+   *
+   * `maxDiffPixelRatio` allows 1% of pixels to differ — enough to absorb antialiasing noise across
+   * runs, far too little to hide a colour, a radius, or a shifted card. Animations are disabled and
+   * the caret is hidden, because a blinking cursor is a flaky test with extra steps.
+   *
+   * The pixel oracle is CI (Linux). Font rasterisation differs from macOS, so a baseline generated
+   * on a developer's Mac would fail in CI and vice versa; maintaining two sets for one developer is
+   * pure cost. Local runs pass `--ignore-snapshots` (see `npm run e2e:local`).
+   */
+  expect: {
+    toHaveScreenshot: {
+      maxDiffPixelRatio: 0.01,
+      animations: "disabled",
+      caret: "hide",
+      scale: "css",
+    },
+  },
+
   projects: [
     { name: "desktop", use: { ...devices["Desktop Chrome"], viewport: { width: 1366, height: 768 } } },
     { name: "phone", use: { ...devices["Pixel 7"] } },

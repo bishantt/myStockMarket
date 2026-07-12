@@ -23,7 +23,7 @@ export default async function AcademyIndex() {
   return (
     <div className="flex flex-col gap-8">
       <header>
-        <h1 className="font-ui text-2xl font-bold uppercase tracking-[0.04em] font-stretch-[110%] text-ink">
+        <h1 className="font-ui text-2xl font-bold uppercase tracking-[0.04em] text-ink">
           The Academy
         </h1>
         <p className="max-w-[62ch] pt-3 font-prose text-prose text-ink-2">

@@ -54,7 +54,7 @@ export function LoginForm() {
       <button
         type="submit"
         disabled={pending}
-        className="mt-1 rounded-edge border border-ink bg-ink px-4 py-2 font-ui text-xs font-medium uppercase tracking-[0.06em] text-surface disabled:opacity-60"
+        className="mt-1 rounded-control border border-ink bg-ink px-4 py-2 font-ui text-xs font-medium uppercase tracking-[0.06em] text-surface disabled:opacity-60"
       >
         {pending ? "Checking…" : "Sign in"}
       </button>
@@ -84,7 +84,7 @@ function Field({
         type={type}
         autoComplete={autoComplete}
         required
-        className="rounded-edge border border-hairline bg-surface px-3 py-2 font-mono text-sm text-ink"
+        className="rounded-control border border-hairline bg-surface px-3 py-2 font-mono text-sm text-ink"
       />
     </label>
   );

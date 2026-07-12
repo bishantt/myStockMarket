@@ -47,7 +47,7 @@ export default async function PaperPage({
   return (
     <div className="flex flex-col gap-8">
       <header className="pt-3">
-        <h1 className="font-ui text-xl font-bold uppercase tracking-[0.06em] font-stretch-[110%] text-ink">
+        <h1 className="font-ui text-xl font-bold uppercase tracking-[0.06em] text-ink">
           Paper desk
         </h1>
         <div className="mt-2 h-0.5 bg-ink" />
@@ -59,7 +59,7 @@ export default async function PaperPage({
       </header>
 
       {!m3Done ? (
-        <aside className="max-w-[62ch] rounded-edge border border-hairline p-4" aria-label="Suggested order">
+        <aside className="max-w-[62ch] rounded-panel border border-hairline p-4" aria-label="Suggested order">
           <p className="font-ui text-2xs font-semibold uppercase tracking-[0.06em] text-ink">Risk before orders</p>
           <p className="pt-1.5 font-prose text-sm text-ink-2">
             The Academy suggests finishing{" "}

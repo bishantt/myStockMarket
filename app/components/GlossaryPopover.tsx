@@ -75,7 +75,7 @@ export function GlossaryPopover({
           id={panelId}
           role="dialog"
           aria-label={entry.term}
-          className="absolute left-0 top-full z-20 mt-1 block w-72 rounded-edge border border-hairline bg-surface p-3 text-left shadow-none"
+          className="absolute left-0 top-full z-20 mt-1 block w-72 rounded-panel border border-hairline bg-surface p-3 text-left shadow-none"
         >
           <span className="block font-ui text-2xs font-semibold uppercase tracking-[0.06em] text-ink">
             {entry.term}
