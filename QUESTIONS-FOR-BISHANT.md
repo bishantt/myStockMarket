@@ -48,6 +48,20 @@ A veto of any one of these changes only its own sections; none of them ripple.
 
 ### Heads-ups, no action needed
 
+- **[FYI] The Lighthouse performance score on the Desk went from 93 to 87, on purpose, and I want
+  you to know before you see it.** It is the ADVISORY score (the one you already ruled a synthetic
+  artifact on 2026-07-11, because it models a cold load on throttled 4G). Both HARD budgets still
+  pass: layout shift is 0.000 and first-load JavaScript is 157KB against a 200KB budget. I measured
+  the cause rather than guessing at it (docs/feel-evidence/lighthouse-tradeoff.md): the Desk's own
+  JavaScript did not grow at all (179.6 → 179.7 KB), the server answers in 12ms, and the page blocks
+  the main thread for 20ms. The score drops because the app now **prefetches the five rooms in the
+  tab bar while the browser is idle** — and that prefetch is exactly what took a tab tap from
+  824–1342ms down to 45–55ms. The lab test measures the one cold load and counts the bandwidth spent
+  on your NEXT screen against your current one. My call: six advisory points is worth every tap in
+  the app feeling instant. **If you disagree, say so — turning prefetch back off is one line, and
+  the cost is that navigation goes back to being slow.**
+
+
 - **[FYI] Pages will be served from a cache, up to 10 minutes stale.** Every read route moves to
   ISR (revalidate 600s) — that is what takes the app from ~400–1340ms per tap to ~50ms. The honesty
   contract (ruling M5) is that every module already prints its own as-of timestamp, the data only

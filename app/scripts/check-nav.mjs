@@ -66,6 +66,22 @@ const PRODUCT_ROUTES = [
 ];
 const CONTROL_ROUTES = ["/login", "/academy/glossary"];
 
+/**
+ * Routes the plan will build, listed in the probe set BEFORE they exist.
+ *
+ * They are here on purpose. A route family left out of the probe set until the day it ships is a
+ * gap that quietly becomes permanent — nobody adds it later, because nothing is failing. So the
+ * route is probed from the start, and while it 404s it is reported as PENDING against the phase
+ * that owes it, rather than being either silently dropped or scored as a 45ms success (a 404 is the
+ * fastest response a server can give; see the F0 note in LESSONS).
+ *
+ * The moment one of these starts answering 200 it is gated like everything else — no edit needed,
+ * and no way to ship it slow by forgetting to take it off a list.
+ */
+const PENDING = {
+  "/scans/unusual-volume": "F3 builds the per-preset match table",
+};
+
 const EVIDENCE = join(process.cwd(), "..", "docs", "feel-evidence");
 const FINGERPRINT_FILE = join(EVIDENCE, ".deployed-build");
 
@@ -186,7 +202,8 @@ let results = await runRound(PRODUCT_ROUTES);
  * page there is, and a budget that rewards that is a budget that would call a deleted route a
  * success. Speed only counts when something was served.
  */
-const missed = (r) => r.status !== 200 || r.warm > WARM_BUDGET_MS;
+const isPending = (r) => r.status === 404 && PENDING[r.path] !== undefined;
+const missed = (r) => !isPending(r) && (r.status !== 200 || r.warm > WARM_BUDGET_MS);
 
 // One automatic re-probe round before declaring a failure — an outlier from a shared edge is not
 // a regression, and a gate that cries wolf gets ignored.
@@ -203,9 +220,11 @@ const controls = await runRound(CONTROL_ROUTES);
 const width = Math.max(...[...PRODUCT_ROUTES, ...CONTROL_ROUTES].map((r) => r.length));
 
 const line = (r, gated) => {
-  const mark = !gated ? "·" : missed(r) ? "✗" : "✓";
+  const pending = isPending(r);
+  const mark = pending ? "·" : !gated ? "·" : missed(r) ? "✗" : "✓";
   const notes = [];
-  if (r.status !== 200) notes.push(`  (HTTP ${r.status} — nothing was served, so the speed number means nothing)`);
+  if (pending) notes.push(`  (PENDING — ${PENDING[r.path]}; not built yet, so the timing means nothing)`);
+  else if (r.status !== 200) notes.push(`  (HTTP ${r.status} — nothing was served, so the speed number means nothing)`);
   if (r.cold > COLD_CEILING_MS) notes.push("  (cold sample over the 1500ms ceiling)");
   return `  ${mark} ${r.path.padEnd(width)}  warm ${String(r.warm).padStart(5)}ms   cold ${String(r.cold).padStart(5)}ms   [${r.samples.join(", ")}]  ${r.caches.join(",")}  ${r.status} ${r.region}${notes.join("")}`;
 };
@@ -224,10 +243,14 @@ if (REPORT) {
     `\n### ${stamp} UTC — authenticated TTFB (${SAMPLES} samples, ${TARGET})\n`,
     "| Route | HTTP | Warm median (2–5) | Cold (sample 1) | All samples | x-vercel-cache | Region |",
     "|---|---|---|---|---|---|---|",
-    ...results.map((r) => `| \`${r.path}\` | ${r.status}${r.status === 200 ? "" : " ⚠︎"} | **${r.warm}ms** | ${r.cold}ms | ${r.samples.join(", ")} | ${r.caches.join(", ")} | ${r.region} |`),
+    ...results.map((r) => {
+      const status = r.status === 200 ? "200" : isPending(r) ? `404 _(pending: ${PENDING[r.path]})_` : `${r.status} ⚠︎`;
+      return `| \`${r.path}\` | ${status} | **${r.warm}ms** | ${r.cold}ms | ${r.samples.join(", ")} | ${r.caches.join(", ")} | ${r.region} |`;
+    }),
     ...controls.map((r) => `| \`${r.path}\` _(control)_ | ${r.status} | ${r.warm}ms | ${r.cold}ms | ${r.samples.join(", ")} | ${r.caches.join(", ")} | ${r.region} |`),
     "",
-    "_A non-200 row is not a fast route — it is a route that served nothing. The gate treats it as a miss._",
+    "_A non-200 row is not a fast route — it is a route that served nothing. The gate treats it as a miss,_",
+    "_unless it is a route a later phase has not built yet, which is reported as pending and never scored._",
     "",
     reprobed.length > 0 ? `_${reprobed.length} route(s) were re-probed once after missing the budget on the first round._\n` : "",
   ].join("\n");
