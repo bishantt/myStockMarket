@@ -52,8 +52,8 @@ export default function StyleguidePage() {
           <Controls />
           <Figures />
           <MotionSpec />
-          <Kit />
           <CopyDeck />
+          <Kit />
         </div>
       </div>
     </>
