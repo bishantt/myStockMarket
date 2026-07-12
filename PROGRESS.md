@@ -1,5 +1,52 @@
 # PROGRESS.md — resumable state
 
+**APP FEEL PLAN AUTHORED (2026-07-12) — APP-FEEL-PLAN.md at the repo root, typeset at
+docs/App-Feel-Plan.pdf. The build has NOT started; this session was commissioned to plan,
+not to write app code. Next session: session ritual, then F0.**
+
+The plan answers the four commissioned problems with measurements, not impressions:
+- **The receipt problem.** Every route below 1366px is one vertical column; the app has
+  zero pagination and three collapsibles total. The plan gives every room a glance layer
+  with depth one tap away (Part 4), a small kit of primitives to do it with (Part 3 —
+  Disclosure, Shelf, DataTable, form controls, Skeleton), and ten new honesty rulings
+  (M1–M10) so none of it can lie.
+- **Scans.** The "+123 more" that isn't clickable becomes a real data table: /scans turns
+  into a summary index, each preset gets /scans/[preset] with the full match set —
+  sortable, paginated, every match reachable, per-preset "why it matched" columns straight
+  from the 34 metric keys the database already stores per match (no pipeline change).
+- **Paper.** The five type-everything fields become a ticket: symbol autocomplete from the
+  instrument table, segmented side control with NO default (a deliberate M9 ruling, [VETO?]
+  logged), bucket segments, a quantity stepper with presets, a dated tap-to-fill last-close
+  chip. Cost mirror, cooling-off, and half-Kelly survive untouched — and the cooling-off
+  finally gets a real producer (the setup-card "Practice on paper →" doorway, ruling M10,
+  [VETO?] logged), because today nothing in the product constructs its URL.
+- **Speed, measured.** Production probes: cached routes answer in 51–67ms; the eight
+  force-dynamic rooms answer in 382–1237ms with a frozen screen (zero loading.tsx, no
+  prefetch for dynamic routes — the framework's own docs state both). The fix extends the
+  Desk's proven ISR + on-demand revalidation to every read route, adds skeletons and two
+  streaming islands, parallelizes the ticker's four sequential queries, code-splits the
+  chart, and wires the revalidate route to every cached path. Budgets B1–B6 are testable
+  gates with named instruments; baselines are in the plan and get re-captured by checked-in
+  scripts at F0.
+
+**Decisions needed from the user: NONE** (plan Part 0 — the honest version: seven near-miss
+calls, each decided, logged, and vetoable; three carry [VETO?] flags in QUESTIONS).
+
+**The plan was adversarially reviewed before delivery** (five lenses, 57 findings
+integrated). The three that would have stopped the build cold, all fixed in the text:
+runtime ISR on /ticker/[symbol] requires an EMPTY generateStaticParams (the pinned Next
+docs are explicit; the first draft omitted it and the flagship budget would have failed
+forever); `feel-*` tags trigger NO CI workflow until ci.yml is amended (now F0's first
+step); and the DB-less CI app job breaks on prerendering loaders unless they follow the
+house catch-and-degrade pattern (named file:line list in P-1).
+
+**Phases:** F0 instruments/baselines/seeds/CI-wiring → F1 speed layer → F2 kit → F3 scans →
+F4 paper → F5 desk → F6 remaining rooms → F7 hardening + docs sync (DEVELOPMENT-PLAN
+§4.5/§3.8 amendments land there). Tags `feel-N`, gates in the plan Part 6, ~8–11 days at
+R-phase pace.
+
+---
+
 **UI REDESIGN COMPLETE (2026-07-12) — R0 through R6 shipped, tagged `redesign-final`.**
 The app is now "Morning Broadsheet": an editorial serif over mono numerals, one lavender
 morning-light wash across both rooms, glass cards on the Desk and solid paper in the Academy, one

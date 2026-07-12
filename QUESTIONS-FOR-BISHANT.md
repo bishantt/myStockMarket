@@ -85,6 +85,46 @@ constitution docs, and the PDFs are reconciled to the answers. Nothing here is o
 
 ---
 
+## 2026-07-12 — App feel plan ("A Broadsheet, Not a Receipt")
+
+APP-FEEL-PLAN.md is authored and its Part 0 says "Decisions I need from you: NONE" — the
+build can start at F0 without you. These are the three judgment calls closest to the line,
+each decided and built-on-assumption per the standing autonomy directive; veto any of them
+and only its own sections change.
+
+- **[VETO?] User scroll is not "motion" (plan 0.4, ruling M3).** The one new horizontal
+  rail (the macro-pulse figures on phones) contains money figures, and the stillness rule
+  says probability/money visuals never move. My ruling: a scroll container is the reader
+  moving the paper — the page already scrolls vertically past every money figure — so
+  user-driven scrolling and its momentum/snap settle are sanctioned, while anything
+  self-moving (autoplay, smooth-scroll, animation) stays banned and grepped. If you read
+  the stillness rule more strictly, say so and the pulse rail becomes a static grid at
+  every width (one table row changes).
+- **[VETO?] The paper ticket no longer pre-selects "Buy" (plan 0.5, ruling M9).** Side
+  becomes a two-button segmented control with NEITHER pressed; every other field keeps a
+  sensible default. Reasoning: side is the decision itself, and a pre-selected buy is a
+  quiet nudge on the one surface built to slow that decision down. This changes current
+  behavior (the old dropdown defaulted to buy). Cost: one tap per ticket.
+- **[VETO?] Setup cards gain a "Practice on paper →" doorway (plan 0.7, ruling M10).** It
+  carries the signal-viewed timestamp, which finally makes your cooling-off interstitial
+  fire on a real path (today literally nothing in the product produces it — only the e2e
+  test does). It is also the app's first one-tap path from a signal card to an order
+  ticket, so it is bound by four hard conditions (paper room only, timestamp always
+  carried, no side default, mechanical unstyled label) and forbidden from surfaces without
+  the full evidence anatomy (mover rows, scan rows). If a signal→ticket link feels wrong
+  regardless of conditions, veto it; the interstitial then stays dormant until some other
+  producer exists.
+
+- **[FYI] Every read page becomes cached (ISR ≤10 min) with on-demand busting.** Your
+  writes and the nightly publish refresh the right pages immediately; the honest edge case
+  is stated in the plan (M5/§5.4): right after the ~8:40pm publish, the first tap into each
+  room regenerates it — a skeleton, then content — and everything after is instant. The
+  measured before/after: dynamic rooms today answer in 400–1240ms with a frozen screen;
+  cached routes answer in ~50–70ms.
+- **[FYI] `/scans` grows a sub-route per preset** (`/scans/unusual-volume` etc.) carrying
+  the full match table — sortable, paginated, every match reachable; the dead "+N more" is
+  gone. The route map amendment is logged and lands in the docs sync at F7.
+
 ## R0 — the two content fixes (2026-07-12)
 
 - **[NEED — assumption made, not blocking] Every earnings row on the calendar renders as
