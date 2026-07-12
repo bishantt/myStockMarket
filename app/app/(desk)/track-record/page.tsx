@@ -1,6 +1,7 @@
 import { getTrackRecord } from "@/lib/track-record";
 import { getForecastRecord } from "@/lib/forecasts";
 import { formatUtcDate } from "@/lib/time";
+import { decimal } from "@/lib/format";
 import { copy } from "@/lib/copy";
 import { CalibrationScatter } from "@/components/desk/CalibrationScatter";
 import { ForecastResolver } from "@/components/desk/ForecastResolver";
@@ -110,7 +111,9 @@ export default async function TrackRecordPage() {
           <div className="flex flex-wrap items-start gap-10 pt-4">
             <div className="flex flex-col gap-0.5">
               <span className="font-ui text-2xs uppercase tracking-[0.06em] text-muted">Rolling Brier</span>
-              <span className="font-mono text-lg text-ink">{forecasts.rollingBrier?.toFixed(3) ?? "—"}</span>
+              <span className="font-mono text-lg text-ink">
+                {forecasts.rollingBrier === null ? "—" : decimal(forecasts.rollingBrier, 3)}
+              </span>
               <span className="font-ui text-2xs text-muted">over {forecasts.resolvedCount} resolved</span>
             </div>
             <div>

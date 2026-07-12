@@ -5,6 +5,7 @@ import { db } from "@/lib/db";
 import { buildLedgerView, type PaperTradeRow } from "@/lib/ledger";
 import { Surface } from "@/components/Surface";
 import { costMirrorDrag } from "@/lib/paper";
+import { decimal, percent, price } from "@/lib/format";
 import { isM3Complete, M3_SLUGS } from "@/lib/academy-progress";
 import { PaperEntryIsland } from "@/components/desk/PaperEntryIsland";
 import { PaperLedger } from "@/components/desk/PaperLedger";
@@ -134,11 +135,11 @@ export default async function PaperPage() {
             />
             <ReceiptLine
               label="Average round-trip cost"
-              value={`${avgRoundTripBps.toFixed(0)} bps`}
+              value={`${decimal(avgRoundTripBps, 0)} bps`}
             />
             <ReceiptLine
               label="Projected annual drag"
-              value={`${drag.annualDragBps.toFixed(0)} bps`}
+              value={`${decimal(drag.annualDragBps, 0)} bps`}
             />
           </dl>
         </div>
@@ -147,7 +148,7 @@ export default async function PaperPage() {
           <span className="font-ui text-sm text-muted">Paid whether the trades win or lose</span>
           <span className="flex items-baseline gap-2">
             <span className="font-mono text-num-lg text-down-text">
-              −{(drag.annualDragFraction * 100).toFixed(1)}%
+              −{percent(drag.annualDragFraction, 1)}
             </span>
             <span className="font-ui text-sm font-semibold text-down-text">/ yr drag</span>
           </span>
@@ -168,7 +169,7 @@ export default async function PaperPage() {
           <span>Ledger</span>
           <span className="font-mono font-medium text-muted">
             realized {ledger.totalRealizedPnl >= 0 ? "+" : "−"}
-            {Math.abs(ledger.totalRealizedPnl).toFixed(2)}
+            {price(Math.abs(ledger.totalRealizedPnl))}
           </span>
         </h2>
         <div className="mt-2 h-px bg-hairline" />

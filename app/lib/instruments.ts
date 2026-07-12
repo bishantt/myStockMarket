@@ -12,8 +12,13 @@ import { db } from "@/lib/db";
 
 export type InstrumentHit = { symbol: string; name: string };
 
-/** How many rows the combobox may ever show. Five, and the number is an iOS constraint (see below). */
-export const MAX_INSTRUMENT_HITS = 5;
+/**
+ * How many rows the combobox may ever show. Five, and the number is an iOS constraint (see below).
+ *
+ * Not exported: a "use server" file may export nothing but async functions, and a stray constant
+ * fails the build with a message that does not mention the constant.
+ */
+const MAX_INSTRUMENT_HITS = 5;
 
 /**
  * Search active instruments by symbol prefix or by name.

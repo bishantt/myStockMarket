@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { Chevron } from "@/components/Chevron";
 import { SectionMasthead } from "@/components/SectionMasthead";
 import { Surface } from "@/components/Surface";
@@ -6,6 +7,7 @@ import { BaseRate } from "@/components/BaseRate";
 import { WeakenerChecklist } from "@/components/desk/WeakenerChecklist";
 import { WorkedExampleDrawer } from "@/components/desk/WorkedExampleDrawer";
 import { copy } from "@/lib/copy";
+import { PracticeDoorway } from "@/components/desk/PracticeDoorway";
 import type { BaseRateData } from "@/lib/baserate";
 import { buildWorkedExample } from "@/lib/worked-example";
 import type { Weakener } from "@/lib/weakeners";
@@ -121,14 +123,45 @@ function SetupCard({ card }: { card: SetupCardView }) {
         {/* The scope line — four words doing most of the product's ethical work. */}
         <p className="font-ui text-2xs uppercase tracking-wide text-muted">{copy.scope.line}</p>
 
-        {/* The one Academy doorway, only when the lesson manifest knows the slug (empty until P5). */}
-        {card.learnSlug ? (
-          <p>
-            <a href={`/academy/${card.learnSlug}`} className="font-ui text-2xs text-ink underline underline-offset-2 hover:text-accent">
+        {/*
+         * The footer doorways. Both are plain links at footnote weight — never buttons.
+         */}
+        <p className="flex flex-wrap items-center gap-x-5 gap-y-1">
+          {/* The Academy doorway, only when the lesson manifest knows the slug. */}
+          {card.learnSlug ? (
+            <Link
+              href={`/academy/${card.learnSlug}`}
+              className="font-ui text-2xs text-ink underline underline-offset-2 hover:text-accent"
+            >
               Learn: how this pattern is judged →
-            </a>
-          </p>
-        ) : null}
+            </Link>
+          ) : null}
+
+          {/*
+           * THE PRACTICE DOORWAY — ruling M10, and the most carefully bounded link in the app.
+           *
+           * It sits directly under a base rate, at the moment of maximum conviction, and it goes to
+           * an order ticket. That is exactly the kind of link a product like this one should be
+           * suspicious of, so it earns the strictest ruling in the plan and all four of its
+           * conditions hold here BY CONSTRUCTION:
+           *
+           *   1. the destination is the PAPER room — this ruling can never be cited for a live order;
+           *   2. it carries `signalViewedAt`, which is what ARMS the cooling-off interstitial;
+           *   3. the ticket it lands on has no side default (M9) — a bullish card cannot pre-set Buy;
+           *   4. the label is mechanical and practice-framed, and it is a plain link, not a button.
+           *
+           * And the honest case FOR it, which is the reason it exists: the cooling-off pause is built,
+           * tested, and — until this link — completely unreachable. Nothing in the product ever
+           * constructed the URL that arms it; only the e2e test did. Meanwhile the organic path (open
+           * this card, tap the Paper tab, type the symbol) reaches the very same ticket with NO pause
+           * at all. This link is strictly MORE protective than the walk it replaces.
+           *
+           * The boundary bites too: mover rows and scan-table rows get no such link, ever. They are
+           * filter hits with no base rate, no interval and no weakener list — no evidence anatomy, no
+           * doorway.
+           */}
+          <PracticeDoorway symbol={card.symbol} />
+        </p>
       </div>
     </details>
   );

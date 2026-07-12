@@ -200,6 +200,26 @@ const RULES = [
       !/^\s*(\*|\/\/)/.test(line),
   },
   {
+    id: 12,
+    name: "HONESTY-adjacent — numbers reach the screen through lib/format, and no other door",
+    /*
+     * `.toFixed()` is how a number gets on screen without anyone deciding how it should look. That is
+     * not a style problem. It is how a loss ends up printed with a HYPHEN instead of a true minus, so
+     * it fails to align in a column of signed figures; it is how one price gets two decimals and
+     * another gets three; it is how "$3,180,000,000" appears in a cell that should read "$3.18B".
+     *
+     * The whole paper surface did this — the page, the form, and the ledger all called .toFixed()
+     * directly — which is why the sweep happened in F4 and why this rule lands with it, not before.
+     *
+     * Two files are allowed, and both for the same reason: the number never reaches a reader.
+     *   · lib/format.ts       — it IS the door.
+     *   · CandleChart.tsx     — the charting library formats its own axis labels.
+     *   · Watchlist.tsx       — SVG path COORDINATES ("M12.3,4.5"). Geometry, not a figure.
+     */
+    skip: ["lib/format.ts", "components/ticker/CandleChart.tsx", "components/desk/Watchlist.tsx"],
+    match: (line) => /\.toFixed\(/.test(line) && !/^\s*(\*|\/\/)/.test(line),
+  },
+  {
     id: 17,
     name: "PERF/CORRECTNESS — never revalidatePath(..., 'layout'); it 404s the closed-param routes",
     /*
@@ -233,12 +253,24 @@ const RULES = [
   {
     id: 14,
     name: "PERF — internal links go through next/link, and nobody turns prefetch off",
-    // A raw <a href="/..."> is a full document reload: the service worker re-runs, the fonts
-    // re-request, React re-hydrates from scratch. Two of them survived in the Desk until F1 and cost
-    // the reader a whole page load each. `prefetch={false}` is the other way to lose the same thing:
-    // once a route is static, the default prefetch is exactly what makes the tap feel instant.
+    /*
+     * A raw <a href="/..."> is a full document reload: the service worker re-runs, the fonts
+     * re-request, React re-hydrates from scratch. Two survived on the Desk until F1 and cost the
+     * reader a whole page load each.
+     *
+     * The `href={` form is in this pattern because the first version of the rule missed one. The
+     * setup card's "Learn: how this pattern is judged →" link was written as
+     * `<a href={`/academy/${slug}`}>` — a template literal, so it never matched a rule that only
+     * looked for `href="/`. It sat there through F1, F2 and F3, reloading the whole document every
+     * time a reader followed the app's single most important doorway into the Academy. Found in F4,
+     * while adding the doorway beside it.
+     *
+     * `prefetch={false}` is the other way to lose the same thing: once a route is static, the
+     * default prefetch is exactly what makes the tap feel instant.
+     */
     skip: [],
-    match: (line) => /<a\s+href=["']\/(?!\/)/.test(line) || /prefetch=\{false\}/.test(line),
+    match: (line) =>
+      /<a\s+href=["']\/(?!\/)/.test(line) || /<a\s+href=\{/.test(line) || /prefetch=\{false\}/.test(line),
   },
 ];
 

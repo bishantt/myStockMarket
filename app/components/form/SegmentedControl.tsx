@@ -51,12 +51,22 @@ export function SegmentedControl({ name, legend, options, defaultValue, required
               key={option.value}
               className={cx(
                 // ≥44px, and the whole pill is the hit target — not just the label text.
-                "flex min-h-11 flex-1 cursor-pointer flex-col items-center justify-center rounded-control px-3 py-1.5 text-center touch-manipulation",
+                "relative flex min-h-11 flex-1 cursor-pointer flex-col items-center justify-center rounded-control px-3 py-1.5 text-center touch-manipulation",
                 // Chrome semantics, not data: the accent says "you can act here", which is the only
                 // thing it is for. It never encodes an outcome.
                 active ? "bg-accent-soft font-semibold text-accent-deep" : "text-ink-2 hover:text-ink",
               )}
             >
+              {/*
+               * A REAL radio, transparent, covering its whole pill — rather than `sr-only`.
+               *
+               * sr-only is the reflex here, and it costs you the hit target: a visually-hidden input
+               * is a 1px box in the corner, so anything driving the control by its accessible role —
+               * a test, or an assistive technology that clicks rather than activates — has nothing to
+               * aim at. Stretching the input over the pill keeps the semantics identical (it is still
+               * a native radio, still keyboard-operable, still announced correctly) and makes the
+               * thing you can see the thing you can press.
+               */}
               <input
                 type="radio"
                 name={name}
@@ -64,7 +74,7 @@ export function SegmentedControl({ name, legend, options, defaultValue, required
                 checked={active}
                 required={required}
                 onChange={() => setSelected(option.value)}
-                className="sr-only"
+                className="absolute inset-0 m-0 cursor-pointer appearance-none opacity-0"
               />
               <span className="font-ui text-sm">{option.label}</span>
               {option.detail ? <span className="font-mono text-2xs text-muted">{option.detail}</span> : null}

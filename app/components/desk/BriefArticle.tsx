@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { SectionMasthead } from "@/components/SectionMasthead";
 import { ExternalLink } from "@/components/ExternalLink";
 import { copy } from "@/lib/copy";
@@ -81,9 +82,9 @@ export function BriefArticle({ asOf, brief }: { asOf: Date; brief: BriefView }) 
           {/* The one Academy doorway — only when the lesson manifest knows the slug. */}
           {brief.learnSlug ? (
             <p className="pt-6">
-              <a href={`/academy/${brief.learnSlug}`} className="font-ui text-sm text-ink underline underline-offset-2 hover:text-accent">
+              <Link href={`/academy/${brief.learnSlug}`} className="font-ui text-sm text-ink underline underline-offset-2 hover:text-accent">
                 Learn: how to read this →
-              </a>
+              </Link>
             </p>
           ) : null}
         </div>
