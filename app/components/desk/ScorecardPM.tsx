@@ -1,7 +1,10 @@
 import Link from "next/link";
 
 import { formatAsOf } from "@/lib/time";
+import { Disclosure } from "@/components/Disclosure";
 import { JournalPrompt } from "@/components/desk/JournalPrompt";
+import { copy } from "@/lib/copy";
+import { JOURNAL_PROMPT } from "@/lib/journal";
 
 /** The resolved-log summary the scorecard now grades against (from signal_resolution). */
 export type ScorecardSummary = { total: number; hits: number; misses: number; hitRate: string | null };
@@ -17,7 +20,16 @@ export type ScorecardSummary = { total: number; hits: number; misses: number; hi
  * This is the evening counterpart to the eight morning modules, so it carries a title-only masthead
  * (the numbered mastheads are reserved for the AM ritual, §3.10) — the same broadsheet rule, no index.
  */
-export function ScorecardPM({ asOf, resolved }: { asOf?: Date; resolved?: ScorecardSummary }) {
+export function ScorecardPM({
+  asOf,
+  resolved,
+  savedTonight = 0,
+}: {
+  asOf?: Date;
+  resolved?: ScorecardSummary;
+  /** How many journal entries exist for tonight (0 or 1). The disclosure reports it (M2). */
+  savedTonight?: number;
+}) {
   return (
     <section aria-label="Evening scorecard">
       <header className="pt-3">
@@ -49,7 +61,25 @@ export function ScorecardPM({ asOf, resolved }: { asOf?: Date; resolved?: Scorec
           journal entry is recorded alongside it.
         </p>
       )}
-      <JournalPrompt />
+      {/*
+       * THE JOURNAL, BEHIND ONE LABELLED TAP.
+       *
+       * The textarea is the tallest always-empty region on the phone Desk — a big blank box at the
+       * bottom of the ritual, every night, whether or not there is anything to write. It folds now,
+       * and the summary row IS the prompt ("What did today's session teach you…"), so the disclosure
+       * is not chrome hiding a form; it is the question, asked once, with the form behind it.
+       *
+       * The count keeps it honest (M2): a collapsed row still reports its state — "1 saved tonight",
+       * or "none saved tonight". A zero is a state, not an offer of more. The friction to write is
+       * unchanged: one tap, which is what it took to reach the bottom of the page anyway.
+       */}
+      <Disclosure
+        label={JOURNAL_PROMPT}
+        count={savedTonight}
+        context={savedTonight === 0 ? copy.journal.savedNone : copy.journal.savedOne}
+      >
+        <JournalPrompt />
+      </Disclosure>
     </section>
   );
 }

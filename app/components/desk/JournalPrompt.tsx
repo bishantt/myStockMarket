@@ -1,9 +1,9 @@
 "use client";
 
 import { useActionState, useEffect, useRef } from "react";
+import { JOURNAL_PROMPT } from "@/lib/journal";
 
 import { writeJournalEntry, type JournalResult } from "@/app/(desk)/journal-actions";
-import { JOURNAL_PROMPT } from "@/lib/journal";
 
 /**
  * JournalPrompt — the evening journal entry (plan P3 step 4, §9.2 the PM ritual).
@@ -24,7 +24,13 @@ export function JournalPrompt() {
   return (
     <form ref={formRef} action={formAction} className="flex flex-col gap-3 pt-4">
       <label className="flex flex-col gap-2">
-        <span className="max-w-[62ch] font-prose text-base italic text-ink-2">{JOURNAL_PROMPT}</span>
+        {/*
+         * The prompt still labels the textarea — it is just not PRINTED here any more, because the
+         * disclosure's summary row above now carries it in full. Deleting the span outright would
+         * have left the textarea with no accessible name at all: a screen reader would announce an
+         * unlabelled edit box at the bottom of the evening ritual.
+         */}
+        <span className="sr-only">{JOURNAL_PROMPT}</span>
         <textarea
           name="body"
           required

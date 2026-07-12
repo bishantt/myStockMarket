@@ -395,7 +395,61 @@ export type Morning = {
   calendar: CalendarRow[] | null;
   /** Per-source health for the run's footer; an empty array when no run is recorded. */
   sources: SourceStatus[];
+  /**
+   * How many matches the night's scans found, across how many presets (§4.1 module 07).
+   *
+   * Module 07 used to be a paragraph of prose pointing at another page. It is a GLANCE station, and
+   * a glance station that cannot be glanced at is a paragraph. One count query, amortised by the
+   * route's cache, turns it into a figure the reader can actually read in passing.
+   */
+  scans: { matches: number; presets: number };
+  /** How many journal entries exist for today (0 or 1). The scorecard's disclosure reports it (M2). */
+  journalSavedToday: number;
 };
+
+/**
+ * How many scan matches the latest run produced, and across how many presets.
+ *
+ * A count query, not a fetch: module 07 needs the number, not the rows. Degrades to zeros if the
+ * database cannot be reached — the module then reads "0 matches across 0 scans", which is honest
+ * about what it knows rather than pretending the scans found nothing.
+ */
+async function loadScanCount(): Promise<{ matches: number; presets: number }> {
+  try {
+    const latest = await db.scanResult.findFirst({ orderBy: { runDate: "desc" }, select: { runDate: true } });
+    if (!latest) return { matches: 0, presets: 0 };
+
+    const grouped = await db.scanResult.groupBy({
+      by: ["presetKey"],
+      where: { runDate: latest.runDate },
+      _count: { _all: true },
+    });
+    return {
+      matches: grouped.reduce((sum, g) => sum + g._count._all, 0),
+      presets: grouped.length,
+    };
+  } catch (error) {
+    console.error("getMorning: could not count the scan matches", error);
+    return { matches: 0, presets: 0 };
+  }
+}
+
+/**
+ * How many journal entries exist for today.
+ *
+ * The collapsed journal row reports its own state — "1 saved tonight" or "none saved tonight" — and
+ * a zero is a STATE, not an offer of more (ruling M2). Without this count the disclosure would be
+ * hiding an unstated number of things, which is exactly what the rule forbids.
+ */
+async function loadJournalCount(): Promise<number> {
+  try {
+    const today = new Date(new Date().toISOString().slice(0, 10));
+    return await db.journalEntry.count({ where: { date: today } });
+  } catch (error) {
+    console.error("getMorning: could not count tonight's journal entries", error);
+    return 0;
+  }
+}
 
 /** Group price rows (already sorted oldest-first) into a symbol → closes map. */
 function closesBy(rows: Array<{ symbol: string; close: number }>): Record<string, number[]> {
@@ -411,7 +465,7 @@ function closesBy(rows: Array<{ symbol: string; close: number }>): Record<string
  */
 export async function getMorning(): Promise<Morning> {
   const asOf = await latestAsOf();
-  const [macro, brief, setupCards, movers, watch, calendar, sources] = await Promise.all([
+  const [macro, brief, setupCards, movers, watch, calendar, sources, scans, journalSavedToday] = await Promise.all([
     loadMacro(),
     loadBrief(),
     loadSetupCards(),
@@ -419,8 +473,21 @@ export async function getMorning(): Promise<Morning> {
     loadWatchlist(),
     loadCalendar(),
     loadSourceStatus(),
+    loadScanCount(),
+    loadJournalCount(),
   ]);
-  return { asOf: asOf ? asOf.toISOString() : null, macro, brief, setupCards, movers, watch, calendar, sources };
+  return {
+    asOf: asOf ? asOf.toISOString() : null,
+    macro,
+    brief,
+    setupCards,
+    movers,
+    watch,
+    calendar,
+    sources,
+    scans,
+    journalSavedToday,
+  };
 }
 
 /**

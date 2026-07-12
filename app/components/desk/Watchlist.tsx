@@ -1,3 +1,5 @@
+import { Disclosure } from "@/components/Disclosure";
+import { copy } from "@/lib/copy";
 import { SectionMasthead } from "@/components/SectionMasthead";
 import { RailTrigger } from "@/components/rail/Rail";
 import { cx } from "@/lib/cx";
@@ -24,6 +26,11 @@ export type WatchRow = {
   direction: Direction;
   rvol: string;
   isFocus: boolean;
+  /**
+   * True when this symbol has an unresolved fired signal. Forces the row into the visible set (see
+   * splitWatchlist). No producer sets this yet — the marker's own producer has never been built.
+   */
+  hasFiredSignal?: boolean;
   /** A small set of recent closes for the sparkline (already numeric). */
   spark: number[];
 };
@@ -101,7 +108,28 @@ function Sparkline({ points, direction }: { points: number[]; direction: Directi
   );
 }
 
+/**
+ * Which rows stay in view, and which fold away (§4.1).
+ *
+ * The focus names are the point of this module, so they are always visible. Everything else folds.
+ *
+ * AND THE FIRED-SIGNAL RULE, WHICH IS DORMANT BY DESIGN: a row whose symbol has an unresolved fired
+ * signal FORCES ITSELF into the visible set — even past the focus cap — and decrements the
+ * disclosure's count. The marker exists to be seen; a warning behind a fold is not a warning (M2's
+ * list). The producer for that marker does not exist yet (nothing in the tree renders a fired-signal
+ * flag today; the redesign specced it and nothing has ever set it), so this branch is currently
+ * unreachable. It is built now, with its slot, so that the day the marker lands it is already
+ * impossible to hide it. PROGRESS.md records the dependency so this is never mistaken for dead code.
+ */
+function splitWatchlist(rows: WatchRow[]): { visible: WatchRow[]; folded: WatchRow[] } {
+  const visible = rows.filter((r) => r.isFocus || r.hasFiredSignal === true);
+  const folded = rows.filter((r) => !r.isFocus && r.hasFiredSignal !== true);
+  return { visible, folded };
+}
+
 export function Watchlist({ asOf, rows }: { asOf: Date; rows: WatchRow[] }) {
+  const { visible, folded } = splitWatchlist(rows);
+
   return (
     <section aria-label="Watchlist">
       <SectionMasthead index={5} title="Focus watchlist" asOf={asOf} />
@@ -111,10 +139,40 @@ export function Watchlist({ asOf, rows }: { asOf: Date; rows: WatchRow[] }) {
           Nothing on the watchlist yet. Add a name and the reason you are watching it.
         </p>
       ) : (
+        <>
         <ul className="pt-2">
-          {rows.map((r) => (
+          {visible.map((r) => (
             <li key={r.symbol} className="border-b border-hairline last:border-b-0">
-              <RailTrigger
+              <WatchRowBody row={r} />
+            </li>
+          ))}
+        </ul>
+
+        {folded.length > 0 ? (
+          <Disclosure label={copy.disclosure.watchlist} count={folded.length}>
+            <ul>
+              {folded.map((r) => (
+                <li key={r.symbol} className="border-b border-hairline last:border-b-0">
+                  <WatchRowBody row={r} />
+                </li>
+              ))}
+            </ul>
+          </Disclosure>
+        ) : null}
+        </>
+      )}
+    </section>
+  );
+}
+
+/**
+ * One watchlist row: the name, its move, and — always — the WRITTEN REASON the reader is watching it.
+ * The reason is not decoration. A watchlist without reasons is a list of tickers, which is a list of
+ * temptations; with them it is a record of thinking that can be checked against what happened.
+ */
+function WatchRowBody({ row: r }: { row: WatchRow }) {
+  return (
+<RailTrigger
                 payload={{
                   symbol: r.symbol,
                   name: r.name,
@@ -148,10 +206,5 @@ export function Watchlist({ asOf, rows }: { asOf: Date; rows: WatchRow[] }) {
                   </span>
                 </span>
               </RailTrigger>
-            </li>
-          ))}
-        </ul>
-      )}
-    </section>
   );
 }

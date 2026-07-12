@@ -19,6 +19,7 @@ import { marketState } from "@/lib/market-hours";
 import { getMorning } from "@/lib/morning";
 import { getTrackRecord } from "@/lib/track-record";
 import { formatEtDate, formatUtcDate } from "@/lib/time";
+import { copy, fill } from "@/lib/copy";
 import { cx } from "@/lib/cx";
 
 /**
@@ -94,8 +95,23 @@ export default async function DeskPage() {
 
   // Grid placement. On phone and tablet these classes are inert — the ritual is one column. At
   // `desk:` they compose the spread, while the DOM stays in ritual order.
-  const MAIN = "desk:col-start-1";
-  const RAIL = "desk:col-start-2";
+  /*
+   * The broadsheet spread now engages at `lg:` (1024px), not only at `desk:` (1366px).
+   *
+   * Before this, a 1024–1365px window — which is most laptop windows sharing a screen — got the same
+   * single phone column with more margin. The arithmetic says it did not have to: gutters stay at
+   * 16px until `desk:` (the 32px step-up would spend width exactly where it is scarce), so at 1024px
+   * the main column measures 1024 − 32 − 320 − 24 = 648px, about 600px of card interior. The Brief
+   * holds comfortably (65ch of Newsreader is ≈540px), and the rail's compact calendar and watchlist
+   * rows hold at ~272px.
+   *
+   * Two columns genuinely cannot reach below 1024 by arithmetic: at 768px the main column would be
+   * 768 − 32 − 280 − 24 ≈ 432px, under the Brief's measure floor. So the md band (768–1023, which is
+   * exactly iPad portrait) keeps the ritual column and caps it at a 720px measure instead — a 990px
+   * wide card is a stretched receipt, which is the very disease this plan opened with, one band down.
+   */
+  const MAIN = "lg:col-start-1";
+  const RAIL = "lg:col-start-2";
 
   return (
     <RailProvider>
@@ -110,7 +126,7 @@ export default async function DeskPage() {
       {/* The offline band — shows only when the browser is offline, naming what is on screen. */}
       <OfflineRibbon syncedDate={asOf ? formatEtDate(asOf) : "—"} />
 
-      <div className="grid grid-flow-row-dense grid-cols-1 gap-6 pt-6 desk:grid-cols-[minmax(0,1fr)_340px] desk:items-start">
+      <div className="mx-auto grid max-w-[720px] grid-flow-row-dense grid-cols-1 gap-6 pt-6 lg:max-w-none lg:grid-cols-[minmax(0,1fr)_320px] lg:items-start desk:grid-cols-[minmax(0,1fr)_340px]">
         {/*
          * 00 — the pipeline heartbeat: the app renders what the cloud wrote, and says so.
          *
@@ -119,7 +135,7 @@ export default async function DeskPage() {
          * dense backfill then pulled the Brief (module 02) up into the empty cell beside it — so the
          * Desk rendered 02 above 01. The ritual order is the one thing this layout may not break.
          */}
-        <Surface className="p-5 desk:col-span-2">
+        <Surface className="p-5 lg:col-span-2">
           <SectionMasthead
             index={0}
             title="Pipeline"
@@ -142,7 +158,7 @@ export default async function DeskPage() {
 
         {/* 01 — Macro pulse. The hero, and the only module that spans the spread. */}
         {asOf && morning.macro ? (
-          <Surface className="p-5 desk:col-span-2 desk:p-6">
+          <Surface className="p-5 lg:col-span-2 desk:p-6">
             <MacroPulse asOf={asOf} {...morning.macro} />
           </Surface>
         ) : (
@@ -150,7 +166,7 @@ export default async function DeskPage() {
             index={1}
             title="Macro pulse"
             note="Index levels and breadth arrive with the nightly ingest."
-            className="desk:col-span-2"
+            className="lg:col-span-2"
           />
         )}
 
@@ -228,15 +244,30 @@ export default async function DeskPage() {
           />
         )}
 
-        {/* 07 — scans: the five presets live on their own page. */}
+        {/*
+         * 07 — scans. A GLANCE station, so it now reads like one.
+         *
+         * It used to be a paragraph of prose pointing at another page, which is the opposite of a
+         * glance: a station you have to READ in order to learn a number you could have been shown.
+         * It is a count and a doorway now. The number comes from one grouped count in the morning
+         * loader, amortised by the route's cache.
+         */}
         <Surface className={cx("p-5 desk:p-6", MAIN)}>
           <SectionMasthead index={7} title="Sectors & scans" />
-          <p className="pt-4 font-ui text-sm text-muted">
-            The five scan presets, with their criteria and evidence grades, live on the{" "}
-            <Link href="/scans" className="text-accent-deep underline-offset-2 hover:underline">
-              Scans page
+          <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-2 pt-4">
+            <p className="font-mono text-num-lg tabular-nums text-ink">
+              {fill(copy.desk.scanCount, { n: morning.scans.matches, k: morning.scans.presets })}
+            </p>
+            <Link
+              href="/scans"
+              className="flex min-h-11 items-center font-ui text-sm text-accent-deep underline-offset-2 hover:underline"
+            >
+              All scans →
             </Link>
-            . Sector small-multiples arrive in a later phase.
+          </div>
+          <p className="pt-2 font-ui text-2xs text-muted">
+            Each preset shows its criteria and its evidence grade. A match is a filter hit, not a
+            forecast.
           </p>
         </Surface>
 
@@ -244,12 +275,19 @@ export default async function DeskPage() {
             present so the routine's shape is complete; the journal writes whether or not a run is
             recorded, so it does not gate on asOf. */}
         <Surface className={cx("p-5 desk:p-6", MAIN)}>
-          <ScorecardPM asOf={asOf ?? undefined} resolved={trackRecord.summary} />
+          <ScorecardPM
+            asOf={asOf ?? undefined}
+            resolved={trackRecord.summary}
+            savedTonight={morning.journalSavedToday}
+          />
         </Surface>
 
         {/* The provenance line: which sources ran, which degraded, and the FRED attribution. */}
         <Surface className={cx("p-5", RAIL)}>
-          <SourceStatusFooter sources={morning.sources} />
+          <SourceStatusFooter
+            sources={morning.sources}
+            window={lastRunFinishedAt ? `until ${formatEtDate(lastRunFinishedAt)}` : undefined}
+          />
         </Surface>
       </div>
     </RailProvider>

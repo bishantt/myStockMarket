@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { MacroPulse } from "./MacroPulse";
 import { copy } from "@/lib/copy";
@@ -63,19 +63,51 @@ describe("MacroPulse", () => {
     expect(heroValue.className).not.toContain("text-down");
   });
 
-  it("shows the index row and the FRED context cells", () => {
+  it("shows the index row and the FRED context cells, in BOTH renderings", () => {
     render(<MacroPulse {...PROPS} />);
-    expect(screen.getByText("Nasdaq Composite")).toBeInTheDocument();
-    expect(screen.getByText("22,345.67")).toBeInTheDocument();
-    expect(screen.getByText("VIX")).toBeInTheDocument();
-    expect(screen.getByText("13.84")).toBeInTheDocument();
-    expect(screen.getByText("4.21%")).toBeInTheDocument();
+
+    // Since F5 the figures render twice: once in the phone SHELF and once in the ≥md grid. Which one
+    // the reader sees is a CSS decision, so both are in the DOM and getAllByText is the honest query.
+    // Asserting exactly two of each is the useful form — it proves neither rendering has quietly lost
+    // a figure.
+    expect(screen.getAllByText("Nasdaq Composite")).toHaveLength(2);
+    expect(screen.getAllByText("22,345.67")).toHaveLength(2);
+    expect(screen.getAllByText("VIX")).toHaveLength(2);
+    expect(screen.getAllByText("13.84")).toHaveLength(2);
+    expect(screen.getAllByText("4.21%")).toHaveLength(2);
+  });
+
+  it("puts the risk gauges FIRST on the shelf — position is visibility (§4.1)", () => {
+    render(<MacroPulse {...PROPS} />);
+
+    // The hero above already states the equity tape, so the figures that merely echo it take the
+    // tail and the two carrying INDEPENDENT information ride first. The conventional indices-first
+    // order would bury exactly the two figures that are not redundant with the number above them.
+    const shelf = screen.getByRole("group", { name: "Macro figures" });
+    const labels = within(shelf)
+      .getAllByText(/VIX|10-year|Nasdaq Composite|Dow Jones|Russell/)
+      .map((el) => el.textContent);
+    expect(labels[0]).toBe("VIX");
+    expect(labels[1]).toBe("10-year");
+  });
+
+  it("states what is off the edge of the shelf (M8) — a shelf that hides an unstated number lies", () => {
+    render(<MacroPulse {...PROPS} />);
+    expect(screen.getByText(copy.pulse.swipe)).toBeInTheDocument();
+  });
+
+  it("keeps BREADTH off the shelf — the claim about the whole market may not be swiped away", () => {
+    render(<MacroPulse {...PROPS} />);
+    const shelf = screen.getByRole("group", { name: "Macro figures" });
+    expect(within(shelf).queryByText(/advancing/)).toBeNull();
+    expect(screen.getByText(/advancing/)).toBeInTheDocument();
   });
 
   it("marks an ETF-proxy slot with the proxy chip, so the fallback is never silent", () => {
     render(<MacroPulse {...PROPS} />);
-    expect(screen.getByText("Russell 2000 · IWM (ETF proxy)")).toBeInTheDocument();
-    expect(screen.getByText(copy.macro.proxyChip)).toBeInTheDocument();
+    // Two renderings, so two chips — and the point is that NEITHER of them is silent.
+    expect(screen.getAllByText("Russell 2000 · IWM (ETF proxy)")).toHaveLength(2);
+    expect(screen.getAllByText(copy.macro.proxyChip)).toHaveLength(2);
   });
 
   it("shows no proxy chip on a slot carrying a true index level", () => {

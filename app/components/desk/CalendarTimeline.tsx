@@ -1,3 +1,4 @@
+import { Disclosure } from "@/components/Disclosure";
 import { SectionMasthead } from "@/components/SectionMasthead";
 import { Tag } from "@/components/Tag";
 import { copy } from "@/lib/copy";
@@ -43,6 +44,49 @@ export type CalendarRow = {
  * for losses and the two alert consumers (plan §3.3, §1.5). And it is never the loudest thing in
  * the row — a calendar that shouts manufactures the urgency this product refuses to sell.
  */
+
+/**
+ * How many ROUTINE rows stay in view before the rest fold away. The cut is on TIME, not on a count —
+ * see cutCalendar. These bound it so a busy fortnight cannot rebuild the receipt.
+ */
+const MIN_VISIBLE = 3;
+const MAX_ROUTINE_VISIBLE = 6;
+
+/**
+ * Cut the calendar on the axis the station exists to serve: TIME, not an item count.
+ *
+ * **EVERY HIGH-IMPORTANCE ROW IS ALWAYS VISIBLE. Always.** A CPI print or an FOMC decision is never
+ * behind a fold, at any width, whatever else is on the list. That is ruling M2 doing its job: this
+ * module's purpose is WARNING, and a module that shows one warning while hiding a second implies a
+ * completeness it does not have. There is deliberately no "…and 2 more high-importance events"
+ * summary line, because such a line would be an admission that the design had gone wrong — the rows
+ * are simply there.
+ *
+ * What folds is the routine tail: the ordinary earnings dates beyond the first few. They keep their
+ * count and their date range in the disclosure's summary (M2's contract), so nothing is hidden
+ * silently.
+ */
+function cutCalendar(events: CalendarRow[]): { visible: CalendarRow[]; folded: CalendarRow[] } {
+  const visible: CalendarRow[] = [];
+  const folded: CalendarRow[] = [];
+  let routineShown = 0;
+
+  for (const [index, event] of events.entries()) {
+    const isHigh = event.high === true;
+    const withinOpeningRows = index < MIN_VISIBLE;
+    const routineHasRoom = routineShown < MAX_ROUTINE_VISIBLE;
+
+    if (isHigh || withinOpeningRows || routineHasRoom) {
+      visible.push(event);
+      if (!isHigh) routineShown += 1;
+    } else {
+      folded.push(event);
+    }
+  }
+
+  return { visible, folded };
+}
+
 export function CalendarTimeline({
   asOf,
   events,
@@ -57,6 +101,8 @@ export function CalendarTimeline({
    */
   compact?: boolean;
 }) {
+  const { visible, folded } = cutCalendar(events);
+
   return (
     <section aria-label="Session calendar">
       <SectionMasthead
@@ -82,8 +128,9 @@ export function CalendarTimeline({
           <p className="max-w-[36ch] font-mono text-2xs text-muted">{copy.calendar.emptySub}</p>
         </div>
       ) : (
+        <>
         <ul className="pt-2">
-          {events.map((e, i) => (
+          {visible.map((e, i) => (
             <li
               key={`${e.dateLabel}-${e.symbol ?? e.title}-${i}`}
               className={cx(
@@ -118,6 +165,34 @@ export function CalendarTimeline({
             </li>
           ))}
         </ul>
+
+        {/*
+         * The routine tail folds away. The high-importance rows never do — see the cut above.
+         */}
+        {folded.length > 0 ? (
+          <Disclosure
+            label={copy.disclosure.calendar}
+            count={folded.length}
+            context={`through ${events[events.length - 1].dateLabel}`}
+          >
+            <ul>
+              {folded.map((e, i) => (
+                <li
+                  key={`folded-${e.dateLabel}-${e.symbol ?? e.title}-${i}`}
+                  className="flex items-baseline gap-4 border-b border-hairline py-2.5 last:border-b-0"
+                >
+                  <span className="w-14 shrink-0 font-mono text-2xs uppercase tracking-[0.04em] text-muted">
+                    {e.dateLabel}
+                  </span>
+                  <Tag variant="catalyst">{e.code}</Tag>
+                  <span className="min-w-0 flex-1 font-ui text-sm text-ink-2">{e.title}</span>
+                  {e.high ? <HighMark /> : null}
+                </li>
+              ))}
+            </ul>
+          </Disclosure>
+        ) : null}
+        </>
       )}
     </section>
   );

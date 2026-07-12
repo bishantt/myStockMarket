@@ -223,3 +223,9 @@ describe("the app-feel copy additions (Appendix B)", () => {
     expect(fill(copy.table.page, { p: 2, t: 7, n: 312 })).toBe("Page 2 of 7 · 312 rows");
   });
 });
+
+describe("module 07 reads as a glance", () => {
+  it("states the night's scan count as a figure, not a paragraph", () => {
+    expect(fill(copy.desk.scanCount, { n: 214, k: 5 })).toBe("214 matches across 5 scans");
+  });
+});

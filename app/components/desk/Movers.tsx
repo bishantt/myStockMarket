@@ -1,3 +1,4 @@
+import { Disclosure } from "@/components/Disclosure";
 import { SectionMasthead } from "@/components/SectionMasthead";
 import { RailTrigger } from "@/components/rail/Rail";
 import { Tag } from "@/components/Tag";
@@ -53,7 +54,13 @@ const RVOL_EMPHASIS_THRESHOLD = 2;
 
 const GLYPH: Record<Direction, string> = { up: "▲", down: "▼", flat: "" };
 
+/** How many movers stay in view on a phone before the rest fold away (§4.1). */
+const VISIBLE_ON_PHONE = 3;
+
 export function Movers({ asOf, movers }: { asOf: Date; movers: Mover[] }) {
+  const head = movers.slice(0, VISIBLE_ON_PHONE);
+  const tail = movers.slice(VISIBLE_ON_PHONE);
+
   return (
     <section aria-label="Movers">
       <SectionMasthead index={4} title="Movers" asOf={asOf} />
@@ -62,10 +69,71 @@ export function Movers({ asOf, movers }: { asOf: Date; movers: Mover[] }) {
         // A day where nothing cleared the bar is information, not an empty shelf.
         <p className="max-w-[46ch] pt-4 font-prose text-base text-ink-2">{copy.mover.quiet}</p>
       ) : (
-        <ul className="pt-2">
-          {movers.map((m) => (
-            <li key={m.symbol} className="border-b border-hairline last:border-b-0">
-              <RailTrigger
+        <>
+          {/*
+           * MOVERS ARE A READ STATION, AND A READ STATION NEVER RIDES A SHELF.
+           *
+           * An earlier draft of the plan put these on a swipeable rail and the adversarial pass
+           * caught it contradicting the plan's own reasoning: a mover row carries a headline and a
+           * source link — that is READING content, and putting reading content on a pan axis invites
+           * carousel-skimming of exactly the material that must be read rather than glanced. It also
+           * puts a fresh touch target (the source link) back in harm's way on a scrolling surface.
+           *
+           * So the rows stay vertical at every width. What changes on a phone is only how many of
+           * them are in view at once: the first three by the pipeline's own rank, and the rest one
+           * labelled tap away. Nothing is removed; the full anatomy of every row — catalyst chip,
+           * headline, source, or the honest noise line — is unchanged (P8).
+           */}
+          <ul className="pt-2">
+            {head.map((m) => (
+              <li key={m.symbol} className="border-b border-hairline last:border-b-0">
+                <MoverRow mover={m} />
+              </li>
+            ))}
+          </ul>
+
+          {tail.length > 0 ? (
+            <div className="md:hidden">
+              <Disclosure label={copy.disclosure.movers} count={tail.length} context="by rank">
+                <ul>
+                  {tail.map((m) => (
+                    <li key={m.symbol} className="border-b border-hairline last:border-b-0">
+                      <MoverRow mover={m} />
+                    </li>
+                  ))}
+                </ul>
+              </Disclosure>
+            </div>
+          ) : null}
+
+          {/* ≥md there is room for the whole set: the tail renders inline, with no disclosure. */}
+          {tail.length > 0 ? (
+            <ul className="hidden md:block">
+              {tail.map((m) => (
+                <li key={m.symbol} className="border-b border-hairline last:border-b-0">
+                  <MoverRow mover={m} />
+                </li>
+              ))}
+            </ul>
+          ) : null}
+        </>
+      )}
+
+      {movers.length > 0 ? (
+        <p className="max-w-[70ch] pt-4 font-ui text-2xs text-muted">{copy.mover.relvolNote}</p>
+      ) : null}
+    </section>
+  );
+}
+
+/**
+ * One mover row. The anatomy never changes with the container (P8): symbol, name, the delta chip,
+ * RVOL, and then either the catalyst — chip, headline, source link — or the honest noise line. A
+ * mover with no explanation says so; it never gets a manufactured one.
+ */
+function MoverRow({ mover: m }: { mover: Mover }) {
+  return (
+<RailTrigger
                 payload={{
                   symbol: m.symbol,
                   name: m.name,
@@ -112,14 +180,5 @@ export function Movers({ asOf, movers }: { asOf: Date; movers: Mover[] }) {
                   )}
                 </span>
               </RailTrigger>
-            </li>
-          ))}
-        </ul>
-      )}
-
-      {movers.length > 0 ? (
-        <p className="max-w-[70ch] pt-4 font-ui text-2xs text-muted">{copy.mover.relvolNote}</p>
-      ) : null}
-    </section>
   );
 }

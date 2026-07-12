@@ -137,3 +137,75 @@ test.describe("Desk — the seeded morning", () => {
     await expect(watch.getByText("MSFT")).toBeVisible();
   });
 });
+
+/**
+ * The Desk, chunked (APP-FEEL-PLAN §4.1).
+ *
+ * The Desk is a reading RITUAL, not a dashboard, so the cure for the receipt was never to shuffle it
+ * into widgets. Each station's body is bounded and its depth is one tap away — and the ritual ORDER
+ * is untouchable. These tests are what keep that true.
+ */
+test.describe("The Desk, chunked", () => {
+  test.skip(process.env.MSM_SEEDED !== "1", "needs a seeded test database (MSM_SEEDED=1)");
+
+  test.beforeEach(async ({ page }) => {
+    await page.goto("/login");
+    await page.getByLabel("Username").fill(USER);
+    await page.getByLabel("Password").fill(PASSWORD);
+    await page.getByRole("button", { name: "Sign in" }).click();
+    await expect(page).toHaveURL("/");
+  });
+
+  test("the ritual order is intact — the modules still mount 00 → 07 in the DOM", async ({ page }) => {
+    await page.goto("/");
+    // The order is the invariant: it mirrors the documented professional pre-market sequence, so the
+    // layout itself teaches the routine. Modules are placed into the desktop spread by CSS grid,
+    // never by reordering the markup, which is why this assertion is on the DOM and not the pixels.
+    const mastheads = await page.locator("h2").allTextContents();
+    const indexed = mastheads.filter((m) => /^0\d —/.test(m));
+    const numbers = indexed.map((m) => Number(m.slice(0, 2)));
+    expect(numbers).toEqual([...numbers].sort((a, b) => a - b));
+  });
+
+  test("BOTH seeded high-importance rows are visible while the calendar is still collapsed", async ({ page }) => {
+    await page.goto("/");
+    const calendar = page.getByRole("region", { name: "Session calendar" });
+
+    // The seed places FOMC and the jobs report deliberately BELOW the routine cut. A calendar that
+    // warns you about one and folds the other away has implied a completeness it does not have —
+    // this is the whole of ruling M2, in the one module whose job is warning.
+    await expect(calendar.getByText("FOMC decision")).toBeVisible();
+    await expect(calendar.getByText("Jobs report")).toBeVisible();
+  });
+
+  test("module 07 reads as a glance — a figure, not a paragraph", async ({ page }) => {
+    await page.goto("/");
+    await expect(page.getByText(/\d+ matches across \d+ scans/)).toBeVisible();
+  });
+
+  test("the journal is one labelled tap away, and its collapsed row states tonight's count", async ({ page }) => {
+    await page.goto("/");
+    const scorecard = page.getByRole("region", { name: "Evening scorecard" });
+
+    // Collapsed, it reports its state honestly — a zero is a state, not an offer of more (M2).
+    await expect(scorecard.getByText("none saved tonight")).toBeVisible();
+
+    // And it is exactly one tap to write.
+    await scorecard.getByText(/What did today/).first().click();
+    await expect(scorecard.getByRole("textbox")).toBeVisible();
+  });
+
+  test("a degraded source CANNOT be folded away (M2's sharpest case)", async ({ page }) => {
+    await page.goto("/");
+    // The <footer> sits inside <main>, so it carries no contentinfo landmark — locate it by label.
+    const sources = page.locator('footer[aria-label="Source status"]');
+
+    // The seed marks marketaux degraded. With any provider degraded the disclosure is forceOpen —
+    // there is no toggle at all, because a summary reading "all reporting" with its own refutation
+    // folded away underneath is the exact lie the rule exists to forbid.
+    await expect(sources.getByText(/marketaux unavailable tonight/)).toBeVisible();
+    await expect(sources.locator("details")).toHaveCount(0);
+    // And the summary never claims "all reporting" when it is not true.
+    await expect(sources.getByText(/all reporting/)).toHaveCount(0);
+  });
+});

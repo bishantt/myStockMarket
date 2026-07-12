@@ -80,6 +80,8 @@ export const copy = {
   desk: {
     edition: "The Desk — Evening Edition",
     status: "Markets {state} · data as of {close} · updated {stamp}",
+    /** Module 07 as a GLANCE: a figure, not a paragraph pointing at another page. */
+    scanCount: "{n} matches across {k} scans",
   },
 
   mover: {
