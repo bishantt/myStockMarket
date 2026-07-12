@@ -81,6 +81,21 @@ test.describe("touch targets (phone)", () => {
           const inRunningText = el.closest("p, h1, h2, h3, h4, li, dd, blockquote, span") !== null;
           if (inLineBox && inRunningText) continue;
 
+          /*
+           * THE LABELLED-CONTROL EXCEPTION.
+           *
+           * A native checkbox is 14px and cannot be made 44px without either scaling it into
+           * something that no longer looks like a checkbox, or padding the row into absurdity. But
+           * clicking its LABEL activates it — that is what a label is — so the real target is the
+           * label, and the label is 44px.
+           *
+           * So the rule becomes: the control passes if the thing a thumb actually hits is big
+           * enough. If the enclosing label is under 44px too, this exempts nothing and the failure
+           * still fires, which is the whole point of measuring the label rather than assuming it.
+           */
+          const label = el.closest("label");
+          if (label !== null && label.getBoundingClientRect().height >= MIN - 0.5) continue;
+
           if (box.height < MIN - 0.5) {
             offenders.push(
               `${el.tagName.toLowerCase()}${el.className ? "." + String(el.className).split(" ")[0] : ""} ` +
