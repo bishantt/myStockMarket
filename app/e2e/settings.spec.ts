@@ -43,11 +43,17 @@ test.describe("Watchlist management", () => {
     const row = page.getByRole("listitem").filter({ hasText: reason });
     await expect(row).toContainText(symbol);
 
-    // It shows on the Desk's focus watchlist too. Exact match hits the symbol cell, not the name.
+    // It shows on the Desk's watchlist too — one tap down.
+    //
+    // A NEWLY ADDED NAME IS NOT A FOCUS NAME, and since F5 the Desk shows the focus names and folds
+    // the rest behind a counted disclosure. So the name is not on the surface, and it should not be:
+    // the module is called the FOCUS watchlist, and the whole point of the fold is that the three
+    // names you chose to watch closely are not buried under the ones you merely added. Open the fold
+    // and it is there — which is exactly the journey a reader makes.
     await page.goto("/");
-    await expect(
-      page.getByRole("region", { name: "Watchlist" }).getByText(symbol, { exact: true }),
-    ).toBeVisible();
+    const watch = page.getByRole("region", { name: "Watchlist" });
+    await watch.getByText(/Full watchlist/).click();
+    await expect(watch.getByText(symbol, { exact: true })).toBeVisible();
 
     // Focus it, then unfocus it — the button reflects the state each way.
     await page.goto("/settings");
