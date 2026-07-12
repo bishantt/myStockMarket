@@ -1,5 +1,57 @@
 # PROGRESS.md — resumable state
 
+**F5 COMPLETE (2026-07-12) — tagged `feel-5`, CI green on the tag.**
+Next: F6, the remaining rooms (track record, academy, settings). Nothing is blocked.
+
+**The phone Desk is 14% shorter — 5,041px to 4,319px — and nothing was removed.** The plan estimated
+~50%, and the honest number is 14%. It is recorded with its reason
+(docs/feel-evidence/desk-height.md) rather than restated as a target:
+
+What folded is real — five mover rows, two watchlist rows, the journal textarea, the per-provider
+source list. What could NOT fold is what actually makes the page tall: **the daily brief**, which the
+plan explicitly refuses to truncate ("a briefing behind a 'read more' is a briefing unread"), and the
+setup cards, which have been modular since P4. The calendar did not fold at all on the seeded morning
+(six routine rows, and the cut allows six). And the source list is FORCED open, because the seeded
+run has a degraded provider — which is ruling M2 working, costing height on exactly the nights it
+should. The remaining height is the brief, which is the thing you came for.
+
+**The stations were triaged BEFORE their containers were chosen, and the triage is the principle.**
+READ stations (the brief, the movers) stay vertical, because swiping is skimming and those exist to
+be read. GLANCE stations get bounded:
+
+- **The macro figures are the app's one shelf**, on phones. The reader pushes it; it never pushes
+  itself. The order is reasoned, not traced: the hero above already states the equity tape, so the
+  figures that merely echo it (Nasdaq, Dow, the small-cap proxy) take the tail, and the two carrying
+  INDEPENDENT information — VIX and the 10-year — ride first. **Breadth stays fixed below it**: the
+  one line that claims to describe the whole market must not be reachable only by swiping.
+- **The calendar's cut is on TIME, and every high-importance row is always visible.** A CPI print or
+  an FOMC decision is never behind a fold, at any width. The seed plants two of them below the
+  routine cut precisely so a test can prove it.
+- **A degraded source cannot be folded away.** The component enforces this itself rather than
+  trusting its caller: the per-provider rows fold behind a summary ONLY when every provider is ok.
+  A summary reading "6 sources · all reporting" with its own refutation folded underneath is exactly
+  the lie ruling M2 exists to forbid.
+- **The journal folds behind one labelled tap, and the summary row IS the prompt** — so it is not
+  chrome hiding a form, it is the question, asked once. Its count keeps it honest.
+- **Module 07 was a paragraph of prose pointing at another page** — which is the opposite of a
+  glance: a station you must READ to learn a number you could have been shown. It is a count and a
+  doorway now. (It first shipped at hero scale, wrapping to three lines of 32px numerals and
+  competing with the S&P for the eye. The Desk gets exactly ONE hero figure. Fixed.)
+- The **fired-signal forcing rule is built and DORMANT**: a watchlist row with an unresolved signal
+  forces itself into view past the focus cap. Its producer has never existed — the redesign specced
+  the marker and nothing sets it — so the branch is unreachable today. It is built now so that the
+  day the marker lands, hiding it is already impossible. **This is not dead code; it is a latch.**
+
+**The spread now engages at 1024px, not 1366px.** Most laptop windows sharing a screen were getting
+the phone column with wider margins, and the arithmetic says they did not have to. The 768–1023 band
+(exactly iPad portrait) keeps the ritual column and caps it at a 720px measure — a 990px-wide card is
+a stretched receipt, which is the disease this plan opened with, one band down.
+
+Tests at F5 exit: **384 unit · 214 pytest · e2e + VRT + PWA green on the `feel-5` tag · 17 drift rules.**
+
+---
+
+
 **F4 COMPLETE (2026-07-12) — tagged `feel-4`, CI green on the tag.**
 Next: F5, the Desk. Nothing is blocked.
 
