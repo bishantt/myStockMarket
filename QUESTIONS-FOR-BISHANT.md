@@ -48,6 +48,24 @@ A veto of any one of these changes only its own sections; none of them ripple.
 
 ### Heads-ups, no action needed
 
+- **[FYI] A near-miss worth knowing about, because it explains why the gates exist.** F3 shipped the
+  scans table with `dynamicParams = false` — the obvious way to say "there are exactly five scans".
+  It turns out that any `revalidatePath(path, "layout")` call wipes that route's list of valid
+  parameters, and every URL in the family then returns 404 **permanently, until the next deploy**.
+  Two things in the app called it: the theme control (since P6) and the watchlist (since F1). So the
+  first time you changed your theme, every scan table in the app would have vanished, and nothing
+  would have brought them back except a redeploy. CI caught it — a visual-regression baseline came
+  back as a photograph of the 404 page — and I reproduced it locally in two commands. There are now
+  no layout-scoped revalidations anywhere in the app, and a drift rule fails the build if one comes
+  back.
+
+- **[FYI] Unknown tickers return HTTP 200 instead of 404.** A side effect of the speed layer: an
+  ISR-cached `notFound()` serves the "this page could not be found" page with an OK status. You still
+  SEE the right page — it is a wrong status code, not a wrong screen — so I have not spent a phase on
+  it. `/scans/garbage` returns a real 404 because that route declares its closed set. Noted here so
+  it is on the record rather than a surprise.
+
+
 - **[FYI] The Lighthouse performance score on the Desk went from 93 to 87, on purpose, and I want
   you to know before you see it.** It is the ADVISORY score (the one you already ruled a synthetic
   artifact on 2026-07-11, because it models a cold load on throttled 4G). Both HARD budgets still

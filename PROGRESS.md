@@ -1,5 +1,59 @@
 # PROGRESS.md — resumable state
 
+**F3 COMPLETE (2026-07-12) — tagged `feel-3`, CI green on the tag.**
+Next: F4, paper. Nothing is blocked.
+
+**The dead end is gone.** /scans printed each preset's matches as a wall of bare ticker chips, capped
+at 24, ending in "+ N more" — which was a plain `<li>`: not a link, not a button, not anything. On
+the first live pipeline night, 1,825 matches sat behind it, unreachable from the page whose whole job
+is to show them. You could see that 141 names had matched and had no way to find out which.
+
+Every match is reachable now. The e2e that pages to the end of the table and finds the last seeded
+symbol is that dead end's grave.
+
+- **The index** keeps its recipes (all clauses, always — the five presets differ by recipe, count and
+  grade and by nothing else, so the recipes ARE the comparison content). The chip wall becomes a
+  three-row preview that states its own cut: "First 3 of 32 by scan order". The cards stay in the
+  fixed preset order and are never sorted by match count — a busy scan is not a better scan.
+- **The table** (`/scans/[preset]`, new) answers "why did this match?" with columns that restate each
+  preset's own criteria. That cost NO pipeline change: a 34-key metrics snapshot has been sitting on
+  every match row since P4 and the page was reading two of them. The **lottery-risk flag** — which
+  the pipeline has been setting since P4 and nothing has ever rendered — finally appears on screen.
+- Above a 500-row cap, sorting is DISABLED and the page says why: sorting a silent subset would
+  present "the biggest movers among the most salient" as "the biggest movers".
+
+**The important thing that happened in F3 was not the table. It was the bug the gates caught.**
+
+The route shipped with `dynamicParams = false` — the obvious way to declare a closed set of five.
+Any `revalidatePath(path, "layout")` call **wipes that route's known-parameters list, and every URL
+in the family then 404s permanently, until the next deploy.** The theme action had called it since
+P6; the watchlist action since F1. **The first time you changed your theme, every scan table in the
+app would have vanished.**
+
+CI caught it as a visual-regression baseline that came back as a *photograph of the 404 page*. I
+reproduced it locally in two commands (request → 200; layout-revalidate; request → 404), and the fix
+removes the pattern rather than working around it: the theme now revalidates nothing (it has not
+needed to since F1 — it applies client-side), the watchlist names the five rooms it changes, and
+drift rule 17 fails the build if a layout-scoped revalidation ever reappears.
+
+**Two diagnostics were repaired on the way, both broken for six phases:**
+1. The VRT diff images have **never once been uploaded**. ci.yml pointed at `playwright-report/`,
+   which CI never writes (it runs the `github` reporter, not `html`), so every pixel failure uploaded
+   an empty artifact — the one thing a VRT failure owes you was the one thing you could not get. It
+   uploads `test-results/` now, and the very first failure after the change produced the screenshot
+   that identified the bug above in a single look.
+2. The pixel oracle could photograph a **loading skeleton**. It refuses to now.
+
+Two live defects fixed while here: the rail's bottom sheet had no safe-area inset (its "Open full
+view →" sat in the iPhone home-indicator band, where a tap is a swipe-to-home), and /ticker's "← Back
+to Desk" was 20px tall — the one control that promises the reader they can get back, under-sized for
+six phases, unnoticed only because /ticker was never in the touch sweep's route list.
+
+Tests at F3 exit: **376 unit · 214 pytest · e2e + VRT + PWA green on the `feel-3` tag · 16 drift rules.**
+
+---
+
+
 **F2 COMPLETE (2026-07-12) — tagged `feel-2`, CI green on the tag.**
 Next: F3, scans — the first room to consume the kit. Nothing is blocked.
 
