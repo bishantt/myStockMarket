@@ -197,8 +197,8 @@ OS-facing constants), `/styleguide` renders it all, greps enforce it.*
 
 | Token | Family (next/font) | Weights/styles | Role |
 |---|---|---|---|
-| `--font-display` | **Playfair Display** | 600, 700, italic 400 | Page titles, card titles, the Desk date hero, pull quotes. **Never a number, never body text.** |
-| `--font-ui` | **Inter** | 400, 500, 600 | Every label, control, table cell, nav item. Replaces Archivo. |
+| `--font-display` | **Playfair Display** | 700, italic 400 (600 dropped — R6) | Page titles, card titles, the Desk date hero, pull quotes. **Never a number, never body text.** |
+| `--font-ui` | **Inter** | 400, 600 (500 dropped — R6) | Every label, control, table cell, nav item. Replaces Archivo. |
 | `--font-mono` | **JetBrains Mono** | 400, 500, 600 | Every numeral in the product, plus mastheads, tags, provenance lines. Replaces IBM Plex Mono. |
 | `--font-prose` | **Newsreader** | as today (roman+italic) | Academy lesson bodies, briefing paragraphs, and **small-size editorial italics** (setup pattern names) — Playfair is a display face; Newsreader is the text serif. They do different jobs. |
 
@@ -215,6 +215,23 @@ missed `optional` swap would ship Georgia headlines for the session (§7.4). Fon
 per-file woff2 sizes into the script output. If the total exceeds budget, the drop order is:
 Inter 500 (600 covers emphasis), then Playfair 600 (700 covers titles) — **never Playfair
 italic 400**, which the login headline and pull quotes depend on.
+
+> **Amended 2026-07-12 (R6), by measurement.** Playfair 600 and Inter 500 are NOT shipped. The drop
+> ladder above was written to fire "if the total exceeds budget"; the budget was never exceeded
+> (243KB of 560KB). It fired for a different and better reason: Lighthouse on the deployed app
+> returned performance 86 with an LCP of 3.8s, while Total Blocking Time was **20ms** — proof that
+> the glass, the wash and the orbs cost nothing, and that §7.4's fallback ladder (strip translucency,
+> then remove the orbs) would have degraded the design for no gain at all. The page was fetching
+> **ten font files, 429KB**. Dropping the two weights this ladder already nominated took performance
+> to **93** with the design intact. Every `font-semibold` on Playfair and `font-medium` on Inter was
+> then swept to a weight we actually ship — a weight you no longer load is a weight the browser
+> SYNTHESISES, and fake bold is precisely what a type-led system exists to prevent. Logged in
+> DECISIONS.md.
+>
+> It also exposed that `check-font-budget.mjs` under-reports: it counts basic-latin faces, but Google
+> splits every family into latin AND latin-ext, and a real browser takes both. The budget read 273KB
+> while the browser pulled 429KB. Narrow, not wrong — but it had been flattering us by ~60%.
+
 
 ### 3.2 Type scale (existing scale kept, four additions)
 
@@ -1670,8 +1687,11 @@ Seeded shots gate on `MSM_SEEDED=1` like the existing data specs.
 8. **Route transitions via CSS `template.tsx`, opacity-only** — no translateY (review: a
    translating page moves the probability visuals inside it; a uniform fade contains no
    relative motion), not the experimental View Transitions flag (unstable API — a stall risk).
-9. **Theme toggle stays on /settings**, labeled "Desk theme" with its scope in helper text.
-   Rejected: nav toggle (chrome creep), unscoped "Dark mode" label (lies about the Academy).
+9. **Theme toggle stays on /settings** — labeled **"Theme"** (amended 2026-07-12: D1 made the
+   setting app-wide, so "Desk theme" would itself have become the lie the original label was
+   trying to avoid). Helper text carries the scope: "Applies everywhere — Morning or Midnight,
+   one look at a time." The cookie is renamed `desk-theme` → `msm-theme` for the same reason.
+   Rejected: nav toggle (chrome creep), unscoped "Dark mode" label (says nothing about scope).
 10. **Login brand-panel copy** enters `copy.ts` (login.* keys) — even marketing-flavored
     lines obey the one-deck rule and the mechanical voice (attributed quote allowed).
 11. **Mastheads stay muted, accent only on interactive text + small in-card slot labels** —

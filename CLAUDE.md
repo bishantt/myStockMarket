@@ -47,15 +47,27 @@ Optimize everything for a human reader, never for machine brevity.
    written for a leader reading along — human terms, never walls of technical shorthand.
 
 ## Commands
-app:      npm run dev | test | typecheck | lint | build     e2e: npx playwright test
+app:      npm run dev | test | typecheck | lint | build
+guards:   npm run check:drift (11 anti-drift rules) · check:fonts (budget) · check:lighthouse · icons
+e2e:      npx playwright test  ·  LOCAL: npm run e2e:local (--ignore-snapshots; CI is the pixel oracle)
 pipeline: uv run pytest      jobs: uv run python -m jobs.job_a (fixtures: MSM_FIXTURES=1)
-db:       npx prisma migrate dev · npx prisma db seed        deploy: git push (Vercel auto)
+db:       npx prisma migrate dev --name <name> · npx prisma db seed   deploy: git push (Vercel auto)
+VRT:      baselines are BORN IN CI — gh workflow run ci.yml -f job=vrt-baselines, then download the
+          artifact and commit it. Never shoot a baseline on macOS (see .claude/skills/vrt-update).
 
 ## Conventions
 Conventional commits · TDD-first list in plan §6.2 · numbers render ONLY via components/BaseRate
 and lib/format · all copy from lib/copy.ts · tokens from globals.css @theme (UI-REDESIGN-PLAN.md §3 +
 Appendix A) — never ad-hoc hex · timestamps via lib/time.ts · adapters follow .claude/skills/new-provider-adapter ·
 readable-first code and plain-English docs per the Readability section above.
+
+**Any new card, panel, module or overlay: read .claude/skills/new-surface FIRST.** It carries the
+honesty checklist you run BEFORE writing markup (does it show a base rate → it renders through
+BaseRate and nothing else; a probability or money → `data-p2`, and no ancestor may animate or
+transform it; an outcome → the word goes in the chip; an empty state → it is information, not an
+apology). Also: every control ≥44px on touch, every input ≥16px below `md` (iOS zooms in on a
+smaller focused field and does NOT zoom back out), and never the slash-opacity modifier on a token
+colour (`bg-surface/50` silently no-ops in Tailwind v4).
 
 ## Session ritual
 Start: git pull → read this + PROGRESS.md + LESSONS.md → diff DECISIONS.md (any non-[claude]
