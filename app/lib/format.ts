@@ -59,6 +59,32 @@ export function multiple(value: number): string {
 }
 
 /**
+ * A plain numeral to a fixed number of decimals (71.24 → "71.2"). For figures that are not money,
+ * not a percentage and not a multiple — an RSI reading, an index count, a rank.
+ *
+ * It exists so that those figures have a door too. `lib/format` is the ONLY way a number reaches the
+ * screen in this app (drift rule 12), and a column that had to reach for `.toFixed()` because no
+ * formatter fitted would be the first crack in that.
+ */
+export function decimal(value: number, decimals = 1): string {
+  return value.toLocaleString("en-US", { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
+}
+
+/**
+ * Money at a glance: 3_180_000_000 → "$3.18B". For dollar volume, where the exact figure is noise
+ * and the ORDER OF MAGNITUDE is the information — is anyone actually trading this name.
+ *
+ * Two decimals, never rounded to a bare "$3B": the difference between $3.18B and $3.99B is real, and
+ * hiding it inside a rounded integer would flatten two quite different days into the same cell.
+ */
+export function compactMoney(value: number): string {
+  const abs = Math.abs(value);
+  const [divisor, suffix] =
+    abs >= 1e12 ? [1e12, "T"] : abs >= 1e9 ? [1e9, "B"] : abs >= 1e6 ? [1e6, "M"] : abs >= 1e3 ? [1e3, "K"] : [1, ""];
+  return `$${(value / divisor).toFixed(suffix ? 2 : 0)}${suffix}`;
+}
+
+/**
  * Classify a change as up, down, or flat. The flat band (a tenth of a basis point) is what keeps a
  * rounding wobble from painting a false direction — a near-zero change is honestly flat, rendered
  * in ink with no triangle, rather than a misleading green tick.

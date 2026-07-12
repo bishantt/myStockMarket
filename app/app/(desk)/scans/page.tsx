@@ -4,8 +4,9 @@ import { db } from "@/lib/db";
 import { GlossaryTerm } from "@/components/GlossaryTerm";
 import { Surface } from "@/components/Surface";
 import { Tag } from "@/components/Tag";
+import { copy, fill } from "@/lib/copy";
+import { signedPercent } from "@/lib/format";
 import { SCAN_PRESETS, criteriaClauses } from "@/lib/scan-presets";
-import { capMatches } from "@/lib/scan-view";
 
 /** Each preset's core concept, so its label carries a glossary doorway into the Academy. */
 const PRESET_GLOSSARY: Record<string, string> = {
@@ -17,60 +18,64 @@ const PRESET_GLOSSARY: Record<string, string> = {
 };
 
 /**
- * /scans — the five scan presets with fully visible criteria (plan §9.2, Appendix F, P4 step 6).
+ * /scans — the recipe index (plan §9.2, Appendix F; APP-FEEL-PLAN §4.2).
  *
- * Every preset shows exactly what it filtered on — the criteria in plain words — with its RR Part 4
+ * Every preset shows exactly what it filtered on — the criteria in plain words, verbatim — with its
  * evidence grade, and the folklore-adjacent one labelled FOLKLORE. That transparency is the honesty
- * rule: a scan is a filter with a stated, gradeable basis, never a black-box "signal". The matched
- * symbols for the latest run sit beneath each preset. No percentages here — a scan match is a filter
- * hit, not a base rate.
+ * rule: a scan is a filter with a stated, gradeable basis, never a black-box "signal".
+ *
+ * WHAT CHANGED AT F3. This page used to print each preset's matches as a wall of bare ticker chips,
+ * capped at 24, ending in "+ N more" — which was a plain <li>: not a link, not a button, not
+ * anything. On the first live pipeline night, 1,825 matches were unreachable from the page that
+ * exists to show them. The wall is gone. Each card now carries a THREE-ROW PREVIEW in the same
+ * card-row grammar the full table uses, and a link to the preset's own route where every match is
+ * reachable. The preview states its own cut ("First 3 of 41 by scan order") rather than being an
+ * unlabelled slice — ruling M8.
+ *
+ * The cards render in the fixed SCAN_PRESETS order, ALWAYS. Never by match count: ordering the index
+ * by how many names each filter caught would be a cross-preset ranking, which is precisely the
+ * leaderboard ruling M1 forbids. A busy scan is not a better scan.
  */
 
-/**
- * Served from the cache, revalidated every ten minutes, and busted outright by the nightly publish
- * (§5.3 P-1). The scans change once a night; re-rendering them on every tap cost the reader ~850ms
- * of frozen screen and bought nothing. The as-of stamp on the page is what keeps a cached page
- * honest (ruling M5).
- */
 export const revalidate = 600;
 
-/**
- * The latest run's matches — or none, if the database cannot be reached.
- *
- * The wrapping is not defensive habit, it is a build requirement: now that this route prerenders,
- * this query runs at `next build`, and CI builds the app on every push with NO database. An
- * unreachable table degrades the page to its honest empty state ("the filter ran and found
- * nothing"); it does not fail the build. Same pattern as the Desk layout's palette read, and for
- * exactly the same reason (LESSONS 2026-07-12).
- */
-async function latestMatches() {
+const PREVIEW_ROWS = 3;
+
+type PreviewRow = { symbol: string; rank: number; ret: number | null };
+
+/** The latest run's matches, grouped by preset — or none, if the database cannot be reached. */
+async function latestMatches(): Promise<Map<string, PreviewRow[]>> {
+  const byPreset = new Map<string, PreviewRow[]>();
   try {
     const latest = await db.scanResult.findFirst({ orderBy: { runDate: "desc" }, select: { runDate: true } });
-    if (!latest) return [];
-    return await db.scanResult.findMany({
+    if (!latest) return byPreset;
+
+    const matches = await db.scanResult.findMany({
       where: { runDate: latest.runDate },
       orderBy: [{ presetKey: "asc" }, { rank: "asc" }],
-      select: { presetKey: true, symbol: true },
+      select: { presetKey: true, symbol: true, rank: true, metrics: true },
     });
+
+    for (const match of matches) {
+      const metrics = (match.metrics ?? {}) as Record<string, unknown>;
+      const ret = typeof metrics.ret_1 === "number" && Number.isFinite(metrics.ret_1) ? metrics.ret_1 : null;
+      const list = byPreset.get(match.presetKey) ?? [];
+      list.push({ symbol: match.symbol, rank: match.rank, ret });
+      byPreset.set(match.presetKey, list);
+    }
+    return byPreset;
   } catch (error) {
     console.error("ScansPage: could not read the latest scan matches", error);
-    return [];
+    return byPreset;
   }
 }
 
 export default async function ScansPage() {
-  const matches = await latestMatches();
-
-  const bySymbol = new Map<string, string[]>();
-  for (const m of matches) {
-    const list = bySymbol.get(m.presetKey) ?? [];
-    list.push(m.symbol);
-    bySymbol.set(m.presetKey, list);
-  }
+  const byPreset = await latestMatches();
 
   return (
-    <div className="flex flex-col gap-6">
-      <header className="pt-3">
+    <div className="flex flex-col gap-6 py-6">
+      <header>
         <div className="pb-2">
           <h1 className="font-display text-display font-bold text-ink">Scans</h1>
         </div>
@@ -82,15 +87,16 @@ export default async function ScansPage() {
         </p>
       </header>
 
-      <ul className="flex flex-col gap-6">
+      {/* Two-up from lg. The odd fifth card keeps its column width in flow — a full-width last card
+          would read as emphasis, and rsi-extreme has earned none. */}
+      <ul className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         {SCAN_PRESETS.map((preset) => {
-          const hits = bySymbol.get(preset.key) ?? [];
-          const clauses = criteriaClauses(preset.criteria);
-          const capped = capMatches(hits);
+          const hits = byPreset.get(preset.key) ?? [];
+          const preview = hits.slice(0, PREVIEW_ROWS);
 
           return (
             <li key={preset.key}>
-              <Surface as="article" className="p-5 desk:p-6">
+              <Surface as="article" className="flex h-full flex-col p-5 desk:p-6">
                 <div className="flex flex-wrap items-baseline gap-3">
                   <h2 className="font-display text-title font-bold text-ink">
                     {PRESET_GLOSSARY[preset.key] ? (
@@ -109,13 +115,14 @@ export default async function ScansPage() {
                 </div>
 
                 {/*
-                 * The recipe, as a recipe. Each criterion gets its own numbered, hairline-separated
-                 * row — something a reader can check off by eye, rather than a paragraph they have
-                 * to parse. The words are the scan's own, verbatim: the promise of this page is that
-                 * you see exactly what the filter did.
+                 * The recipe, as a recipe — all the clauses, always, at every width. They are never
+                 * collapsed and never abbreviated: the five presets differ by recipe, count and
+                 * grade and by nothing else, so the recipes ARE the comparison content of this page.
+                 * An anti-black-box card that hides its own recipe behind a "show more" has become
+                 * the thing it was built to replace.
                  */}
                 <ol className="pt-4">
-                  {clauses.map((clause, index) => (
+                  {criteriaClauses(preset.criteria).map((clause, index) => (
                     <li
                       key={clause}
                       className="flex items-baseline gap-3 border-b border-hairline py-2 last:border-b-0"
@@ -128,35 +135,63 @@ export default async function ScansPage() {
                   ))}
                 </ol>
 
-                {/*
-                 * The result. A scan that fires nothing is information — "0 matches today" stays
-                 * visible with the recipe, because knowing the filter found nothing is knowing
-                 * something. There are no percentages anywhere on this page: a match is a filter
-                 * hit, not a base rate.
-                 */}
                 <p className="pt-4 font-mono text-sm text-ink">
                   {hits.length} match{hits.length === 1 ? "" : "es"} today
                 </p>
 
-                {hits.length > 0 ? (
-                  <ul className="flex flex-wrap gap-2 pt-3">
-                    {capped.shown.map((symbol) => (
-                      <li key={symbol}>
-                        <Link
-                          href={`/ticker/${symbol}`}
-                          className="flex min-h-11 items-center rounded-chip border border-hairline bg-surface px-3 font-mono text-sm text-ink transition-colors duration-(--duration-quick) ease-(--ease-quiet) hover:border-hairline-strong hover:text-accent-deep"
+                {preview.length > 0 ? (
+                  <div className="flex flex-col pt-3">
+                    {/* M8: the cut is named. Never "highlights", never an unlabelled slice. */}
+                    <p className="pb-1 font-mono text-2xs uppercase tracking-[0.08em] text-faint">
+                      {fill(copy.scans.preview, { k: preview.length, n: hits.length })}
+                    </p>
+                    {/*
+                     * A preview is a teaser, not a comparison instrument: no header row, no sort
+                     * affordance. Five header-bearing tables stacked on one index page would
+                     * out-receipt the chip walls they replaced.
+                     */}
+                    <ul className="flex flex-col">
+                      {preview.map((row) => (
+                        <li
+                          key={row.symbol}
+                          className="flex items-center justify-between gap-3 border-b border-hairline py-2 last:border-b-0"
                         >
-                          {symbol}
-                        </Link>
-                      </li>
-                    ))}
-                    {capped.more > 0 ? (
-                      <li className="flex min-h-11 items-center font-mono text-sm text-faint">
-                        + {capped.more} more
-                      </li>
-                    ) : null}
-                  </ul>
+                          <span className="flex items-center gap-2">
+                            <span className="font-mono text-2xs text-faint">{row.rank}</span>
+                            <span className="font-mono text-sm text-ink">{row.symbol}</span>
+                          </span>
+                          {row.ret !== null ? (
+                            <span
+                              data-p2="true"
+                              className={`inline-flex items-center gap-1 rounded-pill px-1.5 py-0.5 font-mono text-2xs ${
+                                row.ret >= 0 ? "bg-up-wash text-up-text" : "bg-down-wash text-down-text"
+                              }`}
+                            >
+                              <span aria-hidden="true">{row.ret >= 0 ? "▲" : "▼"}</span>
+                              {signedPercent(row.ret)}
+                            </span>
+                          ) : (
+                            <span className="font-mono text-2xs text-faint">—</span>
+                          )}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
                 ) : null}
+
+                {/* The grave of the dead "+ N more". This one is a link, and every match is behind it. */}
+                <div className="flex grow items-end pt-4">
+                  {hits.length > 0 ? (
+                    <Link
+                      href={`/scans/${preset.key}`}
+                      className="flex min-h-11 items-center font-ui text-sm text-accent-deep underline-offset-2 hover:underline"
+                    >
+                      {fill(copy.scans.allMatches, { n: hits.length })}
+                    </Link>
+                  ) : (
+                    <p className="max-w-[62ch] font-ui text-sm text-muted">{copy.scans.empty}</p>
+                  )}
+                </div>
               </Surface>
             </li>
           );

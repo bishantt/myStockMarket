@@ -38,6 +38,13 @@ export function RailDialog({
           className={cx(
             "fixed z-50 flex flex-col gap-5 border-ink bg-surface p-5 outline-none",
             "inset-x-0 bottom-0 max-h-[85dvh] overflow-y-auto border-t",
+            // The bottom safe area. Without it the sheet's last control — "Open full view →" — sits
+            // inside the iPhone's home-indicator band, where a tap is a swipe-to-home and the reader
+            // is thrown out of the app instead of into the ticker. The redesign's §7.2 contract has
+            // required this since it was written; the sheet simply never got it. F3 is when it
+            // started to matter: every row of every scan table now opens this sheet, so the defect
+            // was about to be multiplied by five hundred.
+            "pb-[max(1.25rem,env(safe-area-inset-bottom))]",
             "desk:inset-y-0 desk:left-auto desk:right-0 desk:w-[440px] desk:max-h-none desk:border-l desk:border-t-0",
           )}
         >
@@ -83,7 +90,9 @@ function RailBody({ payload }: { payload: RailPayload }) {
 
       <Link
         href={`/ticker/${encodeURIComponent(payload.symbol)}`}
-        className="mt-auto font-ui text-xs uppercase tracking-[0.06em] text-ink underline underline-offset-4 hover:text-accent"
+        // min-h-11: the sheet's only exit to the full page, and a 44px target on the device where
+        // the sheet actually lives.
+        className="mt-auto flex min-h-11 w-fit items-center font-ui text-xs uppercase tracking-[0.06em] text-ink underline underline-offset-4 hover:text-accent"
       >
         Open full view →
       </Link>

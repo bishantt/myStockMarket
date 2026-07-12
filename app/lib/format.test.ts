@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { directionOf, multiple, percent, price, signedPercent } from "@/lib/format";
+import { compactMoney, decimal, directionOf, multiple, percent, price, signedPercent } from "@/lib/format";
 
 /**
  * Tests for lib/format — the one place numbers become strings (plan §4.3, convention: numbers
@@ -59,5 +59,29 @@ describe("directionOf", () => {
     expect(directionOf(0)).toBe("flat");
     // A sub-basis-point wobble is not a move — it reads as flat, not a false up.
     expect(directionOf(0.00001)).toBe("flat");
+  });
+});
+
+describe("decimal — a plain numeral, for figures that are not money or percentages", () => {
+  it("renders an RSI reading to one decimal", () => {
+    expect(decimal(71.24)).toBe("71.2");
+    expect(decimal(29.0)).toBe("29.0");
+  });
+
+  it("groups thousands, so an index count does not run together", () => {
+    expect(decimal(22345.67, 0)).toBe("22,346");
+  });
+});
+
+describe("compactMoney — dollar volume at a glance", () => {
+  it("renders billions, millions and thousands with their magnitude", () => {
+    expect(compactMoney(3_180_000_000)).toBe("$3.18B");
+    expect(compactMoney(540_000_000)).toBe("$540.00M");
+    expect(compactMoney(96_000)).toBe("$96.00K");
+  });
+
+  it("keeps two decimals rather than rounding to a bare '$3B'", () => {
+    // $3.18B and $3.99B are different days. An integer would flatten them into the same cell.
+    expect(compactMoney(3_990_000_000)).toBe("$3.99B");
   });
 });

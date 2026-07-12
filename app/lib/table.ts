@@ -1,3 +1,5 @@
+import type { ReactNode } from "react";
+
 /**
  * lib/table.ts — the sort-and-paginate engine behind every table in the app (APP-FEEL-PLAN §3.3).
  *
@@ -33,6 +35,7 @@ export type ColumnKind =
   | "signedPercent"
   | "percent"
   | "multiple"
+  | "compact"
   | "int"
   | "chip";
 
@@ -53,6 +56,12 @@ export type Column<Row> = {
   priority: 1 | 2 | 3;
   /** Pull the raw value out of a row. `null` means unknown — it renders "—" and sorts last. */
   value: (row: Row) => string | number | null;
+  /**
+   * Optionally render the cell yourself, for the cases a `kind` cannot express — the lottery-risk
+   * tag that hangs off a symbol, say. SORTING STILL USES `value`, always: a column that sorted by
+   * one thing and displayed another would be the quietest possible lie a table can tell.
+   */
+  render?: (row: Row) => ReactNode;
 };
 
 export type SortDirection = "asc" | "desc";

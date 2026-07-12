@@ -18,6 +18,9 @@ const PASSWORD = "correct horse battery staple";
 const ROUTES = [
   "/",
   "/scans",
+  // Added at F3/F1: a route family left out of the sweep is a gap that quietly becomes permanent.
+  "/scans/unusual-volume",
+  "/ticker/SPY",
   "/paper",
   "/track-record",
   "/settings",

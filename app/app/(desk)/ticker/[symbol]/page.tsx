@@ -67,10 +67,17 @@ export default async function TickerPage({ params }: { params: Promise<{ symbol:
 
   return (
     <div className="flex flex-col gap-6 py-6">
-      {/* The return rail — always visible, so the drill never traps the reader (plan §9.1). */}
+      {/*
+       * The return rail — always visible, so the drill never traps the reader (plan §9.1).
+       *
+       * min-h-11 because it was 20px tall, and this is the ONE control that promises the reader they
+       * can get back. It went unnoticed for six phases because /ticker was never in the touch sweep's
+       * route list; F3 added it, and the sweep found this on its first run. A sweep is only as honest
+       * as its route list — which is exactly what its own comment says.
+       */}
       <Link
         href="/"
-        className="font-ui text-sm text-ink-2 transition-colors duration-(--duration-quick) hover:text-accent-deep"
+        className="flex min-h-11 w-fit items-center font-ui text-sm text-ink-2 transition-colors duration-(--duration-quick) hover:text-accent-deep"
       >
         ← Back to Desk
       </Link>

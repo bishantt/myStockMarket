@@ -6,7 +6,7 @@ import { Tag } from "@/components/Tag";
 import { useRail, type RailPayload } from "@/components/rail/Rail";
 import { copy, fill } from "@/lib/copy";
 import { cx } from "@/lib/cx";
-import { multiple, percent, price, signedPercent } from "@/lib/format";
+import { compactMoney, decimal, multiple, percent, price, signedPercent } from "@/lib/format";
 import { DEFAULT_PER_PAGE, paginate, sortRows, type Column, type SortDirection } from "@/lib/table";
 
 /**
@@ -66,6 +66,12 @@ function formatCell(value: string | number | null, kind: Column<never>["kind"]):
         return percent(value);
       case "multiple":
         return multiple(value);
+      case "compact":
+        return compactMoney(value);
+      case "mono":
+        // A plain numeral (an RSI reading). Symbols are also "mono" but arrive as strings, and fall
+        // through below untouched.
+        return decimal(value, 1);
       case "int":
         return String(Math.round(value));
       default:
@@ -95,6 +101,8 @@ function DeltaChip({ value }: { value: number }) {
 function Cell<Row>({ column, row }: { column: Column<Row>; row: Row }) {
   const value = column.value(row);
 
+  // A custom renderer wins — but only over the DISPLAY. The sort still reads column.value.
+  if (column.render) return <>{column.render(row)}</>;
   if (column.kind === "signedPercent" && typeof value === "number") return <DeltaChip value={value} />;
   if (column.kind === "chip" && value !== null) return <Tag variant="catalyst">{String(value)}</Tag>;
 
