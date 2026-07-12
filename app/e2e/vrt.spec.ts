@@ -117,6 +117,10 @@ test.describe("visual regression — the design system", () => {
   const SEEDED_ROOMS = [
     { path: "/", name: "desk" },
     { path: "/scans", name: "scans" },
+    // The match table (F3). This is the page that replaced the dead "+ N more", so its pixels are
+    // worth locking: the recipe card, the named default order, the lottery chip, and the pagination
+    // footer all live here.
+    { path: "/scans/unusual-volume", name: "scans-preset" },
     { path: "/paper", name: "paper" },
     { path: "/track-record", name: "track-record" },
     { path: "/academy", name: "academy" },
@@ -133,6 +137,42 @@ test.describe("visual regression — the design system", () => {
       });
     }
   }
+
+  /**
+   * The table's INTERACTIVE states. A sorted table and a second page are different pictures, and the
+   * baselines that matter most are the ones nobody would think to look at by hand.
+   *
+   * Deterministic by construction: the seeded values are fixed, page 1 is always page 1, and the
+   * sort is instant (a FLIP-animated sort would be a screenful of money figures in motion, which is
+   * banned — so there is no animation to wait out).
+   */
+  test("scans table sorted by RVOL — the header state", async ({ page }) => {
+    test.skip(!process.env.MSM_SEEDED, "needs the seeded database");
+    test.skip(({ isMobile }) => isMobile, "the desktop table is the thing being locked here");
+    await useTheme(page, "light");
+    await page.goto("/scans/unusual-volume");
+    await waitForFonts(page);
+    await page.getByRole("button", { name: /RVOL/ }).click();
+    await expect(page.getByRole("columnheader", { name: /RVOL/ })).toHaveAttribute("aria-sort", /ascending|descending/);
+    await expect(page).toHaveScreenshot("scans-preset-sorted.png", {
+      fullPage: true,
+      mask: [page.locator('[data-vrt="mask"], time')],
+    });
+  });
+
+  test("scans table page 2 — the pagination footer", async ({ page }) => {
+    test.skip(!process.env.MSM_SEEDED, "needs the seeded database");
+    test.skip(({ isMobile }) => isMobile, "one shot is enough for the footer state");
+    await useTheme(page, "light");
+    await page.goto("/scans/unusual-volume");
+    await waitForFonts(page);
+    await page.getByRole("button", { name: "Next" }).click();
+    await expect(page.getByText("Page 2 of 2 · 32 rows")).toBeVisible();
+    await expect(page).toHaveScreenshot("scans-preset-page2.png", {
+      fullPage: true,
+      mask: [page.locator('[data-vrt="mask"], time')],
+    });
+  });
 
   test("ticker with the Range Ladder — Morning", async ({ page }) => {
     test.skip(!process.env.MSM_SEEDED, "needs the seeded database");
