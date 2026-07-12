@@ -200,6 +200,27 @@ const RULES = [
       !/^\s*(\*|\/\/)/.test(line),
   },
   {
+    id: 17,
+    name: "PERF/CORRECTNESS — never revalidatePath(..., 'layout'); it 404s the closed-param routes",
+    /*
+     * This rule exists because the alternative is a room disappearing.
+     *
+     * `revalidatePath(path, "layout")` drops the known-params set of any route that declares
+     * `dynamicParams = false`. Every URL in that family then returns 404 — permanently, until the
+     * next deploy. /scans/[preset] declares exactly that (it is a closed set of five, and the flag is
+     * what makes /scans/garbage a real 404 rather than a 200 carrying a not-found page).
+     *
+     * The theme action called it from P6 and the watchlist action from F1, so the reader would have
+     * found this by changing their theme. Once. And every scan table in the app would have been gone
+     * until someone redeployed. CI caught it: a VRT baseline came back as a picture of a 404 page.
+     *
+     * Name the paths you are changing instead. The app has five rooms; listing them is not a burden,
+     * and the blast radius is then exactly what you wrote rather than the whole route tree.
+     */
+    skip: [],
+    match: (line) => /revalidatePath\([^)]*,\s*["']layout["']\s*\)/.test(line) && !/^\s*(\*|\/\/)/.test(line),
+  },
+  {
     id: 16,
     name: "one table, one set of ergonomics — <table> lives only in components/DataTable.tsx",
     // A second hand-rolled table is a second set of sort affordances, a second pagination grammar,

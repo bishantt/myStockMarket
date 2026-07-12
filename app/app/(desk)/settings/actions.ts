@@ -106,15 +106,23 @@ export async function toggleFocus(_prev: ActionResult, formData: FormData): Prom
 /**
  * Refresh everything a watchlist write changes (§5.3 P-7).
  *
- * The Desk gets LAYOUT scope, not page scope, and the difference is load-bearing: the ⌘K command
- * palette is built in the Desk's layout, not in any page, and its index includes every watchlist
- * ticker. A page-scoped refresh would update the Desk's watchlist module while leaving the palette
- * still offering yesterday's names — and since the layout wraps every room, "yesterday's names"
- * would follow the reader around the whole app.
+ * NAMED PATHS, NEVER LAYOUT SCOPE. This used to be `revalidatePath("/", "layout")`, because the ⌘K
+ * command palette is built in the Desk's LAYOUT and its index carries every watchlist ticker — so a
+ * page-scoped refresh of "/" alone would leave the palette in every other room still offering
+ * yesterday's names.
  *
- * The settings page renders the manager itself, so it is refreshed too.
+ * That was right about the problem and catastrophically wrong about the fix. A layout-scoped
+ * revalidation drops the known-params set of any route declaring `dynamicParams = false`, and every
+ * URL in that family then 404s until the next deploy. Adding a name to your watchlist would have
+ * deleted the scan tables (see drift rule 17, and the note in scans/[preset]/page.tsx).
+ *
+ * Listing the rooms is the honest version of the same intent: each one re-renders, each one rebuilds
+ * its palette index, and nothing else is touched. The list is short because the app is small, and it
+ * lives beside the write that needs it rather than inside a framework flag whose blast radius is the
+ * whole route tree.
  */
+const ROOMS_WITH_A_PALETTE = ["/", "/scans", "/paper", "/track-record", "/settings"];
+
 function revalidateWatchlist(): void {
-  revalidatePath("/", "layout");
-  revalidatePath("/settings");
+  for (const room of ROOMS_WITH_A_PALETTE) revalidatePath(room);
 }

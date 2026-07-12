@@ -27,9 +27,26 @@ import { formatUtcDate } from "@/lib/time";
 export const revalidate = 600;
 
 /**
- * A closed set of five. `dynamicParams = false` means /scans/garbage 404s rather than rendering an
- * invented empty page and caching it — a scan that does not exist should not get a polite "0 matches
- * today", because that sentence claims a filter ran.
+ * A closed set of five. `dynamicParams = false` is what makes /scans/garbage a REAL 404 — status and
+ * all — rather than a 200 carrying a not-found page, which is what an ISR-cached `notFound()` serves
+ * (verified: /ticker/GARBAGE does exactly that today).
+ *
+ * AND IT IS LOAD-BEARING IN A WAY THAT NEARLY TOOK THIS ROOM DOWN IN PRODUCTION. Read drift rule 17
+ * before touching anything here.
+ *
+ * `revalidatePath(path, "layout")` DROPS THE KNOWN-PARAMS SET OF A ROUTE THAT DECLARES
+ * `dynamicParams = false`. Every URL in the family then 404s. Permanently — until the next deploy.
+ * The theme action called it (since P6) and the watchlist action called it (since F1), so the reader
+ * would have found this by changing their theme. Once. And every scan table in the app would have
+ * been gone.
+ *
+ * It was caught by CI (the VRT shot came back as a 404 page) and reproduced locally in two commands:
+ * request the page → 200; call a layout revalidation; request it again → 404. The scans index
+ * survives it. /academy/[slug] survives it. Only the route that declared a closed param set dies.
+ *
+ * So there are now NO layout-scoped revalidations anywhere in this app — the theme no longer needs
+ * one (it applies client-side since F1), the watchlist names the paths it changes, and drift rule 17
+ * greps for the pattern so it cannot come back and quietly delete this room.
  */
 export const dynamicParams = false;
 
