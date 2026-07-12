@@ -74,8 +74,28 @@ async function waitForFonts(page: Page) {
  * a stamp on everything — but they encode wall-clock time, so they would differ on every run and
  * make every baseline a false positive. Masking the clock is what lets the pixels mean something.
  */
-async function shoot(page: Page, path: string, name: string) {
+async function shoot(page: Page, path: string, name: string, options: { allowSkeletons?: boolean } = {}) {
   await page.goto(path);
+
+  /*
+   * NEVER PHOTOGRAPH A LOADING STATE.
+   *
+   * This is not hypothetical: it happened. The scan-table baselines failed on the tag run with
+   * "expected an image 1366px by 1876px, received 1366px by 768px" — a page exactly one viewport
+   * tall, because the shot had caught the room's `loading.tsx` skeleton instead of the room. It only
+   * bit the newest route, and it would have bitten a different one each time the suite got slower.
+   *
+   * Skeletons exist everywhere now (F1), so every room can render one, and a screenshot that races a
+   * page is a baseline that photographs a bug. Waiting for the bones to be GONE is the honest signal
+   * that the content has actually arrived.
+   *
+   * The styleguide is the exception, and the only one: section 9 renders the skeleton specimens
+   * deliberately, because that is where they are pixel-locked. It passes allowSkeletons.
+   */
+  if (!options.allowSkeletons) {
+    await expect(page.locator(".skeleton-bone"), `${name}: the page was still loading when it was photographed`).toHaveCount(0);
+  }
+
   await waitForFonts(page);
   const masks = page.locator('[data-vrt="mask"], time');
   await expect(page).toHaveScreenshot(`${name}.png`, { fullPage: true, mask: [masks] });
@@ -100,12 +120,12 @@ test.describe("visual regression — the design system", () => {
 
   test("styleguide — Morning", async ({ page }) => {
     await useTheme(page, "light");
-    await shoot(page, "/styleguide", "styleguide-light");
+    await shoot(page, "/styleguide", "styleguide-light", { allowSkeletons: true });
   });
 
   test("styleguide — Midnight", async ({ page }) => {
     await useTheme(page, "dark");
-    await shoot(page, "/styleguide", "styleguide-dark");
+    await shoot(page, "/styleguide", "styleguide-dark", { allowSkeletons: true });
   });
 
   // ── the rooms ────────────────────────────────────────────────────────────────────────────
@@ -151,6 +171,7 @@ test.describe("visual regression — the design system", () => {
     test.skip(!!isMobile, "the desktop table is the thing being locked here");
     await useTheme(page, "light");
     await page.goto("/scans/unusual-volume");
+    await expect(page.locator(".skeleton-bone")).toHaveCount(0);
     await waitForFonts(page);
     await page.getByRole("button", { name: /RVOL/ }).click();
     await expect(page.getByRole("columnheader", { name: /RVOL/ })).toHaveAttribute("aria-sort", /ascending|descending/);
@@ -165,6 +186,7 @@ test.describe("visual regression — the design system", () => {
     test.skip(!!isMobile, "one shot is enough for the footer state");
     await useTheme(page, "light");
     await page.goto("/scans/unusual-volume");
+    await expect(page.locator(".skeleton-bone")).toHaveCount(0);
     await waitForFonts(page);
     await page.getByRole("button", { name: "Next" }).click();
     await expect(page.getByText("Page 2 of 2 · 32 rows")).toBeVisible();
