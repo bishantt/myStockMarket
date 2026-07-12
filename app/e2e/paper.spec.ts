@@ -142,8 +142,11 @@ test.describe("The ticket", () => {
     await expect(page.getByRole("button", { name: "Sit with it" })).toBeVisible();
   });
 
-  test("the ledger's closed trades fold away, and every figure is formatted, not toFixed'd", async ({ page }) => {
+  test("the ledger's closed trades fold away, and every figure is formatted, not toFixed'd", async ({ page, isMobile }) => {
     test.skip(process.env.MSM_SEEDED !== "1", "needs the seeded ledger");
+    // The <table> is the desktop rendering; the phone gets card-rows, and asking for a table there
+    // finds nothing. (The phone rendering is covered by the scans card-row journey.)
+    test.skip(!!isMobile, "the desktop table is what this asserts");
     await page.goto("/paper");
 
     // The closed book is behind a disclosure that states its own count (M2).

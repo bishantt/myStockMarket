@@ -63,10 +63,29 @@ test.describe("Daily brief — the seeded evening briefing", () => {
     // phone e2e concerns are auth/PWA/offline/back-gesture, not this bottom-of-page write.
     test.skip(testInfo.project.name === "phone", "journal write covered on desktop; phone writes via settings.spec");
     const scorecard = page.getByRole("region", { name: "Evening scorecard" });
-    await scorecard.getByRole("textbox").fill("I waited for confirmation instead of chasing the open.");
+    const entry = scorecard.getByRole("textbox");
+    await entry.fill("I waited for confirmation instead of chasing the open.");
     const save = scorecard.getByRole("button", { name: "Save entry" });
     await save.scrollIntoViewIfNeeded();
     await save.click();
-    await expect(scorecard.getByTestId("journal-saved")).toBeVisible();
+
+    /*
+     * ASSERT THE FORM CLEARED, not that "Saved." is on screen.
+     *
+     * This test used to wait for the `journal-saved` marker, and that marker is rendered whenever
+     * `state.ok` is true — which is the INITIAL state of useActionState. "Saved." was therefore on
+     * the page from the moment it loaded, before anything had been saved, and this assertion passed
+     * without the write ever happening. It was a guard that could not fail.
+     *
+     * The form resets itself on a successful write, so an empty textarea is a real success signal:
+     * it cannot be true until the server action has come back ok.
+     *
+     * The long timeout is not a workaround for a hang. A server action's response carries a full
+     * re-render of the page it was invoked from, and on the Desk that means re-reading the entire
+     * morning — ten-odd queries — before the client sees the result. It is a genuinely slow round
+     * trip, and on a contended CI Postgres it comfortably outlives the 5s default.
+     */
+    await expect(entry).toHaveValue("", { timeout: 20_000 });
+    await expect(scorecard.getByTestId("journal-error")).toHaveCount(0);
   });
 });
