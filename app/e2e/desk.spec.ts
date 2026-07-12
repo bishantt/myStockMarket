@@ -78,7 +78,14 @@ test.describe("Desk — the seeded morning", () => {
     await expect(movers.getByText(/Super Micro beats Q3/)).toBeVisible();
     await expect(movers.getByRole("link", { name: "reuters.com" })).toBeVisible();
     // PLTR has no seeded news → the honest noise line (§1.5 rule 9).
-    await expect(movers.getByText(/No news found/)).toBeVisible();
+    //
+    // Scoped to PLTR's own row, deliberately. The seed now publishes eight movers (F0), and most of
+    // them have no news, so an unscoped match for the noise line finds six rows and fails strict
+    // mode. The fix is to say what the test always meant — "the mover with no catalyst prints the
+    // noise line" — about a named row, rather than to paper over it with .first(), which would pass
+    // even if PLTR had quietly acquired a catalyst.
+    const pltrRow = movers.locator("li").filter({ hasText: "PLTR" });
+    await expect(pltrRow.getByText(/No news found/)).toBeVisible();
   });
 
   test("the session calendar shows curated catalysts with their chip codes and no noise", async ({ page }) => {

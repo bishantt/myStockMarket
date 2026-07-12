@@ -19,6 +19,9 @@
     "icons": "node scripts/icons.mjs",
     "check:lighthouse": "node scripts/lighthouse-check.mjs",
     "check:drift": "node scripts/check-drift.mjs",
+    "check:routes": "node scripts/check-routes.mjs",
+    "check:nav": "node scripts/check-nav.mjs",
+    "check:bundles": "node scripts/check-bundles.mjs",
     "e2e:local": "playwright test --ignore-snapshots"
   },
   "prisma": {

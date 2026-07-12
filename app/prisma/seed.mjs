@@ -12,6 +12,8 @@
  */
 
 import { PrismaClient } from "@prisma/client";
+import { SCAN_ROWS, SCAN_INSTRUMENTS } from "./fixtures/scans.mjs";
+import { PAPER_TRADES } from "./fixtures/paper.mjs";
 
 const db = new PrismaClient();
 
@@ -86,12 +88,14 @@ const WATCHLIST = [
   { symbol: "MSFT", reason: "Quiet base after the last leg — a patience name.", isFocus: false },
 ];
 
-/** Movers = the unusual-volume scan's matches, ranked. metrics carry the day return and RVOL. */
-const MOVERS = [
-  { symbol: "SMCI", rank: 1, ret_1: 0.184, rvol20: 4.7, lottery_flag: false },
-  { symbol: "GME", rank: 2, ret_1: -0.092, rvol20: 3.3, lottery_flag: false },
-  { symbol: "PLTR", rank: 3, ret_1: 0.061, rvol20: 2.8, lottery_flag: false },
-];
+/**
+ * The scan matches — all five presets — live in prisma/fixtures/scans.mjs.
+ *
+ * The Desk's movers module is not a separate fixture: it READS the unusual-volume preset (the
+ * strongest eight by rank, lib/morning.ts). So the movers and the scan table are the same rows seen
+ * from two rooms, which is exactly what they are in production. Ranks 1–3 are frozen there for that
+ * reason — the seeded briefing's prose quotes their numbers.
+ */
 
 /** News that explains the movers — each tagged to its ticker, published on the run day. One mover
  * (PLTR) is intentionally left with NO news, so the Desk renders the honest noise line for it. */
@@ -146,12 +150,26 @@ const BRIEFING = {
  * release allowlist writes them (UI-REDESIGN-PLAN §6.2, Appendix C). Earnings sit at "medium": the
  * "high" marker is reserved for the market-wide catalysts a beginner most needs to see coming.
  */
+/**
+ * The two rows marked `high` below (FOMC and the jobs report) sit at positions 5 and 6 by date —
+ * deliberately BELOW the calendar module's routine cut of three rows.
+ *
+ * That placement is the guard for ruling M2. The Desk collapses the routine tail of the calendar
+ * behind a disclosure, but a high-importance row — a CPI print, an FOMC decision — may never be
+ * hidden behind a fold: the calendar's whole job is warning, and a module that hides a warning
+ * while looking complete is worse than one that shows nothing. The F5 e2e asserts BOTH of these
+ * rows are on screen while the disclosure is still collapsed. If someone ever "simplifies" the
+ * calendar back to a plain first-N slice, these two rows disappear and that test goes red.
+ */
 const CALENDAR = [
   { date: new Date("2026-07-12T00:00:00.000Z"), kind: "macro", symbol: null, timing: null, title: "Consumer Price Index", consensus: null, prior: null, importance: "high", code: "CPI" },
+  { date: new Date("2026-07-13T00:00:00.000Z"), kind: "earnings", symbol: "MSFT", timing: null, title: "MSFT earnings", consensus: 3.12, prior: 2.94, importance: "medium", code: "EARNINGS" },
+  { date: new Date("2026-07-14T00:00:00.000Z"), kind: "earnings", symbol: "GME", timing: null, title: "GME earnings", consensus: 0.04, prior: 0.02, importance: "medium", code: "EARNINGS" },
   { date: new Date("2026-07-15T00:00:00.000Z"), kind: "earnings", symbol: "AAPL", timing: null, title: "AAPL earnings", consensus: 1.28, prior: 1.4, importance: "medium", code: "EARNINGS" },
   { date: new Date("2026-07-16T00:00:00.000Z"), kind: "fed", symbol: null, timing: null, title: "FOMC decision", consensus: null, prior: null, importance: "high", code: "FOMC" },
   { date: new Date("2026-07-17T00:00:00.000Z"), kind: "macro", symbol: null, timing: null, title: "Jobs report", consensus: null, prior: null, importance: "high", code: "JOBS" },
   { date: new Date("2026-07-20T00:00:00.000Z"), kind: "earnings", symbol: "NVDA", timing: null, title: "NVDA earnings", consensus: 0.92, prior: 0.85, importance: "medium", code: "EARNINGS" },
+  { date: new Date("2026-07-21T00:00:00.000Z"), kind: "earnings", symbol: "PLTR", timing: null, title: "PLTR earnings", consensus: 0.15, prior: 0.13, importance: "medium", code: "EARNINGS" },
 ];
 
 /**
@@ -263,7 +281,9 @@ async function main() {
     },
   });
 
-  for (const i of INSTRUMENTS) {
+  // The Desk's own names, plus every name the scan tables reference — the match table joins on
+  // Instrument for its Name column, and a match whose instrument is missing renders a nameless row.
+  for (const i of [...INSTRUMENTS, ...SCAN_INSTRUMENTS]) {
     await db.instrument.upsert({ where: { symbol: i.symbol }, update: i, create: i });
   }
 
@@ -282,15 +302,17 @@ async function main() {
   });
 
   // Scan results are replaced for the run date, so a re-seed does not pile up duplicates.
+  // These rows feed BOTH the /scans match tables and the Desk's movers module (which reads the
+  // strongest eight unusual-volume rows) — one set of facts, two rooms.
   await db.scanResult.deleteMany({ where: { runDate: RUN_DATE } });
-  for (const m of MOVERS) {
+  for (const row of SCAN_ROWS) {
     await db.scanResult.create({
       data: {
         runDate: RUN_DATE,
-        presetKey: "unusual-volume",
-        symbol: m.symbol,
-        rank: m.rank,
-        metrics: { ret_1: m.ret_1, rvol20: m.rvol20, lottery_flag: m.lottery_flag },
+        presetKey: row.presetKey,
+        symbol: row.symbol,
+        rank: row.rank,
+        metrics: row.metrics,
       },
     });
   }
@@ -346,9 +368,23 @@ async function main() {
     if (!exists) await db.signalResolution.create({ data: res });
   }
 
+  // The paper ledger. Replaced by id on every seed, so the ledger tables always show the same six
+  // trades and the VRT pixels stay deterministic.
+  await db.paperTrade.deleteMany({ where: { id: { in: PAPER_TRADES.map((t) => t.id) } } });
+  for (const trade of PAPER_TRADES) await db.paperTrade.create({ data: trade });
+
+  const byPreset = SCAN_ROWS.reduce((counts, row) => {
+    counts[row.presetKey] = (counts[row.presetKey] ?? 0) + 1;
+    return counts;
+  }, {});
+  const presetSummary = Object.entries(byPreset)
+    .map(([key, count]) => `${key} ${count}`)
+    .join(", ");
+
   console.log(
-    `Seeded: ${INSTRUMENTS.length} instruments, ${PRICE_HISTORY.length} price bars, ` +
-      `${MOVERS.length} movers, ${WATCHLIST.length} watchlist names, 1 macro context, ` +
+    `Seeded: ${INSTRUMENTS.length + SCAN_INSTRUMENTS.length} instruments, ${PRICE_HISTORY.length} price bars, ` +
+      `${SCAN_ROWS.length} scan matches (${presetSummary}; rsi-extreme 0 — the empty state is seeded on purpose), ` +
+      `${PAPER_TRADES.length} paper trades, ${WATCHLIST.length} watchlist names, 1 macro context, ` +
       `${NEWS.length} news items, ${CALENDAR.length} calendar events, 1 briefing.`,
   );
 }

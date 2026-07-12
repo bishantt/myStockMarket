@@ -2,8 +2,11 @@ import { expect, test } from "@playwright/test";
 
 /**
  * Journey 7 — the paper desk: the entry form, the sizing helper, and the cooling-off interstitial
- * that fires when an order follows a just-seen signal (plan §7 P6 acceptance). Behind the login wall;
- * the page reads an empty ledger without seeding, so no seeded database is required.
+ * that fires when an order follows a just-seen signal (plan §7 P6 acceptance). Behind the login wall.
+ *
+ * These assertions hold whether or not the ledger has trades in it, so this file needs no seeded
+ * database. (It used to read a ledger that was always empty; since F0 the seed publishes six paper
+ * trades, so in CI these journeys run against a populated ledger and must keep passing anyway.)
  */
 
 const USER = "testuser";
