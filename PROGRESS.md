@@ -1,5 +1,45 @@
 # PROGRESS.md — resumable state
 
+**F2 COMPLETE (2026-07-12) — tagged `feel-2`, CI green on the tag.**
+Next: F3, scans — the first room to consume the kit. Nothing is blocked.
+
+F2 built the six primitives and consumed none of them: the only pixels that moved in the whole app
+are the four styleguide baselines, which is exactly what "build the kit, then build the rooms" is
+supposed to look like. Each piece carries a ruling, and each ruling is held by a test rather than by
+anyone's memory:
+
+- **lib/table.ts** — sort and paginate. Two of its rules are honesty rules wearing an algorithm's
+  clothes: **null sorts last in both directions** (the pipeline coerces a NaN to null rather than to
+  zero, and a comparator that treats null as 0 undoes that in one line, floating every unknown to
+  the top of an ascending sort dressed as the day's smallest value), and **the sort is stable**, so
+  tied rows keep the pipeline's own rank — the order the UI calls "scan order" and never "top".
+- **DataTable** — the table the app has needed since /scans started printing a chip wall with a dead
+  "+123 more". It is P2-bearing by construction: its delta cells are money, so no ancestor may
+  animate them, so the file contains no transitions at all.
+- **Disclosure** — ruling M2 in code. The count is required BY TYPE, so an uncounted disclosure does
+  not compile, and `forceOpen` renders no toggle at all: not a disclosure that happens to be open,
+  but a thing that cannot be closed. That is what a degraded source line needs.
+- **Shelf**, **Skeleton**, and the **form kit** (whose Side control has no default — ruling M9).
+
+**Two bugs the tests caught before a reader could, and both are worth knowing:**
+1. The Stepper clamped on every keystroke, so clearing the quantity field instantly refilled it with
+   the minimum — typing "42" into an emptied box gave you "142". Unusable, and invisible until
+   someone typed.
+2. The Disclosure's fade reused `.route-fade`, which is EXEMPT by name from the P2 ancestor walk
+   (it is the page-level opacity fade, which moves nothing relative to anything else). A subtree
+   fade over a base rate animates a probability *arriving* — the exact thing the stillness rule
+   forbids. It would have inherited an exemption it had not earned and passed the guard in silence.
+   The negative control caught it. That is what negative controls are for.
+
+**One architectural fact, learned from the build:** a table Column's accessor is a function, and
+functions cannot cross the server-to-client boundary. So column sets live in client modules and the
+server passes only rows. Every table consumer from F3 on follows that shape.
+
+Tests at F2 exit: **368 unit · 214 pytest · e2e + VRT + PWA green on the `feel-2` tag · 15 drift rules.**
+
+---
+
+
 **F1 COMPLETE (2026-07-12) — tagged `feel-1`, CI green on the tag. The app is fast now.**
 Next: F2, the kit (Disclosure, Shelf, DataTable, the form controls). Nothing is blocked.
 
