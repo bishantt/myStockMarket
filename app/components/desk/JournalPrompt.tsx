@@ -25,13 +25,13 @@ export function JournalPrompt() {
     <form ref={formRef} action={formAction} className="flex flex-col gap-3 pt-4">
       <label className="flex flex-col gap-2">
         {/*
-         * The prompt still labels the textarea — it is just not PRINTED here any more, because the
-         * disclosure's summary row above now carries it in full. Deleting the span outright would
-         * have left the textarea with no accessible name at all: a screen reader would announce an
-         * unlabelled edit box at the bottom of the evening ritual.
+         * The prompt labels the textarea through `aria-label`, not through a visible (or sr-only)
+         * span. The disclosure's summary row above now PRINTS the prompt, so a second copy in the
+         * DOM would make every locator for it — a test's, or a screen reader's — resolve to two
+         * different nodes saying the same sentence.
          */}
-        <span className="sr-only">{JOURNAL_PROMPT}</span>
         <textarea
+          aria-label={JOURNAL_PROMPT}
           name="body"
           required
           rows={4}

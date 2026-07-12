@@ -40,22 +40,22 @@ test.describe("Desk — the seeded morning", () => {
     // real index level from FRED — the seeded 6,812.34 — NOT the SPY ETF's ~600 price, which the
     // Desk used to print under this exact label. The change is computed from the level and its
     // prior level (6,789.10 → 6,812.34 = +0.34%), never borrowed from the ETF.
-    await expect(macro.getByText("6,812.34")).toBeVisible();
-    await expect(macro.getByText("+0.34%")).toBeVisible();
+    await expect(macro.getByText("6,812.34").filter({ visible: true })).toBeVisible();
+    await expect(macro.getByText("+0.34%").filter({ visible: true })).toBeVisible();
     await expect(macro.getByText("Index levels · FRED · prior close")).toBeVisible();
 
     // The other true levels.
-    await expect(macro.getByText("22,345.67")).toBeVisible(); // Nasdaq Composite
-    await expect(macro.getByText("44,210.55")).toBeVisible(); // Dow
+    await expect(macro.getByText("22,345.67").filter({ visible: true })).toBeVisible(); // Nasdaq Composite
+    await expect(macro.getByText("44,210.55").filter({ visible: true })).toBeVisible(); // Dow
 
     // The Russell has no free FRED series, so its slot is an ETF — and says so, on the surface.
-    await expect(macro.getByText("Russell 2000 · IWM (ETF proxy)")).toBeVisible();
+    await expect(macro.getByText("Russell 2000 · IWM (ETF proxy)").filter({ visible: true })).toBeVisible();
     // The chip itself, exactly — the label above also contains the words "ETF proxy", and it should.
-    await expect(macro.getByText("ETF proxy", { exact: true })).toBeVisible();
+    await expect(macro.getByText("ETF proxy", { exact: true }).filter({ visible: true })).toBeVisible();
 
     // The two FRED context cells.
-    await expect(macro.getByText("15.84")).toBeVisible();
-    await expect(macro.getByText("4.54%")).toBeVisible();
+    await expect(macro.getByText("15.84").filter({ visible: true })).toBeVisible();
+    await expect(macro.getByText("4.54%").filter({ visible: true })).toBeVisible();
     // Breadth — the seed's advancers/decliners and the % above the 50-day average.
     await expect(macro.getByText("3210 advancing · 1780 declining")).toBeVisible();
     await expect(macro.getByText("61% above the 50-day average")).toBeVisible();
@@ -124,10 +124,17 @@ test.describe("Desk — the seeded morning", () => {
 
   test("the focus watchlist shows each name, its reason, and the focus mark", async ({ page }) => {
     const watch = page.getByRole("region", { name: "Watchlist" });
+
+    // The FOCUS names are always visible — that is the whole point of the module. Since F5 the rest
+    // fold away behind a counted disclosure, so the non-focus names (NVDA, MSFT) are one tap down;
+    // the test opens it below rather than pretending they are still on the surface.
     await expect(watch.getByText("AAPL")).toBeVisible();
     await expect(watch.getByText(/Earnings next week/)).toBeVisible();
     // Exact match: a bare "focus" would also hit the module masthead "Focus watchlist".
     await expect(watch.getByText("focus", { exact: true })).toBeVisible();
+
+    // And the folded names are reachable, with the disclosure stating how many it holds (M2).
+    await watch.getByText(/Full watchlist/).click();
     await expect(watch.getByText("+2.10%")).toBeVisible();
     // The row is sparkline + PRICE + delta chip (§5.1). RelVol is not on it: the watchlist answers
     // "how are my names doing", and the volume question belongs to Movers, which is where it lives.
