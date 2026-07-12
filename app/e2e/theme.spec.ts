@@ -80,10 +80,32 @@ test.describe("Midnight — one theme, every room", () => {
     await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
   });
 
-  /**
-   * The other half of D1 — that the rooms stay distinct through STRUCTURE once they share a
-   * palette — is asserted in R5, when the Academy's solid paper cards and serif kickers actually
-   * exist. Writing the assertion here would mean writing a test against furniture that has not
-   * been built, and a test that fails for the right reason is still a red build.
-   */
+  test("the rooms stay distinct through STRUCTURE, in BOTH themes", async ({ page }) => {
+    /*
+     * The other half of D1, and the claim the whole one-palette decision rests on.
+     *
+     * The Academy used to be a different colour. It is not any more — same wash, same tokens, same
+     * theme. So the room switch has to be carried entirely by the furniture, and this is the test
+     * that it actually is:
+     *
+     *   the Desk's modules are GLASS (.surface)      — an instrument
+     *   the Academy's are SOLID PAPER (.surface-solid) — a book
+     *
+     * If that ever stops being true, the two rooms have quietly become one room, and the reader has
+     * lost the doorway. It has to hold in Midnight as well as in Morning, which is exactly where a
+     * "just make the Academy lighter" shortcut would have failed.
+     */
+    for (const theme of ["Light", "Dark"]) {
+      await page.goto("/settings");
+      await page.getByRole("button", { name: theme, exact: true }).click();
+
+      await page.goto("/academy");
+      await expect(page.locator(".surface-solid").first()).toBeVisible();
+      // And no glass anywhere in the reading room.
+      await expect(page.locator("main .surface")).toHaveCount(0);
+
+      await page.goto("/");
+      await expect(page.locator("main .surface").first()).toBeVisible();
+    }
+  });
 });

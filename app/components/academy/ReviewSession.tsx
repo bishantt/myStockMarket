@@ -51,31 +51,49 @@ export function ReviewSession({ cards }: { cards: ReviewCard[] }) {
   }
 
   return (
-    <div className="max-w-[62ch]">
-      <p className="font-ui text-2xs uppercase tracking-[0.06em] text-muted">
+    <div className="mx-auto max-w-[58ch] py-8">
+      {/*
+       * "3 of 12" is a POSITION, not a progress bar.
+       *
+       * A bar that fills up is a completion mechanic, and a completion mechanic turns recall into a
+       * score. There are no timers here either, and no streaks, and no points (P6). The question is
+       * whether you remember the word — not how fast, and not how many in a row.
+       */}
+      <p className="text-center font-mono text-2xs uppercase tracking-[0.08em] text-muted">
         {index + 1} of {cards.length}
       </p>
 
-      <div className="mt-3 rounded-card border border-hairline p-5">
-        <h2 className="font-prose text-xl text-ink">{card.term}</h2>
+      <div className="surface-solid mt-5 p-8 desk:p-10">
+        <h2 className="text-center font-prose text-lg italic text-ink">{card.term}</h2>
 
         {revealed ? (
           <>
-            <p className="max-w-[52ch] pt-3 font-prose text-base text-ink-2">{card.definition}</p>
+            <p className="mx-auto max-w-[52ch] pt-5 font-prose text-base leading-[1.7] text-ink-2">
+              {card.definition}
+            </p>
             {card.lesson ? (
-              <Link
-                href={`/academy/${card.lesson}`}
-                className="mt-2 inline-block font-ui text-2xs uppercase tracking-[0.06em] text-accent hover:underline"
-              >
-                Full lesson →
-              </Link>
+              <p className="pt-3 text-center">
+                <Link
+                  href={`/academy/${card.lesson}`}
+                  className="font-ui text-sm text-accent-deep transition-colors duration-(--duration-quick) hover:underline"
+                >
+                  Full lesson →
+                </Link>
+              </p>
             ) : null}
-            <div className="mt-5 flex flex-wrap gap-2">
+
+            {/*
+             * Three buttons, all SECONDARY. There is deliberately no primary among them: a primary
+             * button is the interface saying "this is the answer we want", and the interface has no
+             * opinion about whether you knew the word. Honest self-report only works if nothing on
+             * screen is rooting for one of the answers.
+             */}
+            <div className="flex flex-wrap justify-center gap-2 pt-7">
               <button
                 type="button"
                 disabled={pending}
                 onClick={() => answer(true)}
-                className="rounded-control border border-hairline px-3 py-1.5 font-ui text-xs uppercase tracking-[0.05em] text-ink hover:border-accent disabled:opacity-50"
+                className="min-h-11 rounded-control border border-hairline px-4 py-2 font-ui text-sm text-ink transition-colors duration-(--duration-quick) ease-(--ease-quiet) hover:border-hairline-strong disabled:opacity-50"
               >
                 I knew this
               </button>
@@ -83,7 +101,7 @@ export function ReviewSession({ cards }: { cards: ReviewCard[] }) {
                 type="button"
                 disabled={pending}
                 onClick={() => answer(false)}
-                className="rounded-control border border-hairline px-3 py-1.5 font-ui text-xs uppercase tracking-[0.05em] text-ink hover:border-accent disabled:opacity-50"
+                className="min-h-11 rounded-control border border-hairline px-4 py-2 font-ui text-sm text-ink transition-colors duration-(--duration-quick) ease-(--ease-quiet) hover:border-hairline-strong disabled:opacity-50"
               >
                 Not yet
               </button>
@@ -91,7 +109,7 @@ export function ReviewSession({ cards }: { cards: ReviewCard[] }) {
                 type="button"
                 disabled={pending}
                 onClick={advance}
-                className="px-3 py-1.5 font-ui text-xs uppercase tracking-[0.05em] text-muted hover:text-ink disabled:opacity-50"
+                className="min-h-11 rounded-control px-4 py-2 font-ui text-sm text-muted transition-colors duration-(--duration-quick) hover:text-ink disabled:opacity-50"
               >
                 Skip
               </button>
@@ -99,16 +117,18 @@ export function ReviewSession({ cards }: { cards: ReviewCard[] }) {
           </>
         ) : (
           <>
-            <p className="pt-3 font-prose text-base text-muted">
+            <p className="mx-auto max-w-[46ch] pt-5 text-center font-prose text-base leading-[1.7] text-muted">
               Do you remember what this means? Try to recall it, then reveal the definition.
             </p>
-            <button
-              type="button"
-              onClick={() => setRevealed(true)}
-              className="mt-4 rounded-control border border-hairline px-3 py-1.5 font-ui text-xs uppercase tracking-[0.05em] text-ink hover:border-accent"
-            >
-              Reveal
-            </button>
+            <div className="flex justify-center pt-6">
+              <button
+                type="button"
+                onClick={() => setRevealed(true)}
+                className="min-h-11 rounded-control border border-hairline px-5 py-2 font-ui text-sm text-ink transition-colors duration-(--duration-quick) ease-(--ease-quiet) hover:border-hairline-strong"
+              >
+                Reveal
+              </button>
+            </div>
           </>
         )}
       </div>

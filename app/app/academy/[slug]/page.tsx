@@ -19,24 +19,31 @@ import { LessonReadBeacon } from "@/components/academy/LessonReadBeacon";
 // Lessons are static content; render them fresh so a new lesson appears without a rebuild.
 export const dynamic = "force-dynamic";
 
-/** The MDX element → styled component map: the Academy's warm, literary prose (plan §3.2). */
+/**
+ * The MDX element → styled component map: the Academy's reading typography (§5.6).
+ *
+ * The line-height rises to 1.7 here and the measure holds at 65ch. That pair is the room switch,
+ * more than any colour ever was: the Desk is dense because you scan it, and this is airy because
+ * you read it. Section headings are serif, not terminal mastheads — a reading room does not number
+ * its furniture.
+ */
 const mdxComponents = {
   h2: (props: React.HTMLAttributes<HTMLHeadingElement>) => (
-    <h2 className="max-w-[65ch] pt-8 font-ui text-lg font-bold uppercase tracking-[0.04em] text-ink" {...props} />
+    <h2 className="max-w-[65ch] pt-10 font-display text-title font-semibold text-ink" {...props} />
   ),
   p: (props: React.HTMLAttributes<HTMLParagraphElement>) => (
-    <p className="max-w-[65ch] pt-4 font-prose text-prose text-ink-2" {...props} />
+    <p className="max-w-[65ch] pt-4 font-prose text-prose leading-[1.7] text-ink-2" {...props} />
   ),
   ul: (props: React.HTMLAttributes<HTMLUListElement>) => (
-    <ul className="max-w-[65ch] list-disc pt-3 pl-5 font-prose text-prose text-ink-2 marker:text-muted" {...props} />
+    <ul className="max-w-[65ch] list-disc pt-3 pl-5 font-prose text-prose leading-[1.7] text-ink-2 marker:text-muted" {...props} />
   ),
   ol: (props: React.HTMLAttributes<HTMLOListElement>) => (
-    <ol className="max-w-[65ch] list-decimal pt-3 pl-5 font-prose text-prose text-ink-2 marker:text-muted" {...props} />
+    <ol className="max-w-[65ch] list-decimal pt-3 pl-5 font-prose text-prose leading-[1.7] text-ink-2 marker:text-muted" {...props} />
   ),
   li: (props: React.HTMLAttributes<HTMLLIElement>) => <li className="pt-1.5" {...props} />,
   strong: (props: React.HTMLAttributes<HTMLElement>) => <strong className="font-semibold text-ink" {...props} />,
   a: (props: React.AnchorHTMLAttributes<HTMLAnchorElement>) => (
-    <a className="text-ink underline underline-offset-2 hover:text-accent" {...props} />
+    <a className="text-accent-deep underline underline-offset-2" {...props} />
   ),
   blockquote: (props: React.HTMLAttributes<HTMLQuoteElement>) => (
     <blockquote className="max-w-[65ch] border-l-2 border-hairline pl-4 pt-4 font-prose text-prose italic text-ink" {...props} />
@@ -69,7 +76,7 @@ export default async function LessonPage({ params }: { params: Promise<{ slug: s
         <p className="font-ui text-2xs uppercase tracking-[0.07em] text-muted">
           {meta.module} · {meta.minutes} min read
         </p>
-        <h1 className="max-w-[65ch] pt-2 font-prose text-2xl text-ink">{meta.title}</h1>
+        <h1 className="max-w-[24ch] pt-3 font-display text-display font-bold text-ink">{meta.title}</h1>
       </header>
 
       {/* SOFT GATE — a nudge, never a lock. The reader may keep going. */}

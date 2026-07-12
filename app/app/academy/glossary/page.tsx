@@ -18,35 +18,49 @@ export default function GlossaryIndex() {
 
   return (
     <section className="flex flex-col">
-      <Link href="/academy" className="font-ui text-xs uppercase tracking-[0.06em] text-ink-2 hover:text-accent">
+      <Link
+        href="/academy"
+        className="font-ui text-sm text-ink-2 transition-colors duration-(--duration-quick) hover:text-accent-deep"
+      >
         ← All lessons
       </Link>
 
-      <header className="pt-4">
-        <h1 className="font-prose text-2xl text-ink">Glossary</h1>
-        <p className="max-w-[62ch] pt-2 font-prose text-base text-ink-2">
+      <header className="pt-6">
+        <h1 className="font-display text-display font-bold text-ink">Glossary</h1>
+        <p className="max-w-[62ch] pt-3 font-prose text-prose leading-[1.7] text-ink-2">
           The {terms.length} terms the Desk uses, defined plainly. Each links to the lesson that goes
           deeper, where one exists.
         </p>
       </header>
 
-      <dl className="pt-6">
+      {/*
+       * THE TERM IS THE HERO (§5.6). A glossary is not a table of definitions with the words as
+       * row labels — it is a set of words, each of which happens to have a definition. So the term
+       * is set in the display serif, at title size, and the definition reads as prose beneath it.
+       *
+       * Two columns above `lg`, because the entries are short and a single 65ch column of them
+       * would be a very long, very thin page.
+       */}
+      <dl className="columns-1 gap-8 pt-8 lg:columns-2">
         {terms.map((term) => (
-          <div key={term.key} className="max-w-[65ch] border-t border-hairline py-4 first:border-t-0">
+          <div
+            key={term.key}
+            className="mb-6 break-inside-avoid border-t border-hairline pt-4"
+          >
             <dt className="flex flex-wrap items-baseline gap-3">
-              <span className="font-ui text-sm font-semibold uppercase tracking-[0.04em] text-ink">
-                {term.term}
-              </span>
+              <span className="font-display text-title font-semibold text-ink">{term.term}</span>
               {term.lesson ? (
                 <Link
                   href={`/academy/${term.lesson}`}
-                  className="font-ui text-2xs uppercase tracking-[0.06em] text-accent hover:underline"
+                  className="font-ui text-2xs text-accent-deep transition-colors duration-(--duration-quick) hover:underline"
                 >
                   Lesson →
                 </Link>
               ) : null}
             </dt>
-            <dd className="pt-1.5 font-prose text-base text-ink-2">{term.long}</dd>
+            <dd className="max-w-[52ch] pt-2 font-prose text-base leading-[1.7] text-ink-2">
+              {term.long}
+            </dd>
           </div>
         ))}
       </dl>
