@@ -12,6 +12,34 @@ with zero decisions left open.*
 
 **Executor:** Claude Opus 4.8, unattended, same working rules as DEVELOPMENT-PLAN.md (TDD per
 its §6.2, plain-English code and docs, session ritual, DECISIONS/LESSONS logging, phase gates).
+
+**THE AUTONOMY CONTRACT (binding; restates the user's standing directive of 2026-07-11 so
+this plan is self-contained).** The user is not watching and will not answer mid-build. Run
+F0 → F7 to completion, in order, without a single pause for permission:
+- **Never ask. Never check in. Never wait.** Do not present options, do not end a reply
+  with "shall I continue?", "let me know", or an offer of next steps — after a completed
+  step, the next action IS the next step. A phase gate passing is not a checkpoint to
+  report and wait at; tag it and roll straight into the next phase.
+- **Anything that would have been a question goes to QUESTIONS-FOR-BISHANT.md** — marked
+  [NEED], [VETO?], or [FYI] as the existing file does — then make the most reasonable
+  assumption, mark whatever is built on it (code comment + DECISIONS.md + PROGRESS.md), and
+  keep going. The three pre-logged [VETO?] items (Part 0.4, 0.5, 0.7) proceed on their
+  stated assumptions unless a user-authored line in DECISIONS.md or QUESTIONS says
+  otherwise at session start.
+- **The only stop is a genuine, unworkaroundable blocker** (e.g. a required secret that is
+  absent and cannot be faked). A failing gate is not a stop — diagnose, fix, re-run. A
+  flaky test is not a stop — deflake it or quarantine it with a logged reason. A time- or
+  CI-gated item is not a stop — dispatch it, poll it (`gh run watch`), and do
+  parallelizable work while it runs; if a gate can only complete later, record it in
+  PROGRESS.md as pending and continue with the next phase where sequencing allows.
+- **Sessions are resumable, not restartable.** Every session: the CLAUDE.md ritual first
+  (pull → constitution → PROGRESS → LESSONS → DECISIONS diff for user vetoes → tests),
+  resume from the position PROGRESS.md records, and before context runs out mid-phase,
+  write the exact resumable state (files touched, next step, gate status) to PROGRESS.md
+  and push. End of every session: PROGRESS/DECISIONS/LESSONS updated, work pushed.
+- **Done means done:** `feel-final` tagged with its CI green, every budget table printed
+  into `docs/feel-evidence/`, the Part 9 docs sync executed, and a closing PROGRESS.md
+  entry written for the user to read — not a message asking them to look.
 **Authority order for this work:** honesty rules (Part 2 here; unchanged from
 UI-REDESIGN-PLAN.md Part 2) > this plan on **structure, layout containers, navigation, and
 performance** > UI-REDESIGN-PLAN.md on **look** (tokens, type, color, material, motion
@@ -1653,5 +1681,9 @@ assertion, not just this table.
 
 ---
 
-*End of plan. The build starts at F0; no decision waits on the user; every [VETO?] proceeds
-on its marked assumption per the standing autonomy directive.*
+*End of plan. The build starts at F0 and runs to `feel-final` under the autonomy contract
+in the preamble: no decision waits on the user, no reply ever asks for permission or offers
+to continue, every [VETO?] proceeds on its marked assumption, and every question the build
+generates lands in QUESTIONS-FOR-BISHANT.md while the work continues. The user reads the
+result in PROGRESS.md, the evidence in docs/feel-evidence/, and the questions file — not in
+a chat window.*
