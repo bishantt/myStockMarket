@@ -3,14 +3,23 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
-import { searchPalette, type PaletteItem } from "@/lib/palette";
+import { Search } from "lucide-react";
+
+import { copy } from "@/lib/copy";
+import { cx } from "@/lib/cx";
+import { searchPalette, type PaletteItem, type PaletteKind } from "@/lib/palette";
 
 /**
  * CommandPalette — jump to any route, lesson, or ticker with ⌘K (plan §7 P6 step 5).
  *
  * Opens on ⌘K / Ctrl-K, filters the index as you type, and each result is zone-badged (Desk or
  * Academy) so you always know which room you are jumping into. Arrow keys move, Enter navigates,
- * Escape closes. Calm-tech: a hairline dialog over the one scrim the app allows, no animation.
+ * Escape closes.
+ *
+ * The results are GROUPED — Rooms, then Tickers, then Lessons, always in that order. A palette is
+ * the fastest map of a product anyone ever reads, so it may as well teach the shape of the thing.
+ * The order is fixed rather than clever: a palette whose layout shifts under you is one you stop
+ * trusting, and trust is the only reason to use it over the nav.
  */
 export function CommandPalette({ items }: { items: PaletteItem[] }) {
   const router = useRouter();
@@ -62,51 +71,98 @@ export function CommandPalette({ items }: { items: PaletteItem[] }) {
     }
   }
 
+  // The results, grouped and labelled — the palette teaches the product's map. Rooms first, then
+  // tickers, then lessons: the fixed order matters more than any cleverness about recency, because
+  // a palette whose layout shifts under you is a palette you stop trusting.
+  const groups: Array<{ heading: string; kind: PaletteKind }> = [
+    { heading: "Rooms", kind: "route" },
+    { heading: "Tickers", kind: "ticker" },
+    { heading: "Lessons", kind: "lesson" },
+  ];
+
   return (
     <div
-      className="fixed inset-0 z-50 flex items-start justify-center pt-[12vh]"
+      className="fixed inset-0 z-40 flex items-start justify-center pt-[12vh]"
       style={{ background: "var(--scrim)" }}
       onClick={() => setOpen(false)}
     >
       <div
         role="dialog"
         aria-label="Command palette"
-        className="w-full max-w-lg rounded-panel border border-hairline bg-surface"
+        className="surface-overlay z-50 w-full max-w-lg"
         onClick={(e) => e.stopPropagation()}
       >
-        <input
-          ref={inputRef}
-          value={query}
-          onChange={(e) => {
-            setQuery(e.target.value);
-            setActive(0);
-          }}
-          onKeyDown={onInputKey}
-          placeholder="Jump to a page, lesson, or ticker…"
-          aria-label="Search"
-          className="w-full border-b border-hairline bg-transparent px-4 py-3 font-ui text-sm text-ink placeholder:text-muted focus:outline-none"
-        />
-        <ul className="max-h-80 overflow-y-auto py-1">
+        <div className="flex items-center gap-2 border-b border-hairline px-4">
+          <Search size={16} strokeWidth={1.75} aria-hidden="true" className="shrink-0 text-muted" />
+          <input
+            ref={inputRef}
+            value={query}
+            onChange={(e) => {
+              setQuery(e.target.value);
+              setActive(0);
+            }}
+            onKeyDown={onInputKey}
+            placeholder={copy.palette.placeholder}
+            aria-label="Search"
+            className="w-full bg-transparent py-3 font-ui text-input-touch text-ink placeholder:text-faint focus:outline-none md:text-sm"
+          />
+        </div>
+
+        {/*
+         * The panel caps its height to the VISUAL viewport, not the layout one. On iOS the soft
+         * keyboard covers the layout viewport without shrinking it, so a panel sized to `vh` would
+         * put its lowest rows underneath the keyboard — exactly where the reader is typing toward.
+         */}
+        <ul className="max-h-[min(60vh,calc(var(--visual-vh,100vh)-22vh))] overflow-y-auto py-1">
           {results.length === 0 ? (
             <li className="px-4 py-3 font-ui text-sm text-muted">No matches.</li>
           ) : (
-            results.map((item, index) => (
-              <li key={`${item.href}-${item.label}`}>
-                <button
-                  type="button"
-                  onMouseEnter={() => setActive(index)}
-                  onClick={() => go(item)}
-                  aria-current={index === active}
-                  className={
-                    "flex w-full items-center justify-between gap-3 px-4 py-2 text-left " +
-                    (index === active ? "bg-paper" : "")
-                  }
-                >
-                  <span className="font-ui text-sm text-ink">{item.label}</span>
-                  <span className="font-ui text-2xs uppercase tracking-[0.06em] text-muted">{item.zone}</span>
-                </button>
-              </li>
-            ))
+            groups.map((group) => {
+              const items = results.filter((r) => r.kind === group.kind);
+              if (items.length === 0) return null;
+
+              return (
+                <li key={group.kind}>
+                  <p className="px-4 pb-1 pt-3 font-mono text-2xs uppercase tracking-[0.08em] text-muted">
+                    {group.heading}
+                  </p>
+                  <ul>
+                    {items.map((item) => {
+                      const index = results.indexOf(item);
+                      return (
+                        <li key={`${item.href}-${item.label}`}>
+                          <button
+                            type="button"
+                            onMouseEnter={() => setActive(index)}
+                            onClick={() => go(item)}
+                            aria-current={index === active}
+                            className={cx(
+                              "flex min-h-11 w-full items-center justify-between gap-3 px-4 py-2 text-left",
+                              "transition-colors duration-(--duration-quick) ease-(--ease-quiet)",
+                              index === active ? "bg-accent-soft" : "",
+                            )}
+                          >
+                            <span
+                              className={cx(
+                                "truncate",
+                                item.kind === "ticker"
+                                  ? "font-mono text-sm text-ink"
+                                  : "font-ui text-sm text-ink",
+                              )}
+                            >
+                              {item.label}
+                            </span>
+                            <span className="shrink-0 font-mono text-2xs uppercase tracking-[0.06em] text-muted">
+                              {item.zone}
+                            </span>
+                          </button>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </li>
+              );
+            })
           )}
         </ul>
       </div>

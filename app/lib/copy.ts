@@ -99,6 +99,32 @@ export const copy = {
     unavailable: "Briefing unavailable tonight — scan results below are complete and verified.",
   },
 
+  /**
+   * The login wall. Even the marketing-flavoured lines obey the one-deck rule and the mechanical
+   * voice — the first page a reader ever sees is not the place to start over-promising.
+   */
+  login: {
+    headline: "Your personal broadsheet for the market.",
+    subline:
+      "Not a prediction oracle. Not a signal feed. A daily record of what happened, why it might matter, and what the base rates actually say — including the misses.",
+    quote: "“An investor who has all the answers doesn’t even understand the questions.”",
+    quoteAttribution: "— Sir John Templeton",
+    /** The licensing reason the wall exists at all. */
+    wall: "This app stays behind a login because its market data is licensed for personal use only.",
+    submit: "Open my desk →",
+  },
+
+  /** The Academy's closing pull quote. One fixed quote — a rotating one is a slot machine. */
+  academy: {
+    quote:
+      "“The first step to understanding markets is understanding that no one fully understands markets.”",
+  },
+
+  palette: {
+    hint: "⌘K",
+    placeholder: "Go to a room, lesson, or ticker…",
+  },
+
   offline: {
     ribbon: "Offline — showing the last synced briefing ({date}).",
   },

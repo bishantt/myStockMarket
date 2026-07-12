@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96" fill="none" role="img" aria-label="myStockMarket">
+  <!--
+    The mark's glyph alone, in `currentColor` on a transparent field.
+    Android's monochrome themed icon must be a single colour with no background, so it cannot use
+    the gradient tile. Same letterform, same proportions — just the M.
+  -->
+  <path
+    d="M24 70V26h9.5l14.5 24 14.5-24H72v44h-9.5V43L48 66.5 33.5 43v27z"
+    fill="currentColor"
+  />
+</svg>

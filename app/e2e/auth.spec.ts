@@ -23,7 +23,11 @@ async function signIn(page: import("@playwright/test").Page) {
 test("an unauthenticated visitor is sent to the login page, not the Desk", async ({ page }) => {
   await page.goto("/");
   await expect(page).toHaveURL(/\/login$/);
-  await expect(page.getByRole("heading", { name: "myStockMarket" })).toBeVisible();
+  // The login headline is the product's opening argument (§5.7). Exactly one of the two renders at
+  // any width — the brand panel's above `lg`, the stacked one below it — so this matches one node.
+  await expect(
+    page.getByRole("heading", { name: /Your personal broadsheet for the market/i }),
+  ).toBeVisible();
 });
 
 test("the login page explains why the wall exists", async ({ page }) => {

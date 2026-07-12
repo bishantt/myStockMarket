@@ -1,15 +1,23 @@
 import type { Metadata, Viewport } from "next";
 import { fontVariables } from "@/lib/fonts";
-import { PAPER } from "@/lib/tokens";
+import { themeScript } from "@/lib/theme";
+import { PAPER, PAPER_DARK } from "@/lib/tokens";
 import "./globals.css";
 
 /**
- * The root layout. It does three jobs and deliberately no more: publish the three font
- * variables, set the document metadata, and open the <body>.
+ * The root layout. It does three jobs and deliberately no more: publish the four font variables,
+ * set the document metadata, and stamp the theme before the first paint.
  *
- * The two rooms — Desk and Academy — own their own backgrounds and their own status-bar
- * colour, set in their respective route-group layouts. Keeping that decision out of here is
- * what makes the room switch (cool Desk, warm Academy) possible at all.
+ * That last job is new, and it is the mechanism behind D1 — one theme for the whole app. Both rooms
+ * read one token sheet and one `data-theme`, so the attribute belongs here, on <html>, rather than
+ * on the Desk shell where it used to live.
+ *
+ * It is stamped by an inline script, NOT by a server-side cookie read, and the reason is worth
+ * stating because it is not obvious: calling `cookies()` in the root layout opts EVERY route into
+ * dynamic rendering. That would include /login and /offline, which are `force-static` precisely so
+ * the service worker can precache them — the offline experience would quietly stop working, and no
+ * test would necessarily catch it. The inline script reads `document.cookie` before paint instead:
+ * no flash, no dynamic routes, no cost.
  */
 
 export const metadata: Metadata = {
@@ -21,18 +29,23 @@ export const metadata: Metadata = {
 };
 
 /**
- * `viewportFit: "cover"` lets the sticky top bar and the mobile bottom sheet paint into an
- * iPhone's safe areas; those components then pad themselves back out with env(safe-area-inset-*).
- * Without it, an installed standalone PWA renders letterboxed on a notched phone.
+ * `viewportFit: "cover"` lets the sticky top bar and the bottom tab bar paint into an iPhone's
+ * safe areas; those components then pad themselves back out with env(safe-area-inset-*). Without
+ * it, an installed standalone PWA renders letterboxed on a notched phone.
  *
- * `themeColor` is the live browser/status-bar colour and starts as the Desk's. The Academy
- * layout overrides it, and P6 adds the dark-mode media variants (plan §5.1).
+ * `themeColor` is the SSR default: a media pair that follows the OS. That is the honest default
+ * before any JavaScript runs — and when the reader has made an explicit choice, the pre-paint
+ * script replaces the pair with their chosen paper, so a Midnight reader on a light-mode phone does
+ * not get a bone-white status bar sitting over a dark app.
  *
- * Note there is no maximum-scale lock: the Desk is dense, so pinch-zoom is an accessibility
- * requirement, not an annoyance to design away.
+ * There is no maximum-scale lock: the Desk is dense, so pinch-zoom is an accessibility right, not
+ * an annoyance to design away.
  */
 export const viewport: Viewport = {
-  themeColor: PAPER,
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: PAPER },
+    { media: "(prefers-color-scheme: dark)", color: PAPER_DARK },
+  ],
   viewportFit: "cover",
   width: "device-width",
   initialScale: 1,
@@ -44,7 +57,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={fontVariables}>
+    <html lang="en" className={fontVariables} suppressHydrationWarning>
+      <head>
+        {/* Runs before the first paint. See lib/theme.ts for why this is a script and not a cookie read. */}
+        <script dangerouslySetInnerHTML={{ __html: themeScript(PAPER, PAPER_DARK) }} />
+      </head>
       <body>{children}</body>
     </html>
   );

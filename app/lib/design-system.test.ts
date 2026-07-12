@@ -142,10 +142,18 @@ describe("the theme blocks", () => {
       name.startsWith("--color-") || name.startsWith("--gradient-") ||
       name.startsWith("--shadow-") || name.startsWith("--orb-");
 
-    // --gradient-brand is the one deliberate exception: the brand mark and the primary button
-    // carry the SAME indigo→violet gradient in both themes. It is already midnight-toned (§5.7),
-    // and a brand that changes colour with the lights is not a brand.
-    const THEME_INVARIANT = ["--gradient-brand"];
+    // The brand is the one deliberate exception. The mark, the primary button and the login panel
+    // carry the SAME indigo→violet gradient in both themes — it is already midnight-toned (§5.7),
+    // and a brand that changes colour with the lights is not a brand. What reads well ON that
+    // gradient therefore does not change either, so its text and rule colours are invariant too.
+    const THEME_INVARIANT = [
+      "--gradient-brand",
+      "--gradient-brand-grid",
+      "--color-on-brand",
+      "--color-on-brand-soft",
+      "--color-on-brand-tile",
+      "--color-on-brand-rule",
+    ];
 
     const missing = Object.keys(LIGHT)
       .filter(themed)

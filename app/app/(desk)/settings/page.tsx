@@ -53,12 +53,11 @@ export default async function SettingsPage() {
         <WatchlistManager items={items} focusCount={focusCount} />
       </section>
 
-      <section aria-label="Appearance">
-        <h2 className="font-ui text-sm font-bold uppercase tracking-[0.08em] text-ink">Appearance</h2>
-        <div className="mt-1 h-0.5 bg-ink" />
+      <section aria-label="Theme">
+        <h2 className="font-mono text-xs font-medium uppercase tracking-[0.08em] text-muted">Theme</h2>
+        <div className="mt-1 h-px bg-hairline-strong" />
         <p className="pt-3 font-ui text-sm text-muted">
-          The Desk can run dark. The Academy stays light by design — the room switch should always be
-          felt. System follows your device.
+          Applies everywhere — Morning or Midnight, one look at a time. System follows your device.
         </p>
         <ThemeToggle current={theme} />
       </section>

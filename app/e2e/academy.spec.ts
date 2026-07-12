@@ -27,9 +27,18 @@ test.describe("The Academy", () => {
     await expect(page.getByRole("heading", { name: "Check yourself" })).toBeVisible();
   });
 
-  test("the return rail leads back to the Desk", async ({ page }) => {
+  test("the return rail leads back to the Desk", async ({ page, isMobile }) => {
     await page.goto("/academy");
-    await page.getByRole("link", { name: "← Back to Desk" }).click();
+
+    // A doorway always has a way home — but on a phone the way home is the tab bar's Desk tab, not
+    // a second link (§4.2). Two competing doorways on a 375px row is one doorway too many, so the
+    // top-bar rail is desktop-only. The rule that matters — you can always get back — holds in both.
+    if (isMobile) {
+      await page.getByTestId("tab-bar").getByRole("link", { name: "Desk" }).click();
+    } else {
+      await page.getByRole("link", { name: "← Back to Desk" }).click();
+    }
+
     await expect(page).toHaveURL("/");
   });
 

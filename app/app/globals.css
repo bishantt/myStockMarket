@@ -104,8 +104,21 @@
   --color-module-patterns: #7a4a6b;
   --color-module-risk: #9c4460;
 
+  /* Text and marks that sit ON the brand gradient (the login panel, the primary button).
+   * Theme-invariant by design: the brand gradient is the same indigo→violet in Morning and in
+   * Midnight, so what reads well on it is the same in both. A brand that changes colour with the
+   * lights is not a brand. */
+  --color-on-brand: #ffffff;
+  --color-on-brand-soft: #c7d2fe;
+  --color-on-brand-tile: rgb(255 255 255 / 0.15);
+  --color-on-brand-rule: rgb(255 255 255 / 0.25);
+
   /* ── Gradients (§3.4) — the only four; raw gradients grepped elsewhere ────────────── */
   --gradient-brand: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+  /* The login panel's ruled-paper overlay — a ledger's grid, at 6% white. Pure CSS, so the
+   * force-static login page stays static and the offline precache stays honest. */
+  --gradient-brand-grid: repeating-linear-gradient(0deg, rgb(255 255 255 / 0.06) 0 1px, transparent 1px 48px),
+                         repeating-linear-gradient(90deg, rgb(255 255 255 / 0.06) 0 1px, transparent 1px 48px);
   --gradient-wash: linear-gradient(145deg, #f9f8ff 0%, #eef2ff 35%, #f0f4ff 65%, #faf8ff 100%);
   --gradient-spark-up: linear-gradient(180deg, rgb(37 99 235 / 0.12) 0%, rgb(37 99 235 / 0) 100%);
   --gradient-spark-down: linear-gradient(180deg, rgb(234 88 12 / 0.12) 0%, rgb(234 88 12 / 0) 100%);

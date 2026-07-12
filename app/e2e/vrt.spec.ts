@@ -95,18 +95,38 @@ test.describe("visual regression — the design system", () => {
     await shoot(page, "/login", "login");
   });
 
-  /**
-   * The fallback-metrics lock (§7.4).
-   *
-   * Every other shot waits for the fonts, which means every other shot is blind to what the page
-   * looks like BEFORE they land — and Playfair loads with `display: swap`, so that pre-swap frame
-   * is real and a slow connection shows it. If the fallback's metrics overflow the login panel at
-   * 375px, no font-loaded screenshot would ever reveal it. This one blocks the fonts and looks.
-   */
-  test("login with the fonts blocked — the pre-swap layout still holds", async ({ page, context }) => {
-    await context.route("**/*.woff2", (route) => route.abort());
-    await page.context().clearCookies();
+});
+
+/**
+ * The fallback-metrics lock (§7.4).
+ *
+ * Every other shot waits for the fonts, which means every other shot is blind to what the page looks
+ * like BEFORE they land — and Playfair loads with `display: swap`, so that pre-swap frame is real,
+ * and a slow connection shows it. If the fallback's metrics overflowed the login panel at 375px, no
+ * font-loaded screenshot would ever reveal it. This one blocks the fonts and looks.
+ *
+ * It lives in its OWN describe block, with no sign-in, and that is not tidiness — it is the test
+ * working at all. Signing in first navigates the page, which loads the fonts, which puts them in the
+ * browser's memory cache; the later navigation then never makes a network request, the route
+ * interception never fires, and the "fonts-blocked" screenshot is quietly an ordinary one. The
+ * assertion below caught exactly that, which is why it is there: a guard that cannot fail proves
+ * nothing, and this one had been proving nothing.
+ */
+test.describe("visual regression — the pre-swap fallback", () => {
+  test("login with the fonts blocked — the fallback layout still holds", async ({ page, context }) => {
+    let blocked = 0;
+    await context.route("**/*.woff2", (route) => {
+      blocked += 1;
+      return route.abort();
+    });
+
     await page.goto("/login");
+
+    expect(
+      blocked,
+      "no woff2 request was intercepted — the fallback layout was never actually exercised",
+    ).toBeGreaterThan(0);
+
     const masks = page.locator('[data-vrt="mask"], time');
     await expect(page).toHaveScreenshot("login-fonts-blocked.png", { fullPage: true, mask: [masks] });
   });
