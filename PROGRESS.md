@@ -1,5 +1,63 @@
 # PROGRESS.md — resumable state
 
+**F4 COMPLETE (2026-07-12) — tagged `feel-4`, CI green on the tag.**
+Next: F5, the Desk. Nothing is blocked.
+
+**Read this bit first, because it is the most important thing F4 found.**
+
+**Your journal was saving your entry and then telling you it was still saving. Forever.** The row
+landed in the database correctly; the button sat on "Saving…", the form never cleared, and the honest
+conclusion for anyone using it would be "that didn't work" — and to write the entry again. The same
+was true of the setup cards' weakener checkboxes. Every write on the Desk. **Since 2026-07-11, when
+the Desk became a cached route — six phases ago.**
+
+The cause: calling `revalidatePath("/")` inside a server action that was invoked FROM "/" deadlocks
+that action's own reply. It invalidates the very page whose fresh render it is trying to send back as
+its response. Both Desk writes now do their cache invalidation inside `after()` — the framework's own
+primitive for work that must happen once the response is finished. You get your reply immediately;
+the cache is busted a moment later, for whoever comes next.
+
+**It survived six phases because the test that was supposed to catch it could not fail.** It waited
+for a "Saved." marker — which renders whenever `useActionState`'s state is ok, and the INITIAL state
+is ok. "Saved." was on the page from the moment it loaded, before anything had been written. The test
+passed whether or not the save worked. It asserts the textarea CLEARED now, which cannot be true
+until the write has actually come back.
+
+That is the third guard-that-could-not-fail this build has turned up (the fonts-blocked screenshot
+that tested nothing, the TTFB probe that scored a 404 as a fast page, and this). The pattern is
+always the same: **the assertion is already true in the state the page starts in, so it never
+observes the transition it was written to observe.**
+
+**What F4 actually built.** The paper ticket was five fields in a wrapping row, every one typed by
+hand — including a symbol with no autocomplete, while the Instrument table sat there holding a name
+for every ticker in the universe. It is a ticket now: one column, a symbol field that suggests real
+instruments, a quantity stepper with presets, and a tap-to-fill last-close chip that carries its
+DATE (the disclaimer covers liveness, the date covers age — two different lies to prevent).
+
+- **Side has no default (M9).** Every other field keeps one, because every other field is a
+  parameter. Side is the decision, and the old form quietly pre-selected "buy" on the one surface
+  whose entire design exists to slow that decision down. The old cooling-off e2e had to be updated to
+  pick a side before submitting — which is the rule working: that test used to pass by relying on the
+  nudge M9 removed.
+- **The cooling-off pause finally has a producer.** It has been built, tested and completely
+  unreachable since P6 — nothing in the product ever constructed the URL that arms it, only the e2e
+  did. The setup card's "Practice on paper →" link (ruling M10) is its first real one. The timestamp
+  is stamped ON CLICK, in your browser: interpolating it on the server would have recorded the moment
+  the page was GENERATED, which on a cached Desk can be ten minutes before you ever saw the card.
+- The ledger is two tables; the closed book folds behind a disclosure that states its own count; and
+  realized P&L renders as a chip with the WORD in it — a loss reads as a loss without relying on hue.
+- The format sweep landed with drift rule 12: the whole paper surface had been calling `.toFixed()`
+  directly, which is how a loss ends up with a hyphen instead of a true minus.
+
+Rule 14 was tightened while here and immediately caught **two more raw anchors** — the setup card's
+and the brief's "Learn →" doorways — both doing a full document reload on the app's most important
+path into the Academy since P5.
+
+Tests at F4 exit: **376 unit · 214 pytest · e2e + VRT + PWA green on the `feel-4` tag · 17 drift rules.**
+
+---
+
+
 **F3 COMPLETE (2026-07-12) — tagged `feel-3`, CI green on the tag.**
 Next: F4, paper. Nothing is blocked.
 
