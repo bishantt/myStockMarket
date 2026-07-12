@@ -1,5 +1,59 @@
 # PROGRESS.md — resumable state
 
+**F0 COMPLETE (2026-07-12) — tagged `feel-0`, CI green on the tag.**
+Next: F1, the speed layer. Nothing is blocked.
+
+F0 built the instruments and measured the disease; it deliberately cured nothing. What it proved:
+
+- **The CI wiring works.** `feel-*` tags triggered NO workflow at all before this — every gate the
+  plan promises would have been a claim nobody checked. The `feel-0` tag ran the full e2e + VRT +
+  PWA job on Linux and came back green.
+- **The diagnosis reproduces, from checked-in scripts.** `/` answers in 51ms; `/ticker/SPY` takes
+  1127ms. 2 of 10 product routes are served from a cache; the other eight re-render on every tap.
+  What the reader actually feels (tap → content): Scans 1342ms, Paper 824ms, Track 825ms, Academy
+  827ms. Tables in `docs/feel-evidence/`.
+- **The prefetch question is settled by measurement, not by reading.** The pinned framework's docs
+  claim both answers in two tables and never reconcile them. Real probe routes + real prefetch
+  headers say: BRANCH A — a `loading.tsx` does NOT downgrade an ISR route's prefetch. So F1 gets
+  skeletons everywhere, with no trade-off to manage.
+- **The seed has teeth and is deterministic.** 52 scan matches (one preset deliberately EMPTY, so
+  the "0 matches — that is information" state is actually tested), six paper trades whose fills are
+  priced by `lib/paper.ts` itself. Two independent CI runs produced 39 of 40 byte-identical
+  screenshots; the fortieth is explained below.
+
+**Three things I found by not trusting my own instruments** — each was a guard that could not fail,
+which is worse than no guard, because it also hands you a reassuring green tick:
+
+1. The TTFB budget passed `/scans/unusual-volume` at 46ms. It is a **404** — the route does not
+   exist until F3. A missing page is the fastest page there is. The gate now requires that something
+   was actually served before it will call speed a success.
+2. The navigation-timing test reported Scans as the app's **fastest** room (14ms) when it is its
+   **slowest** (1342ms). Playwright matches accessible names by substring, so the heading "Scans"
+   was matching the Desk's own "07 — Sectors & scans" masthead, which is on screen *before* the tap:
+   it was timing nothing. Every sample now proves the destination is absent before tapping.
+3. The pixel oracle was shooting pages **before their fonts arrived**. A regenerated track-record
+   baseline came back with its prose in a fallback sans, visibly re-wrapped, while its own dark twin
+   from the same run was correct. `await document.fonts.ready` is not enough — it settles against
+   the fonts pending *when it is called*, so it can resolve instantly against an empty set. Fixed in
+   `shoot()`; that is the fortieth screenshot above, and it is why F0 regenerated its baselines
+   twice. Committing it would have made every VRT gate from F2 to F7 a picture of a bug.
+
+**Known limitation, settled and not worth re-litigating:** there is no way to run Postgres on this
+Mac (no brew bottle for macOS 26.3, its source build fails, the prebuilt binaries need a libz that
+lives only inside the dyld shared cache, and Docker's daemon can't be started headlessly — the same
+wall as 2026-07-11). **CI's Postgres service container is the database oracle.** The seed is
+verified by 12 DB-free unit tests that lock its promises (negative-controlled: nudging SMCI's return
+by 0.006 turns them red) plus the real `migrate deploy && db:seed` that CI runs on every tag. Do not
+spend another session trying to install Postgres here.
+
+**Budgets are all in REPORT mode** and arm as hard gates in F1 — a budget armed before the cure
+exists is a red gate you learn to walk past.
+
+Tests at F0 exit: **303 unit · 214 pytest (19 skipped) · e2e + VRT + PWA green on the `feel-0` tag.**
+
+---
+
+
 **APP FEEL PLAN AUTHORED (2026-07-12) — APP-FEEL-PLAN.md at the repo root, typeset at
 docs/App-Feel-Plan.pdf. The build has NOT started; this session was commissioned to plan,
 not to write app code. Next session: session ritual, then F0.**
