@@ -1,5 +1,68 @@
 # PROGRESS.md — resumable state
 
+**F1 COMPLETE (2026-07-12) — tagged `feel-1`, CI green on the tag. The app is fast now.**
+Next: F2, the kit (Disclosure, Shelf, DataTable, the form controls). Nothing is blocked.
+
+**What the reader will feel tonight.** Tap a tab, and the room is there. Measured the same way
+before and after, on the phone project against the seeded database:
+
+| Tap | Before | After |
+|---|---|---|
+| Desk → Scans | 1342 ms | **204 ms** |
+| Desk → Paper | 824 ms | **151 ms** |
+| Desk → Track record | 825 ms | **126 ms** |
+| Desk → Academy | 827 ms | **141 ms** |
+
+And against the real production deployment, authenticated (budget B2, warm median):
+
+| Route | Before | After |
+|---|---|---|
+| `/ticker/SPY` | 1127 ms | **58 ms** |
+| `/scans` | 851 ms | **52 ms** |
+| `/paper` | 698 ms | **65 ms** |
+| `/settings` | 517 ms | **48 ms** |
+
+Every product route now answers in 48–77 ms against a 150 ms budget. Ten of ten are served from a
+cache, with an empty allowlist. The server's own response time on the Desk is **12 ms**.
+
+**What actually changed.** Eight force-dynamic routes became ISR; the ticker's four sequential
+cross-region queries became one parallel stage; the chart library is code-split (`/ticker` first-load
+JS 193 → 143 KB); every room got a skeleton so a tapped page shows its bones instead of freezing on
+the page you are leaving; and the revalidation wiring was extended to every cached path.
+
+**Two freshness holes were closed WITH the conversion, not discovered after it.** Both were invisible
+before, because a page that re-renders on every request cannot be stale: filing a forecast refreshed
+the Desk but not `/track-record`, which is the page that shows open forecasts; and the lesson
+read-beacon told nobody at all, so finishing a lesson left the Academy still showing it unread.
+
+**One thing to know before you look at Lighthouse.** The advisory performance score on the Desk moved
+93 → 87, and I measured why rather than shrugging: the Desk's own JavaScript did not grow (179.6 →
+179.7 KB), the server answers in 12 ms, and the main thread blocks for 20 ms. The score drops because
+the app now prefetches the five tab rooms while the browser is idle — which IS the thing that made
+every tap instant. The lab test measures one cold load and counts bandwidth spent on your next screen
+against your current one. Both HARD budgets still pass (layout shift 0.000, first-load JS 157 KB of a
+200 KB budget). Full numbers: docs/feel-evidence/lighthouse-tradeoff.md. Flagged [FYI] in QUESTIONS —
+reversible in one line if you disagree, at the cost of slow navigation.
+
+**Three existing tests changed, each because F1 exposed them as weaker than they looked** — worth
+knowing, because none of them were "adjusted to make the build pass":
+- The touch sweep waited on `networkidle`, which now never arrives (static routes prefetch as the
+  browser idles, so the network keeps trickling). It waits on fonts instead — which is what it
+  actually depended on, since a button measured mid-font-swap is measured at the wrong width.
+- `theme.spec` used the toggle's pressed state as proof the cookie write had landed. That was fair
+  when the toggle was a server component and could not look pressed before the server re-rendered
+  it. It is a client component now and marks itself pressed on click, so the test waits on the
+  cookie — the write itself, not a proxy for it.
+- `nav-timing` is gated to seeded databases. Against production Supabase it was timing a
+  cross-country round trip over 1,825 live scan rows instead of this app's navigation.
+
+Budgets B1–B5 are ARMED. B1 (routes) and B4 (bundles) now run in CI on every push.
+
+Tests at F1 exit: **308 unit · 214 pytest · e2e + VRT + PWA green on the `feel-1` tag.**
+
+---
+
+
 **F0 COMPLETE (2026-07-12) — tagged `feel-0`, CI green on the tag.**
 Next: F1, the speed layer. Nothing is blocked.
 
