@@ -41,11 +41,21 @@ jobs:
           MSM_FIXTURES_OUT: ${{ github.workspace }}/recorded
         run: uv run python scripts/record_fred.py
 
-      - name: Record GoldAPI (records the real unkeyed 403 when P-5 is absent)
+      - name: Record GoldAPI (the key landed 2026-07-13; before that this captured the real 403)
         env:
           GOLDAPI_KEY: ${{ secrets.GOLDAPI_KEY }}
           MSM_FIXTURES_OUT: ${{ github.workspace }}/recorded
         run: uv run python scripts/record_goldapi.py
+
+      # N4's Front Page reads MARKET-WIDE news, which is a different Finnhub endpoint from the
+      # company news this repo already had recorded, and a different question asked of Marketaux.
+      # An endpoint nobody has called is an endpoint nobody has seen.
+      - name: Record the news providers (the market-wide feeds N4's Front Page ingests)
+        env:
+          FINNHUB_KEY: ${{ secrets.FINNHUB_KEY }}
+          MARKETAUX_KEY: ${{ secrets.MARKETAUX_KEY }}
+          MSM_FIXTURES_OUT: ${{ github.workspace }}/recorded
+        run: uv run python scripts/record_news.py
 
       - name: Upload the recordings
         uses: actions/upload-artifact@v4
