@@ -6,14 +6,28 @@
 EDGAR, FRED, Marketaux, and any future replacement from the Blueprint §4.2 ladder).
 
 ## Steps
-1. **Record REAL fixtures first.** Provider keys live only in GitHub secrets, not locally, so
-   record from Actions: write `pipeline/scripts/record_<provider>.py` (one call per endpoint,
-   writing raw JSON to `$MSM_FIXTURES_OUT/<provider>/`), run it via a temporary
-   `record-fixtures.yml` (`workflow_dispatch`, the provider's secret in env, upload the output as
-   an artifact), then `gh run download` and place the files under
-   `pipeline/adapters/fixtures/<provider>/`. Delete the temp workflow after; keep the recorder
-   script. Fixtures are REAL responses — the exact keys, envelope, pagination, and enum-ish codes
-   matter (Alpaca's exchange codes revealed the universe modelling; see below).
+1. **Record REAL fixtures first.** Write `pipeline/scripts/record_<provider>.py` (one call per
+   endpoint, writing raw JSON to `$MSM_FIXTURES_OUT/<provider>/`). If the provider needs no key,
+   run it from the laptop. If it does, the key lives only in GitHub secrets, so record from Actions:
+   `gh workflow run record-fixtures.yml` (checked in, `workflow_dispatch`, uploads the output as an
+   artifact), then `gh run download` and commit the files under
+   `pipeline/adapters/fixtures/<provider>/`. Add the new recorder to that workflow's steps.
+   Fixtures are REAL responses — the exact keys, envelope, pagination, and enum-ish codes matter
+   (Alpaca's exchange codes revealed the universe modelling; NRB's error-in-the-body revealed that a
+   2xx is not a success; see below).
+
+   **NEVER hand-write a fixture that looks recorded.** This rule is in capitals because the repo
+   broke it: R0 wrote three FRED fixtures by hand, in the shape of a real response with plausible
+   numbers, and for three phases every test built on them proved that the parser agreed with an
+   invention (N3 found it: the fake claimed 8,000 observations where the series has 2,610). **A
+   fabricated fixture is not a weak test, it is an INVERTED one** — it certifies the code against a
+   fiction and hands you a green tick for it.
+   - If a real success response is genuinely out of reach (no key yet), **record the real FAILURE**.
+     GoldAPI's unkeyed `403 {"error": "No API Key provided"}` is a real recording and it pins two
+     facts: the route is live, and the key travels in an `x-access-token` header.
+   - A fixture you had to write from documentation must carry **`_UNVERIFIED` in its filename**
+     (`xau_usd_UNVERIFIED.json`), and the test that reads it must say what it can and cannot prove.
+     Nobody — including you, six weeks later — can then mistake it for evidence.
 2. **Write the failing tests** (before the adapter), driven by the fixtures via
    `httpx.MockTransport` serving `load_fixture("<provider>", "<name>")`: the happy path per
    endpoint; the date/parse edges; **pagination** (a two-page mock, stop on null token); the

@@ -121,7 +121,55 @@ cell goes live with no other change.
 
 ---
 
-## 6. Gate at nc-3
+## 6. What the board costs, measured
+
+The board adds five figures the Desk did not have, and it is not free. The honest number, from the
+VRT baselines (full-page, seeded):
+
+| | Before N3 | After | Cost |
+|---|---|---|---|
+| Desk, phone (412px) | 4,183px | **4,723px** | +540px |
+| Desk, desktop (1366px) | 2,623px | **3,013px** | +390px |
+
+Roughly: the four-stat shelf ~190px, the gauge ~230px, borders and gaps the rest. Nothing here is
+padding — the first attempt was, and that is the bug in §7 below.
+
+**Why the gauge is not folded away to save the height.** Its two sentences — "computed by this app …
+not CNN's index" and "context, not a signal" — are what make a home-built sentiment number legitimate
+to print at all (C8). A gauge whose ownership line is behind a tap is a gauge most readers will never
+see the ownership line of. The breakdown folds; the claim does not.
+
+---
+
+## 7. The bug the photograph found (and the tests did not)
+
+The gauge shipped as the fifth card on the phone's money shelf. **A shelf stretches every card to the
+height of its tallest**, and the gauge — a score, a position strip, two unfoldable sentences and a
+disclosure — is about three times the height of "6.72% · wk of Jul 9". So the four stat cards were each
+padded with ~200px of white space, and the phone Desk grew 347px in order to show four short facts and
+a great deal of nothing.
+
+Every test passed. The DOM was correct. The numbers were right. **Only the picture showed it.**
+
+The category error underneath: F5's own triage says GLANCE stations get bounded and READ stations stay
+vertical. The four stats are glances. The gauge is something you read. It was never shelf material.
+
+The same photograph showed a second defect: **a falling mortgage rate rendered in red**, with a down
+triangle and a red wash, because every delta in this app is coloured by direction. On a tape, red-down
+is a fact with no opinion in it. On the price of housing money it is an opinion, and the wrong one — a
+falling mortgage rate is the best news on this board. Household-cost deltas render in ink now. Gold
+keeps its direction colour, because gold IS a market price.
+
+Both are now held by tests. This is the **fifth** real bug in this build found by opening a PNG and
+looking at it, and by no other means.
+
+**One more thing the re-baseline taught us:** of the 14 PNGs git reported as modified, **five were
+pixel-identical** (ticker, track-record) and differed only in PNG encoding. A byte-changed baseline is
+not necessarily a pixel-changed one — measure before you believe.
+
+---
+
+## 8. Gate at nc-3
 
 | | |
 |---|---|

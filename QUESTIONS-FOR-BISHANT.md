@@ -8,6 +8,51 @@ Format: newest first. I mark each as [FYI], [VETO?], or [NEED] so you can scan.
 
 ---
 
+## 2026-07-13 — N3 (the macro board)
+
+**[NEED, cheap and it unblocks a whole cell] The gold price needs a free API key, and until it
+lands that cell says "not yet reported".** Sign up at goldapi.io (free tier, no card — they advertise
+~500 requests/month and we would use about 30), then add it to this repo's GitHub secrets as
+`GOLDAPI_KEY`. That is the entire job. I verified the endpoint is real and reachable — it answers an
+unkeyed caller with a plain "No API Key provided" — so the moment the secret exists the cell fills in
+on the next nightly run with no code change at all. **Nothing is blocked**: the board ships with gold
+rendering its honest empty state, which is the truth about what we currently know.
+
+I want to be straight about one consequence. Because I have no key, I could not record a real
+successful response from that provider — so the gold parser is currently tested against GoldAPI's own
+published documentation rather than against GoldAPI. The fixture is named `xau_usd_UNVERIFIED.json` so
+that nobody, including me in six weeks, can mistake it for evidence. When the key arrives that becomes
+a real recording and the UNVERIFIED file is deleted.
+
+**[FYI] I found three fake test fixtures in your repo, and they had been passing for three phases.**
+The R0 phase needed FRED's index-level responses and, instead of recording them, wrote them by hand in
+the shape of a real response with plausible-looking numbers. The giveaway was that the fake claimed the
+S&P series has 8,000 observations (it has 2,610) and put the index at 6,812 (it was 7,575). Nothing
+broke — the parser works on real data too — but for three phases those tests were proving that the code
+agreed with my own imagination rather than with FRED. All three are real recordings now. The rule I have
+adopted: **a fixture that was not recorded must say so in its own filename.**
+
+**[FYI] Your Desk grew on the phone, and I want you to know the number.** The macro board adds five
+new figures, so the phone Desk is taller than it was. My first attempt was much worse than it needed to
+be: I put the Mood gauge on the same horizontal shelf as the four stats, and because a shelf stretches
+every card to the height of its tallest, the four short cards got padded out with about 200 pixels of
+white space each. Every test passed. I only caught it by looking at the screenshot. The gauge sits
+below the shelf now, full width, where it reads as what it is.
+
+**[FYI] A falling mortgage rate was showing up in red.** Every delta in this app is coloured by
+direction — up is green, down is red — which is exactly right for a stock and exactly wrong for the
+price of housing money, where falling is the best news on the board. The household-cost deltas render in
+plain ink now. Gold keeps its colour, because gold really is a market price.
+
+**[FYI] The Mood gauge is ours, it says so, and it is not a signal.** There is no legitimate
+fear-and-greed index anyone can license — CNN publishes no API and the endpoint everyone scrapes is an
+internal, bot-blocked feed. So the gauge is computed here, from five inputs the pipeline already holds,
+and the number never appears without the full breakdown that produced it. It carries the line "Context,
+not a signal — no tendency evidence attaches to this number", because nothing in this app has ever
+measured what a reading of 42 is followed by, so nothing in this app claims it.
+
+---
+
 ## 2026-07-13 — N2 (windows, density, the grid)
 
 **[FYI] Your production database was missing a migration, and nothing could tell you.**
