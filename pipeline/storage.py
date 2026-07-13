@@ -70,13 +70,27 @@ class R2Store:
     def sync_down(self, local_root: str | Path, prefix: str = "") -> list[str]:
         """
         Download every object (optionally under `prefix`) into `local_root`, mirroring the key as
-        the relative path. Returns the keys restored, sorted. Used to hydrate the runner's disk
-        before a re-pull, and by the restore test.
+        the relative path. Returns the keys restored, sorted.
+
+        IT MUST CREATE THE DIRECTORIES, and until N6 it did not — because nothing had ever really
+        used it. The full nightly WRITES the lake to disk (which mkdirs on the way) and then syncs
+        UP; it never syncs down. So this function's first real caller was `compute` mode, on a fresh
+        Actions runner with an empty checkout, and it died on its first live run:
+
+            FileNotFoundError: [Errno 2] No such file or directory:
+            'parquet-store/prices_daily/year=2021/part.parquet.0D8fEcCE'
+
+        (boto3's download_file writes to a temp file BESIDE the destination, so it needs the parent
+        directory to exist and will not make one.) The unit test never caught it because it handed
+        this a `tmp_path` that already existed — one flat directory, no nesting. The keys are nested,
+        and the nesting is the whole point of a partitioned store.
         """
         root = Path(local_root)
         keys: list[str] = []
         for key in self._list_keys(prefix):
-            self._client.download_file(self._bucket, key, str(root / key))
+            destination = root / key
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            self._client.download_file(self._bucket, key, str(destination))
             keys.append(key)
         return keys
 

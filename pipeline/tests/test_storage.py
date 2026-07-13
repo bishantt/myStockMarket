@@ -21,8 +21,32 @@ class FakeS3:
         self.objects[Key] = Path(Filename).read_bytes()
 
     def download_file(self, Bucket: str, Key: str, Filename: str) -> None:  # noqa: N803
+        """
+        THIS FAKE USED TO CREATE THE PARENT DIRECTORY, AND THAT MADE IT A LIE.
+
+        The old body began with `target.parent.mkdir(parents=True, exist_ok=True)`. Real boto3 does
+        NOT do that: it writes to a temp file BESIDE the destination and raises FileNotFoundError if
+        the directory is not already there. So this fake was KINDER THAN REALITY, and `sync_down` —
+        which never made its directories — passed every test for six phases.
+
+        It broke the first time anything really used it. `sync_down`'s only true caller is N6's
+        `compute` mode (the full nightly writes the lake to disk and syncs UP; it never syncs down),
+        and on a fresh Actions runner with an empty checkout it died on its first live run:
+
+            FileNotFoundError: [Errno 2] No such file or directory:
+            'parquet-store/prices_daily/year=2021/part.parquet.0D8fEcCE'
+
+        **A mock that is more forgiving than the thing it stands for does not fail to test the code
+        — it certifies that the code works in a world that does not exist.** That is N3's fabricated
+        fixture in a third set of clothes: there the lie was in the VALUES, in N5 it was in the
+        SHAPE, and here it is in the FAKE'S BEHAVIOUR. A fake's job is to be cheap, not to be nice.
+        """
         target = Path(Filename)
-        target.parent.mkdir(parents=True, exist_ok=True)
+        if not target.parent.is_dir():
+            raise FileNotFoundError(
+                f"[Errno 2] No such file or directory: {str(target) + '.tmpsuffix'!r} "
+                f"(boto3 will not create the destination directory — the caller must)"
+            )
         target.write_bytes(self.objects[Key])
 
     def list_objects_v2(self, Bucket: str, Prefix: str = "", **_kw):  # noqa: N803

@@ -54,6 +54,57 @@ const POLL_MS = 15_000;
 
 const LIVE: ReadonlySet<RunState["kind"]> = new Set(["requested", "queued", "running"]);
 
+/**
+ * ────────────────────────────────────────────────────────────────────────────────────────────────
+ * JSON HAS NO DATE TYPE, AND THIS CRASHED THE PANEL ON ITS VERY FIRST POLL.
+ * ────────────────────────────────────────────────────────────────────────────────────────────────
+ *
+ * The server hands the FIRST render real `Date` objects — React serializes them properly across the
+ * server-component boundary, so the panel mounts perfectly. Then the poll fetches the same shape as
+ * JSON, and `JSON.parse` gives back **strings**. `formatEtClock("2026-07-13T19:04:00.000Z")` is a
+ * `RangeError: Invalid time value`, the panel threw on re-render, React kept the old DOM — and the
+ * button appeared to do nothing at all.
+ *
+ * A REAL RUN HAD FIRED. GitHub accepted it, ran it, completed it. The ledger row was written. And
+ * the screen showed a Run button and "2 of 2 left today", exactly as if nothing had happened. **A
+ * run that fired and a run that never fired looked identical from the couch** — the precise failure
+ * this phase was warned about, reached by a completely different route than the one I had guarded.
+ *
+ * TYPESCRIPT COULD NOT SEE IT, BECAUSE I TOLD IT NOT TO. The old line was
+ *
+ *     const next = (await response.json()) as { rows: ActionRow[]; history: ManualRunRow[] };
+ *
+ * and an `as` cast on a parsed payload is not a type check — it is an ASSERTION, and this one was
+ * false. `response.json()` returns `any`, the cast said "trust me", and the compiler did.
+ *
+ * This is N5's `_json_safe` lesson wearing the mirror image of its clothes. There the question was
+ * "does the payload actually SERIALIZE?" (a dict that looked perfect killed a production run four
+ * minutes in). Here it is "does the payload actually DESERIALIZE into what the type claims?" — and
+ * the answer, for every Date on it, was no.
+ *
+ * So the boundary converts instead of asserting. `new Date(x)` accepts a Date or an ISO string, so
+ * this is idempotent and safe against both shapes.
+ */
+export function revive(payload: unknown): { rows: ActionRow[]; history: ManualRunRow[] } {
+  const raw = payload as { rows: ActionRow[]; history: ManualRunRow[] };
+
+  return {
+    rows: raw.rows.map((row) => ({ ...row, state: reviveState(row.state) })),
+    history: raw.history.map((run) => ({
+      ...run,
+      requestedAt: new Date(run.requestedAt),
+      finishedAt: run.finishedAt === null ? null : new Date(run.finishedAt),
+    })),
+  };
+}
+
+/** The two states that carry an instant. Miss either one and the panel throws where it renders it. */
+function reviveState(state: RunState): RunState {
+  if (state.kind === "cooldown") return { ...state, availableAt: new Date(state.availableAt) };
+  if (state.kind === "running") return { ...state, since: new Date(state.since) };
+  return state;
+}
+
 export function PipelinePanel({ rows: initialRows, history: initialHistory, lastRun, configured }: Props) {
   const [rows, setRows] = useState(initialRows);
   const [history, setHistory] = useState(initialHistory);
@@ -63,13 +114,18 @@ export function PipelinePanel({ rows: initialRows, history: initialHistory, last
   const refresh = useCallback(async () => {
     try {
       const response = await fetch("/api/pipeline/status", { cache: "no-store" });
-      if (!response.ok) return; // a blip must not blank the panel; the next tick tries again
-      const next = (await response.json()) as { rows: ActionRow[]; history: ManualRunRow[] };
+      if (!response.ok) {
+        console.error(`PipelinePanel: the status route answered ${response.status}`);
+        return; // a blip must not blank the panel; the next tick tries again
+      }
+      const next = revive(await response.json());
       setRows(next.rows);
       setHistory(next.history);
-    } catch {
-      // Offline, or the route is down. The panel keeps showing what it last knew, which is true —
-      // it simply stops being current, and the run's own elapsed time stops advancing with it.
+    } catch (error) {
+      // Offline, or the route is down. The panel keeps showing what it last knew, which is true — it
+      // simply stops being current. Logged, never swallowed in silence: a poll that has quietly
+      // stopped working looks exactly like a pipeline with nothing to report.
+      console.error("PipelinePanel: could not read the pipeline's status", error);
     }
   }, []);
 
@@ -183,15 +239,35 @@ function LastRun({ lastRun }: { lastRun: Props["lastRun"] }) {
 function ActionRowView({ row, onDispatched }: { row: ActionRow; onDispatched: () => void }) {
   const [result, formAction, pending] = useActionState<RunResult, FormData>(runPipeline, { ok: true });
 
-  // The moment a dispatch lands, ask the server what is actually happening rather than assuming.
-  // The button reported that GitHub ACCEPTED the run — it has said nothing about the run itself.
-  const dispatched = useRef(false);
+  /*
+   * THE MOMENT THE ACTION FINISHES, ASK THE SERVER WHAT ACTUALLY HAPPENED.
+   *
+   * THE BUG THIS REPLACES SHIPPED, AND ONLY THE LIVE DRILL FOUND IT. The first version hung this
+   * off the form's `onSubmit`, setting a ref to mark "a dispatch is in flight". **React does not
+   * fire onSubmit when a form has an action function** — so the ref stayed false, the refresh never
+   * ran, and the panel went straight back to showing a Run button.
+   *
+   * The run was REAL. GitHub accepted it, executed it, and completed it successfully. And the panel
+   * showed no sign that anything had happened at all — which is precisely the failure this whole
+   * phase was warned about: **a run that fired and a run that never fired looked identical from the
+   * couch.** 572 unit tests passed. The e2e passed. The button "worked". Nothing was observably
+   * wrong until a real run was fired at a real GitHub and the screen was watched.
+   *
+   * `pending` going true -> false is the signal that cannot lie: it is React's own record that the
+   * action ran and came back. We refresh on ANY completion, success or failure, because a failed
+   * dispatch changes what the panel should say too.
+   */
+  const wasPending = useRef(false);
   useEffect(() => {
-    if (result.ok && dispatched.current) {
-      dispatched.current = false;
+    if (pending) {
+      wasPending.current = true;
+      return;
+    }
+    if (wasPending.current) {
+      wasPending.current = false;
       onDispatched();
     }
-  }, [result, onDispatched]);
+  }, [pending, onDispatched]);
 
   const { state } = row;
 
@@ -201,7 +277,7 @@ function ActionRowView({ row, onDispatched }: { row: ActionRow; onDispatched: ()
         <span className="font-ui text-sm font-bold text-ink">{row.label}</span>
 
         {state.kind === "available" ? (
-          <form action={formAction} onSubmit={() => (dispatched.current = true)}>
+          <form action={formAction}>
             <input type="hidden" name="action" value={row.action} />
             {/* The house's primary button, verbatim from AddWatchlistForm — one button in this app,
                 not two. min-h-11 is the 44px thumb floor every control here clears. */}
