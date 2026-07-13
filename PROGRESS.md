@@ -4,8 +4,25 @@
 
 All eight phases, N0 through N7. Nothing is blocked. Nothing is in flight.
 
-**If you read only one thing:** N7's job was to harden the guards and make the documents agree with
-the code, and it found that **two of the things guarding this build were not guarding anything.**
+**If you read only one thing:** N7's job was to harden the guards, and **the repaired guards then
+caught a real bug and two rotting gates on the tag run itself** — which is the best evidence there is
+that the repair was worth making.
+
+- **The story page's source links are 20px tall on a phone.** Measured: "CNBC" 39×20, "Reuters" 48×20,
+  "Associated Press" 110×20 — five stacked links, each under half the 44px floor. Those links are how
+  you check a story against the outlet that reported it; they are the room's whole honesty argument.
+  The bug shipped in N5 and survived two tagged phases, **and it was unmeasurable the entire time** —
+  the sweep had never been given the route, and when it finally was, it was reading the 404 page.
+- **The `/paper` screenshots did not break. They EXPIRED.** The seed dated its trades absolutely while
+  the app counts "round trips this week" against the wall clock, so a trade aged out of the window
+  **at 19:50Z — twenty-eight minutes after the run that last certified the picture.** The cost mirror
+  silently halved, from −31.2%/yr to −15.6%/yr. Re-shooting would have bought exactly one day. The
+  fixture is relative now, and the count is 2 forever.
+- **A control-room test was passing only while the market was open.** It ran at 3:22pm at `nc-6` and
+  at 4:39pm here; the clock moved and a green test turned red.
+
+And the two findings from the hardening itself: **two of the things guarding this build were not
+guarding anything.**
 
 1. **Your route sweeps were passing on a page that does not exist.** The touch-target, sideways-scroll
    and accessibility sweeps measure whatever is on screen. Ask for a news story whose id is not in the

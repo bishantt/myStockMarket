@@ -47,6 +47,18 @@ it renders fresh on every visit and pays real database time. This is not new (it
 the same state at F7) and it is not the control room's fault. I did take one free round-trip out of
 it. If it ever annoys you, that is the number to point at.
 
+**[FYI] One test failure I fixed nothing for, because I could not explain it — and I would rather tell
+you than let it disappear into a green tick.** On the first tagged CI run, one `/news` test failed
+because the page server-rendered an **empty `<main>`** — the nav and banner were there, the entire
+room was not — and the server log carried a Next.js `Internal: NoFallbackError` at the same moment. It
+failed on its retry too. On the re-run, after my fixes (none of which touch `/news`'s rendering), it
+passed, and it has passed since.
+
+So: a transient server error, not a flake in the test — the page genuinely rendered nothing for a
+stretch of that run. I have not reproduced it and I do not have a mechanism. It is logged here rather
+than closed, because "it went away" is not a diagnosis, and if `/news` ever comes up blank in
+production this is the first thing to read.
+
 ### The veto register — every judgment call this build made, and how to reverse it
 
 Nothing here is blocking. Each one names what I **built on the assumption**, so you can undo it.

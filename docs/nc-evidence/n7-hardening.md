@@ -3,8 +3,19 @@
 *The last phase of the News & Control build. Tag: `nc-final`.*
 
 The job of this phase was to make the guards honest, make the documents agree with the code, and
-close the build. It found three things, and all three are the same shape: **a thing that looked
+close the build. It found five things, and they are all the same shape: **something that looked
 correct because nobody had asked it the one question that could have refuted it.**
+
+Two of them were found by the guards N7 had just repaired, on the tag run itself — which is the
+strongest evidence this chapter has that the repairs were worth making:
+
+| # | What | How it was found |
+| --- | --- | --- |
+| 1 | The sweeps were passing on a page that does not exist | Asked a passing guard to prove it had measured anything |
+| 2 | **The story page's source links are 20px tall on a phone** | **The repaired sweep, the first time it ever saw the room** |
+| 3 | **The `/paper` baseline had EXPIRED, not broken** | The tag's CI, failing with nobody having touched a line of code |
+| 4 | A control-room test that passed only while the market was open | Same run, same cause: the clock |
+| 5 | The Development Plan we print had rotted for a month | Went to edit it and found two copies |
 
 ---
 
@@ -61,6 +72,90 @@ always has a tab bar means the page did not render, and that is a failure, not a
 Error: /news/nc-fed-hold rendered the 404 PAGE — the sweep would have measured an error page
 and passed. (Note: it answers HTTP 200, so no status check can see this.)
 ```
+
+---
+
+## 1b. What the repaired sweep found the first time it saw the room
+
+The story page's **source links — the named outlets a reader taps to check the story against the
+outlet that reported it** — are **twenty pixels tall on a phone.** Measured by the sweep, on the tag
+run, the first time it was ever pointed at `/news/[cluster]`:
+
+```
+a.underline — 48×20  — "Reuters"
+a.underline — 70×20  — "Bloomberg"
+a.underline — 39×20  — "CNBC"
+a.underline — 110×20 — "Associated Press"
+a.underline — 99×20  — "Financial Times"
+```
+
+Five of them, stacked, each **under half** the 44px floor this project's constitution sets. And they
+are not incidental controls: the linked source list is *the first line of the room's spec*, and the
+whole reason the room can claim a story is corroborated. They are the last controls in the app that
+should be hard to hit.
+
+WCAG's inline exception does not rescue them, and should not. It exempts a target sitting "in a
+sentence or block of text"; this is a **list of discrete controls** — outlet, timestamp, headline.
+(The `<li>` is a flex container, so the anchor is *blockified* and sits in no line box at all, which
+is exactly why the sweep measured it instead of exempting it.)
+
+Fixed with touch-only padding — `md:py-0`, so every desktop pixel is where it was. The two phone
+story baselines are updated in the same commit, with the reason, per the `vrt-update` skill.
+
+**This is the entire argument for §1 in one finding.** The bug was not new. It shipped in N5 and sat
+there through two tagged phases, and it was *unmeasurable* the whole time — because the sweep had
+never been given the route, and when it finally was, it was reading the 404 page instead.
+
+---
+
+## 1c. The `/paper` baseline did not break. It EXPIRED.
+
+The tag's CI failed on five `/paper` screenshots with nobody having touched a line of `/paper`.
+
+The seed dated its closed paper trades **absolutely** — 2026-07-02, 07-06, 07-07. The app counts
+"round trips this week" as `closedAt >= now - 7 days`: a window that **rolls against the wall
+clock**, which is the correct product behaviour. An absolute fixture date cannot stay inside a
+rolling window. It can only wait to fall out of it. Here is the minute it did:
+
+| Run | CI time | 7-day cutoff | The 07-06T19:50 trade | Count |
+| --- | --- | --- | --- | --- |
+| `nc-6` | 2026-07-13 **19:22Z** | 07-06 19:22 | **inside** | **2** ✅ |
+| `nc-final` | 2026-07-13 **20:39Z** | 07-06 20:39 | **outside** | **1** ❌ |
+
+**The baseline expired at 2026-07-13T19:50Z — twenty-eight minutes after the run that last certified
+it.** And it took the cost mirror with it: the projected annual drag read **−31.2%/yr** in the
+baseline and **−15.6%/yr** in the actual, because half the round trips had aged out of the year's
+projection. A reader would have been shown a different lesson about their own trading costs
+depending on what time the page was built.
+
+**The trap is that re-shooting the baseline works — for one day.** Tomorrow the 07-07 trade ages out
+too, the count reads 0, and the whole mirror goes to zero. A green re-baseline would have hidden a
+fixture that was still decaying.
+
+There is no fixed date that stays "this week" forever, so a fixture that claims *two round trips this
+week* must say so **relative to the week**. It does now (`DAYS_AGO(3)`, `DAYS_AGO(2)`, and one
+deliberately at `DAYS_AGO(11)` to stay outside): the count is 2 at every hour, forever. It costs no
+pixels — `PaperLedger` renders no dates at all.
+
+**And the proof it worked is in the baselines:** the regenerated `/paper` shots came back
+**byte-identical** to the ones committed before this phase. The seed fix restored the count to 2, and
+the pictures matched the world again.
+
+## 1d. A test that passed because the clock was kind
+
+Same run, same cause. The control-room e2e asserted that the `full` row must **always** carry one of
+five reasons. It passed at `nc-6` (CI at 3:22pm ET — the market was **open**, so the row truthfully
+said "Markets are open") and failed at `nc-final` (4:39pm ET — **after the close**, when `full` is
+genuinely *runnable* and has no reason to give).
+
+And while it did, it **contradicted N6's own ruling**: the missing-token sentence is deliberately
+printed *once, above the rows* — "the STATE is per-row, the REASON is per-panel" — so a row that is
+runnable-but-for-the-token correctly says nothing, and the test was demanding it repeat the panel.
+
+The assertion now states the invariant that is true at **every** hour: the row states a reason, **or**
+offers a button, **or** the panel explains the absence — the reader is never left with a control that
+neither works nor says why. *When a test is time-dependent, the fix is almost never to pin the clock;
+it is to find the sentence that was true all along.*
 
 ---
 
@@ -163,7 +258,17 @@ Six phases, six evidence chapters, and one line each for what they proved.
 | N7 | `nc-final` | this file | The guards were passing on a page that does not exist, and the document we print had been wrong for a month. |
 
 **Counts at `nc-final`:** 577 app tests · 462 pytest local (26 skipped) · 20 drift rules · 76 VRT
-baselines · 4 pipeline modes · 13 product routes.
+baselines · 4 pipeline modes · 13 product routes. **CI green on the tag — all four jobs, including the
+pixel oracle.**
+
+### One thing this phase could not explain
+
+On the first tagged run, a `/news` test failed because the page server-rendered an **empty `<main>`**
+(nav present, room absent) while the server logged a Next.js `Internal: NoFallbackError`. It failed on
+retry too. After the fixes above — none of which touch how `/news` renders — it passed, and has passed
+since. **A transient server error, not a flaky assertion: the page really did render nothing.** No
+mechanism, no reproduction. Recorded in QUESTIONS rather than closed, because "it went away" is not a
+diagnosis.
 
 **Nine real bugs in this build have been found by opening the picture and looking at it**, and by no
 other means. N7 added the tenth of a different kind: by asking a passing guard to prove it had
