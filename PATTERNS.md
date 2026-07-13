@@ -139,3 +139,40 @@ So a drift baseline needs an **absolute ceiling beside it** — the budget that 
 which no re-baselining can move. Drift catches the unexplained; the ceiling catches the accumulation
 of the explained. When re-baselining is the right call (it sometimes is), land the ceiling in the
 same commit.
+
+## A fabricated fixture is an INVERTED test, not a weak one (N3)
+
+A test with no fixture is missing. A test with a **hand-written fixture that looks recorded** is
+worse than missing: it certifies that the code matches a fiction, and it hands you a green tick for
+doing it. Three FRED fixtures in this repo were invented in R0 and spent three phases proving that
+the parser agreed with someone's imagination — while quietly erasing a real property of the data
+(the index series post a day ahead of the VIX).
+
+**The rule: a fixture that was not recorded must say so in its own filename.** `xau_usd_UNVERIFIED.json`
+cannot be mistaken for evidence by anyone, including its author six weeks later. And record the real
+FAILURE when the real success is out of reach — GoldAPI's unkeyed 403 is a genuine recording, and it
+pins the route and the auth header, which is two more facts than a beautiful invention pins.
+
+## A staleness rule must count in the unit its source publishes in (N3)
+
+Not days. Not sessions. **Whichever one the source actually uses.**
+
+- Gold trades on market sessions → Friday's price on Monday is *zero sessions old*. Counting calendar
+  days paints it amber every Monday, and a lamp that cries wolf every Monday is not there on the
+  morning it is right.
+- Nepal Rastra Bank publishes every calendar day, weekends included → for that cell a weekend IS
+  three missed publications, and counting sessions would hide a real outage.
+
+Two cells, side by side, opposite units, and each one wrong if given the other's. Before writing
+"stale after N", ask what N is a count OF.
+
+## Derive the label; never store it beside the thing it describes (N3)
+
+A field whose value is a pure function of the field next to it is a future contradiction with a
+timestamp on it. The Mood gauge's "greedy / fearful" arrow is a function of its percentile — stored
+as its own field in the N0 seed, it had *already* drifted (48th percentile, labelled "greedy") before
+anything rendered it.
+
+This is ruling C6 (a provenance line must be composed from what actually rendered) applied inside a
+data structure. Same disease, one level down. Derive at both ends, and a stored contradiction cannot
+reach the screen.

@@ -77,6 +77,24 @@ const STALE_AFTER: Record<MacroSeriesKey, StaleRule> = {
   mood: { unit: "sessions", after: 3 },
 };
 
+/**
+ * A HOUSEHOLD COST'S DELTA CARRIES NO UP/DOWN COLOUR, and the first baseline is what taught us.
+ *
+ * The mortgage cell shipped with `directionOf()`, like every other delta in the app — and the
+ * photograph showed a FALLING mortgage rate rendered in red, wearing a red wash and a down triangle.
+ *
+ * On a tape, red-down is a fact with no opinion in it: the number went down. On the price of housing
+ * money it is an opinion, and the wrong one — a mortgage rate falling is the best news on this board,
+ * and the app was colouring it as a loss. The reader would take a full second to work that out, and
+ * some readers would not work it out at all; they would simply absorb "red, bad".
+ *
+ * So the board's deltas render `flat`: ink, no triangle, no wash. The sign and the window carry the
+ * fact, exactly as they do everywhere else — what is removed is a judgement the app has no business
+ * making. Gold keeps its direction colour, because gold IS a market price and up/down means there
+ * what it means everywhere else in this application.
+ */
+const HOUSEHOLD_COST: Direction = "flat";
+
 /** Where a cell sits on the C7 ladder. */
 export type CellState = "ok" | "stale" | "missing";
 
@@ -297,7 +315,7 @@ function mortgageCell(row: MacroStatRow | undefined, degraded: boolean, runDate:
           ? undefined
           : {
               value: signedPercent((r.value - r.prior) / 100),
-              direction: directionOf(r.value - r.prior),
+              direction: HOUSEHOLD_COST,
               window: copy.window.vsPriorWeek,
             },
     }),

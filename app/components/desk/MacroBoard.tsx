@@ -33,15 +33,26 @@ export function MacroBoard({ board }: { board: MacroBoardData }) {
   return (
     <div className="flex flex-col gap-4 border-t border-hairline pt-4">
       {/*
-       * BELOW md: THE MODULE'S SECOND SHELF. The markets shelf is the tape; this one is the money.
-       * They are different kinds of fact, so they get different shelves and neither has to pretend
-       * to be the other. The reader pushes it; it never pushes itself.
+       * BELOW md: THE MODULE'S SECOND SHELF — the four STATS, and only them.
+       *
+       * THE GAUGE IS NOT ON THIS SHELF, AND THE FIRST BASELINE IS WHY. It was, briefly. A shelf
+       * stretches every card to the height of its tallest, and the gauge — a score, a position
+       * strip, two sentences that may never be folded away, and a disclosure — is roughly three
+       * times the height of "6.72% · wk of Jul 9". So the four stat cards were padded out with some
+       * two hundred pixels of white space each, and the phone Desk grew by 347px to display four
+       * short facts and a lot of nothing. That is the footprint disease this very plan was
+       * commissioned to cure, reintroduced two phases later, and it was invisible in every test:
+       * the DOM was correct, the numbers were right, and only the photograph showed it.
+       *
+       * The mistake underneath it was a category error. F5's triage says GLANCE stations get bounded
+       * and READ stations stay vertical. The four stats are glances — a label, a figure, a window.
+       * The gauge is something you READ. It was never shelf material.
        */}
       <div className="md:hidden">
-        {/* M8: the count states what is off the edge — the four stats plus the gauge. */}
+        {/* M8: the count states what is off the edge — the four stats. */}
         <Shelf
           label="Money and mood"
-          countLine={fill(copy.pulse.moneyShelf, { n: board.cells.length + 1 })}
+          countLine={fill(copy.pulse.moneyShelf, { n: board.cells.length })}
         >
           {board.cells.map((cell) => (
             <ShelfItem key={cell.key} className="w-[170px]">
@@ -50,27 +61,27 @@ export function MacroBoard({ board }: { board: MacroBoardData }) {
               </Surface>
             </ShelfItem>
           ))}
-          <ShelfItem className="w-[240px]">
-            <Surface className="h-full p-3">
-              <Mood board={board} />
-            </Surface>
-          </ShelfItem>
         </Shelf>
       </div>
 
       {/*
        * ≥md: the row. Desktop has the width, and a horizontal scroller there is a toy.
-       *
-       * At `wide` the gauge's own cell gets the room to hold its breakdown open beside the others,
-       * which is what the extra 1536px band is FOR: internal density, never more columns.
        */}
-      <div className="hidden gap-x-10 gap-y-4 md:flex md:flex-wrap wide:flex-nowrap wide:items-start">
+      <div className="hidden flex-wrap gap-x-10 gap-y-4 md:flex">
         {board.cells.map((cell) => (
           <Cell key={cell.key} cell={cell} />
         ))}
-        <div className="wide:min-w-[280px]">
-          <Mood board={board} />
-        </div>
+      </div>
+
+      {/*
+       * The gauge, full width, below the stats — at every size.
+       *
+       * It reads as what it is: a small module with a number, its scale, and the two sentences that
+       * make a home-built sentiment reading legitimate to print at all. Not a fifth cell pretending
+       * to be a glance.
+       */}
+      <div className="border-t border-hairline pt-4">
+        <Mood board={board} />
       </div>
     </div>
   );

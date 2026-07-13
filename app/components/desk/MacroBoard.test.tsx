@@ -187,4 +187,62 @@ describe("the macro board", () => {
       copy.macroBoard.nprLabel,
     ]);
   });
+
+  /**
+   * THE BUG THE PHOTOGRAPH FOUND, now held by a test.
+   *
+   * The gauge was briefly a fifth card on the shelf. A shelf stretches every card to the height of
+   * its tallest, and the gauge — a score, a strip, two unfoldable sentences and a disclosure — is
+   * roughly three times the height of "6.72% · wk of Jul 9". So the four stat cards were padded with
+   * ~200px of white space each and the phone Desk grew 347px to show four short facts and a lot of
+   * nothing: the exact footprint disease this plan was commissioned to cure.
+   *
+   * Every test passed. The DOM was right, the numbers were right. Only the picture showed it.
+   *
+   * The category error underneath: F5's triage says GLANCE stations get bounded and READ stations
+   * stay vertical. The four stats are glances. The gauge is something you read.
+   */
+  it("keeps the gauge OFF the shelf — a read station is not a glance", () => {
+    renderBoard();
+
+    const shelf = screen.getByRole("group", { name: "Money and mood" });
+
+    // The gauge's ownership line is the thing that makes it a read station rather than a figure.
+    expect(within(shelf).queryByText(copy.macroBoard.moodOwnership)).toBeNull();
+    expect(within(shelf).queryByText(copy.macroBoard.moodContext)).toBeNull();
+
+    // It is still on the page, full width, below the stats — where it can be read.
+    expect(screen.getAllByText(copy.macroBoard.moodOwnership).length).toBeGreaterThan(0);
+
+    // And the shelf counts what is ACTUALLY on it: four stats, not five.
+    expect(screen.getByText(/4 figures/)).toBeInTheDocument();
+  });
+
+  /**
+   * The second thing the photograph showed: a FALLING mortgage rate rendered in red, with a down
+   * triangle and a red wash.
+   *
+   * On a tape, red-down is a fact with no opinion in it. On the price of housing money it is an
+   * opinion, and the wrong one — a mortgage rate falling is the best news on this board, and the app
+   * was colouring it as a loss. Some readers would puzzle it out. Others would simply absorb
+   * "red, bad".
+   */
+  it("renders a household cost's delta in ink — down on a mortgage rate is not down on a stock", () => {
+    renderBoard();
+
+    const [delta] = screen.getAllByText("+0.06%");
+    expect(delta.className).not.toContain("text-down");
+    expect(delta.className).not.toContain("bg-down-wash");
+    expect(delta.textContent).not.toContain("▼");
+
+    // The sign and the window still carry the whole fact — what is gone is the judgement.
+    expect(screen.getAllByText(/vs prior week/).length).toBeGreaterThan(0);
+  });
+
+  it("but GOLD keeps its direction colour — gold IS a market price", () => {
+    renderBoard();
+
+    const [delta] = screen.getAllByText("+0.33%");
+    expect(delta.className).toContain("text-up");
+  });
 });
