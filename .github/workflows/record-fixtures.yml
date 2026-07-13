@@ -1,0 +1,49 @@
+# record-fixtures.yml — TEMPORARY. Delete after the N3 fixtures are committed.
+#
+# Provider keys live in GitHub's secrets and nowhere else, so a real recorded fixture can only be
+# taken from inside Actions (the new-provider-adapter skill's step 1). This workflow runs the
+# recorders and uploads what they captured as an artifact; the fixtures are then downloaded and
+# committed, and this file is deleted.
+#
+# Recording GoldAPI is attempted deliberately even though its key (P-5) is absent: the unkeyed 403
+# is itself a real, useful recording — it pins the route and the auth header — and the run says so
+# in its log rather than passing over the gap in silence.
+
+name: record-fixtures
+
+on:
+  workflow_dispatch: {}
+
+jobs:
+  record:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: pipeline
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
+
+      - name: Sync dependencies
+        run: uv sync --frozen
+
+      - name: Record FRED (the board series + the Mood gauge's trailing history)
+        env:
+          FRED_KEY: ${{ secrets.FRED_KEY }}
+          MSM_FIXTURES_OUT: ${{ github.workspace }}/recorded
+        run: uv run python scripts/record_fred.py
+
+      - name: Record GoldAPI (records the real unkeyed 403 when P-5 is absent)
+        env:
+          GOLDAPI_KEY: ${{ secrets.GOLDAPI_KEY }}
+          MSM_FIXTURES_OUT: ${{ github.workspace }}/recorded
+        run: uv run python scripts/record_goldapi.py
+
+      - name: Upload the recordings
+        uses: actions/upload-artifact@v4
+        with:
+          name: fixtures
+          path: recorded/
+          if-no-files-found: error
