@@ -114,6 +114,11 @@ constitution says a date may only claim a session that occurred (E1). The one ho
 `signal_log` — is explicitly preserved. Veto hook: answer here, a user line in DECISIONS.md,
 or editing Q-N6-1 in QUESTIONS-FOR-BISHANT.md; PD1 reads all three before executing.
 
+> **ANSWERED by the user, 2026-07-13 (at commissioning): A — delete them.** PD1 executes
+> Q-N6-1's SQL after Monday's edition is verified, exactly as option A describes. This line
+> is the user's answer, not an assumption; log it in DECISIONS.md as user-authored when PD1
+> runs, and close Q-N6-1 in QUESTIONS-FOR-BISHANT.md with a pointer here.
+
 ### 0.2 The calls that came closest to needing you — decided, logged, vetoable
 
 | # | The call | What I chose | Why it did not need you | Veto hook |
