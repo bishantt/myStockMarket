@@ -98,7 +98,12 @@ export default async function StoryPage({ params }: StoryPageProps) {
   const lesson = doorwaySlug && isKnownLesson(doorwaySlug) ? getLessonMeta(doorwaySlug) : null;
 
   return (
-    <article className="flex flex-col gap-6 pb-8">
+    // A MEASURE, not the window. Left to fill a 1366px room, the photograph ran the full width while
+    // the prose beneath it sat in a 480px column — a picture and a caption pretending to be an
+    // article. This is the same disease F5 named on the Desk: a card stretched to the window is a
+    // stretched receipt. A story page is a thing to READ, so it is bounded to a reading width and the
+    // picture is bounded with it.
+    <article className="mx-auto flex w-full max-w-[900px] flex-col gap-6 pb-8">
       {/* The return rail. A room you can get into and not out of is a trap (the doorways rule). */}
       <Link href="/news" className="min-h-11 font-ui text-sm text-accent-deep">
         {copy.news.backToFeed}
@@ -220,15 +225,17 @@ export default async function StoryPage({ params }: StoryPageProps) {
         </section>
       ) : null}
 
-      {affected.length > 0 ? (
-        <section className="flex flex-col gap-2">
-          <h2 className="font-display text-lg text-ink">{copy.news.affected}</h2>
+      {/* C9, and it keeps its HEADING. An orphaned "No direct listing in our universe." floating
+          between two sections reads like a stray note; under the heading it answers the question the
+          reader was about to ask, which is what it is for. The absence of a listing is an answer. */}
+      <section className="flex flex-col gap-2">
+        <h2 className="font-display text-lg text-ink">{copy.news.affected}</h2>
+        {affected.length > 0 ? (
           <AffectedTable rows={affected} />
-        </section>
-      ) : (
-        // C9 again, on the story's own page: it affects everything and names nothing.
-        <p className="font-ui text-sm text-muted">{copy.news.noListing}</p>
-      )}
+        ) : (
+          <p className="font-ui text-sm text-muted">{copy.news.noListing}</p>
+        )}
+      </section>
 
       {lesson ? (
         <section className="flex flex-col gap-2">
