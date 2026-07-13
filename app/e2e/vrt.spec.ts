@@ -1,5 +1,6 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type APIRequestContext, type Page } from "@playwright/test";
 import { THEME_COOKIE } from "../lib/theme";
+import { VRT_RESET_SECRET } from "../playwright.config";
 
 /**
  * vrt.spec.ts — visual regression. The styling counterpart of TDD (UI-REDESIGN-PLAN Part 9).
@@ -127,8 +128,9 @@ async function useTheme(page: Page, theme: "light" | "dark") {
  * it intends to photograph. It clears the progress rows first, so the Academy renders its seeded
  * state whether or not anything else has touched it, and the two worlds are the same world.
  */
-async function resetMutableStateThePixelsWouldOtherwiseCatch() {
+async function resetMutableStateThePixelsWouldOtherwiseCatch(request: APIRequestContext) {
   if (!process.env.MSM_SEEDED) return; // unseeded runs have no database to reset
+
   const { PrismaClient } = await import("@prisma/client");
   const db = new PrismaClient();
   try {
@@ -136,11 +138,21 @@ async function resetMutableStateThePixelsWouldOtherwiseCatch() {
   } finally {
     await db.$disconnect();
   }
+
+  // DELETING THE ROW IS NOT ENOUGH, and this is the part that took a second attempt to see.
+  //
+  // /academy is an ISR route. When the earlier spec opened the lesson, the server action that marked
+  // it read ALSO revalidated /academy — so the cache now holds a rendering of the page WITH the
+  // checkmark. Emptying the table changes what the next render would produce; it does not touch the
+  // render that is already cached. The page kept its checkmark and the shot kept failing.
+  //
+  // So the reset finishes the job: clear the state, then bust the cache that is still showing it.
+  await request.post(`/api/revalidate?secret=${VRT_RESET_SECRET}`);
 }
 
 test.describe("visual regression — the design system", () => {
-  test.beforeEach(async ({ page }) => {
-    await resetMutableStateThePixelsWouldOtherwiseCatch();
+  test.beforeEach(async ({ page, request }) => {
+    await resetMutableStateThePixelsWouldOtherwiseCatch(request);
     await signIn(page);
   });
 

@@ -15,6 +15,14 @@ import { defineConfig, devices } from "@playwright/test";
  */
 
 const PORT = 3210;
+
+/**
+ * The secret the VRT suite uses to bust the ISR cache before it photographs a page.
+ *
+ * It is a test-only value handed to a test-only server (see webServer.env below); the real
+ * CRON_SECRET lives in GitHub and Vercel and never appears here.
+ */
+export const VRT_RESET_SECRET = "vrt-reset-secret-not-a-real-one";
 const BASE_URL = `http://127.0.0.1:${PORT}`;
 
 /** bcrypt(cost 12) of "correct horse battery staple" — the same fixture the unit tests use. */
@@ -95,6 +103,11 @@ export default defineConfig({
       AUTH_PASS_HASH: TEST_PASS_HASH,
       AUTH_COOKIE_SECRET: "a".repeat(64),
       NODE_ENV: "production",
+      // The VRT suite needs this to bust the ISR cache after it resets the state it is about to
+      // photograph. Deleting the rows is not enough on a cached route: the Academy page had already
+      // been re-rendered (and cached) WITH a lesson marked read by an earlier spec, so the stale
+      // HTML kept the checkmark no matter what the database said. See e2e/vrt.spec.ts.
+      CRON_SECRET: VRT_RESET_SECRET,
     },
   },
 });
