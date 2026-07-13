@@ -347,3 +347,49 @@ This is the mirror of N5's `_json_safe` lesson — there, *does the payload actu
 const revived = revive(JSON.parse(JSON.stringify(payload)));
 render(<Panel {...revived} />);          // throws "Invalid time value" without revive()
 ```
+
+## A sweep must prove it swept the room (N7, 2026-07-13)
+
+**The shape.** A guard that walks a list of routes and measures what it finds — touch targets,
+horizontal overflow, axe violations, contrast — is measuring *whatever is on the screen*. It cannot
+tell the difference between "this room obeys the rule" and "this room did not render".
+
+Every failure mode below is a clean pass:
+
+- The route 404s (a seeded id on an unseeded database) → it measures **the error page**.
+- The session lapsed → it measures **the login form**.
+- The island had not hydrated → it measures **nothing at all**, and iterates over an empty list.
+
+**And you cannot use the status code as the witness.** Recorded on this tree: a `notFound()` raised
+inside a statically-generated route answers **HTTP 200 with the 404 page in the body**. Only a path
+the router cannot match at all returns a real 404. A status assertion passes on precisely the page it
+was written to refuse.
+
+**The form:**
+
+```ts
+async function open(page: Page, route: string) {
+  await page.goto(route);
+
+  // The BODY is the only honest witness — the status lies (see above).
+  expect(await page.getByText("This page could not be found").count(), `${route} is the 404 page`).toBe(0);
+
+  // A lapsed session would put the login form under the ruler. Also clean. Also a pass.
+  expect(new URL(page.url()).pathname, `${route} redirected`).toBe(route);
+}
+```
+
+...and then **count what you measured**, and fail on zero:
+
+```ts
+expect(swept, `measured NO controls on ${route} — every room has a tab bar, so the page did not render`)
+  .toBeGreaterThan(0);
+```
+
+**Why it keeps happening.** The three times this build has shipped it — `/paper`'s form hydrating
+after the sweep queried, the chart's `figcaption` not yet code-split in, and the story page that was
+never in the database — the guard was *correct*, the rule was *right*, and the answer was *green*. A
+guard's own null result is indistinguishable from success unless you make it distinguishable.
+
+**The rule: every sweep asserts that it swept something, and names the room it swept.** If it can
+pass on an empty screen, it is not a guard; it is a decoration that fails only when you are unlucky.

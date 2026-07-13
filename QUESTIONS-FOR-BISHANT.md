@@ -8,6 +8,59 @@ Format: newest first. I mark each as [FYI], [VETO?], or [NEED] so you can scan.
 
 ---
 
+## 2026-07-13 — N7 (hardening, evidence, docs) — **the News & Control build is closed**
+
+**[FYI] Your guards were passing on a page that does not exist.** The touch-target, sideways-scroll
+and accessibility sweeps walk a list of rooms and measure what is on the screen. Ask for a news story
+whose id is not in the database and the app shows its "page not found" screen — so on any run without
+seeded data, the sweeps were measuring **the 404 page**, finding nothing wrong with it, and reporting
+the story page clean. I verified it: the accessibility sweep **passed** a story page against a
+database that has never contained that story.
+
+The part worth your attention is why it was invisible. My first fix was to check the HTTP status code
+— and it still passed, because **this app answers a missing page with "200 OK" and then shows you the
+404 screen.** You already knew half of that: an F-phase note in this file says *"unknown tickers
+return HTTP 200 instead of 404"*, and judged it fairly — *"a wrong status code, not a wrong screen"*.
+That is true of what **you** see. Nobody asked what it does to a **guard**, and the answer is that it
+silently disarms every guard that trusts the status. A cosmetic flaw in the product turned out to be
+a load-bearing flaw in the instruments. The sweeps read the page's actual content now, they refuse a
+redirect, and the touch sweep fails if it measured no controls at all. All negative-controlled.
+
+**[FYI] The Development Plan PDF has been wrong for a month, and I only found it because I went to
+edit it.** There were **two** hand-kept HTML copies of that document: one generates the markdown you
+read in the repo, the other generates `docs/Development-Plan.pdf`. Nobody decided that — it just
+happened — and then they drifted. **Not one of the 2026-07-12 app-feel amendments had ever reached
+the PDF.** Its route map was missing `/scans/[preset]`, a room that has existed for a month, and it
+still promised a rendering strategy the app abandoned. The markdown was right, the PDF was wrong, and
+both looked equally current and confident.
+
+Two sources of truth for one document is not redundancy — it is a slow-motion lie, and the copy that
+rots is the one that gets read least, which is the PDF: **the one you actually open.** There is one
+source now, `docs/src/build-plan-pdf.py` builds both outputs from it, and the PDF is re-rendered (37
+pages). I have not re-rendered the *other* plan PDFs; say the word and I will.
+
+**[FYI] `/settings` takes ~455ms to open, on purpose, and I want you to know the number.** Every other
+room in the app answers in 50–103ms because it is served from a cache. Settings is the one room that
+is a *writer* — you add a watchlist name and read the result back in the same click — and the rule
+from the app-feel build is that a page may be cached **or** written to and read back, never both. So
+it renders fresh on every visit and pays real database time. This is not new (it measured 564ms in
+the same state at F7) and it is not the control room's fault. I did take one free round-trip out of
+it. If it ever annoys you, that is the number to point at.
+
+### The veto register — every judgment call this build made, and how to reverse it
+
+Nothing here is blocking. Each one names what I **built on the assumption**, so you can undo it.
+
+| Call | What I assumed and built | To reverse |
+| --- | --- | --- |
+| **Q-N6-1** — the Saturday `pipeline_run` row | I fixed the **cause** (`job_a` now skips a non-session day) but did **not** delete production data on my own judgment. The bad row is still there; tonight's run supersedes it for display. | The SQL is in the N6 section below. Run it, or tell me to. |
+| **News is the sixth tab** (N5) | The plan's own default. No decision line overrode it, so I shipped it. The Desk doorway ships either way. | One file (`TabBar`/`RoomNav`). Costs the reader one tap, not the room. |
+| **`/settings` is two-up on a wide screen** (N2) | You would rather read three cards side by side than scroll. DOM order changed so tab order still matches reading order. | One-line revert to a single column. |
+| **The page ties, and says so** (N4/N5) | On the real feed, two of the ranking's three discriminating signals barely vary, so stories tie. I **reworded the copy** rather than inventing a tiebreaker — a tiebreaker would be the app forming an editorial opinion (ruling C1). | Tell me you want a discriminator and I will name the trade-off first. |
+| **Generated news cards use one restrained ground** (N5) | Not twelve sector tints. Colour is scarce and must mean something; a reader cannot learn twelve hues. | A per-sector palette is a contained change to one component. |
+
+---
+
 ## 2026-07-13 — N6 (the control room)
 
 **[NEED, two minutes, and it turns the whole panel on] P-2: a GitHub token with `workflow` scope.**

@@ -72,12 +72,19 @@ async function watchlistRows() {
  */
 async function pipelinePanel() {
   try {
-    const panel = await readPanel();
-    const run = await db.pipelineRun.findFirst({
-      where: { finishedAt: { not: null } },
-      orderBy: { runDate: "desc" },
-      select: { runDate: true, finishedAt: true, stageStatus: true, sourceStatus: true },
-    });
+    // These two reads know nothing about each other, so they go together. /settings is the ONE room
+    // in the app that is deliberately not cached (it is a writer — see B1's allowlist), which means
+    // every visit pays for its queries in real time: at N7 it measured 455ms against a 150ms budget,
+    // and each sequential round-trip to Supabase is roughly a hundred of those milliseconds. Awaiting
+    // these in series spent one for nothing.
+    const [panel, run] = await Promise.all([
+      readPanel(),
+      db.pipelineRun.findFirst({
+        where: { finishedAt: { not: null } },
+        orderBy: { runDate: "desc" },
+        select: { runDate: true, finishedAt: true, stageStatus: true, sourceStatus: true },
+      }),
+    ]);
 
     return {
       ...panel,

@@ -1,9 +1,74 @@
 # PROGRESS.md — resumable state
 
-# NOW: the News & Control build (N0–N7). **N0–N6 are done and tagged.** Next: N7 (the last one).
+# THE NEWS & CONTROL BUILD IS DONE (2026-07-13) — tagged `nc-final`, CI green on the tag.
 
-**Where I am.** N0–N6 are complete and tagged `nc-0` … `nc-6`. Nothing is blocked. The last phase is
-**N7 — hardening, evidence, docs sync** (plan Part 9, N7).
+All eight phases, N0 through N7. Nothing is blocked. Nothing is in flight.
+
+**If you read only one thing:** N7's job was to harden the guards and make the documents agree with
+the code, and it found that **two of the things guarding this build were not guarding anything.**
+
+1. **Your route sweeps were passing on a page that does not exist.** The touch-target, sideways-scroll
+   and accessibility sweeps measure whatever is on screen. Ask for a news story whose id is not in the
+   database and the app shows its 404 screen — so on any unseeded run, the sweeps measured **the 404
+   page**, found nothing wrong with it, and reported the story page clean. I proved it: the
+   accessibility sweep **passed** a story page against a database that has never contained it.
+
+   **Then my own fix failed the same way.** I checked the HTTP status — and it still passed, because
+   **this app answers a missing page with "200 OK" and then shows the 404 screen.** You already knew
+   half of that; an F-phase note in QUESTIONS says *"unknown tickers return HTTP 200 instead of 404"*
+   and judged it fairly: *"a wrong status code, not a wrong screen."* That is true of what **you** see.
+   Nobody asked what it does to a **guard** — and the answer is that it silently disarms every guard
+   that trusts the status. **A cosmetic flaw in the product was a load-bearing flaw in the
+   instruments**, and the two were never thought about together for a month.
+
+2. **The Development Plan PDF has been wrong for a month.** There were *two* hand-kept HTML copies of
+   that document — one feeding the markdown, one feeding the PDF — and nobody had ever decided that.
+   They drifted. **Not one of the 2026-07-12 app-feel amendments had ever reached the PDF.** Its route
+   map was missing `/scans/[preset]`, a room that has existed for a month, and it still promised a
+   rendering strategy the app abandoned. The markdown was right, the PDF was wrong, and both looked
+   equally current and confident. **The copy that rots is the one read least — which is the PDF, the
+   one you actually open.** One source now; both outputs are generated from it.
+
+**Counts at `nc-final`:** **577 app tests** · **462 pytest local** (26 skipped — no Postgres on this
+Mac) · **20 drift rules** · **76 VRT baselines** · 4 pipeline modes · 13 product routes ·
+B1 **12 of 13** rooms cached · B4 worst **196.2KB** under the 200KB ceiling · `check:migrations`
+green (production is running this schema). **Evidence:** `docs/nc-evidence/n7-hardening.md`, which
+also carries the closing table for all seven chapters.
+
+## What N7 changed
+
+- **The sweeps got `/news` and the story page** (they had never measured the Front Page — the densest
+  room in the app for touch rules; it passes clean), they read the **body** rather than the status,
+  they refuse a redirect, and the touch sweep now **fails if it measured zero controls**. All
+  negative-controlled.
+- **The docs agree with the tree.** The route map, §2.1 and the repo layout know about `/news`,
+  `/news/[cluster]`, the control room, `/api/pipeline/status`, the four pipeline modes and the
+  non-session-day skip. CLAUDE.md's Commands block gains the modes and a control-room section naming
+  the load-bearing `run-name:` line. The `new-surface` skill gains the window checklist line.
+- **One source for the plan document**, and the PDF is re-rendered (37 pages, cover intact — I
+  photographed the route map through `print.css` before shipping it, which is how I caught that the
+  first table I checked was the wrong one).
+- **`/settings` gave back a database round-trip.** It costs ~455ms because it is the one room that
+  cannot be cached (it is a writer). Not a regression — F7 measured 564ms in the same state — but two
+  independent reads were running in series for no reason.
+
+## What is still open (nothing blocks anything)
+
+- **P-2 — the GitHub token.** Every button in the control room is dark in production until it exists.
+  The panel says so, once, and renders every other state honestly. **The whole path is proven** — I
+  ran it locally with a real token and fired real runs at real GitHub. It is a secret and nothing
+  else: a fine-grained PAT, this repo only, Actions read+write, added to **Vercel** as
+  `GH_DISPATCH_TOKEN`. Two minutes.
+- **P-1 — the R2 media bucket.** Absent. The Front Page renders its designed generated cards.
+- **Q-N6-1 — the Saturday row.** Production holds one `pipeline_run` stamped 2026-07-11, a day the
+  market never opened. I fixed the cause; I did not delete production data on my own judgment. The SQL
+  is in QUESTIONS.
+- **The iOS device pass is yours.** There is no iPhone here. Everything a machine can check is checked
+  on every push; the checklist for the ten minutes only a real device can do is in QUESTIONS.
+
+---
+
+# Previously — N6 (the control room)
 
 **If you read only one thing:** the control room is built, and **the plan was wrong about the one API
 it was built on.** GitHub's dispatch endpoint returns **204 with an empty body** — no run id — and
