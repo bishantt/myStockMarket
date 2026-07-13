@@ -91,12 +91,83 @@ def test_common_acronyms_are_never_read_as_tickers(resolver: TickerResolver):
     assert resolver.resolve("FDA approval sent the sector higher") == ()
 
 
-def test_a_bare_uppercase_symbol_links_when_it_is_long_enough_to_be_unambiguous(resolver: TickerResolver):
-    assert resolver.resolve("AAPL slipped 2% after the note") == ("AAPL",)
-    # Symbols come back in the order the article mentions them — a stable, explainable order that
-    # owes nothing to any notion of importance. Ranking the tickers on a card is rank.py's job, and
-    # it is done from price evidence, not from who got named first.
-    assert resolver.resolve("SBUX and NVDA both closed higher") == ("SBUX", "NVDA")
+def test_a_bare_uppercase_token_is_never_read_as_a_ticker():
+    """
+    THE RULE THAT SHIPPED, REACHED PRODUCTION, AND WAS DELETED — with the two headlines that killed it.
+
+    There used to be a fourth rule: a bare uppercase token that happens to be a symbol. It passed
+    every test against a small test universe. Against production's 12,933 instruments it immediately
+    linked a country and a commodity to two ETFs.
+
+    In a universe of thirteen thousand tickers, almost every three-to-five letter uppercase string is
+    somebody's ticker. No stoplist survives that; it would have to enumerate every country code,
+    commodity abbreviation and initialism in English, and still be one headline behind.
+    """
+    universe = TickerResolver(
+        UNIVERSE
+        + [
+            Instrument("UAE", "iShares MSCI UAE ETF"),
+            Instrument("LNG", "Cheniere Energy Inc"),
+        ]
+    )
+
+    # A country.
+    assert universe.resolve(
+        "US makes it easier to export Nvidia AI chips and military equipment to the UAE"
+    ) == ("NVDA",)
+
+    # A commodity.
+    assert "LNG" not in universe.resolve(
+        "Baker Hughes wins E.U. approval for Chart Industries deal after LNG tech divestiture"
+    )
+
+    # And a bare ticker with no company name beside it simply does not link. Journalists write
+    # "Apple", not "AAPL", so the rule bought almost nothing and cost a false statement per night.
+    assert universe.resolve("AAPL slipped 2% after the note") == ()
+
+
+# ---------------------------------------------------------------------------------------------
+# A provider's symbol is not automatically our symbol
+# ---------------------------------------------------------------------------------------------
+
+
+def test_a_symbol_we_hold_no_listing_for_is_refused():
+    """
+    Marketaux routinely tags foreign and OTC lines this app does not carry (SKLTF, RYAOF, SAFRF). A
+    chip for one of them would be a dead chip — no name, no price, no move, no setup card — and the
+    room already has honest copy for a story with no listing in our universe.
+    """
+    r = TickerResolver(UNIVERSE)
+
+    assert not r.agrees_on("SKLTF", "Skeleton Technologies")
+    assert not r.agrees_on("RYAOF", "Ryanair Holdings plc")
+
+
+def test_the_exchange_collision_that_nearly_printed_a_false_price():
+    """
+    THE ONE THAT MATTERS MOST, AND PRODUCTION FOUND IT.
+
+    Marketaux tagged "VitalHub Announces Acquisition of Buddy Healthcare" with VHI — correctly, for
+    VitalHub on the Toronto exchange. In OUR instrument table VHI is Valhi, Inc., a New York chemicals
+    holding company with no connection to the story at all.
+
+    Unchecked, the card would have printed Valhi's real one-day price move under a headline about a
+    Canadian health-software acquisition. Every number on it would have been true, and the card would
+    have been a lie. A symbol collision across exchanges is not a near miss — it is a different company.
+    """
+    ours = TickerResolver([Instrument("VHI", "Valhi, Inc.")])
+
+    assert not ours.agrees_on("VHI", "VitalHub Corp")   # the provider means Toronto; we hold New York
+    assert ours.agrees_on("VHI", "Valhi Inc.")          # …and the same company still links
+
+
+def test_a_provider_tag_with_no_company_name_cannot_be_checked_so_it_is_refused():
+    """An unverifiable tag is refused rather than assumed. We cannot check what we were not told."""
+    r = TickerResolver(UNIVERSE)
+
+    assert not r.agrees_on("AAPL", None)
+    assert not r.agrees_on("AAPL", "")
+    assert r.agrees_on("AAPL", "Apple Inc.")
 
 
 def test_a_story_about_nobody_resolves_to_nobody(resolver: TickerResolver):

@@ -33,6 +33,9 @@ UNIVERSE = [
         ("TGT", "Target Corporation"), ("GPS", "Gap Inc."), ("V", "Visa Inc."),
         ("AI", "C3.ai, Inc."), ("KEY", "KeyCorp"), ("MTCH", "Match Group, Inc."),
         ("F", "Ford Motor Company"), ("GM", "General Motors Company"),
+        # The names Marketaux tagged on the recorded night. They survive the cross-check only because
+        # our name for each agrees with the provider's.
+        ("FSK", "FS KKR Capital Corp."), ("SBUX", "Starbucks Corporation"),
     ]
 ]
 
@@ -68,8 +71,11 @@ def _articles() -> list[dict]:
                 "source": raw["source"],
                 "image": raw.get("image_url", ""),
                 "published": datetime.fromisoformat(raw["published_at"].replace("Z", "+00:00")),
-                # Marketaux DOES tag entities — provider evidence, and it outranks our inference.
+                # Marketaux DOES tag entities — but a provider's symbol refers to the PROVIDER's
+                # exchange, so each tag arrives with the company the provider believes it is, and the
+                # ingest refuses any our instrument table names differently.
                 "tickers": tuple(e["symbol"] for e in raw.get("entities", [])),
+                "ticker_names": {e["symbol"]: e.get("name") for e in raw.get("entities", [])},
                 "industries": [e.get("industry") for e in raw.get("entities", [])],
                 "similar": tuple(raw.get("similar") or ()),
             }

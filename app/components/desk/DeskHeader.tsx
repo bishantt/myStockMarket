@@ -1,5 +1,7 @@
-import { copy, fill } from "@/lib/copy";
-import { formatAsOf, formatUtcDate, formatUtcDateLong } from "@/lib/time";
+import { copy } from "@/lib/copy";
+import { formatUtcDateLong } from "@/lib/time";
+
+import { MarketStateLine } from "./MarketStateLine";
 
 /**
  * DeskHeader — the masthead of the broadsheet.
@@ -32,19 +34,18 @@ export function DeskHeader({
   // The run date is a BARE calendar date (a trading day), stored at UTC midnight. It has to be
   // formatted from its UTC components: rendering it in Eastern time shifts it back a day, and the
   // masthead would carry a different date from the modules beneath it. (It briefly did.)
-  const status = fill(copy.desk.status, {
-    state: marketOpen ? "open" : "closed",
-    close: formatUtcDate(runDate),
-    stamp: updatedAt ? formatAsOf(updatedAt) : "—",
-  });
-
+  //
+  // The status line moved into a client component, and that is a correctness fix rather than a
+  // refactor: "markets open" was computed on the server, on a CACHED route, so it was frozen at the
+  // moment the page was generated and could still say "open" half an hour after the close. See
+  // MarketStateLine.
   return (
     <header className="flex flex-col gap-1 pt-6">
       <p className="font-mono text-2xs uppercase tracking-[0.08em] text-muted">
         {copy.desk.edition}
       </p>
       <h1 className="font-display text-display font-bold text-ink">{formatUtcDateLong(runDate)}</h1>
-      <p className="font-ui text-sm text-muted">{status}</p>
+      <MarketStateLine runDate={runDate} updatedAt={updatedAt} serverOpen={marketOpen} />
     </header>
   );
 }

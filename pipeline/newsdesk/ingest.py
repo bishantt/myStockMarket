@@ -141,13 +141,25 @@ def _to_item(article: dict, resolver: TickerResolver) -> Item:
     """
     One raw article into a clusterable item, with its companies named.
 
-    Tickers the PROVIDER supplied are trusted and kept (Marketaux's entity tags, Finnhub's company
-    news). Only when the provider named none — which is every item on the market feed — does the
-    resolver read the text. Provider evidence outranks our own inference, always.
+    A PROVIDER'S SYMBOL IS NOT AUTOMATICALLY OUR SYMBOL, and production taught this the hard way.
+    Marketaux tagged "VitalHub Announces Acquisition of Buddy Healthcare" with VHI — correctly, for
+    VitalHub on the Toronto exchange. In OUR instrument table VHI is Valhi, Inc., a New York chemicals
+    holding company with no connection to the story whatsoever. The card would have printed a real
+    price move for Valhi under a headline about a Canadian health-software acquisition.
+
+    So a provider's tag is checked, not trusted: the symbol must exist in our universe AND the company
+    the provider says it is must be the company we say it is. When the names disagree, the tag is
+    dropped — a symbol collision across exchanges is not a near miss, it is a different company.
+
+    Only where the provider named nothing — every item on the market feed — does the resolver read
+    the text itself.
     """
     supplied = tuple(article.get("tickers") or ())
     if supplied:
-        tickers = supplied
+        names = article.get("ticker_names") or {}
+        tickers = tuple(
+            symbol for symbol in supplied if resolver.agrees_on(symbol, names.get(symbol))
+        )
     else:
         text = f"{article.get('headline', '')} {article.get('summary', '')}"
         tickers = resolver.resolve(text)

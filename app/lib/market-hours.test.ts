@@ -55,3 +55,45 @@ describe("marketState", () => {
     expect(marketState(new Date("2026-01-08T14:00:00Z"))).toBe("closed");
   });
 });
+
+describe("the Desk's market state is the READER's, not the cache's", () => {
+  it("is corrected against the reader's clock after mount, not frozen into the cache", async () => {
+    /*
+     * THE BUG THIS PINS SHIPPED, AND THE PIXEL ORACLE FOUND IT.
+     *
+     * `/` is an ISR-cached route (budget B1). The Desk header received
+     * `marketOpen={marketState(new Date()) === "open"}` from the server page and printed it
+     * straight out — so "markets open" was evaluated when the page was GENERATED and then served to
+     * every reader until the cache turned over. A Desk built at 3:55pm went on telling people
+     * "markets open" long past the close.
+     *
+     * It is F4's cooling-off bug again: a server-interpolated "now" records the moment the page was
+     * BUILT, not the moment the reader arrived. On a cached page those are different moments.
+     *
+     * No test could see it — the string was well-formed, merely stale. It surfaced because the VRT
+     * baselines began depending on what the market happened to be doing when CI ran, which is a
+     * baseline that means nothing. The server's value survives as the FIRST PAINT only; the reader's
+     * own clock decides, and this asserts the correction is actually there.
+     */
+    const fs = await import("node:fs/promises");
+    const path = await import("node:path");
+
+    const header = await fs.readFile(
+      path.join(process.cwd(), "components/desk/DeskHeader.tsx"),
+      "utf8",
+    );
+    const line = await fs.readFile(
+      path.join(process.cwd(), "components/desk/MarketStateLine.tsx"),
+      "utf8",
+    );
+
+    // The header must delegate the time-dependent phrase rather than print it itself.
+    expect(header).toContain("MarketStateLine");
+    expect(header).not.toMatch(/state:\s*marketOpen\s*\?/);
+
+    // …and the delegate must consult the READER's clock after mount.
+    expect(line).toContain("use client");
+    expect(line).toMatch(/useEffect\(/);
+    expect(line).toMatch(/marketState\(new Date\(\)\)/);
+  });
+});

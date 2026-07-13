@@ -34,6 +34,10 @@ class TaggedEntity:
     sentiment: float | None
     industry: str | None = None
     match_score: float | None = None
+    # The company Marketaux believes this symbol IS. Carried so the ingest can cross-check it against
+    # our own instrument table: a provider's symbol refers to the provider's exchange, and "VHI" is
+    # VitalHub on the TSX and Valhi Inc. on the NYSE. Without the name, that collision is invisible.
+    name: str | None = None
 
 
 @dataclass(frozen=True)
@@ -115,6 +119,7 @@ def _parse(item: dict) -> Article:
             sentiment=e.get("sentiment_score"),
             industry=e.get("industry"),
             match_score=e.get("match_score"),
+            name=e.get("name"),
         )
         for e in item.get("entities", [])
         if e.get("symbol")

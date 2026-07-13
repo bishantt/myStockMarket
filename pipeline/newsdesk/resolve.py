@@ -26,13 +26,32 @@ The rules, strongest evidence first:
    the linking itself, and it is doing it in the one format that cannot mean anything else.
 2. **A multi-word company name** — "General Motors", "Bank of America". Two or more words matched on
    a word boundary is strong: no English sentence contains "Bank of America" by accident.
-3. **A single-word company name** — "Nvidia", "Pfizer". Accepted only when the word is not an
-   ordinary English word, because a great many companies are named after ordinary English words and
-   a headline about a retailer's Target is not a headline about Target. The stoplist below is what
-   stands between the Front Page and that class of nonsense.
-4. **A bare uppercase symbol** — "AAPL slipped". Accepted only for symbols of three characters or
-   more that are not common acronyms, because the two-letter and one-letter tickers collide with
-   English constantly and "AI" is both this decade's biggest theme and a real listed company.
+3. **A single-word company name** — "Nvidia", "Pfizer", "Conmed". Accepted only when the word is not
+   an ordinary English word and not a market term. A great many companies are named after ordinary
+   words on purpose, and a headline about a target price is not a headline about Target Corporation.
+   COMMON_WORDS is what stands between the Front Page and that class of nonsense, and the note beside
+   it explains why a list of the WORDS works where a list of the NAMES could not.
+RULE 4 EXISTED AND WAS DELETED, AND THE REASON IS THE MOST USEFUL THING IN THIS FILE.
+
+There was a fourth rule: a bare uppercase token that happens to be a symbol ("AAPL slipped 2%"). It
+passed every test against a 44-name test universe. Then it ran against PRODUCTION'S 12,933 names and
+immediately produced:
+
+    "US makes it easier to export Nvidia AI chips and military equipment to the UAE"  ->  UAE
+    "Baker Hughes wins E.U. approval for Chart Industries deal after LNG tech divestiture"  ->  LNG
+
+UAE is a country. LNG is a commodity. Both are also real listed symbols (an iShares ETF and Cheniere
+Energy), because in a universe of thirteen thousand tickers, *almost every three-to-five letter
+uppercase string is somebody's ticker*. A stoplist cannot save the rule: it would have to enumerate
+every country code, every commodity abbreviation, every organisation acronym and every initialism in
+English, and it would still be one headline behind.
+
+And what did the rule buy? Almost nothing. Journalists write "Apple", not "AAPL". Across the whole
+recorded night it produced no correct link that rules 1 to 3 did not already make.
+
+So it is gone. That is this file's own doctrine applied to itself: a missed link costs a card one
+chip; a false link prints a false statement about a company beside a real price move. When a rule's
+upside is a chip and its downside is a lie, it does not matter how often it is right.
 """
 
 from __future__ import annotations
@@ -75,37 +94,120 @@ _SUFFIXES = (
     "&",
 )
 
-# Single-word company names that are also ordinary English words. A name in this set is NEVER matched
-# by rule 3 — it needs an explicit ticker (rule 1) to link.
+# THE STOPLIST THAT REPLACED A STOPLIST, AND WHY THE FIRST ONE COULD NOT WORK.
 #
-# This list is the difference between a front page and a random-word generator. Every entry is a real
-# US-listed company whose name is a word an ordinary market headline uses in its ordinary sense:
-# "the gap between expectations", "shares block-traded", "a target price", "key support", "the match
-# between supply and demand".
-AMBIGUOUS_NAMES: frozenset[str] = frozenset(
-    {
-        "target", "gap", "block", "visa", "key", "match", "square", "shell", "total", "unity",
-        "peloton", "carnival", "yum", "gates", "boston", "chase", "capital", "first", "general",
-        "national", "american", "united", "global", "premier", "summit", "signature", "pioneer",
-        "liberty", "sturm", "cheniere", "arch", "range", "apache", "diamond", "eagle", "hope",
-        "brands", "energy", "materials", "industries", "resources", "partners", "trust", "realty",
-        "growth", "value", "core", "prime", "select", "advance", "progress", "sunrise", "phoenix",
-        "aurora", "cardinal", "colgate", "crown", "dollar", "expedia", "ford", "franklin", "harley",
-        "hershey", "humana", "invesco", "jack", "kellogg", "lincoln", "loews", "marathon", "martin",
-        "mosaic", "newell", "nordson", "olin", "omega", "oracle", "otis", "paramount", "public",
-        "regency", "rollins", "ross", "ryder", "sempra", "snap", "stanley", "steel", "stone",
-        "sysco", "tapestry", "textron", "tyson", "vulcan", "waters", "welltower", "west", "whirlpool",
-    }
+# Rule 3 (a single-word company name) originally refused a hand-curated list of ~90 names that are
+# also ordinary words — Target, Gap, Visa, Key, Match. Against production's 12,933 instruments that
+# list was hopeless, and the front page immediately filled with false links:
+#
+#     "Strategy Inc"   -> the word "strategy" -> MSTR, on a story about a truck-maker acquisition
+#     "People Inc"     -> the word "people"   -> PPLI, on a story about a parasite outbreak
+#     "Popular, Inc."  -> the word "popular"  -> BPOP, on a story about viral internet trends
+#     "Team, Inc."     -> the word "team"     -> TISI
+#     "Fossil Group"   -> the word "fossil"   -> FOSL, on a story about nuclear power
+#     "Nasdaq, Inc."   -> the word "Nasdaq"   -> NDAQ, on five separate stories about the INDEX
+#
+# The list was not too short. A curated list of exceptions can never keep up with thirteen thousand
+# companies, a great many of them named after ordinary words on purpose. So the test is INVERTED:
+# instead of listing the company names that are words, list the WORDS, and refuse any single-word
+# company name that is one of them. This keeps "Nvidia", "Pfizer" and "Conmed" — which are not words —
+# and refuses every name above, which are.
+COMMON_WORDS: frozenset[str] = frozenset(
+    """
+    a about above accept access account across act action active add advance advantage after again
+    against age agency agenda agree air all alliance alpha alternative always american among amount
+    analysis anchor and another answer any apex appeal apply approach approval arch area arm around
+    arrow art asset assurance at atlas attack attempt author auto autumn available avenue back bad
+    balance bank base basic battery bay be bear because become before begin behind believe bell below
+    benefit best beta better between beyond big bill black blank block blue board body bond bonus book
+    boost border boston bottom box brand brands break bridge brief bright bring broad brother budget
+    build building bull business but buy by call campaign can cannon capital captain car carbon card
+    care career carnival carrier case cash catalyst cause cell center central century certain chain
+    chair challenge champion chance change channel charge charter chase check chief child choice church
+    circle citizen city civil claim class clean clear client climate clock close cloud club coach coast
+    code cold colgate collect college color column combine come comfort command comment commerce common
+    community company compare compass compete complete concept concern concord condition confidence
+    connect consider constant consumer contact content contest context continental control convert core
+    corner cost count country county couple course court cover craft create credit crest critical cross
+    crown crystal culture current custom customer cut cycle daily data date dawn day deal decide deep
+    defense degree deliver delta demand depend design desire detail develop diamond digital direct
+    discovery discuss distinct district dollar domain double down dream drive drop dynamic eagle early
+    earn earth ease east echo economy edge edit effect effort eight element elevate empire employ
+    empower enable end endeavor energy engage engine enter enterprise entertainment envision equal
+    equity era essential establish estate eternal even event ever every evolve exact example exchange
+    excite executive exercise exist expand expect experience expert explore express extend extra face
+    fact factor fair faith fall family far fast father favor federal feel field fifth fight figure file
+    fill film final finance financial find fine finish fire first fiscal fisher fit five fix flag flash
+    flat fleet flex flight floor flow focus follow food foot for force forest form format fortune
+    forward foundation four fourth frame franklin free freedom fresh friend front fuel full function
+    fund fusion future gain game gap garden gas gate gates gather general generation genius get giant
+    gift give glass global globe go goal gold golden good govern grace grade grand grant graph great
+    green grid ground group grow growth guard guide half hall hand happy harbor harmony harvest have
+    head health hear heart heat help her here heritage high hill history hold holding home honor hope
+    horizon host hour house how human hunt idea ideal identity image impact imperial improve in include
+    income increase independent index industrial industries industry infinite influence inform initial
+    inland inner innovate input inside insight inspire institute insurance integral intelligent interest
+    internal international invest invesco investor iron island issue it item jack join journey joy judge
+    jump junction just justice keep key kind king knowledge known lab labor lake land language large
+    last late launch law lead leader learn leave left legacy legal lens level liberty life light like
+    limit line link lion liquid list little live local lock logic long look lower loyal luck macro magna
+    main maintain major make manage many marathon march marine mark market martin master match material
+    materials matter maximum may meadow mean measure media medical meet member memory mention merit
+    message metal method metro middle midland might mile mill million mind mine minute mirror mission
+    model modern moment momentum money monitor month moon more morning most motion motor mountain move
+    much music must mutual name nation national native natural nature navigator near need net network
+    never new news next night nine noble none normal north northern note now nuclear number oak object
+    observe ocean of off offer office often oil old omega on once one online only open opportunity
+    optimal option or orange orbit order origin other our out outlook output over overseas own pace
+    pacific package page paper paradigm paragon parallel paramount parent park part partner partners
+    party pass past path patriot pattern pay peak peer people perfect perform period permanent person
+    peter phase phoenix pick picture pilot pinnacle pioneer place plain plan plant play please plus
+    point polar policy popular port portfolio position positive possible post potential power practice
+    precision prefer premier premium prepare present preserve president press pressure price pride
+    primary prime principal print prior priority private prize probe problem process produce product
+    profile profit program progress project promise proper property propose protect proud prove provide
+    public pull pure purpose pursue push quality quantum quarter quest question quick quiet race radiant
+    radio raise rally range rapid rate reach read ready real reality realty reason rebel receive record
+    red reduce reference reflect reform regal regency region regional register regular relate relative
+    release relevant reliable relief remain remote renew rent repeat report represent republic request
+    require research reserve resolute resolve resource resources respect respond response rest result
+    retail return reveal revenue review revolution reward rich ride right rise risk river road rock role
+    roll room root rose round route royal rule run rush safe sage sail sale salt same sample satellite
+    save scale scene school science score search season second secure security see seek select sell
+    send senior sense sentry serve service session set settle seven shade shadow shape share sharp
+    shell shield shift shine ship shore short show side sight sign signal signature silver similar
+    simple single site situation six size skill sky small smart snap social society solid solution
+    solve some sonic sound source south southern space span spark special specific spectrum speed spire
+    spirit split sponsor sport spot spread spring square stable staff stage stake stand standard stanley
+    star start state station status stay steady steel step sterling stock stone stop store storm story
+    straight strategy stream street strength strike strong structure student study style subject success
+    sudden suffer suit summit sun sunrise superior supply support sure surface surge survey sustain
+    swift switch symbol system table take talent talk target task team tech technology tell ten term
+    terra test text than that the theme then there these they thing think third this thought three
+    thrive through time title today together top total touch tower town trace track trade traffic trail
+    train transfer transform transit travel treasure treat trend trial tribune trinity triple triumph
+    true trust truth try turn twin two type union unique unit unite united unity universal universe up
+    urban use user valley value vantage vector venture verify vertex very vessel veteran victory view
+    vintage virtue vision visit vista visual vital voice volume vote voyage wage wait walk wall want war
+    warrant watch water waters wave way wealth wear weather week welcome well west western what wheel
+    when where which while white who why wide will win wind window wing winter wire wisdom wise with
+    within without witness wolf woman wonder wood word work world worth would write year yes yield you
+    young your zenith zone fossil apple visa oracle ford peloton chipotle dominion hormel
+    olin omega sysco tyson vulcan whirlpool hershey humana expedia colgate kellogg loews
+    mosaic newell nordson regency rollins ross ryder sempra tapestry textron welltower
+    marathon lincoln franklin harley invesco jack cardinal aurora phoenix crown dollar
+    liberty pioneer signature summit premier progress advance sunrise sturm cheniere apache
+    arch diamond eagle hope brands range stone waters
+""".split()
 )
 
-# All-caps strings that look like tickers and are not. Several of these ARE real symbols — which is
-# precisely the problem, and precisely why a bare uppercase token is the weakest rule here.
-COMMON_ACRONYMS: frozenset[str] = frozenset(
+# Market vocabulary: not ordinary English, and never a company when a headline uses it. "Nasdaq ends
+# sharply higher" is about the index. Nasdaq, Inc. is a real listed company and is not what that
+# sentence is about — nor what any of the five headlines naming it were about.
+MARKET_TERMS: frozenset[str] = frozenset(
     {
-        "CEO", "CFO", "COO", "CTO", "IPO", "GDP", "CPI", "PPI", "FDA", "SEC", "FTC", "DOJ", "IRS",
-        "ETF", "EPS", "USA", "USD", "EUR", "GBP", "AI", "EV", "ESG", "API", "SPAC", "FOMC", "ECB",
-        "OPEC", "NATO", "WHO", "UN", "EU", "UK", "US", "IT", "PC", "TV", "VP", "PR", "HR", "AGM",
-        "M&A", "YOY", "QOQ", "EBITDA", "ROI", "ATH", "NYSE", "AMEX", "OTC", "SPY", "IPOS",
+        "nasdaq", "nyse", "dow", "russell", "treasury", "fed", "sec", "ftc", "doj", "opec", "nato",
+        "reuters", "bloomberg", "cnbc", "ipo", "etf", "amex", "cboe", "sp",
     }
 )
 
@@ -113,9 +215,6 @@ COMMON_ACRONYMS: frozenset[str] = frozenset(
 _EXCHANGE_TICKER = re.compile(
     r"\b(?:NASDAQ|NYSE(?:ARCA|AMERICAN)?|AMEX|OTC(?:MKTS)?|CBOE)\s*:\s*([A-Z][A-Z.\-]{0,6})\b"
 )
-
-# Rule 4: a bare all-caps token that could be a symbol.
-_BARE_SYMBOL = re.compile(r"\b([A-Z]{3,5})\b")
 
 
 @dataclass(frozen=True)
@@ -167,6 +266,7 @@ class TickerResolver:
                 names.setdefault(canon, []).append(inst.symbol)
 
         self._by_name = {name: symbols[0] for name, symbols in names.items() if len(symbols) == 1}
+        self._names_by_symbol = {inst.symbol: inst.name for inst in instruments}
 
         # One regex over every unambiguous name, longest first so "bank of america" wins over "bank"
         # if both were ever present. Matching all names in a single pass keeps this linear in the
@@ -193,7 +293,9 @@ class TickerResolver:
         """
         if " " in canon:
             return True
-        return canon not in AMBIGUOUS_NAMES and len(canon) > 2
+        if len(canon) <= 2:
+            return False
+        return canon not in COMMON_WORDS and canon not in MARKET_TERMS
 
     def resolve(self, text: str) -> tuple[str, ...]:
         """
@@ -224,12 +326,37 @@ class TickerResolver:
                 if symbol:
                     remember(symbol)
 
-        # Rule 4 — a bare uppercase token, the weakest evidence, and fenced accordingly.
-        for candidate in _BARE_SYMBOL.findall(text):
-            if candidate in COMMON_ACRONYMS:
-                continue
-            symbol = self._by_symbol.get(candidate)
-            if symbol:
-                remember(symbol)
-
         return tuple(found)
+
+    def agrees_on(self, symbol: str, provider_name: str | None) -> bool:
+        """
+        May we accept a symbol the PROVIDER tagged an article with?
+
+        Two conditions, and both are necessary.
+
+        1. **We must hold the instrument.** A symbol we have no listing for cannot be given a name, a
+           price, a move or a setup card, so a chip for it would be a dead chip — and the room already
+           has honest copy for a story with no listing in our universe. Marketaux routinely tags
+           foreign and OTC lines (SKLTF, RYAOF, SAFRF) that this app does not carry.
+
+        2. **The provider's company must be our company.** A symbol refers to an exchange, and
+           providers tag against theirs. VHI is VitalHub on the Toronto exchange and Valhi, Inc. on
+           the NYSE — and it was Valhi that nearly appeared under a headline about a Canadian health
+           software acquisition, wearing Valhi's real price move. When the provider does not say which
+           company it means, we cannot check, and an unverifiable tag is refused rather than assumed.
+        """
+        held = self._by_symbol.get(symbol.upper())
+        if not held:
+            return False
+
+        if not provider_name:
+            return False
+
+        theirs = canonical_name(provider_name)
+        ours = canonical_name(self._names_by_symbol.get(held, ""))
+        if not theirs or not ours:
+            return False
+
+        # One name being a prefix of the other is agreement ("nvidia" vs "nvidia"), and so is a clean
+        # containment ("vitalhub" vs "vitalhub corp"). Two unrelated names are not.
+        return theirs == ours or theirs.startswith(ours) or ours.startswith(theirs)

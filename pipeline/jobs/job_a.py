@@ -722,6 +722,10 @@ def _fetch_news_articles(settings: Settings) -> tuple[list[dict], dict[str, str]
                             "image": article.image_url,
                             "published": article.published,
                             "tickers": tuple(e.symbol for e in article.entities),
+                            # The provider's own name for each symbol, so the ingest can cross-check
+                            # it against our instrument table. VHI is VitalHub in Toronto and Valhi
+                            # in New York, and without the name that collision is invisible.
+                            "ticker_names": {e.symbol: e.name for e in article.entities},
                             "industries": [e.industry for e in article.entities],
                             "similar": article.similar,
                         }
