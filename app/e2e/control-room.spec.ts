@@ -75,17 +75,52 @@ test.describe("The control room", () => {
     await expect(panel.getByRole("button", { name: "Run" })).toHaveCount(0);
   });
 
-  test("`full` states WHY it cannot run, and the sentence is the row", async ({ page }) => {
+  test("`full` is never a dead end: it offers a control, or the panel explains why it cannot", async ({
+    page,
+  }) => {
+    /*
+     * THIS TEST USED TO ROT WITH THE HOUR CI HAPPENED TO RUN, and N7 is where it finally went off.
+     *
+     * It asserted that the `full` ROW must always contain one of the five reasons. That passed at the
+     * nc-6 tag — whose CI ran at 19:22 UTC, 3:22pm ET, while the market was OPEN, so the row truthfully
+     * said "Markets are open". N7's CI ran at 20:39 UTC, 4:39pm ET, AFTER THE CLOSE — and after the
+     * close on a weekday with no successful run yet, `full` is genuinely RUNNABLE. It has no reason to
+     * give, because there is nothing stopping it. Nobody changed a line; the clock moved, and a green
+     * test turned red.
+     *
+     * WORSE, IT CONTRADICTED N6'S OWN RULING. The missing-token sentence is deliberately printed ONCE,
+     * above the rows — "the STATE is per-row, the REASON is per-panel" — because printing a shared
+     * reason five times is not five times as honest, it is five times as long. So a row that is
+     * runnable-but-for-the-token correctly says nothing, and the test demanded it repeat the panel.
+     *
+     * The invariant that actually matters is weaker and truer: THE READER IS NEVER LEFT WITH A ROW
+     * THAT NEITHER WORKS NOR EXPLAINS ITSELF. That holds in all three worlds, at any hour:
+     *
+     *   1. the row cannot run for a reason of its own  → it states that reason (a C5 sentence);
+     *   2. the row can run and we hold a token         → it offers a Run button;
+     *   3. the row can run and we do NOT hold a token  → the PANEL states that, once, above.
+     */
     await page.goto("/settings#pipeline");
 
+    const panel = page.getByRole("region", { name: "Pipeline" });
     const full = actionRow(page, "Run tonight's full pipeline");
+    await expect(full).toBeVisible();
 
-    // The whole thesis of plan 8.1: on most weeknights the honest control is the EXPLANATION, not
-    // the button. Whatever the seeded clock says, this row must always give a REASON — one of the
-    // four C5 sentences, or the missing-token one — and never a bare disabled control.
-    await expect(full).toContainText(
-      /Markets are open|weekend|markets are closed today|already succeeded|GitHub token/i,
-    );
+    const reason = await full
+      .getByText(/Markets are open|weekend|markets are closed today|already succeeded/i)
+      .count();
+    const button = await full.getByRole("button", { name: "Run" }).count();
+    const panelExplains = await panel.getByText(/Manual runs need a GitHub token/).count();
+
+    expect(
+      reason + button + panelExplains,
+      "the `full` row gave the reader NOTHING: no reason of its own, no button to press, and no " +
+        "panel-level explanation. A control that neither works nor says why is the one thing plan " +
+        "8.1 forbids.",
+    ).toBeGreaterThan(0);
+
+    // And the honest pairing: a row that cannot run must never ALSO offer the button.
+    if (reason > 0) expect(button, "a row that states why it cannot run must not also offer a button").toBe(0);
   });
 
   test("the Desk's freshness strip lands the reader ON the panel, not at the top of settings", async ({

@@ -140,7 +140,24 @@ export default async function StoryPage({ params }: StoryPageProps) {
           <ul className="flex flex-col gap-1.5">
             {card.articles.map((article) => (
               <li key={article.url} className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
-                <ExternalLink href={article.url} className="font-ui text-sm">
+                {/*
+                 * THE OUTLET NAME IS A TAP TARGET, NOT A WORD IN A SENTENCE (N7).
+                 *
+                 * These links are the room's whole honesty argument — they are how a reader checks
+                 * the story against the source that reported it — and on a phone they were TWENTY
+                 * PIXELS tall. Measured: "CNBC" 39×20, "Reuters" 48×20, "Associated Press" 110×20.
+                 * Five of them, stacked, each under half the 44px floor the constitution sets.
+                 *
+                 * WCAG's inline exception does not rescue them and should not: it exempts a target
+                 * sitting "in a sentence or block of text", and this is a LIST of discrete controls —
+                 * outlet, timestamp, headline. (The <li> is a flex container, so the anchor is
+                 * blockified and is not in a line box at all, which is why the sweep measured it.)
+                 *
+                 * The padding is touch-only: `md:py-0` leaves every desktop pixel exactly where it
+                 * was. It went unmeasured from N5 until now because the sweep had never been given
+                 * this route — and when it finally was, it was reading the 404 page instead.
+                 */}
+                <ExternalLink href={article.url} className="font-ui text-sm py-3 md:py-0">
                   {article.source}
                 </ExternalLink>
                 <span className="font-mono text-2xs text-muted">
