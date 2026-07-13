@@ -46,8 +46,9 @@ to completion, in order, without a single pause for permission:
   for the user to read — not a message asking them to look.
 
 **When this plan starts.** This plan was authored while the app-feel build (APP-FEEL-PLAN.md,
-phases F0–F7) was still executing in a parallel session. **N0 begins only after `feel-final`
-is tagged with green CI.** If the session ritual finds the feel build unfinished, finishing it
+phases F0–F7) was still executing in a parallel session — it completed the same evening, so
+the precondition should already hold; the ritual confirms it. **N0 begins only after
+`feel-final` is tagged with green CI.** If the session ritual finds the feel build unfinished, finishing it
 under its own plan comes first — the two plans are sequential, never interleaved. Because the
 tree was a moving target while this was written, every phase here opens by re-verifying the
 piece of the tree it is about to change; where this plan and the working tree disagree on a
@@ -222,7 +223,9 @@ voice: "Ordered by catalyst significance — scope, corroboration, and size of t
 explains." A mover with no catalyst appears ONLY in its honest form (C9), never as a ranked
 "mover" in this room. Guards: the copy deck contains no superlative section names (unit test
 on the deck); `e2e/news.spec.ts` asserts the feed order equals the seeded significance order
-and that no gainers/losers grouping exists; drift rule 19 greps app source for
+and that no gainers/losers grouping exists; a new drift rule (take the next free number in
+check-drift.mjs at build time — the set was still growing while this was written) greps
+app source for
 `gainers|losers|trending|most active|hot right now` outside copy.ts tests.
 
 **C2 · Every number states its window, inline.** Every metric, column header, delta chip, and
@@ -253,9 +256,9 @@ anyway); no red badges, counters, or "LIVE" chips ride on them; image size is un
 a card tier — a bigger move never buys a bigger picture (size is set by layout slot, not by
 content); the L4 generated fallback (sector/catalyst-keyed designed treatment) is visually
 co-equal with photos so a card without a photo never reads as broken or lesser. Guards: VRT
-locks card geometry per tier; drift rule 18 (all article imagery renders through the single
-`NewsImage` component); the significance→layout mapping is size-blind by construction (the
-feed template assigns slots by position, not score).
+locks card geometry per tier; a new drift rule pins that all article imagery renders through
+the single `NewsImage` component; the significance→layout mapping is size-blind by
+construction (the feed template assigns slots by position, not score).
 
 **C5 · A control that cannot act says why, before it is pressed.** Every action in the
 control room renders in one of its named states (Part 8.5), and the not-applicable states
@@ -933,8 +936,8 @@ boto3/R2 pattern → row in `news_image` (clusterId, sourceKind L1|L2|L3-favicon
 variant, width, height, blurDataUrl, attribution source+url, dominantColor). Budget: ~60
 images/night × ~3 variants ≈ well inside R2's free tier forever (Appendix A math).
 
-**Serving (app):** ONE component, `components/news/NewsImage.tsx` (drift rule 18: no other
-`<img>`/`next/image` may reference the media bucket): `next/image` with
+**Serving (app):** ONE component, `components/news/NewsImage.tsx` (the new imagery drift
+rule: no other `<img>`/`next/image` may reference the media bucket): `next/image` with
 `remotePatterns` for the media base URL, explicit `width`/`height` from the row (CLS = 0 by
 construction; the layout-shift budget for /news is the existing hard CLS 0.000 gate),
 `placeholder="blur"` with the stored `blurDataURL`, `loading="lazy"` for everything except
@@ -1106,4 +1109,558 @@ real `macro` run from the deployed app, watch it publish and revalidate (this is
 P-2's verification). VRT: panel states (masked timestamps). Gate: `nc-6` tag green + the
 real-drill evidence in `docs/nc-evidence/`.
 
-<!-- CONTINUES: Part 9 (phases), Part 10 (iOS), Part 11 (adversarial), Appendices -->
+---
+
+## Part 9 — Phases N0–N7 (playbooks + gates)
+
+*Same contract as the R- and F-phases: TDD for logic, VRT for pixels, the standing gate at
+every exit, tag `nc-N`, roll straight on (autonomy contract). Sequencing logic: instruments
+and wiring first (N0); the correctness bug before anything cosmetic (N1); the cross-cutting
+label/density pass before new surfaces inherit old sins (N2); the macro board before the
+news room (it is smaller, exercises the new adapter/cadence machinery, and the pulse
+hierarchy Part 3 defined needs its cells); news data before news UI (N4→N5, so the UI is
+built against real shapes); the control room last of the features (it depends on the mode
+inputs N4 adds to the workflows); hardening and docs to close.*
+
+**The standing gate (every phase, in order — the F-plan's gate with this plan's additions):**
+```
+1  npm run typecheck && npm run lint && npm test            # app unit
+2  uv run pytest                                            # pipeline
+3  npm run build && npm run check:routes && npm run check:bundles
+4  npm run e2e:local                                        # local e2e (--ignore-snapshots; CI is the pixel oracle)
+5  npm run check:drift                                      # incl. this plan's new rules as they land
+6  push → deployment → npm run check:nav -- --report        # budgets hold with the new routes
+7  lighthouse-check.mjs — budgets on / and (from N5) /news
+8  git tag nc-N · push --tags → the CI tag run is the pixel oracle
+   (N0 wires nc-* into ci.yml FIRST — the F0 lesson: an unwired tag pattern makes
+   every later gate claim ornamental)
+9  Update PROGRESS.md · append DECISIONS/LESSONS · confirm the tag CI green
+```
+
+### N0 · Ground truth, wiring, seeds [0.5–1 day]
+FIRST: session ritual; confirm `feel-final` tagged + CI green (if not, finish that plan
+first — its contract, not this one). Amend `ci.yml`: add `nc-*` to the tag triggers AND
+both tag-gated job `if` conditions. Re-audit the tree against this plan's Part 1 claims
+(they were written against a moving target): record in `docs/nc-evidence/n0-audit.md` the
+actual state of module 00, the macro labels, the drift-rule count, the VRT baseline list —
+and where this plan's file references drifted, note the mapping (intent binds; Part 1's
+principle). Production checks (read-only): does `market_context` now carry index levels
+(post-Monday run)? Is the F-build's desktop spread live? Screenshot both. Extend
+`prisma/seed.mjs` with EVERYTHING later phases assert (Part 7.10's news night, macro_stat
+rows incl. a degraded case, the fixture images) — the seed lands first and alone, then the
+`vrt-baselines` CI dispatch re-baselines the seed-affected shots (the vrt-update skill
+flow), expected diffs named in the commit body. Provisioning probe: which of P-1/P-2/P-3
+exist tonight? Record in QUESTIONS + PROGRESS; nothing blocks.
+**Exit gate additions:** the `nc-0` tag actually triggers CI (proof of wiring); the audit
+file exists with screenshots; seed deterministic (two runs → identical VRT pixels).
+
+### N1 · The macro truth fix [1 day]
+Part 3 in full: pipeline hardening (sourceStatus key, no-regress upsert,
+`index_levels_as_of`), label grammar, computed provenance footer, hierarchy order (without
+the Part 6 cells — the board row mounts in N3; the order test lands now and extends then).
+**Exit gate additions:** Part 3.5's suites green; seeded degraded-variant e2e; production
+heal verified after the next nightly (or the failure diagnosed as its own bug, fixed, and
+re-verified — this gate is about the LIVE state, not just the tests); VRT macro rows
+re-baselined deliberately.
+
+### N2 · Windows, density, the grid [1.5–2 days]
+Part 4 + Part 5 in full: the strip (+ freshness lib + ritual-order amendment), module 07 +
+sources-footer shrink, the desktop grid contract (every room's map + the `wide` breakpoint
++ VRT viewports), the window-label sweep (every Part 5.1 row), the deck window-token test,
+RangeControl + ticker ranges + the C3 negative tests.
+**Exit gate additions:** Part 4.4 + 5.5 suites; the phone Desk height evidence shot
+(before/after recorded); zero horizontal scroll at 1536 on every room; the 5.1 table's e2e
+rows all green; alert-consumer drift rule updated for the strip (and the amendment logged).
+
+### N3 · The macro board [1–1.5 days]
+Part 6 in full: `macro_stat` migration, the four fetchers (+ fixtures via the recorder
+flow), cadence/no-thrash logic, the Mood gauge compute + display contract, degradation
+rungs, board layout in the pulse, provenance strings.
+**Exit gate additions:** Part 6.8's suites; the seeded degraded board VRT; a real `macro`
+dispatch writes real rows (using the workflow_dispatch that exists today — the panel comes
+in N6); the board renders on production with honest as-ofs.
+
+### N4 · The news data layer [1.5–2 days]
+Part 7.3–7.6 + 7.9's pipeline half: adapter field extensions (fixture-first), ingest
+budgets, cluster.py, rank.py, Stage-A cap + write-back, Stage B-mini + verify reuse, the
+image pipeline (Pillow dep, ladder, variants, blur, R2 PUT), schema migrations
+(news_item columns, news_cluster, catalyst_link, news_image), publish transaction,
+ANTHROPIC_API_KEY into both workflow env blocks (P-3), `mode` inputs on nightly-a (the
+`news`/`macro`/`compute` stage lists — N6 consumes them, the pipeline half lands here with
+its tests).
+**Exit gate additions:** Part 7.11-N4 suites incl. the pinned fixture-night integration;
+R2 writes land in the media bucket (or the fixture path is exercised and P-1's absence
+logged); one real news-mode dispatch produces clusters in the DB (key present) or the
+skip is logged with its stage status.
+
+### N5 · The Front Page UI [1.5–2 days]
+Part 7.7, 7.8, 7.10's UI half, the Desk module 08, the nav wiring per Part 0.1's answer
+(default A if unanswered — and the [VETO?] row in QUESTIONS marks the assumption), the
+news Today/Week RangeControl consumer, copy deck additions, axe pass on both routes.
+**Exit gate additions:** Part 7.11-N5 suites; VRT set (feed/story/filters/fallback rungs/
+module 08, both themes); C1/C4/C9/C10 e2e assertions green; /news holds B2/B3 budgets;
+CLS 0.000 with images (the blur+dimensions contract proven on the seeded feed).
+
+### N6 · The control room [1–1.5 days]
+Part 8 in full: manual_run migration, the dispatch/status routes + server actions,
+pipeline-control state machine, the panel in /settings, the strip doorway, caps/cooldowns,
+run-name echo, the GitHub-mocked e2e suite + the one real drill.
+**Exit gate additions:** Part 8.7's suites; the real macro-mode drill evidence (dispatch →
+run → publish → revalidate → panel shows succeeded); unauthenticated 401 e2e; concurrency
+queue state rendered (mock).
+
+### N7 · Hardening, evidence, docs [1 day]
+Touch-target sweep re-run WITH the new routes in its list (/news, /news/[cluster], the
+panel — the sweep is only as honest as its route list); axe full pass; full VRT table;
+iOS MANUAL checklist (Part 10.5) run on the real device, mobile Safari AND installed
+standalone, photographed into `docs/nc-evidence/`; drift rules landed and numbered against
+the tree; docs sync — DEVELOPMENT-PLAN route map + §2.1 product line gain /news and the
+panel (dated correction blocks, mirrored into dp-*.html + regenerated per the standing
+rule), CLAUDE.md commands/conventions touch-up (the constitution's own file — the ONE
+shared-file edit this plan makes, and it happens here, after the parallel build has long
+finished), the new-surface skill gains the window-checklist line, QUESTIONS closeout
+(every [VETO?] this plan logged has its built-on-assumption marker), PROGRESS closing
+entry.
+**Gate:** the full standing gate + every evidence file present + `nc-final` tagged green.
+
+**Sequencing rules:** N0 blocks all. N1 blocks N3 (the pulse must be true before it
+grows). N2 blocks N5 (the feed consumes RangeControl + the grid) but not N3/N4. N4 blocks
+N5 and N6. N3 and N4 may interleave if a source blocks (per-source degradation applies to
+the build itself). A veto of 0.1's default reshapes only TabBar/RoomNav wiring in N5. A
+veto of any 0.2 row changes only its named sections.
+
+**Estimated total: 8–11 days at R/F-phase pace.**
+
+---
+
+## Part 10 — Mobile & iOS specifics (cross-cutting)
+
+*The redesign Part 7 + feel-plan Part 7 contracts stand (safe areas, 44px targets, 16px
+inputs, keyboard tab-bar hide, no page horizontal scroll, shelf physics). This part adds
+only what the NEW surfaces need. Items marked MANUAL run at N7 on the real device, twice:
+mobile Safari and the installed standalone app.*
+
+1. **Image loading on iOS.** Explicit width/height + blur placeholder on every NewsImage
+   (CLS 0.000 is a hard gate); `loading="lazy"` everywhere but the lead; no fade-in
+   animation on load (the blur placeholder resolves to the image with no transition —
+   a fade is motion the stillness culture doesn't need, and Safari's lazy-load +
+   fade combo visibly stutters on fling scrolls). MANUAL: fling the feed on device;
+   no white flashes, no layout jumps, no half-painted frames.
+2. **Filter chip rows.** Horizontal scroll containers with `overscroll-behavior-x:
+   contain`, snap proximity, edge-fade mask on a STATIC wrapper (the WebKit
+   mask-on-scroller compositing lesson, inherited); chips ≥44px tall; the active chip is
+   never scrolled out of existence after selection (on select, if off-screen, it is
+   brought into view by the USER's next glance — no programmatic scrollTo, M3; instead the
+   count line under the row restates the active filters so state is never invisible).
+   MANUAL: chip row pan vs page scroll disambiguation; left-edge swipe in standalone does
+   not trigger back-navigation mid-pan.
+3. **The story page in standalone.** No browser chrome means the return rail IS the way
+   back: the room keeps the house return-rail pattern at the top of /news/[cluster]
+   ("← Front page"), 44px, safe-area-padded. External source links open in the in-app
+   Safari view controller (default anchor behavior) — MANUAL: returning from an external
+   article lands back on the story page with scroll preserved.
+4. **The panel's live states.** The 15s poll pauses on `visibilitychange: hidden`
+   (backgrounded PWA) and resumes on visible — no timers ticking in a suspended webview.
+   Buttons are real `<button>`s in forms (server actions), so double-tap zoom is already
+   disabled by the kit's `.touch-manipulation`.
+5. **MANUAL checklist (N7, photographed):** feed fling + lead image paint · chip pan/
+   scroll/edge-swipe · story page return + external-link round trip · dark theme photo
+   frames (true photos, themed frames) · panel dispatch → running → succeeded on device ·
+   the strip's three states (fresh seeded; aging/dead via the seeded clock param) ·
+   RangeControl on the ticker at 390px (targets, no zoom on tap) · VoiceOver: feed cards
+   read as single articles (headline, source, time, tickers in one pass — the card is one
+   focusable article element with internal links reachable), filter chips announce
+   pressed state, the gauge reads its components.
+
+---
+
+## Part 11 — The adversarial pass (attacks run, fixes landed)
+
+*Six lenses, per the commission. Each attack is stated the way a hostile reviewer would
+state it, with where the plan now answers it. Attacks that found real holes changed the
+text above before delivery; this part is the record.*
+
+### 11.1 "Your News section will drift into a trending feed."
+- **Attack: significance is just salience wearing a suit — magnitude is an input, so big
+  movers float up and you've rebuilt a gainers list.** Answer: magnitude enters ONLY in
+  units of the ticker's own ATR (a 3% day in a sleepy utility outranks an 8% day in a meme
+  name), it is one of five inputs, catalyst-class prior and corroboration dominate the
+  weights (Appendix E), and a mover with NO catalyst cannot enter the feed at all (C9's
+  slot is unranked, capped, image-free). The e2e pins a seed where the biggest mover ranks
+  third.
+- **Attack: filters become a leaderboard — tap "Tech" and sort by move.** Answer: there is
+  no user sort on the feed at all; filters only subset, order stays significance; the
+  DataTable on story pages is per-cluster context (≤ a handful of rows), not a market
+  ranking.
+- **Attack: the lead card is a reward for the day's hottest thing.** Answer: lead = top
+  SIGNIFICANCE (often a Fed statement with zero price fireworks); C4 makes layout
+  size-blind and the seed proves it.
+- **Attack: "This week" becomes a most-read archive.** Answer: week view is the same
+  significance order over more nights, no popularity signal exists anywhere in the schema
+  to rank by — the deepest guard is that the pipeline never ingests attention data.
+
+### 11.2 "The new surfaces will break honesty rules somewhere subtle."
+- **Attack: the why-it-matters line is an LLM opinion pipeline-stamped as fact.** Answer:
+  it passes the same deterministic gate as the brief (numbers/tickers/dates must trace to
+  sources), advice verbs and predictions are banned by the same prompt contract, and a
+  failing line is DROPPED, not softened (7.5). The line's job is mechanism, not forecast;
+  Appendix D's prompt says so in the system text.
+- **Attack: ticker chips with moves on news cards are bare percentages.** Answer: they are
+  1D price changes with window tokens (C2), not base rates — P4 governs base rates, and
+  none render outside BaseRate anywhere in this plan.
+- **Attack: the Mood gauge is a composite market-direction gauge — P3 bans those.** Answer:
+  P3 bans composite BUY/SELL/technical-rating aggregates — action recommendations. The
+  gauge aggregates SENTIMENT context, renders as position-not-angle (P13), attaches no
+  tendency claim, no signal, no action verb, and carries the "context, not a signal" line
+  (6.5). The distinction is recorded here precisely because a future reviewer should
+  re-check it: if the gauge ever grows a directional implication ("greed → sell"), it has
+  crossed into P3 and must die.
+- **Attack: module 00's retirement hides freshness to save pixels — the exact dishonesty
+  the plan claims to prevent.** Answer: the strip is MORE visible when it matters (amber
+  stale, red dead, undismissable), the states are calendar-aware and unit-tested, and the
+  dead state is deliberately the loudest surface in the app (4.1). Freshness prominence now
+  correlates with urgency instead of with real estate.
+- **Attack: image attribution laundering — you serve publishers' photos from your bucket.**
+  Answer: every image row stores source + article URL; the story page prints "Photo via
+  {source}" linking out; cards link to the story which links to the article; thumbnails
+  are pointer-sized (the fair-use posture the messaging apps rely on), fetched via the
+  APIs' own image fields first (their intended use), UA-identified, robots-honoring
+  (7.9). A single-reader, login-walled app is the minimal-distribution end of this
+  spectrum; the etiquette is followed anyway.
+
+### 11.3 "A macro stat will ship with false provenance."
+- **Attack: your gold 'spot price' will actually be a futures settle or a day-old fix.**
+  Answer: Appendix A names the venue in the label itself and forbids the word "spot"
+  unless the source is a spot quote; the plan's rule (C6) makes the label follow the
+  source mechanically.
+- **Attack: USD→NPR will quietly fall back to a different rate basis and nobody will
+  know.** Answer: the fallback is a DIFFERENT label ("mid-market reference" vs "NRB
+  reference") rendered from the source key, unit-tested; and the qualifier line
+  ("remittance apps may differ") is unconditional.
+- **Attack: CPI YoY computed wrong (SA vs NSA, or home-rolled arithmetic).** Answer: FRED
+  computes it (`units=pc1` on the NSA series headline figures use); the pipeline stores
+  the published number and the month label; nothing is derived in-house.
+- **Attack: the masthead as-of stamps a Thursday mortgage rate as tonight's data.**
+  Answer: per-cell as-of labels are the C2 contract for the board precisely because the
+  cadences differ; the cadence-vs-fetch distinction (6.2) exists for this attack.
+
+### 11.4 "Manual triggers will blow something up."
+- **Attack: a manual full run during market hours ingests garbage half-day bars.** Answer:
+  not_applicable state on open sessions, enforced in the state machine AND stated in the
+  UI; the workflow's own mode logic doesn't add a second guard (single source of truth,
+  the app refuses to dispatch) — but the nightly cron path is unchanged and idempotent
+  publish makes even a hostile dispatch (curl straight at GitHub) recoverable, and the
+  PAT needed to do that is the user's own.
+- **Attack: news re-runs burn the Marketaux daily budget and the nightly starves.**
+  Answer: per-mode caps sized against the provider table (8.4: worst case 60 of 100
+  requests), and the nightly runs at a fixed hour AFTER the cap window resets midnight
+  ET — the arithmetic is in the plan, not in someone's head.
+- **Attack: LLM cost creep — every manual news run is a batch + a Sonnet call.** Answer:
+  cost per run printed IN the panel, caps bound it (≤2/day), and the monthly worst case
+  (~$6 incremental) is recorded in Appendix A against the existing ~$15 console cap the
+  user already set.
+- **Attack: concurrent manual + nightly runs corrupt publish.** Answer: GitHub's
+  concurrency group serializes (verified semantics: queued-pending, latest-queued
+  survives); publish is idempotent by keys; the panel exposes queue state instead of
+  hiding it.
+- **Attack: the GH PAT leaks.** Answer: server-only env, never in client bundles (the
+  panel talks to our session-gated routes), fine-grained to one repo's Actions scope —
+  rotation is one revoke away and QUESTIONS records the scope so the user can audit it.
+
+### 11.5 "iOS will find a way."
+Covered in Part 10; the three sharpest pre-answered: lazy-image CLS on fling (dimensions +
+blur mandatory, no fade), chip-row pan vs standalone edge-swipe (contain + static mask +
+MANUAL check), suspended-webview timers (visibility-gated polling).
+
+### 11.6 "Opus will stall somewhere you didn't look."
+- **Missing secrets** → every provisioning row has a fixture path (0.3); N0 probes and
+  records; nothing blocks.
+- **The moving-target tree** → N0's audit step exists precisely to re-map this plan's
+  references before any edit; intent-binds rule stated up front.
+- **The seeded images** → committed fixtures, no network in e2e; L4 needs no assets at
+  all.
+- **VRT baselines on macOS** → unchanged house rule (CI-born); every phase that moves
+  pixels ends with the vrt-baselines dispatch, and N0 re-baselines once for the seed.
+- **The 5.1 sweep's blast radius** → each row is one surface + one string + one
+  assertion; they land as a checklist, committable row by row — no big-bang refactor
+  exists in this plan.
+- **Marketaux's 3-article pages surprising the ingest** → the budget table states it
+  (7.3), the adapter tests pin pagination, and the pre-LLM cap makes volume a non-input
+  to cost.
+- **GitHub's dispatch API shifting under the plan** → the run-id path AND the run-name
+  fallback are both specced (8.2); either alone suffices.
+- **A never-anticipated wall** → the standing stall protocol (DEVELOPMENT-PLAN Part 10)
+  applies verbatim: two attempts, then stub behind a named degradation flag, log, move on.
+
+---
+
+## Appendix A — The macro source table (verified 2026-07-12)
+
+<!-- APPENDIX-A-PENDING: filled from live source verification before delivery -->
+
+## Appendix B — `copy.ts` additions (mechanical voice; exact strings)
+
+*Grouped as the deck is. `{x}` placeholders use the deck's `fill()`. Strings are contractual
+(P12); changing one is structural. The window vocabulary is the closed set C2 references.*
+
+```
+copy.window = {
+  d1: "1D", d5: "5D", m1: "1M", m3: "3M", m6: "6M", y1: "1Y", y5: "5Y",
+  avg20d: "20d avg", avg50d: "50d avg", rsi14: "14d",
+  weekOf: "wk of {date}", monthOf: "{month} {year}", asOf: "as of {date}",
+  atClose: "at {day}'s close", vsPriorClose: "vs prior close",
+}
+copy.pulse = {
+  …existing…,
+  marketsShelf: "Markets — swipe",
+  moneyShelf: "Money & mood — swipe",
+  proxyChip: "{symbol} · ETF price",          // replaces the freestanding "ETF proxy" chip text
+  proxyChipNasdaq: "QQQ · Nasdaq-100 ETF price",
+  staleLevel: "as of {date}",
+  indexesUnavailable: "Index levels unavailable tonight — showing ETF closes, labeled per row",
+  breadthClose: "{pct} above the 50-day average · at {day}'s close",
+}
+copy.macroBoard = {
+  mortgageLabel: "30-yr mortgage", mortgageNote: "Average rate on a 30-year fixed mortgage — the price of housing money.",
+  cpiLabel: "Inflation (CPI YoY)", cpiNote: "Consumer prices vs the same month last year, as published.",
+  goldLabel: "Gold (oz)",
+  nprLabel: "USD → NPR", nprQualifier: "Remittance apps may differ.",
+  nprSourceNrb: "NRB reference", nprSourceMid: "mid-market reference",
+  moodLabel: "Mood gauge",
+  moodOwnership: "Computed by this app from breadth, volatility, momentum, and range position — not CNN's index.",
+  moodContext: "Context, not a signal — no tendency evidence attaches to this number.",
+  moodInsufficient: "Insufficient inputs tonight — missing: {names}.",
+  notYetReported: "not yet reported",
+  sourceUnreachable: "source unreachable tonight",
+  staleCell: "stale — last {asOf}",
+}
+copy.moodBands = { f0: "fearful", f25: "leaning fearful", mid: "mixed", g56: "leaning greedy", g76: "greedy" }
+copy.news = {
+  roomTitle: "Front page",
+  pressTime: "Assembled {date} {time} ET · from {articles} articles, {clusters} catalysts",
+  ordering: "Ordered by catalyst significance — scope, corroboration, and the size of the move it explains.",
+  cadence: "Assembled nightly after the US close. This page does not update during the day.",
+  countLine: "{n} catalysts{filters}",
+  zeroState: "No {filter} catalysts today — that is information, not an error.",
+  noListing: "No direct listing in our universe.",
+  noStoryHeader: "Moved without a story",
+  sources: "{n} sources",
+  photoVia: "Photo via {source}",
+  deskPreviewCut: "First {n} of {total} by significance",
+  deskDoorway: "The full front page →",
+  provenance: "Ingested {time} · extracted by {model} · every number machine-verified against its sources",
+  whatHappened: "What happened", whyItMatters: "Why it matters", byTheNumbers: "By the numbers",
+  affected: "Affected tickers", learn: "Learn the mechanism",
+  weekUnavailable: "less than a week of coverage so far — showing all of it",
+}
+copy.strip = {
+  fresh: "Data through {day} close · pipeline ran {time} · next: {next}",
+  freshManual: "Data through {day} close · refreshed manually {time} · next: {next}",
+  aging: "No run for {day}'s session · showing {lastDay}'s data · check the pipeline →",
+  dead: "The pipeline has not run since {lastDay}. Every number on this page is from that night. Check the pipeline →",
+}
+copy.control = {
+  title: "Pipeline",
+  runFull: "Run tonight's full pipeline", runFullDesc: "Ingest the close, recompute everything, publish.",
+  runNews: "Refresh the news", runNewsDesc: "Fetch today's articles, re-rank the front page. ~{cost} of API budget.",
+  runMacro: "Refresh macro stats", runMacroDesc: "Re-read rates, gold, FX and the gauge inputs.",
+  runCompute: "Recompute scans", runComputeDesc: "Re-run indicators and scans over stored data. No new data is fetched.",
+  runBriefing: "Re-run the evening briefing",
+  capLine: "{left} of {cap} left today",
+  cooldown: "available again at {time}",
+  capped: "daily limit reached — resets midnight ET",
+  queuedBehind: "queued behind tonight's scheduled run",
+  running: "running — {elapsed}",
+  naMarketOpen: "Markets are open — today's closing data doesn't exist until 4:00pm ET. The nightly run lands ~{nightly} ET.",
+  naWeekend: "It's the weekend — {lastDay}'s close is the latest data that exists; nothing new lands before {nextDay} 4:00pm ET.",
+  naHoliday: "US markets are closed today ({name}) — {lastDay}'s close stands until {nextDay}.",
+  naAlreadyRan: "Tonight's run already succeeded at {time} — there is nothing newer to fetch.",
+  notConfigured: "Manual runs need a GitHub token — see QUESTIONS-FOR-BISHANT (P-2).",
+  history: "Recent manual runs",
+}
+copy.ticker = { …existing…, rangeCaption: "Daily bars · adjusted · through {date}",
+  rangeCoverage: "Showing full history: {years}",
+  rangeUnavailable: "Less than {min} of history for this symbol" }
+copy.watchlist = { …existing…, sparkCaption: "Sparklines: 30 sessions, close only" }
+```
+
+Scan-table column headers (the Part 5.1 sweep, exact): `1-day move` · `RVOL · 20d` ·
+`Gap · open vs prior close` · `From 52w high` · `50-day avg` · `200-day avg` ·
+`20-day move` · `5-day move` · `RSI · 14d` · `RSI prior · 14d` · `$ volume · 1D`.
+
+## Appendix C — Schema DDL (Prisma, verbatim additions)
+
+```prisma
+model MacroStat {
+  seriesKey  String
+  asOfDate   DateTime @db.Date
+  value      Float
+  prior      Float?
+  asOfLabel  String
+  sourceKey  String
+  fetchedAt  DateTime
+  meta       Json?
+  @@id([seriesKey, asOfDate])
+  @@index([seriesKey, asOfDate(sort: Desc)])
+  @@map("macro_stat")
+}
+
+model NewsCluster {
+  id            String   @id            // sha1 of the cluster's canonical member url set, stable across nights
+  runDate       DateTime @db.Date       // last night this cluster was updated
+  firstSeen     DateTime @map("first_seen")
+  headline      String                  // representative, neutralized by Stage A
+  eventType     String   @map("event_type")
+  sectors       String[]
+  themes        String[]
+  tickers       String[]
+  significance  Float
+  sources       Int
+  whyItMatters  String?  @map("why_it_matters")   // null = gate dropped it or not in the narrated top-20
+  affectedNote  String?  @map("affected_note")
+  extract       Json
+  verification  Json
+  imageId       String?  @map("image_id")
+  image         NewsImage? @relation(fields: [imageId], references: [id])
+  links         CatalystLink[]
+  @@index([runDate, significance(sort: Desc)])
+  @@map("news_cluster")
+}
+
+model CatalystLink {
+  id         String      @id @default(cuid())
+  clusterId  String      @map("cluster_id")
+  cluster    NewsCluster @relation(fields: [clusterId], references: [id])
+  symbol     String
+  ret1       Float?                     // snapshot at publish: 1-day return
+  rvol20     Float?                     // snapshot at publish: RVOL vs 20d avg
+  hasSetupCard Boolean   @map("has_setup_card")
+  @@unique([clusterId, symbol])
+  @@map("catalyst_link")
+}
+
+model NewsImage {
+  id           String  @id               // sha1 of the source image url
+  sourceKind   String  @map("source_kind")   // "provider" | "og" | "favicon"
+  urlFull      String  @map("url_full")      // 1200w R2 public url
+  urlCard      String  @map("url_card")      // 640w
+  urlThumb     String  @map("url_thumb")     // 240w
+  width        Int
+  height       Int
+  blurDataUrl  String  @map("blur_data_url") // ~300B base64 8px JPEG
+  dominantColor String @map("dominant_color")
+  attributionSource String @map("attribution_source")
+  attributionUrl    String @map("attribution_url")
+  fetchedAt    DateTime @map("fetched_at")
+  clusters     NewsCluster[]
+  @@map("news_image")
+}
+
+model ManualRun {                          // ✎ app-writable (user state)
+  id          String    @id @default(cuid())
+  requestedAt DateTime  @default(now()) @map("requested_at")
+  workflow    String                       // "nightly-a" | "nightly-b"
+  mode        String                       // "full" | "news" | "macro" | "compute" | "briefing"
+  ghRunId     BigInt?   @map("gh_run_id")
+  status      String                       // requested|queued|running|succeeded|failed|not_applicable|not_configured
+  reason      String?
+  finishedAt  DateTime? @map("finished_at")
+  @@index([requestedAt(sort: Desc)])
+  @@map("manual_run")
+}
+
+// news_item gains (existing model):
+//   source String? · imageUrl String? @map("image_url") · category String? ·
+//   industries String[] · clusterId String? @map("cluster_id")
+// market_context gains: indexLevelsAsOf DateTime? @db.Date @map("index_levels_as_of")
+```
+
+## Appendix D — LLM prompt shapes & schemas (newsdesk extension)
+
+```
+# Stage A (per representative article) — UNCHANGED from briefing/extract.py except:
+#   event_type enum gains "filing". Same system prompt, same Batches flow, same
+#   drop-on-malformed. custom_id = news_item.id; extract written back to news_item.extract
+#   and denormalized onto news_cluster.extract for its representative.
+
+# Stage B-mini — the front-page narrator (one sync call, MODEL_SYNTH, structured output)
+system: You write one-line context notes for a beginner's market front page, in mechanical
+  third person. Inputs: per-catalyst structured extracts (with doc_ids) and a computed-stats
+  table (with stat_ids). For each catalyst, write why_it_matters: what MECHANISM this kind of
+  event moves — the "so what", never a restatement of the headline, never a prediction, never
+  advice. RULES: every number you use appears VERBATIM in the inputs and is cited by id; no
+  advice verbs (buy/sell/should); no directional forecasts; if the event plausibly affects a
+  sector beyond the named tickers, say so in affected_note, mechanically; if you cannot add
+  context beyond the headline, return why_it_matters as null — an honest null beats padding.
+schema: { notes: [ { cluster_id, why_it_matters: string|null (≤160 chars),
+  affected_note: string|null (≤120 chars), citations: [doc_or_stat_id] } ] }
+failure: schema violation ⇒ one retry with the error appended; second failure ⇒ all notes
+  null (facts publish without prose). Appendix-E-style verification runs on every note
+  REGARDLESS (tolerances verbatim from DEVELOPMENT-PLAN Appendix E); a flagged note is
+  dropped to null and the decision recorded in news_cluster.verification.
+```
+
+## Appendix E — Significance, taxonomy, doorways (the deterministic contracts)
+
+**Significance (computed in `newsdesk/rank.py`; constants module-level; changing weights is
+structural):**
+
+```
+significance = 0.30·scope + 0.25·corroboration + 0.20·magnitude + 0.15·class_prior + 0.10·recency
+scope:         index/Fed/macro-wide = 1.0 · sector-wide (≥3 tickers or an ETF-class event) = 0.6
+               · single-name = 0.3 · no-listing = 0.15
+corroboration: min(sources, 5) / 5
+magnitude:     mean over linked tickers of min(|ret1| / ATR14%, 3) / 3   (0 when no tickers)
+class_prior:   ma/fda/fed-macro 1.0 · earnings/guidance 0.8 · filing/legal 0.6
+               · analyst 0.4 · product/other 0.3
+recency:       1.0 same-session · 0.5 prior session · 0.25 older (week view only)
+```
+
+**Sector taxonomy (closed set):** Technology · Financials · Health care · Energy ·
+Industrials · Consumer discretionary · Consumer staples · Utilities · Materials · Real
+estate · Communications — assigned from (1) linked instruments' sector field where present,
+(2) Marketaux entity `industry` mapped by a fixed table (in `newsdesk/taxonomy.py`, ~30
+rows, checked in), (3) else `Broad market`. **Themes (additive):** `AI` and `Defense`, from
+a fixed keyword table over headline+summary (checked in beside it; case-insensitive word
+boundaries; tests pin inclusions AND near-miss exclusions — "aid" is not "AI").
+
+**Catalyst → Academy doorway map (renders only for authored lessons, via the existing
+manifest gate):** earnings/guidance → `why-base-rates-beat-anecdotes`-adjacent earnings
+lesson if/when authored, else the M1 trading-day lesson · ma → `order-types-and-the-spread`
+· fda → the M4 gaps lesson (`gaps-what-the-data-says`) · macro/fed →
+`reading-the-macro-pulse` · analyst → `why-base-rates-beat-anecdotes` · filing/legal →
+`the-track-record-page` · volume-driven no-story movers → `volume-and-rvol`. (The map is a
+constant with a unit test; unauthored slugs simply don't render — same gate the brief uses.)
+
+## Appendix F — VRT delta table (added shots; both themes unless noted)
+
+| Shot | Viewports |
+|---|---|
+| desk (re-baseline: strip, module 07/08, sources line, board row) | 1366×768 · 390×844 · NEW 1536×960 |
+| macro module: normal · all-proxy degraded · board degraded | 1366 · 390 |
+| news feed: default · filtered (Pharma+FDA) · zero-state · week view | 1366 · 390 · 1536 |
+| news story: full anatomy · gate-dropped-prose variant | 1366 · 390 |
+| NewsImage rungs L1–L4 (styleguide) | 1366 (one theme is enough for geometry; both for L4 tint) |
+| control panel: available/cooldown/na-weekend/running/failed (masked times) | 1366 · 390 |
+| pipeline strip: fresh · aging · dead | 1366 · 390 |
+| RangeControl states (styleguide) · ticker at 1M/6M/5Y (masked) | 1366 |
+| every room at 1536 (the wide-grid lock) | 1536×960, light only |
+
+## Appendix G — Logged decisions this plan seeds into DECISIONS.md
+
+Each lands as a `[claude]`-marked line when its phase executes (the 0.1 answer lands as
+user-authored if given): 0.2.1–0.2.8 verbatim · the module-00 retirement + ritual-order
+amendment (structural) · the alert-consumer additions (strip stale/dead; board stale-cell)
+(structural) · the `wide` breakpoint (structural, token addition) · drift-rule additions
+(imagery single-door; anti-trending greps; strip/board alert consumers) · seed growth ·
+Pillow dependency · per-mode workflow inputs (structural: workflow contract) ·
+`return_run_details` dispatch pattern (local) · news ingest budgets (structural: cost) ·
+significance weights (structural) · taxonomy tables (local) · the C3 RangeControl allowlist
+(structural: honesty guard).
+
+---
+
+*End of plan. The commission's closing instruction was zero decisions left mid-build: Part 0
+holds the one that is yours, everything else is decided, logged, and guarded. The front page
+is a newspaper because the whole app is one — press time printed, sources named, corrections
+loud, and nothing on the page because it is merely popular.*
