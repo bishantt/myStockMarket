@@ -66,16 +66,38 @@ Optimize everything for a human reader, never for machine brevity.
 
 ## Commands
 app:      npm run dev | test | typecheck | lint | build
-guards:   npm run check:drift (19 anti-drift rules) · check:fonts (budget) · check:lighthouse · icons
+guards:   npm run check:drift (20 anti-drift rules) · check:fonts (budget) · check:lighthouse · icons
 db-drift: npm run check:migrations — is the LIVE database running the schema in this repo? CI can
           never answer this (it migrates a fresh container every run), and production silently ran
           without N0's migration for days because nothing asked. Deploy applies migrations too.
 budgets:  npm run check:routes (every room cached) · check:nav (TTFB, needs AUTH_COOKIE_SECRET) · check:bundles
 e2e:      npx playwright test  ·  LOCAL: npm run e2e:local (--ignore-snapshots; CI is the pixel oracle)
+          Seeded journeys need MSM_SEEDED=1 and a seeded Postgres — CI sets both; this Mac has neither.
 pipeline: uv run pytest      jobs: uv run python -m jobs.job_a (fixtures: MSM_FIXTURES=1)
+modes:    job_a runs in FOUR modes, pinned in MODE_STAGES (pipeline/jobs/job_a.py), and main() REFUSES
+          any mode it has no handler for — an unrecognised mode used to fall through to the full
+          nightly, so "refresh the news" at noon would have re-ingested the whole market mid-session.
+          full (the cron) · news · macro · compute (recomputes from STORED bars — calls no provider,
+          takes its run date from the DATA not the clock, publishes via publish_compute so it never
+          overwrites the night's source_status). job_a SKIPS a non-session day and exits cleanly.
 db:       npx prisma migrate dev --name <name> · npx prisma db seed   deploy: git push (Vercel auto)
 VRT:      baselines are BORN IN CI — gh workflow run ci.yml -f job=vrt-baselines, then download the
           artifact and commit it. Never shoot a baseline on macOS (see .claude/skills/vrt-update).
+
+## The control room (/settings#pipeline — N6)
+The reader can run the pipeline by hand: five actions, each in exactly one of ten states, with daily
+caps and cooldowns. Server surfaces: `app/(desk)/settings/pipeline-actions.ts` (the dispatch) and
+`app/api/pipeline/status/route.ts` (a 15s poll, paused when the tab is hidden).
+- **THE DISPATCH API RETURNS NOTHING.** `POST .../dispatches` answers **204 with an EMPTY BODY** — no
+  run id — and GitHub's own REST docs say otherwise. So the app RECOVERS the id: it stamps a
+  `request_id` into each dispatch, the workflow prints it into `run-name:`, and the app matches it in
+  the runs list. **That `run-name:` line in nightly-a.yml and nightly-b.yml is LOAD-BEARING** — delete
+  it and nothing fails, every test but one passes, and the control room goes permanently blind.
+  `pipeline/tests/test_workflow_dispatch.py` guards it.
+- GitHub validates `workflow_dispatch` inputs against the workflow file **on the target ref**: a new
+  input that exists only in your working tree gets a 422. The workflow must land on `main` first.
+- **P-2 (a GitHub PAT with `workflow` scope) is NOT PROVISIONED**, so every button is dark in
+  production. The whole path is proven working (evidence §6). It is a secret and nothing else.
 
 ## Conventions
 Conventional commits · TDD-first list in plan §6.2 · numbers render ONLY via components/BaseRate

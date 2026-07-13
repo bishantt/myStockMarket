@@ -131,7 +131,11 @@ Part 2
 
 - **Read-mostly app:** Next.js 16 (App Router) + TypeScript + Tailwind on Vercel Hobby. Server components read Postgres via Prisma; the app writes only user-state tables (watchlist, journal, review state, paper trades, weakener checkboxes) through server actions.
 
-- **Two-job nightly pipeline** (Python 3.12: Polars + DuckDB + httpx + exchange_calendars) on GitHub Actions. Job A, cron `37 22 * * 1-5` UTC: preflight → full-universe EOD ingest (Alpaca) → context ingest (Finnhub, FMP, EDGAR, FRED, Marketaux) → compute (indicators, scans, base rates, vol bands) → submit LLM extraction batch → exit. Job B, cron `25 0 * * 2-6` UTC: late-news delta sweep → collect batch → one synchronous synthesis call → deterministic verification gate → single-transaction publish → revalidate → dead-man ping. Briefing ready ~8:40pm EDT / ~7:40pm EST (worst ~10 min later); promise 9:00pm ET year-round — the crons are UTC-fixed, so DST shifts the user’s wall clock, never the schedule.
+**Two-job nightly pipeline** (Python 3.12: Polars + DuckDB + httpx + exchange_calendars) on GitHub Actions. Job A, cron `37 22 * * 1-5` UTC: preflight → full-universe EOD ingest (Alpaca) → context ingest (Finnhub, FMP, EDGAR, FRED, Marketaux) → compute (indicators, scans, base rates, vol bands) → submit LLM extraction batch → exit. Job B, cron `25 0 * * 2-6` UTC: late-news delta sweep → collect batch → one synchronous synthesis call → deterministic verification gate → single-transaction publish → revalidate → dead-man ping. Briefing ready ~8:40pm EDT / ~7:40pm EST (worst ~10 min later); promise 9:00pm ET year-round — the crons are UTC-fixed, so DST shifts the user’s wall clock, never the schedule.
+
+**Amended 2026-07-13 (NEWS-AND-CONTROL-PLAN N4/N6).** Job A is no longer one thing. It runs in **four modes**, pinned in the `MODE_STAGES` constant (`pipeline/jobs/job_a.py`), and `main()` **refuses any mode it has no handler for** — before that guard an unrecognised mode fell through to the full nightly, so a “refresh the news” button pressed at noon would have re-ingested the entire market mid-session. `full` (the cron’s mode) · `news` (the newsdesk only — ingest, resolve, cluster, rank, narrate, publish; touches no price) · `macro` (the macro board’s sources only) · `compute` (recomputes indicators, scans and base rates **from the stored bars**: it calls *no provider at all* — its `ComputeDeps` type carries no fetcher, and a test enumerates its five fields — takes its run date **from the data rather than the clock**, and publishes through a dedicated `publish_compute` that never touches `source_status`, because a run that called no provider knows nothing about any provider’s health and `publish()` replaces that column wholesale).
+
+**And Job A SKIPS a non-session day**, exiting cleanly rather than failing. The cron never fires at a weekend, but it fires on every market **holiday** — which is a weekday — so roughly nine times a year it woke on a closed market, ingested nothing, and published a run dated to a session that never happened, with every gate green. A skipped run on a closed market is the correct outcome, not an error: failing the workflow would send a red e-mail every Thanksgiving, and an alert that cries wolf is not there on the night it is finally right.
 
 - **Storage split:** full-market history (~5–6k symbols × 7y) as Parquet on R2, scanned by DuckDB inside the pipeline only; Postgres (Supabase free) holds serving tables — including `price_bar` (watchlist + indices × ~5y) so the app never touches R2.
 
@@ -139,7 +143,9 @@ Part 2
 
 - **Charts:** TradingView Lightweight Charts v5 (Apache-2.0; keep the attribution logo), hand-rolled React hook; Recharts for sparklines/small multiples.
 
-- **Product:** Desk (one-screen ritual: macro pulse → daily brief → US session calendar → movers with reason → focus watchlist → setup cards → sectors/scans → paper-portfolio corner) + Academy (M0–M6 curriculum, glossary, worked examples, Leitner review queue), connected by doorways with return rails; drill depth capped at 3 (glance → rail/sheet → full page).
+**Product:** Desk (one-screen ritual: macro pulse → daily brief → US session calendar → movers with reason → focus watchlist → setup cards → sectors/scans → paper-portfolio corner) + Academy (M0–M6 curriculum, glossary, worked examples, Leitner review queue), connected by doorways with return rails; drill depth capped at 3 (glance → rail/sheet → full page).
+
+**Amended 2026-07-13 (NEWS-AND-CONTROL-PLAN N3/N5/N6).** Three additions, all shipped. **The Front Page** (`/news`) is the **sixth tab** — a third room, with a Desk doorway (module 08) and a return rail. It ranks by properties of the EVENT and by nothing the reader has ever done: a test enumerates `significance()`’s six inputs, so no behavioural signal can be slipped in quietly (ruling C1), and the page **ties**, oldest-first, and says so — on a macro day, a wall of macro stories IS the honest front page. **The macro board** on the Desk: five figures plus the **Mood gauge**, whose five components are each a percentile of their own trailing year, unweighted (a weight is an opinion, and an opinion is what this number is trying not to have), and which **suppresses itself and NAMES what is missing** below three components. **The control room** (`/settings#pipeline`): the reader can run the pipeline by hand — and its real subject is the **absence** of a button, because on a normal weeknight the honest control is the explanation, not a control.
 
 ### 2.2 Repository layout (authoritative)
 
@@ -149,10 +155,12 @@ myStockMarket/
 ├─ .claude/skills/<skill-name>/SKILL.md        # minted per §9.3 rubric
 ├─ docs/                                        # the three PDFs + docs/src (do not edit rr-*/bp-*)
 ├─ app/                                         # Next.js 16 — Vercel project root
-│  ├─ app/(desk)/…      # dashboard, ticker/[symbol], track-record, scans, settings
+│  ├─ app/(desk)/…      # desk, ticker/[symbol], track-record, scans, news, news/[cluster], settings
 │  ├─ app/(academy)/…   # academy, academy/[module]/[lesson], glossary, review, journal
 │  ├─ app/login/ · app/offline/ · app/styleguide/
 │  ├─ app/api/revalidate/route.ts               # CRON_SECRET bearer
+│  ├─ app/api/pipeline/status/route.ts          # N6 — the control room's 15s poll (cookie-authed)
+│  ├─ app/(desk)/settings/pipeline-actions.ts   # N6 — the dispatch server action → GitHub
 │  ├─ proxy.ts                                  # session-cookie gate (Next 16 middleware rename)
 │  ├─ components/ · lib/ · content/academy/ · public/
 │  ├─ prisma/schema.prisma · prisma/seed.ts
@@ -160,8 +168,13 @@ myStockMarket/
 ├─ pipeline/                                    # Python 3.12, uv-managed
 │  ├─ adapters/ (+ fixtures/) · indicators.py · scans.py · baserates.py · volbands.py
 │  ├─ briefing/ (extract.py · synthesize.py · verify.py) · publish.py · resolve.py
+│  ├─ newsdesk/        # N4/N5 — resolve · taxonomy · noise · outlets · cluster · rank · ingest · narrate · images
+│  ├─ mood.py · macro_stats.py · macro_levels.py    # N3 — the macro board + the Mood gauge
 │  ├─ jobs/ (job_a.py · job_b.py) · scripts/probe_providers.py · config.py · tests/
-└─ .github/workflows/ (nightly-a.yml · nightly-b.yml · ci.yml · migrate.yml)
+└─ .github/workflows/ (nightly-a.yml · nightly-b.yml · ci.yml · migrate.yml · record-fixtures.yml)
+   # nightly-a/b carry a `run-name:` line printing the dispatch's request_id. It is LOAD-BEARING:
+   # the dispatch API answers 204 with an EMPTY BODY, so the app RECOVERS the run id by matching
+   # that name. Delete the line and nothing fails — and the control room goes permanently blind.
 ```
 
 ### 2.3 What done looks like
@@ -342,13 +355,16 @@ Node 24 LTS · Next.js 16 (App Router; `proxy.ts`) · TypeScript strict · Tailw
 | `/track-record` | Calibration chart, Brier figure, resolved log (app flags + user forecasts), banner state for underperforming families. |
 | `/scans` | Preset **index**: the five recipes with fully visible criteria, each line glossary-linked, a match count and a named 3-row preview. *(Amended 2026-07-12.)* |
 | `/scans/[preset]` | **Added 2026-07-12 (APP-FEEL-PLAN §4.2).** One preset’s full match set as a sortable, paginated table — every match reachable to a stated 500-row cap, with the columns that restate the preset’s own criteria. Replaces the dead “+ N more”. |
-| `/settings` | Watchlist management, install-app row, dark-mode toggle (P6), logout. (Desk route group — the group adds no URL segment.) |
+| `/news` | **Added 2026-07-13 (NEWS-AND-CONTROL-PLAN N5).** The Front Page: a lead story, uniform rows, catalyst + sector filter chips, Today/This week, pagination, the “moved without a story” line, and the press-time + cadence stamps. The lead is a **position, not a prize** — it is whatever the ranking put first. |
+| `/news/[cluster]` | **Added 2026-07-13 (NEWS-AND-CONTROL-PLAN N5).** One story in full: the named and linked sources, the image, what happened, why it matters, the verified key numbers, the affected-ticker table, and the Academy doorway (rendered only where a lesson actually exists). A cluster id that does not exist → `notFound()` — which this app serves as **HTTP 200 with the 404 page in the body**, so no gate may use the status code as its witness (N7). |
+| `/settings` | Watchlist management, install-app row, dark-mode toggle (P6), logout — **and, since 2026-07-13 (N6), the control room** (`#pipeline`): the five pipeline actions, each in exactly one of ten states, with the daily caps, the cooldowns, and the four “not available” sentences that are the actual feature. It is the app’s one **writer** room, and therefore the one route deliberately excluded from the ISR allowlist (§4.5): a page may be cached, or written to and read back in the same click — never both. (Desk route group — the group adds no URL segment.) |
 | `/academy` · `/academy/[module]` · `/academy/[module]/[lesson]` | Curriculum map (M0–M6, soft-gate states) · module page · MDX lesson with glossary popovers and “See this live”. |
 | `/academy/glossary` · `/academy/review` · `/academy/journal` | Term index · Leitner queue (max 5/day) · journal + forecast entries with resolution states. |
 | `/paper` (P6) | Ledger, entry form (cooling-off interstitial), cost mirror, frequency mirror. |
 | `/login` · `/offline` · `/styleguide` | Editorial login card · offline fallback (cached) · living design spec (every token/component; dev + CI only, excluded from prod nav but kept behind auth). |
 | `/api/revalidate` | POST, `Authorization: Bearer $CRON_SECRET` → `revalidateTag('morning')`. |
 | `/api/morning` | GET (cookie-authed) → the serialized `lib/morning.ts` payload; exists solely for the SW’s offline-morning cache (§5.2). Unauthed → 401 JSON, never a redirect. |
+| `/api/pipeline/status` | **Added 2026-07-13 (NEWS-AND-CONTROL-PLAN N6).** GET (cookie-authed) → the control room’s poll: the live run (if any), today’s ledger, the caps and the cooldowns. Polled every 15s while `/settings` is visible and **paused on `visibilitychange: hidden`**, so a backgrounded PWA runs no timers. Unauthed → 401 JSON. **It serves FACTS, never STATES** — the row states are derived in the browser against the reader’s clock, because a panel that grades on the server will tell a reader “markets are open” under a nav bar reading “MARKET CLOSED”. And everything it returns crosses `JSON.parse`, where a `Date` becomes a string: convert at the boundary, because an `as` cast there is a promise rather than a check, and that exact cast crashed the panel on its first poll while 572 tests stayed green. |
 
 ### 4.3 Data flow rules
 

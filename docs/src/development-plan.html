@@ -1,4 +1,9 @@
 <!DOCTYPE html>
+<!-- GENERATED from docs/src/dp-*.html by docs/src/build-plan-pdf.py — DO NOT EDIT.
+     This file was hand-maintained once, drifted a month behind the dp-* parts, and shipped a PDF
+     describing a product that no longer existed. Edit the dp-*.html parts instead, then re-run
+     build-plan-pdf.py (this file + the PDF) and build-plan-md.py (DEVELOPMENT-PLAN.md). -->
+
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -257,7 +262,28 @@
     synthesis call → deterministic verification gate → single-transaction publish → revalidate →
     dead-man ping. Briefing ready ~8:40pm EDT / ~7:40pm EST (worst ~10 min later); promise 9:00pm
     ET year-round — the crons are UTC-fixed, so DST shifts the user’s wall clock, never the
-    schedule.</li>
+    schedule.
+    <p><strong>Amended 2026-07-13 (NEWS-AND-CONTROL-PLAN N4/N6).</strong> Job A is no longer one
+    thing. It runs in <strong>four modes</strong>, pinned in the <code>MODE_STAGES</code> constant
+    (<code>pipeline/jobs/job_a.py</code>), and <code>main()</code> <strong>refuses any mode it has no
+    handler for</strong> — before that guard an unrecognised mode fell through to the full nightly,
+    so a &ldquo;refresh the news&rdquo; button pressed at noon would have re-ingested the entire
+    market mid-session. <code>full</code> (the cron&rsquo;s mode) · <code>news</code> (the newsdesk
+    only — ingest, resolve, cluster, rank, narrate, publish; touches no price) · <code>macro</code>
+    (the macro board&rsquo;s sources only) · <code>compute</code> (recomputes indicators, scans and
+    base rates <strong>from the stored bars</strong>: it calls <em>no provider at all</em> — its
+    <code>ComputeDeps</code> type carries no fetcher, and a test enumerates its five fields — takes
+    its run date <strong>from the data rather than the clock</strong>, and publishes through a
+    dedicated <code>publish_compute</code> that never touches <code>source_status</code>, because a
+    run that called no provider knows nothing about any provider&rsquo;s health and
+    <code>publish()</code> replaces that column wholesale).</p>
+    <p><strong>And Job A SKIPS a non-session day</strong>, exiting cleanly rather than failing. The
+    cron never fires at a weekend, but it fires on every market <strong>holiday</strong> — which is a
+    weekday — so roughly nine times a year it woke on a closed market, ingested nothing, and
+    published a run dated to a session that never happened, with every gate green. A skipped run on a
+    closed market is the correct outcome, not an error: failing the workflow would send a red e-mail
+    every Thanksgiving, and an alert that cries wolf is not there on the night it is finally
+    right.</p></li>
     <li><strong>Storage split:</strong> full-market history (~5–6k symbols × 7y) as Parquet on R2,
     scanned by DuckDB inside the pipeline only; Postgres (Supabase free) holds serving tables —
     including <code>price_bar</code> (watchlist + indices × ~5y) so the app never touches R2.</li>
@@ -270,7 +296,20 @@
     <li><strong>Product:</strong> Desk (one-screen ritual: macro pulse → daily brief → US session
     calendar → movers with reason → focus watchlist → setup cards → sectors/scans → paper-portfolio
     corner) + Academy (M0–M6 curriculum, glossary, worked examples, Leitner review queue), connected
-    by doorways with return rails; drill depth capped at 3 (glance → rail/sheet → full page).</li>
+    by doorways with return rails; drill depth capped at 3 (glance → rail/sheet → full page).
+    <p><strong>Amended 2026-07-13 (NEWS-AND-CONTROL-PLAN N3/N5/N6).</strong> Three additions, all
+    shipped. <strong>The Front Page</strong> (<code>/news</code>) is the <strong>sixth tab</strong> —
+    a third room, with a Desk doorway (module 08) and a return rail. It ranks by properties of the
+    EVENT and by nothing the reader has ever done: a test enumerates <code>significance()</code>&rsquo;s
+    six inputs, so no behavioural signal can be slipped in quietly (ruling C1), and the page
+    <strong>ties</strong>, oldest-first, and says so — on a macro day, a wall of macro stories IS the
+    honest front page. <strong>The macro board</strong> on the Desk: five figures plus the
+    <strong>Mood gauge</strong>, whose five components are each a percentile of their own trailing
+    year, unweighted (a weight is an opinion, and an opinion is what this number is trying not to
+    have), and which <strong>suppresses itself and NAMES what is missing</strong> below three
+    components. <strong>The control room</strong> (<code>/settings#pipeline</code>): the reader can
+    run the pipeline by hand — and its real subject is the <strong>absence</strong> of a button,
+    because on a normal weeknight the honest control is the explanation, not a control.</p></li>
   </ul>
 
   <h3>2.2 &nbsp;Repository layout (authoritative)</h3>
@@ -279,10 +318,12 @@
 ├─ .claude/skills/&lt;skill-name&gt;/SKILL.md        # minted per §9.3 rubric
 ├─ docs/                                        # the three PDFs + docs/src (do not edit rr-*/bp-*)
 ├─ app/                                         # Next.js 16 — Vercel project root
-│  ├─ app/(desk)/…      # dashboard, ticker/[symbol], track-record, scans, settings
+│  ├─ app/(desk)/…      # desk, ticker/[symbol], track-record, scans, news, news/[cluster], settings
 │  ├─ app/(academy)/…   # academy, academy/[module]/[lesson], glossary, review, journal
 │  ├─ app/login/ · app/offline/ · app/styleguide/
 │  ├─ app/api/revalidate/route.ts               # CRON_SECRET bearer
+│  ├─ app/api/pipeline/status/route.ts          # N6 — the control room's 15s poll (cookie-authed)
+│  ├─ app/(desk)/settings/pipeline-actions.ts   # N6 — the dispatch server action → GitHub
 │  ├─ proxy.ts                                  # session-cookie gate (Next 16 middleware rename)
 │  ├─ components/ · lib/ · content/academy/ · public/
 │  ├─ prisma/schema.prisma · prisma/seed.ts
@@ -290,8 +331,13 @@
 ├─ pipeline/                                    # Python 3.12, uv-managed
 │  ├─ adapters/ (+ fixtures/) · indicators.py · scans.py · baserates.py · volbands.py
 │  ├─ briefing/ (extract.py · synthesize.py · verify.py) · publish.py · resolve.py
+│  ├─ newsdesk/        # N4/N5 — resolve · taxonomy · noise · outlets · cluster · rank · ingest · narrate · images
+│  ├─ mood.py · macro_stats.py · macro_levels.py    # N3 — the macro board + the Mood gauge
 │  ├─ jobs/ (job_a.py · job_b.py) · scripts/probe_providers.py · config.py · tests/
-└─ .github/workflows/ (nightly-a.yml · nightly-b.yml · ci.yml · migrate.yml)</pre>
+└─ .github/workflows/ (nightly-a.yml · nightly-b.yml · ci.yml · migrate.yml · record-fixtures.yml)
+   # nightly-a/b carry a `run-name:` line printing the dispatch's request_id. It is LOAD-BEARING:
+   # the dispatch API answers 204 with an EMPTY BODY, so the app RECOVERS the run id by matching
+   # that name. Delete the line and nothing fails — and the control room goes permanently blind.</pre>
 
   <h3>2.3 &nbsp;What done looks like</h3>
   <p>P6 exit = the user opens the installed PWA from their phone’s home screen — in the evening
@@ -302,6 +348,7 @@
   term on the Desk; the paper ledger computes their real cost drag; the whole thing costs
   ≈ $7–11/month and looks like nothing a component library ships by default.</p>
 </section>
+
 <!-- ================= PART 3 ================= -->
 <section class="part">
   <div class="part-head">
@@ -495,7 +542,8 @@
   <h3>3.8 &nbsp;Responsive &amp; the phone ritual</h3>
   <ul>
     <li><strong>Breakpoints:</strong> ≥1366 = one-screen Desk grid (modules 1–8 visible, rail as
-    overlay); 768–1365 = two-column stack, rail overlays; &lt;768 = <strong>the ritual column</strong>.</li>
+    overlay); 768–1365 = two-column stack, rail overlays; &lt;768 = <strong>the ritual column</strong>.
+    <p style="margin:.6rem 0 0;padding:.5rem .75rem;border-left:3px solid #6c5ce7;background:#f4f2ff;font-size:.92em"><strong>Amended 2026-07-12 — superseded by APP-FEEL-PLAN.md Part 5.</strong> <strong>The two-column spread begins at 1024, not 768</strong> (APP-FEEL-PLAN §4.1). The arithmetic: at 1024px the main column measures 1024 − 32 − 320 − 24 = 648px, which holds the Brief&rsquo;s 65ch measure comfortably; at 768px it would be 768 − 32 − 280 − 24 ≈ 432px, under the measure floor. So the 768–1023 band (exactly iPad portrait) keeps the ritual column and caps it at a 720px measure — a 990px-wide card is a stretched receipt.</p></li>
     <li><strong>Ritual column (phone / installed PWA):</strong> single column in strict order 1→8;
     each module a full-bleed band separated by 2px rules with its masthead; sticky 48px top bar
     (date · US session state · sync time); tap targets ≥ 44px; watchlist/movers rows open the
@@ -568,14 +616,18 @@
       <tr><td><code>/</code> (desk)</td><td>The one-screen Desk / phone ritual column: modules 1–8, rail host, source-status footer.</td></tr>
       <tr><td><code>/ticker/[symbol]</code></td><td>Drill level 3: full chart (candles + volume + RSI panes, vol band), signal history, relative-strength (P6+), news timeline, breadcrumb + Back to Desk.</td></tr>
       <tr><td><code>/track-record</code></td><td>Calibration chart, Brier figure, resolved log (app flags + user forecasts), banner state for underperforming families.</td></tr>
-      <tr><td><code>/scans</code></td><td>Preset list with fully visible criteria, each line glossary-linked; results table.</td></tr>
-      <tr><td><code>/settings</code></td><td>Watchlist management, install-app row, dark-mode toggle (P6), logout. (Desk route group — the group adds no URL segment.)</td></tr>
+      <tr><td><code>/scans</code></td><td>Preset <strong>index</strong>: the five recipes with fully visible criteria, each line glossary-linked, a match count and a named 3-row preview. <em>(Amended 2026-07-12.)</em></td></tr>
+      <tr><td><code>/scans/[preset]</code></td><td><strong>Added 2026-07-12 (APP-FEEL-PLAN §4.2).</strong> One preset&rsquo;s full match set as a sortable, paginated table — every match reachable to a stated 500-row cap, with the columns that restate the preset&rsquo;s own criteria. Replaces the dead &ldquo;+ N more&rdquo;.</td></tr>
+      <tr><td><code>/news</code></td><td><strong>Added 2026-07-13 (NEWS-AND-CONTROL-PLAN N5).</strong> The Front Page: a lead story, uniform rows, catalyst + sector filter chips, Today/This week, pagination, the &ldquo;moved without a story&rdquo; line, and the press-time + cadence stamps. The lead is a <strong>position, not a prize</strong> — it is whatever the ranking put first.</td></tr>
+      <tr><td><code>/news/[cluster]</code></td><td><strong>Added 2026-07-13 (NEWS-AND-CONTROL-PLAN N5).</strong> One story in full: the named and linked sources, the image, what happened, why it matters, the verified key numbers, the affected-ticker table, and the Academy doorway (rendered only where a lesson actually exists). A cluster id that does not exist &rarr; <code>notFound()</code> — which this app serves as <strong>HTTP 200 with the 404 page in the body</strong>, so no gate may use the status code as its witness (N7).</td></tr>
+      <tr><td><code>/settings</code></td><td>Watchlist management, install-app row, dark-mode toggle (P6), logout — <strong>and, since 2026-07-13 (N6), the control room</strong> (<code>#pipeline</code>): the five pipeline actions, each in exactly one of ten states, with the daily caps, the cooldowns, and the four &ldquo;not available&rdquo; sentences that are the actual feature. It is the app&rsquo;s one <strong>writer</strong> room, and therefore the one route deliberately excluded from the ISR allowlist (§4.5): a page may be cached, or written to and read back in the same click — never both. (Desk route group — the group adds no URL segment.)</td></tr>
       <tr><td><code>/academy</code> · <code>/academy/[module]</code> · <code>/academy/[module]/[lesson]</code></td><td>Curriculum map (M0–M6, soft-gate states) · module page · MDX lesson with glossary popovers and “See this live”.</td></tr>
       <tr><td><code>/academy/glossary</code> · <code>/academy/review</code> · <code>/academy/journal</code></td><td>Term index · Leitner queue (max 5/day) · journal + forecast entries with resolution states.</td></tr>
       <tr><td><code>/paper</code> (P6)</td><td>Ledger, entry form (cooling-off interstitial), cost mirror, frequency mirror.</td></tr>
       <tr><td><code>/login</code> · <code>/offline</code> · <code>/styleguide</code></td><td>Editorial login card · offline fallback (cached) · living design spec (every token/component; dev + CI only, excluded from prod nav but kept behind auth).</td></tr>
       <tr><td><code>/api/revalidate</code></td><td>POST, <code>Authorization: Bearer $CRON_SECRET</code> → <code>revalidateTag('morning')</code>.</td></tr>
       <tr><td><code>/api/morning</code></td><td>GET (cookie-authed) → the serialized <code>lib/morning.ts</code> payload; exists solely for the SW’s offline-morning cache (§5.2). Unauthed → 401 JSON, never a redirect.</td></tr>
+      <tr><td><code>/api/pipeline/status</code></td><td><strong>Added 2026-07-13 (NEWS-AND-CONTROL-PLAN N6).</strong> GET (cookie-authed) → the control room&rsquo;s poll: the live run (if any), today&rsquo;s ledger, the caps and the cooldowns. Polled every 15s while <code>/settings</code> is visible and <strong>paused on <code>visibilitychange: hidden</code></strong>, so a backgrounded PWA runs no timers. Unauthed → 401 JSON. <strong>It serves FACTS, never STATES</strong> — the row states are derived in the browser against the reader&rsquo;s clock, because a panel that grades on the server will tell a reader &ldquo;markets are open&rdquo; under a nav bar reading &ldquo;MARKET CLOSED&rdquo;. And everything it returns crosses <code>JSON.parse</code>, where a <code>Date</code> becomes a string: convert at the boundary, because an <code>as</code> cast there is a promise rather than a check, and that exact cast crashed the panel on its first poll while 572 tests stayed green.</td></tr>
     </tbody>
   </table>
 
@@ -629,13 +681,16 @@
   <h3>4.5 &nbsp;Fonts, caching, performance budgets</h3>
   <ul>
     <li>Fonts via <code>next/font</code> (self-hosted at build, same-origin, precacheable):
-    Archivo variable, Newsreader variable, IBM Plex Mono 400/500/600 — subsets latin; total budget
-    ≤ 320KB woff2. <code>display: swap</code>; fallback stacks defined in tokens.</li>
+    Archivo variable (wght + wdth), Newsreader variable (wght + italic, <em>no</em> opsz axis — see
+    the §3.2 correction of 2026-07-10), IBM Plex Mono 400/500/600 — subsets latin; total budget
+    ≤ 320KB woff2, actual 237KB, enforced by <code>app/scripts/check-font-budget.mjs</code> at every
+    phase exit. <code>display: swap</code>; fallback stacks defined in tokens.</li>
     <li>Rendering: dynamic RSC everywhere (single user; DB reads are cheap); fetches wrapped with
     <code>next: { tags: ['morning'] }</code> where applicable so the pipeline’s revalidate call is
     meaningful. No ISR complexity in v1. Two exceptions: <code>/offline</code> and
     <code>/login</code> export <code>dynamic = 'force-static'</code> so a concrete HTML asset
-    exists for the SW to precache (§5.2).</li>
+    exists for the SW to precache (§5.2).
+    <p style="margin:.6rem 0 0;padding:.5rem .75rem;border-left:3px solid #6c5ce7;background:#f4f2ff;font-size:.92em"><strong>Amended 2026-07-12 — superseded by APP-FEEL-PLAN.md Part 5.</strong> This clause was written before there was evidence, and the evidence reversed it. Measured: the eight <code>force-dynamic</code> rooms answered in 382–1237ms with a frozen screen, while the app&rsquo;s own cached routes answered in 51–67ms. <strong>Every read route is now ISR (<code>revalidate = 600</code>) with on-demand revalidation</strong> — the nightly publish and every user write bust the paths they change. The route-transition promise (&ldquo;render server-fresh without spinners&rdquo;) is replaced by the skeleton contract: every room has a <code>loading.tsx</code>, and a figure slot loads as a still em-dash, never a shimmer (ruling M4). Authenticated production TTFB after the change: 48–77ms across every room.</p></li>
     <li><strong>Budgets (enforced at each phase exit):</strong> first-load JS on <code>/</code>
     ≤ 200KB gz (charts and Recharts lazy-loaded per module via <code>next/dynamic</code>); LCP
     ≤ 2.5s on Moto-G-class 4G (Lighthouse mobile); CLS &lt; 0.05 (reserve chart heights); route
@@ -798,6 +853,7 @@ shortcuts: [{name:"Track record", url:"/track-record"}, {name:"Review queue", ur
 5  Anti-drift checklist (§3.10) against fresh screenshots
 6  Update PROGRESS.md · append DECISIONS/LESSONS · git tag phase-N · push</pre>
 </section>
+
 <!-- ================= PART 7 ================= -->
 <section class="part">
   <div class="part-head">
@@ -972,6 +1028,7 @@ shortcuts: [{name:"Track record", url:"/track-record"}, {name:"Review queue", ur
   drill exercised once for real; publish confirmed atomic under a mid-publish request; the brief
   reads correctly on the phone ritual column and offline.</p>
 </section>
+
 <!-- ================= PART 8 ================= -->
 <section class="part">
   <div class="part-head">
@@ -1203,6 +1260,7 @@ END:   update PROGRESS.md (checkpoint, next-3) · append DECISIONS/LESSONS/PATTE
     diverging from the printed contract.</li>
   </ol>
 </section>
+
 <!-- ================= PART 11 — APPENDICES ================= -->
 <section class="part">
   <div class="part-head">

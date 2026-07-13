@@ -80,6 +80,21 @@ contains it. Background and border hover feedback only. A jsdom test walks up fr
 → The word goes in the chip. Colour is the redundant channel, never the primary one. A hit and
 a miss render at the same size and the same weight; only the hue differs.
 
+**Does EVERY number on this surface state its WINDOW?** *(Added N7, 2026-07-13 — plan §5.2.)*
+→ A number with no window is a claim with no scope, and the reader supplies the missing scope
+themselves — usually the wrong one. "+2.1%" is meaningless until it says *today*, *5D*, *wk of
+Jul 9*, *YoY*. The window vocabulary is a CLOSED set (`copy.window.*`) and metric-label keys
+compose from it; a deck test fails any metric key whose string carries no window token, and every
+DataTable column map ships a test asserting its headers do too. The one exception: a number whose
+window genuinely IS the surface's as-of (a price at last close) rides the shared as-of stamp the
+module masthead already prints, plus the word that names it — and repeats nothing.
+
+A grep cannot see a missing window on an arbitrary JSX number. **This checklist is the guard**, so
+run it, and mind the neighbouring trap: a window must be counted in the unit its SOURCE publishes
+in. Gold ages in SESSIONS (a Friday price is zero sessions old on Monday, and a calendar-day rule
+would cry "stale" every Monday of the year); the rupee ages in CALENDAR DAYS, because Nepal Rastra
+Bank publishes at weekends too. Same ladder, different clocks.
+
 **Is it empty?**
 → An empty state is information, not an apology. "No moves cleared the catalyst-or-noise bar
 today" is the product working. Write the sentence into `copy.ts` and render it like it means

@@ -257,7 +257,28 @@
     synthesis call → deterministic verification gate → single-transaction publish → revalidate →
     dead-man ping. Briefing ready ~8:40pm EDT / ~7:40pm EST (worst ~10 min later); promise 9:00pm
     ET year-round — the crons are UTC-fixed, so DST shifts the user’s wall clock, never the
-    schedule.</li>
+    schedule.
+    <p><strong>Amended 2026-07-13 (NEWS-AND-CONTROL-PLAN N4/N6).</strong> Job A is no longer one
+    thing. It runs in <strong>four modes</strong>, pinned in the <code>MODE_STAGES</code> constant
+    (<code>pipeline/jobs/job_a.py</code>), and <code>main()</code> <strong>refuses any mode it has no
+    handler for</strong> — before that guard an unrecognised mode fell through to the full nightly,
+    so a &ldquo;refresh the news&rdquo; button pressed at noon would have re-ingested the entire
+    market mid-session. <code>full</code> (the cron&rsquo;s mode) · <code>news</code> (the newsdesk
+    only — ingest, resolve, cluster, rank, narrate, publish; touches no price) · <code>macro</code>
+    (the macro board&rsquo;s sources only) · <code>compute</code> (recomputes indicators, scans and
+    base rates <strong>from the stored bars</strong>: it calls <em>no provider at all</em> — its
+    <code>ComputeDeps</code> type carries no fetcher, and a test enumerates its five fields — takes
+    its run date <strong>from the data rather than the clock</strong>, and publishes through a
+    dedicated <code>publish_compute</code> that never touches <code>source_status</code>, because a
+    run that called no provider knows nothing about any provider&rsquo;s health and
+    <code>publish()</code> replaces that column wholesale).</p>
+    <p><strong>And Job A SKIPS a non-session day</strong>, exiting cleanly rather than failing. The
+    cron never fires at a weekend, but it fires on every market <strong>holiday</strong> — which is a
+    weekday — so roughly nine times a year it woke on a closed market, ingested nothing, and
+    published a run dated to a session that never happened, with every gate green. A skipped run on a
+    closed market is the correct outcome, not an error: failing the workflow would send a red e-mail
+    every Thanksgiving, and an alert that cries wolf is not there on the night it is finally
+    right.</p></li>
     <li><strong>Storage split:</strong> full-market history (~5–6k symbols × 7y) as Parquet on R2,
     scanned by DuckDB inside the pipeline only; Postgres (Supabase free) holds serving tables —
     including <code>price_bar</code> (watchlist + indices × ~5y) so the app never touches R2.</li>
@@ -270,7 +291,20 @@
     <li><strong>Product:</strong> Desk (one-screen ritual: macro pulse → daily brief → US session
     calendar → movers with reason → focus watchlist → setup cards → sectors/scans → paper-portfolio
     corner) + Academy (M0–M6 curriculum, glossary, worked examples, Leitner review queue), connected
-    by doorways with return rails; drill depth capped at 3 (glance → rail/sheet → full page).</li>
+    by doorways with return rails; drill depth capped at 3 (glance → rail/sheet → full page).
+    <p><strong>Amended 2026-07-13 (NEWS-AND-CONTROL-PLAN N3/N5/N6).</strong> Three additions, all
+    shipped. <strong>The Front Page</strong> (<code>/news</code>) is the <strong>sixth tab</strong> —
+    a third room, with a Desk doorway (module 08) and a return rail. It ranks by properties of the
+    EVENT and by nothing the reader has ever done: a test enumerates <code>significance()</code>&rsquo;s
+    six inputs, so no behavioural signal can be slipped in quietly (ruling C1), and the page
+    <strong>ties</strong>, oldest-first, and says so — on a macro day, a wall of macro stories IS the
+    honest front page. <strong>The macro board</strong> on the Desk: five figures plus the
+    <strong>Mood gauge</strong>, whose five components are each a percentile of their own trailing
+    year, unweighted (a weight is an opinion, and an opinion is what this number is trying not to
+    have), and which <strong>suppresses itself and NAMES what is missing</strong> below three
+    components. <strong>The control room</strong> (<code>/settings#pipeline</code>): the reader can
+    run the pipeline by hand — and its real subject is the <strong>absence</strong> of a button,
+    because on a normal weeknight the honest control is the explanation, not a control.</p></li>
   </ul>
 
   <h3>2.2 &nbsp;Repository layout (authoritative)</h3>
@@ -279,10 +313,12 @@
 ├─ .claude/skills/&lt;skill-name&gt;/SKILL.md        # minted per §9.3 rubric
 ├─ docs/                                        # the three PDFs + docs/src (do not edit rr-*/bp-*)
 ├─ app/                                         # Next.js 16 — Vercel project root
-│  ├─ app/(desk)/…      # dashboard, ticker/[symbol], track-record, scans, settings
+│  ├─ app/(desk)/…      # desk, ticker/[symbol], track-record, scans, news, news/[cluster], settings
 │  ├─ app/(academy)/…   # academy, academy/[module]/[lesson], glossary, review, journal
 │  ├─ app/login/ · app/offline/ · app/styleguide/
 │  ├─ app/api/revalidate/route.ts               # CRON_SECRET bearer
+│  ├─ app/api/pipeline/status/route.ts          # N6 — the control room's 15s poll (cookie-authed)
+│  ├─ app/(desk)/settings/pipeline-actions.ts   # N6 — the dispatch server action → GitHub
 │  ├─ proxy.ts                                  # session-cookie gate (Next 16 middleware rename)
 │  ├─ components/ · lib/ · content/academy/ · public/
 │  ├─ prisma/schema.prisma · prisma/seed.ts
@@ -290,8 +326,13 @@
 ├─ pipeline/                                    # Python 3.12, uv-managed
 │  ├─ adapters/ (+ fixtures/) · indicators.py · scans.py · baserates.py · volbands.py
 │  ├─ briefing/ (extract.py · synthesize.py · verify.py) · publish.py · resolve.py
+│  ├─ newsdesk/        # N4/N5 — resolve · taxonomy · noise · outlets · cluster · rank · ingest · narrate · images
+│  ├─ mood.py · macro_stats.py · macro_levels.py    # N3 — the macro board + the Mood gauge
 │  ├─ jobs/ (job_a.py · job_b.py) · scripts/probe_providers.py · config.py · tests/
-└─ .github/workflows/ (nightly-a.yml · nightly-b.yml · ci.yml · migrate.yml)</pre>
+└─ .github/workflows/ (nightly-a.yml · nightly-b.yml · ci.yml · migrate.yml · record-fixtures.yml)
+   # nightly-a/b carry a `run-name:` line printing the dispatch's request_id. It is LOAD-BEARING:
+   # the dispatch API answers 204 with an EMPTY BODY, so the app RECOVERS the run id by matching
+   # that name. Delete the line and nothing fails — and the control room goes permanently blind.</pre>
 
   <h3>2.3 &nbsp;What done looks like</h3>
   <p>P6 exit = the user opens the installed PWA from their phone’s home screen — in the evening
