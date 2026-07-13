@@ -113,6 +113,9 @@ Found the same way the last three VRT bugs were found: **by opening the PNG and 
   rebaseline landed WITH the hard 200KB ceiling the plan always specified and nothing had ever
   enforced. Worst route: /paper at 194.7KB.
 
+**`nc-2` is tagged at `7642af6` and its CI is GREEN — all three jobs, including the pixel oracle
+(311 e2e passed, all 55 VRT baselines matched).**
+
 **Counts at nc-2:** 472 app tests · 240 pipeline tests · 19 drift rules · 55 VRT baselines
 (46 + 9 new at `wide`) · B1 10/11 cached · B4 under the ceiling · migrations current.
 

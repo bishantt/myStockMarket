@@ -26,7 +26,7 @@ assumption made and marked.
 1. Run the CLAUDE.md session ritual: git pull → read CLAUDE.md + PROGRESS.md + LESSONS.md → diff
    DECISIONS.md for any non-[claude] line (user veto, rank 2.5 — honor it FIRST) → run both test
    suites → announce your checkpoint.
-2. Confirm the `nc-2` tag's CI is green (`gh run list`). If the pixel oracle (the e2e + VRT job) is
+2. (nc-2's CI is ALREADY GREEN — confirmed at tag `7642af6`. Skip straight to N3.) If you ever see
    red, the diagnosis is almost certainly in the VRT clock pin — see "Standing hazards" in PROGRESS.md.
    **Do NOT loosen the pixel tolerance to make it green.** That guard has now found four real bugs.
 3. Then execute **N3 — the macro board** (plan Part 6): the four fetchers (30-yr mortgage, CPI YoY,
@@ -86,4 +86,5 @@ assumption made and marked.
 executed, every [VETO?] carrying its assumption marker, and a closing PROGRESS.md entry written for
 the user to read.
 
-Begin: run the session ritual, confirm nc-2's CI, then execute N3 and stop.
+Begin: run the session ritual, then execute N3 and stop. (nc-2's CI is already confirmed GREEN — all
+three jobs, 311 e2e passed, all 55 VRT baselines matched. You do not need to re-verify it.)
