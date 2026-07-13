@@ -130,6 +130,7 @@ logs the flip in PROGRESS.md.
 | P-2 | **A fine-grained GitHub PAT** with `actions: read+write` on this one repo (nothing else), for dispatching and polling workflow runs from the app. | Vercel env: `GH_DISPATCH_TOKEN`, `GH_REPO` (e.g. `bishantt/myStockMarket`). | N6 (control room live) | The control room renders with the dispatch button in its "not configured" state, which states plainly that the token is absent — every other state is e2e-tested against a mocked GitHub API. |
 | P-3 | **`ANTHROPIC_API_KEY` wired into the two nightly workflow env blocks.** The secret already exists in GitHub (Appendix D of the development plan); the workflows simply do not pass it to the jobs, so every LLM stage silently skips in production today. N4 adds the env lines; you only need to confirm the secret is present and funded (the console spend cap you set at Session-0 still governs). | `.github/workflows/nightly-a.yml` + `nightly-b.yml` env blocks (a code change, in N4). | N4 (live extraction) | Extraction tests run on scripted fakes as they do today; the recorded fixture night drives the UI. |
 | P-4 | *(only if N4's measured call budget demands it)* a paid Marketaux tier. Part 7.3 budgets the nightly ingest inside the free tier first; the gate prints the real nightly call count before any upgrade is even proposed. | — | — | Free-tier budget per Part 7.3. |
+| P-5 | **A GoldAPI key** (goldapi.io — free tier, no card; their marketing says ~500 requests/month and the build verifies the real limit at signup; one nightly call uses ~30/month). It is the one legitimately licensable free gold reference found (Appendix A row 3 records the search: FRED's gold series are deleted, LBMA is license-walled, Stooq's keyless CSV is dead, exchange-data scrapers are gray). | GH secret: `GOLDAPI_KEY`. | N3 (gold cell live) | The gold cell renders its honest "not yet reported" state (C7 rung 4). |
 
 ---
 
@@ -275,10 +276,10 @@ rendered, and a unit test feeds it a degraded mix and asserts the line changes w
 copy deck supplies fragments; the composition is code.
 
 **C7 · Staleness is data, not absence.** When a macro stat's source fails, the board renders
-the last stored value WITH its age ("4.54% · as of Jul 9 — source unreachable tonight",
-amber only at the module level per P11's reservation rules — the alert color budget for this
-is defined in Part 6.8), never a blank, never a silently frozen number pretending to be
-fresh. A stat with NO stored history yet renders the em-dash and the sentence that says the
+the last stored value WITH its age ("4.54% · as of Jul 9 — source unreachable tonight";
+alert color only at the thresholds Part 6.4 rung 5 and Part 4.1 define, as sanctioned
+additions to P11's consumer list), never a blank, never a silently frozen number pretending
+to be fresh. A stat with NO stored history yet renders the em-dash and the sentence that says the
 source has not reported. Guard: unit tests per degradation rung; the seeded VRT set includes
 a degraded board.
 
@@ -328,11 +329,24 @@ phase, first after the instruments, exactly as R0 was for the redesign.*
    the proxy path remains only for slots that have NEVER had an index level (small caps) or
    whose staleness exceeds 5 sessions (at which point a dated level is worse than an honest
    proxy; constant in `pipeline/config.py`, tested at both boundaries).
-3. **Verification of the heal.** N1's gate includes a production check (read-only SQL via the
-   session pooler or the app's own rendered page) confirming `market_context` carries index
-   levels after the first post-N1 nightly run, and the screenshot state of 1.1 cannot recur:
-   the seeded e2e includes the "levels missing entirely" variant asserting the degradation
-   notice renders.
+3. **The posting-time trap, closed.** Verified against FRED's own update stamps (Appendix
+   A): the index series post their closes AFTER both nightly jobs run — DJIA ~6:03pm ET,
+   SP500 ~8:01pm ET, the Nasdaq series ~11:38pm ET, vs Job A at 6:37pm and Job B at 8:25pm.
+   So a Job-A-time fetch structurally serves levels one session older than everything else
+   on the Desk by the time the user reads it the next morning. Two-part fix: (a) the
+   per-slot `index_levels_as_of` age display (item 2) makes whatever is shown honest
+   tonight; (b) `nightly-a.yml` gains a second cron — `0 10 * * 2-6` (6:00am EDT / 5:00am
+   EST, after even the Nasdaq post) — that runs the pipeline in `macro` mode (the Part 8.2
+   mode machinery, whose pipeline half lands in N4; until then, N1 adds the cron entry
+   with a stage-list branch limited to the macro read + publish + revalidate). Result: by
+   the pre-open coffee read, every index level is the actual prior close. The workflow
+   branches mode on schedule time (a `github.event.schedule` check — unit-tested in the
+   job's argv parsing, since workflow YAML itself is untestable).
+4. **Verification of the heal.** N1's gate includes a production check (read-only SQL via
+   the session pooler or the app's own rendered page) confirming `market_context` carries
+   index levels after the first post-N1 morning run, and the screenshot state of 1.1
+   cannot recur: the seeded e2e includes the "levels missing entirely" variant asserting
+   the degradation notice renders.
 
 ### 3.2 One label per row (the grammar)
 
@@ -376,10 +390,11 @@ in that order at every width, integrated with the Part 6 additions:
 
 - **Hero (unchanged position):** S&P 500 index level — the one hero figure, delta chip with
   window.
-- **Row 1 — the risk pair (phone shelf order 1–2, desktop first row):** VIX (labeled "VIX ·
-  fear gauge" via its existing glossary term, value + 1D delta + its percentile note per
-  Part 6.5) and the 10-year yield (value + 1D delta). These carry information the hero does
-  not.
+- **Row 1 — the risk pair (phone shelf order 1–2, desktop first row):** VIX (its existing
+  label and glossary underline, value + 1D delta) and the 10-year yield (value + 1D
+  delta). These carry information the hero does not. (VIX's percentile context lives in
+  ONE place — the Mood gauge's component table — not duplicated here where it would
+  drift.)
 - **Row 2 — the tape echoes:** Nasdaq Composite, Dow, Small caps (IWM chip grammar). On the
   phone shelf these ride after the risk pair (F5's order, kept and now reasoned in the same
   breath as the additions).
@@ -489,7 +504,7 @@ at `wide:` (gutters 32px). The 4px grid, card padding, and 24px module gap are u
 | `/track-record` | stat summary as a 5-up StatFigure row; forecasts card 5/12 beside the resolved-log table 7/12 at `desk:`; table full-width at `lg:`. |
 | `/ticker/[symbol]` | chart 8/12 + (stats stack: last close, RangeControl, provenance) 4/12; Range Ladder full-width below. |
 | `/academy` | module cards 2-up ≥lg (exists per F6), 3-up at `wide:`. |
-| `/news` (new) | Part 7.7's own map (feed 8/12 + filter/context rail 4/12 at `desk:`). |
+| `/news` (new) | Part 7.7's own map (feed 8/12 + context rail 4/12, ≥lg; rail widens with the container at `desk:`). |
 | `/settings` | cards 2-up ≥lg. |
 
 Implementation is per-room Tailwind grid classes (the app deliberately has no layout
@@ -632,17 +647,26 @@ freshness and thrash). Per-stat spec:
    quote). Monthly, released mid-month for the prior month. Display: `2.7% · Jun 2026` with
    delta vs prior month's YoY in the title, not a chip (a delta-of-a-rate chip invites
    misreading; the label IS the number's context here).
-3. **Gold, per troy ounce (USD)** — source per Appendix A's verification (FRED's LBMA series
-   are discontinued; the honest free path is the one Appendix A row records, labeled
-   exactly as what it is — a reference price, its venue named, never "spot" if the source
-   is a futures settle). Daily. Display: `$X,XXX · {venue} reference · 1D delta`.
-4. **USD → Nepalese rupee** — Nepal Rastra Bank's published reference rate (the official
-   source; endpoint and shape per Appendix A), daily. Display: `रु 1 USD = NPR 139.42 ·
-   NRB reference` with the mandatory qualifier as the second line: `Remittance apps may
-   differ.` We do NOT quote any remittance app: no legitimate rate API for TapTap/Remitly
-   exists (Appendix A records the check), and a fabricated app rate is exactly the lie the
-   commission forbids. Fallback source: the open mid-market rate feed named in Appendix A,
-   labeled `mid-market reference` when in use (C6 — the label follows the actual source).
+3. **Gold, per troy ounce (USD)** — GoldAPI (goldapi.io, key per P-5; XAU/USD). FRED
+   carries NO market gold price (the LBMA/IBA series were deleted January 2022 — verified,
+   Appendix A), LBMA itself is license-walled, and the keyless CSV routes died in early
+   2026 — the search is recorded so nobody repeats it. Daily (one call, after the US
+   close). Display: `$4,085 / oz · 1D delta`, provenance `indicative spot reference ·
+   GoldAPI` — never "LBMA price", never "COMEX settlement": those are licensed benchmarks
+   we do not have, and the label may not borrow their authority (C6).
+4. **USD → Nepalese rupee** — Nepal Rastra Bank's official published rates (endpoint
+   verified live, shape in Appendix A; published daily ~00:00 Nepal time, weekends
+   included). NRB publishes buy AND sell; the cell shows the pair — `NPR 151.66 buy ·
+   152.26 sell` — because picking one side silently answers a question the reader didn't
+   ask; provenance `NRB official reference`. The mandatory qualifier is the second line:
+   `Remittance apps may differ.` We do NOT quote any remittance app: none exposes a
+   legitimate rate API (TapTap and Remitly have none; Wise's rates endpoint is
+   affiliate-only — Appendix A records the checks), and a fabricated app rate is exactly
+   the lie the commission forbids. Fallback source when NRB is unreachable: open.er-api.com
+   mid-market (verified, daily, no key), labeled `mid-market reference` PLUS its
+   contractually required attribution line ("Rates By Exchange Rate API", linked) — the
+   two sources measure different things and the label always names which one is on screen
+   (C6).
 5. **The Mood gauge (ours)** — Part 6.5.
 
 ### 6.3 Cadence, caching, and the app side
@@ -674,14 +698,20 @@ crypto-only scope of alternative.me's. The commission pre-authorized the fallbac
 possession; constants in `pipeline/config.py`, changing them is structural):**
 
 - Components, each scored as a percentile of its own trailing 252-session history (the
-  gauge's own stored history once it accumulates; the Parquet lake + `market_context`
-  history bootstrap the first year):
+  gauge's own stored history once it accumulates; the Parquet lake, `market_context`
+  history, and the FRED series' own history bootstrap the first year):
   1. **Breadth** — % of universe above its 50-day average (higher → greedier).
   2. **Volatility** — VIX level, inverted (higher VIX → more fearful).
   3. **Momentum** — S&P 500 level vs its own 125-session mean (from the FRED SP500 series
-     history), signed distance (higher → greedier).
+     history; its 10-year rolling window more than covers the lookback), signed distance
+     (higher → greedier).
   4. **Range position** — share of universe within 5% of its 252-day high minus share
      within 5% of its 252-day low (higher → greedier).
+  5. **Credit stress** — the ICE BofA US High Yield option-adjusted spread (FRED
+     `BAMLH0A0HYM2` — verified still live on FRED: the January 2022 purge removed ICE
+     *Benchmark Administration* series, not the ICE BofA index family; the build
+     re-verifies and records fixtures before relying on it), inverted (wider spreads →
+     more fearful).
 - Score = the unweighted mean of available component percentiles, 0–100, rendered with its
   word band: 0–24 `fearful` · 25–44 `leaning fearful` · 45–55 `mixed` · 56–75 `leaning
   greedy` · 76–100 `greedy`. The words are deliberately flat (mechanical voice — no
@@ -753,6 +783,16 @@ moves are noise. The section's failure mode — the thing it must never become �
 thing it replaces: a salience feed. That is what C1, C4, C9, C10 and the significance
 formula are for. If those rules ever feel like they are fighting the section, the section
 is drifting, and the rules win.
+
+**A note on the commissioned reference images.** The commission points at mobile-app
+reference screenshots "in the reference folder." At authoring time the repo's only
+reference material was the redesign's own Figma export (`FigmaDesignRef/`), whose one
+screenshot carries the relevant language anyway — image-led cards, category filter chips,
+dense mobile composition, and a "Top Movers" rail that is precisely the content model this
+plan rejects. The news-app screenshots the commission describes ("Top Gainers Today" /
+"Top Losers Today") were not in the tree. N5 opens by checking the folder again; if the
+user has added them, study them for visual grammar under the same standing rule — take the
+language, reject the leaderboard. Nothing below depends on their presence. [FYI logged.]
 
 ### 7.2 Information architecture
 
@@ -1038,8 +1078,8 @@ states the queue position instead of pretending parallelism).
 ### 8.3 The request ledger: `manual_run` (✎ app-writable — it IS user state)
 
 Appendix C DDL: id, requestedAt, workflow, mode, ghRunId?, status (`requested | queued |
-running | succeeded | failed | not_applicable | not_configured`), reason? (the
-not-applicable explanation shown), finishedAt?. It is the cooldown source (8.4), the audit
+running | succeeded | failed` — the not-applicable and not-configured cases are UI states
+of the panel, never stored rows: nothing was requested), reason?, finishedAt?. It is the cooldown source (8.4), the audit
 trail ("what did I run and when"), and the panel's history list (last 10). The pipeline
 never reads it — dispatch inputs carry everything the job needs.
 
@@ -1051,10 +1091,10 @@ never reads it — dispatch inputs carry everything the job needs.
   GitHub's semantics — the panel therefore refuses a second dispatch while one is pending
   (state, not error).
 - **Cooldowns/caps (per mode, enforced app-side from `manual_run`, stated in the UI):**
-  `macro` 30-min cooldown, 6/day · `news` 2/day (provider budget: each news run spends
-  ~20 Marketaux requests of the 100/day — two manual + one nightly = 60, safe) · `compute`
-  2/day · `full` 1/day · `briefing` 2/day. The cap line renders under each button
-  ("2 of 2 left today").
+  `macro` 30-min cooldown, 6/day · `news` 2/day (provider arithmetic: each news run spends
+  ~20 of Marketaux's 100 daily requests, so nightly + two manual runs = ~60 in any 24h
+  window — headroom stated, not assumed) · `compute` 2/day · `full` 1/day · `briefing`
+  2/day. The cap line renders under each button ("2 of 2 left today").
 - **Cost ceilings, stated where they bind:** a `news` run spends ~$0.10–0.20 of LLM budget
   (batch Haiku + one Sonnet call — Appendix A pricing math); the panel prints it
   (`~$0.15 of API budget`) so the cost is a stated fact, not a hidden one. GitHub minutes:
@@ -1396,7 +1436,98 @@ MANUAL check), suspended-webview timers (visibility-gated polling).
 
 ## Appendix A — The macro source table (verified 2026-07-12)
 
-<!-- APPENDIX-A-PENDING: filled from live source verification before delivery -->
+*Every row was verified on 2026-07-12: endpoints fetched live where possible, licensing
+pages read (FRED's site blocks non-browser clients, so its pages were read through a
+rendering proxy — the quoted text is FRED's own). Posting times are one night's observation
+(Fri Jul 10) — typical, not contractual; N3 re-observes for a week before hard-coding any
+assumption tighter than "latest available observation + its date." The build re-verifies
+each row's endpoint before first use (fixture-first per the adapter skill).*
+
+### A.1 Index levels & rates (FRED — existing adapter, new series)
+
+| Series | What | Cadence & observed posting | History | Notes that bind us |
+|---|---|---|---|---|
+| `SP500` | S&P 500 close | daily; posted same evening (~8:01pm ET observed) | rolling 10-year window | S&P copyright notice: "Reproduction … prohibited except with prior written permission." Single-user, login-walled display via the FRED API with notices intact is the low-risk posture; never re-serve the series publicly. FRED API attribution line required app-wide (already rendered in the sources footer). |
+| `DJIA` | Dow close | daily; ~6:03pm ET observed | rolling 10-year window | same S&P DJI notice |
+| `NASDAQCOM` | Nasdaq Composite close | daily; **~11:38pm ET observed — after BOTH nightly jobs**; the 6:00am ET macro-mode cron (Part 3.1.3) is what makes the morning read current | full history (1971→) | Nasdaq copyright notice, no reproduction clause |
+| `NASDAQ100` | Nasdaq-100 close | same as NASDAQCOM | full history (1986→) | exists and is live — recorded here because the proxy chip explains QQQ against the 100; we display the Composite |
+| `VIXCLS` | VIX close | daily; posts the NEXT business morning (~9:38am ET observed) — the morning cron catches it | 1990→ | Cboe copyright "Reprinted with permission" (FRED's permission, which is why we read it via FRED) |
+| `DGS10` | 10-yr Treasury constant maturity | daily; posts next business day ~4:16pm ET carrying the prior day (H.15 pattern, confirmed) | 1962→ | public-domain US Treasury data |
+| `MORTGAGE30US` | 30-yr fixed mortgage avg (Freddie Mac PMMS) | weekly, week ending Thursday; posts Thursday ~12:02pm ET | 1971→ | display "wk of {Thu}" |
+| `CPIAUCNS` + `units=pc1` | CPI all items, NSA, % change from year ago — **FRED computes the YoY; we store what it publishes** | monthly; BLS releases 8:30am ET mid-month for the prior month (Jun data → Jul 14); FRED updates ~50 min later | 1913→ | NSA is the series headlines quote (BLS's own release text confirms); SA (`CPIAUCSL`) would read a few tenths off every headline |
+| `BAMLH0A0HYM2` | ICE BofA US High Yield OAS (Mood gauge input) | daily, ~1 business-day lag | 1996→ | verified distinct from the deleted ICE-IBA family; re-verify + fixture at N3 |
+
+### A.2 Russell 2000 — the recorded dead end
+
+FRED deleted all 36 FTSE Russell series on 2019-10-04 (announcement still served in the
+old series' place; the Wilshire family followed 2024-06-03). Verified alternatives, each
+rejected: **Cboe's delayed-quote JSON** works technically and its site terms prohibit
+automated extraction in bold capitals — knowingly violating stated terms is not this app;
+**Stooq's** keyless CSV endpoints are dead (~Mar 2026 API-key regime) and its upstream
+index license is unstated even with a key; **Yahoo's** ToS bans automated collection
+outright; **FTSE Russell/LSEG** publishes only quarterly month-end spreadsheets free.
+Conclusion (unchanged from R0, now with the search recorded): the small-caps slot renders
+IWM's own price with the one-chip proxy grammar of Part 3.2, labeled as an ETF price,
+never as the Russell 2000 level.
+
+### A.3 Gold
+
+FRED carries no market gold price (LBMA/IBA series deleted 2022-01-31 — announcement
+verified; the gold tag now holds only volatility/PPI/book-value series). LBMA itself
+requires an IBA license. metals-api has no free tier (cheapest $19.99/mo). Stooq's XAUUSD
+CSV is dead. Exchange-data scrapers of COMEX are unlicensed redistribution. **Chosen:
+GoldAPI (goldapi.io)** — keyed free tier (marketing says ~500 req/mo; VERIFY AT SIGNUP —
+flagged), XAU/USD JSON, one call nightly ≈ 30/mo. Label exactly: `indicative spot
+reference · GoldAPI` — never "LBMA price", never "COMEX settlement" (licensed benchmark
+names we may not borrow). Keyless fallback services exist (gold-api.com answered live) but
+carry undisclosed provenance — rejected in favor of C7's honest aging when GoldAPI is
+down.
+
+### A.4 USD → NPR
+
+**Primary: Nepal Rastra Bank** — official documented public API, verified live.
+`GET https://www.nrb.org.np/api/forex/v1/rates?page=1&per_page=5&from={Y-m-d}&to={Y-m-d}`
+(all four params required; structured 400 on omission). Response:
+`data.payload[].rates[]` with `currency.iso3/unit`, `buy`, `sell` as STRINGS; USD unit=1
+(INR is per-100 — the parser must respect `unit`). Published every calendar day ~00:00
+Nepal time (UTC+5:45), set the prior business afternoon; **weekends repeat Friday's fix**
+(observed Sat+Sun rows). No published ToU — it is the central bank's own developer API.
+Display per Part 6.2.4 (buy/sell pair, `NRB official reference`, weekend note as title).
+**Fallback: open.er-api.com** `GET /v6/latest/USD` → `rates.NPR`, verified live, daily
+updates incl. weekends, no key; free-tier terms REQUIRE the visible attribution link
+"Rates By Exchange Rate API" (rendered whenever this source is live — the copy key
+exists) and allow caching. Rejected: frankfurter (no NPR — ECB list), exchangerate.host
+(key-walled now), remittance-app rates (Remitly/TapTap have no public APIs; Wise's
+`/v1/rates` is affiliate-credential-only — verified in their docs). The two sources
+measure different things (official reference vs market mid) and the label always names
+which is rendering (C6).
+
+### A.5 Fear & Greed (the licensing record behind 0.2.2 and Part 6.5–6.6)
+
+CNN: no API or licensing program exists in its ToS ("personal use only … no copying,
+redistribution, retransmission, publication or commercial exploitation"); the known
+`production.dataviz.cnn.io` endpoint answered our probe with HTTP 418 — an internal,
+bot-blocked chart feed, not an offering; RapidAPI resellers of it are unlicensed scrapers
+(paying a scraper launders nothing). alternative.me's index: crypto-only by its own
+methodology (BTC volatility/momentum/social/dominance). AAII sentiment: weekly, free to
+view, no reuse grant, site bot-blocked. Cboe put/call page: same automated-extraction
+prohibition as A.2. NAAIM Exposure Index: goes subscription-only 2026-08-01 — a feed
+about to be paywalled is a dependency about to break. **Conclusion: build ours (Part
+6.5), from inputs we already hold legitimately, formula on-surface, never CNN's name.**
+
+### A.6 News, images, infrastructure (the Part 7/8 numbers)
+
+| Fact | Verified value |
+|---|---|
+| Finnhub free tier | 60 calls/min (+30/s platform cap, 429 on excess); company-news lookback 1 year; `/news` categories general/forex/crypto/merger; fields include `image`, `source`, `datetime`, `related`, `category` — `image` is often an empty string (fallback ladder exists for this) |
+| Finnhub terms | personal use; no redistribution to third parties — single-user login-walled display fits |
+| Marketaux free tier | 100 requests/day, **3 articles/request**; fields include `image_url`, `source` (domain), `published_at`, `entities[]` with `industry`/`match_score`/`sentiment_score`, `similar[]`; `industries`/`countries`/`filter_entities` params confirmed. Display/caching terms page 404s — flagged unknown; nothing in docs restricts display |
+| og:image practice | 1200×630 (1.91:1) de-facto standard; tags near-universal on news articles (they exist FOR link previews); fetch etiquette per messenger precedent (identified UA, robots.txt honored, one fetch, cache) — Slack/Discord/iMessage all do exactly this server-side; *Perfect 10 v. Amazon* covers pointer-size thumbnails; datacenter-IP bot walls are the real failure mode → the ladder's L3/L4 exist for it |
+| R2 | free tier 10GB storage / 1M writes / 10M reads monthly, **zero egress**; S3 API endpoint `https://{account}.r2.cloudflarestorage.com`, region `auto`, boto3 documented; `r2.dev` is rate-limited/dev-labeled (no published number) with no CDN cache — mitigated by Vercel's image cache being the only origin client; custom domain (requires a zone on the Cloudflare account) puts Cloudflare's cache in front — P-1 asks which exists |
+| Vercel image optimization | current model: transformations (Hobby 5k/mo) + cache reads/writes; billed on MISS/STALE only; `minimumCacheTTL` default is 4h — the plan sets 31 days on immutable hashed variants; budget math: ~1.8k new images/mo × ~2 rendered sizes ≈ 3.6k of 5k — if the probe shows breach, the pre-sized variants serve as plain `<img>`+`srcset` (both paths cheap because the pipeline pre-sizes) |
+| GitHub dispatch | `POST …/workflows/{file}/dispatches` with `return_run_details: true` → **200 with `workflow_run_id`** (verified in current docs; 204 without it); fine-grained PAT needs Actions read+write on this repo; concurrency `cancel-in-progress: false` queues a manual run as pending behind an in-flight one (latest-queued survives); rate limits are orders of magnitude above a few dispatches/day |
+| GitHub minutes | private-repo free tier 2,000 min/mo; nightly ≈ 250–330 min/mo + manual caps worst-case ≈ 60–90 min/day never sustained — headroom recorded, and the gate prints actual usage once during N6 |
+| Anthropic (verified pricing page) | Haiku 4.5 $1/$5 per MTok, batch −50% → the nightly news extraction (~60 items ≈ 68k in/19.5k out) ≈ **$0.08/night batch**; the Stage-B-mini Sonnet call ≈ $0.02–0.05; incremental worst case with manual re-runs ≈ **$6/mo**, inside the existing ~$15 console cap. Note: Sonnet 5 batch $1/$5 through 2026-08-31, then $1.50/$7.50 — the models stay pinned in env per the standing convention |
 
 ## Appendix B — `copy.ts` additions (mechanical voice; exact strings)
 
@@ -1427,7 +1558,11 @@ copy.macroBoard = {
   nprLabel: "USD → NPR", nprQualifier: "Remittance apps may differ.",
   nprSourceNrb: "NRB reference", nprSourceMid: "mid-market reference",
   moodLabel: "Mood gauge",
-  moodOwnership: "Computed by this app from breadth, volatility, momentum, and range position — not CNN's index.",
+  moodOwnership: "Computed by this app from breadth, volatility, momentum, range position, and credit spreads — not CNN's index.",
+  goldProvenance: "indicative spot reference · GoldAPI",
+  nprPair: "{buy} buy · {sell} sell",
+  nprWeekendNote: "weekends carry Friday's fix",
+  erApiAttribution: "Rates By Exchange Rate API",   // REQUIRED, rendered as a link when the fallback source is live
   moodContext: "Context, not a signal — no tendency evidence attaches to this number.",
   moodInsufficient: "Insufficient inputs tonight — missing: {names}.",
   notYetReported: "not yet reported",
@@ -1506,7 +1641,7 @@ model MacroStat {
 }
 
 model NewsCluster {
-  id            String   @id            // sha1 of the cluster's canonical member url set, stable across nights
+  id            String   @id            // sha1 of the SEED member's canonical url (the earliest article) — stable as members accumulate
   runDate       DateTime @db.Date       // last night this cluster was updated
   firstSeen     DateTime @map("first_seen")
   headline      String                  // representative, neutralized by Stage A
@@ -1562,7 +1697,7 @@ model ManualRun {                          // ✎ app-writable (user state)
   workflow    String                       // "nightly-a" | "nightly-b"
   mode        String                       // "full" | "news" | "macro" | "compute" | "briefing"
   ghRunId     BigInt?   @map("gh_run_id")
-  status      String                       // requested|queued|running|succeeded|failed|not_applicable|not_configured
+  status      String                       // requested|queued|running|succeeded|failed (not_applicable/not_configured are UI states, never stored)
   reason      String?
   finishedAt  DateTime? @map("finished_at")
   @@index([requestedAt(sort: Desc)])

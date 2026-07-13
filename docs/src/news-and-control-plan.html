@@ -1,0 +1,820 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>myStockMarket — News &amp; Control Plan</title>
+<link rel="stylesheet" href="print.css">
+</head>
+<body>
+
+<div class="cover">
+  <div class="brand">
+    <svg class="tick" viewBox="0 0 20 20" aria-hidden="true">
+      <rect x="2.5" y="7" width="3.6" height="7.5" rx="1" fill="#4a3aa7"/>
+      <line x1="4.3" y1="4.5" x2="4.3" y2="16.8" stroke="#4a3aa7" stroke-width="1.1"/>
+      <rect x="8.2" y="4" width="3.6" height="8" rx="1" fill="#c3c2b7"/>
+      <line x1="10" y1="2" x2="10" y2="14.5" stroke="#c3c2b7" stroke-width="1.1"/>
+      <rect x="13.9" y="9" width="3.6" height="6.8" rx="1" fill="#4a3aa7"/>
+      <line x1="15.7" y1="6.5" x2="15.7" y2="18" stroke="#4a3aa7" stroke-width="1.1"/>
+    </svg>
+    <span class="doc-title-string">myStockMarket · News &amp; Control Plan</span>
+  </div>
+  <div class="doc-kind">News &amp; Control Plan · companion to the Development, UI Redesign, and App Feel plans</div>
+  <h1>A Front Page, Not a Feed</h1>
+  <p class="subtitle">A News/Discover section that explains the day's real catalysts, the
+  Macro Pulse finished and expanded into an honest household macro board, a control room
+  for user-triggered pipeline runs — and two cross-cutting repairs: every number gets its
+  time window, and every surface earns its footprint. Written to be executed unattended,
+  end to end.</p>
+  <p class="epigraph">&ldquo;A newspaper has an editor, a front page, provenance under every figure,
+  and a press schedule the reader can see. A feed has an algorithm, a leaderboard, and a
+  scroll that never ends. We are building the first thing.&rdquo;
+  <span class="attr">— the premise</span></p>
+  <div class="meta">
+    <span><b>Executor</b> Claude Opus 4.8</span>
+    <span><b>Date</b> July 2026</span>
+    <span><b>Working copy</b> NEWS-AND-CONTROL-PLAN.md (repo root)</span>
+  </div>
+</div>
+
+<p><em>Three commissions in one contract: a News/Discover section that explains the day's real catalysts, the Macro Pulse finished and expanded into an honest household macro board, and a control room that lets the user run the pipeline themselves — plus two cross-cutting repairs: every number gets its time window, and every surface earns its footprint. The organizing idea is the same one the app was founded on: this product is a newspaper, not a feed. A newspaper has an editor, a front page, provenance under every figure, and a press schedule the reader can see. A feed has an algorithm, a leaderboard, and a scroll that never ends. We are building the first thing.</em></p>
+<p><strong>Executor:</strong> Claude Opus 4.8, unattended, same working rules as DEVELOPMENT-PLAN.md (TDD per its §6.2, plain-English code and docs, session ritual, DECISIONS/LESSONS logging, phase gates).</p>
+<p><strong>THE AUTONOMY CONTRACT (binding; restates the user's standing directive of 2026-07-11 so this plan is self-contained).</strong> The user is not watching and will not answer mid-build. Run N0 → N7 to completion, in order, without a single pause for permission:</p>
+<ul>
+<li><strong>Never ask. Never check in. Never wait.</strong> Do not present options, do not end a reply with "shall I continue?", "let me know", or an offer of next steps — after a completed step, the next action IS the next step. A phase gate passing is not a checkpoint to report and wait at; tag it and roll straight into the next phase.</li>
+<li><strong>Anything that would have been a question goes to QUESTIONS-FOR-BISHANT.md</strong> — marked [NEED], [VETO?], or [FYI] as the existing file does — then make the most reasonable assumption, mark whatever is built on it (code comment + DECISIONS.md + PROGRESS.md), and keep going. The one pre-logged decision in Part 0 proceeds on its stated default if the user has not answered it by build start.</li>
+<li><strong>The only stop is a genuine, unworkaroundable blocker</strong> (e.g. a required secret that is absent and cannot be faked). Part 0.3 lists exactly which steps need which secret, and every one of them has a fixture-backed path so the build continues while the secret is missing. A failing gate is not a stop — diagnose, fix, re-run. A flaky test is not a stop — deflake it or quarantine it with a logged reason. A time- or CI-gated item is not a stop — dispatch it, poll it (<code>gh run watch</code>), and do parallelizable work while it runs.</li>
+<li><strong>Sessions are resumable, not restartable.</strong> Every session: the CLAUDE.md ritual first (pull → constitution → PROGRESS → LESSONS → DECISIONS diff for user vetoes → tests), resume from the position PROGRESS.md records, and before context runs out mid-phase, write the exact resumable state to PROGRESS.md and push.</li>
+<li><strong>Done means done:</strong> <code>nc-final</code> tagged with its CI green, every evidence table printed into <code>docs/nc-evidence/</code>, the Part 9 docs sync executed, and a closing PROGRESS.md entry written for the user to read — not a message asking them to look.</li>
+</ul>
+<p><strong>When this plan starts.</strong> This plan was authored while the app-feel build (APP-FEEL-PLAN.md, phases F0–F7) was still executing in a parallel session — it completed the same evening, so the precondition should already hold; the ritual confirms it. <strong>N0 begins only after <code>feel-final</code> is tagged with green CI.</strong> If the session ritual finds the feel build unfinished, finishing it under its own plan comes first — the two plans are sequential, never interleaved. Because the tree was a moving target while this was written, every phase here opens by re-verifying the piece of the tree it is about to change; where this plan and the working tree disagree on a detail (a file name, a prop, a copy key), the tree wins on the detail and this plan wins on the intent.</p>
+<p><strong>Authority order for this work:</strong> honesty rules (UI-REDESIGN-PLAN.md Part 2, plus APP-FEEL-PLAN.md Part 2's M-rulings, plus this plan's Part 2 C-rulings) &gt; this plan on <strong>news, macro stats, time windows, density, and manual runs</strong> &gt; APP-FEEL-PLAN.md on <strong>containers, navigation, and performance patterns</strong> &gt; UI-REDESIGN-PLAN.md on <strong>look</strong> (tokens, type, color, material, motion) &gt; DEVELOPMENT-PLAN.md &gt; judgment. One deliberate override, ordered by the user in this plan's commission (2026-07-12): APP-FEEL §4.1 called module 00 "already minimal" — the user has ruled it is not, and Part 4 here supersedes that one call. Where anything in this plan seems to collide with an honesty rule, the honesty rule wins and the collision gets logged.</p>
+<p><strong>Evidence.</strong> The diagnosis in Part 1 is built from: the user's production screenshot of 2026-07-12 6:20pm ET (committed at the repo root), a code-and-schema census of the working tree taken 2026-07-12 evening (post-<code>feel-5</code>), the production <code>market_context</code> failure mode it implies, and live verification of every external data source named in Part 6 (endpoints fetched, licensing pages read — each row of Appendix A carries its citation). Where a fact could not be verified, the row says so and the build re-verifies before relying on it.</p>
+<p><strong>Adversarial pass:</strong> Part 11. This plan was attacked along the six lenses the commission named (trending-drift, honesty leaks, false provenance, cost blowouts, iOS traps, executor stalls) before delivery; fixes are integrated inline and Part 11 records the attacks and where each fix landed.</p>
+<section class="part">
+<div class="part-head">
+<div class="kicker">Part 0</div>
+<h2>Decisions I need from you: ONE (plus a provisioning list)</h2>
+<p class="dek">The commissioning instruction: decide local choices, collect global ones here, and pause. After working the plan to the bottom, exactly one choice ripples beyond its own sections — because it amends a standing user decision (D2, the five-room tab bar). It gets a stated default so the build never stalls on it. Everything else that came close is in the 0.2 table: decided, logged, vetoable.</p>
+</div>
+<h3>0.1 THE decision: where the News room lives (amends D2)</h3>
+<p>The News/Discover section is commissioned as a first-class section. The app's navigation is a standing user decision (D2, 2026-07-12): a bottom tab bar with five rooms — Desk, Scans, Paper, Track, Academy — and Settings behind the gear. A sixth room has to go somewhere, and that is your call, not mine. The options, honestly costed:</p>
+<table><thead><tr><th>Option</th><th>What it looks like</th><th>Cost</th></tr></thead><tbody>
+<tr><td><strong>A — six tabs (RECOMMENDED, and the default if unanswered)</strong></td><td>The tab bar becomes Desk · News · Scans · Paper · Track · Academy. At 390px each tab is ~65px wide — above the 44px minimum, labels stay legible at 10px. Desktop RoomNav gains the same sixth pill.</td><td>The bar gets denser; iOS convention tops out at five tabs, so this spends the comfortable maximum plus one.</td></tr>
+<tr><td>B — News behind a Desk doorway</td><td>The Desk gains a bounded "Front page" module (top 3 catalysts + count line) linking to the full <code>/news</code> room; the phone tab bar stays five rooms; desktop RoomNav still gains the News pill (it has space).</td><td>On the phone, News is two taps instead of one. A "first-class section" that is one level down on the device the user actually reads.</td></tr>
+<tr><td>C — News replaces Track in the bar</td><td>Track record moves behind the gear with Settings.</td><td>Rejected out of hand unless you order it: the track record is the app's public honesty surface — demoting it to reach a news feed reads exactly backwards. Listed only so the rejection is on the record.</td></tr>
+</tbody></table>
+<p><strong>Default: A.</strong> Rationale: the commission says first-class; the Desk module (a bounded top-3 "Front page" preview) ships in BOTH options anyway (Part 7.6), so option B's only difference is removing the tab — a one-file change (<code>TabBar.tsx</code>) that stays cheap to flip at any time. Veto hook: a user line in DECISIONS.md or an answer here; N5 reads it before wiring the bar.</p>
+<h3>0.2 The calls that came closest to needing you — decided, logged, vetoable</h3>
+<table><thead><tr><th>#</th><th>The call</th><th>What I chose</th><th>Why it did not need you</th><th>Veto hook</th></tr></thead><tbody>
+<tr><td>0.2.1</td><td><strong>Never hotlink article images</strong></td><td>Priority 1 in the commission reads "hotlink publishers' photos." This plan uses the publishers' photos — but always by fetching them at ingest (from the news APIs' own <code>image</code>/<code>image_url</code> fields, then og:image) and serving from our R2 cache. Hotlinking at render time is the one implementation this plan forbids.</td><td>Hotlinks rot (publishers move/expire images), many publishers block cross-site referrers (a broken-image icon — the exact failure state the commission bans), they leak the reader's IP to every publisher on the page, and they make CLS unknowable because we never learn the dimensions. Fetch-and-cache delivers the same photo with none of those failure modes, plus attribution and a link out on every card (Part 7.9).</td><td>DECISIONS.md 2026-07-12 (structural)</td></tr>
+<tr><td>0.2.2</td><td><strong>The Fear &amp; Greed slot is home-built and says so</strong></td><td>No legitimate, licensable external Fear &amp; Greed source exists (Part 6.6 documents the search: CNN's index has no licensed API; the known JSON endpoint is unofficial; alternative.me's index is crypto-only). We compute our own <strong>Mood gauge</strong> from data the pipeline already holds, show its components on-surface, and label it ours.</td><td>The commission itself ordered this exact fallback ("construct our OWN transparent equivalent … never present a home-grown number as if it were CNN's").</td><td>DECISIONS.md 2026-07-12 (structural)</td></tr>
+<tr><td>0.2.3</td><td><strong>Manual runs go through GitHub Actions, never through Vercel</strong></td><td>The in-app "run" buttons dispatch the existing <code>workflow_dispatch</code> triggers on the nightly workflows (with a new <code>mode</code> input), and the app only ever WRITES a <code>manual_run</code> request row (user state). The Next.js server never fetches a provider or writes a pipeline table.</td><td>The constitution's data-flow rule: the pipeline computes and writes; the app reads and writes only user state. A Vercel route that fetched FRED and upserted macro rows would be a second, unaudited writer with its own failure modes. GitHub Actions already has the secrets, the concurrency lock, idempotent publish, and logs.</td><td>DECISIONS.md 2026-07-12 (structural)</td></tr>
+<tr><td>0.2.4</td><td><strong>Sector/theme classification is deterministic; the LLM only picks the catalyst type</strong></td><td>Sector comes from instrument metadata + the provider's entity industry field + a fixed keyword table (Appendix E); themes (AI, defense) come from the same fixed table. The LLM's classification duty stays what it already is: <code>event_type</code> on the article.</td><td>"LLM narrates, never computes" extends naturally to "never invents taxonomy." A keyword table is testable, diffable, and cannot drift week to week.</td><td>DECISIONS.md 2026-07-12 (local)</td></tr>
+<tr><td>0.2.5</td><td><strong>Significance is a fixed formula, not a model output</strong></td><td>The Front Page ranks by a deterministic significance score (Appendix E): breadth of impact, magnitude vs the ticker's own volatility, catalyst-class prior, source corroboration, recency. Weights are constants in the plan; changing them is structural.</td><td>A ranking the pipeline computes from stated inputs can be explained under every card ("why this is here"). A model-ranked feed cannot. This is also the anti-trending firewall (C1).</td><td>DECISIONS.md 2026-07-12 (structural)</td></tr>
+<tr><td>0.2.6</td><td><strong>Time-range CONTROLS ship on exactly two surfaces</strong></td><td>The ticker chart (1M / 3M / 6M / 1Y / 5Y on daily bars) and the News room (Today / This week). Every other surface gets explicit WINDOW LABELS, not controls (Part 5.3 walks every surface and says why).</td><td>The commission's own rigor test ("only offer a range if the underlying data supports it honestly") eliminates the rest: EOD bars have no intraday, movers are 1-day by definition, scan metrics are as-of the nightly run, and evidence horizons are fixed by C3.</td><td>DECISIONS.md 2026-07-12 (local)</td></tr>
+<tr><td>0.2.7</td><td><strong>The pipeline strip replaces module 00, and freshness escalates by state</strong></td><td>Module 00's card becomes a one-line status strip under the Desk header (Part 4.1): quiet when fresh, amber and expanded when stale, red and impossible to miss when dead. The same strip is the doorway to the control room.</td><td>The user ordered the shrink; the honest part is the escalation ladder — freshness stays "visible" by being LOUD exactly when it is bad news, not by being large every day.</td><td>DECISIONS.md 2026-07-12 (structural)</td></tr>
+<tr><td>0.2.8</td><td><strong>New macro stats live in a new <code>macro_stat</code> table, not more <code>market_context</code> columns</strong></td><td>A keyed row per (series, as-of date) with value, prior, and a provenance JSON — because the new stats update on five different cadences and each needs its own honest as-of date. <code>market_context</code> keeps the per-run-night market snapshot it already models.</td><td>Purely internal data modeling; the honest display requirements force the shape.</td><td>DECISIONS.md 2026-07-12 (local)</td></tr>
+</tbody></table>
+<h3>0.3 What you must provision (actions, not decisions — the build starts without them)</h3>
+<p>Each item names its consumer phase and its fixture-backed fallback, so nothing here blocks N0. Add these at your convenience; the build flips each feature live when its secret lands and logs the flip in PROGRESS.md.</p>
+<table><thead><tr><th>#</th><th>Provision</th><th>Where it goes</th><th>Needed by</th><th>Until it lands</th></tr></thead><tbody>
+<tr><td>P-1</td><td><strong>A public R2 bucket for article images</strong> (suggested name <code>msm-media</code>), on the existing Cloudflare account, with public access via a custom domain or its <code>r2.dev</code> development URL — plus an API token that can write it (the existing R2 token works if it is account-scoped; if it was scoped to <code>msm-history</code>, mint one more).</td><td>GH secrets: <code>R2_MEDIA_BUCKET</code>, <code>R2_MEDIA_PUBLIC_BASE</code> (the public base URL); reuse <code>R2_ACCOUNT_ID</code>/<code>R2_ACCESS_KEY_ID</code>/<code>R2_SECRET</code> if account-scoped. Vercel env: <code>NEXT_PUBLIC_MEDIA_BASE</code> (same base URL, for <code>next/image</code> remotePatterns).</td><td>N4 (image caching live)</td><td>The image pipeline runs against local fixtures; cards render the L3/L4 designed fallbacks (which must be first-class anyway, Part 7.9); the feed ships.</td></tr>
+<tr><td>P-2</td><td><strong>A fine-grained GitHub PAT</strong> with <code>actions: read+write</code> on this one repo (nothing else), for dispatching and polling workflow runs from the app.</td><td>Vercel env: <code>GH_DISPATCH_TOKEN</code>, <code>GH_REPO</code> (e.g. <code>bishantt/myStockMarket</code>).</td><td>N6 (control room live)</td><td>The control room renders with the dispatch button in its "not configured" state, which states plainly that the token is absent — every other state is e2e-tested against a mocked GitHub API.</td></tr>
+<tr><td>P-3</td><td><strong><code>ANTHROPIC_API_KEY</code> wired into the two nightly workflow env blocks.</strong> The secret already exists in GitHub (Appendix D of the development plan); the workflows simply do not pass it to the jobs, so every LLM stage silently skips in production today. N4 adds the env lines; you only need to confirm the secret is present and funded (the console spend cap you set at Session-0 still governs).</td><td><code>.github/workflows/nightly-a.yml</code> + <code>nightly-b.yml</code> env blocks (a code change, in N4).</td><td>N4 (live extraction)</td><td>Extraction tests run on scripted fakes as they do today; the recorded fixture night drives the UI.</td></tr>
+<tr><td>P-4</td><td><em>(only if N4's measured call budget demands it)</em> a paid Marketaux tier. Part 7.3 budgets the nightly ingest inside the free tier first; the gate prints the real nightly call count before any upgrade is even proposed.</td><td>—</td><td>—</td><td>Free-tier budget per Part 7.3.</td></tr>
+<tr><td>P-5</td><td><strong>A GoldAPI key</strong> (goldapi.io — free tier, no card; their marketing says ~500 requests/month and the build verifies the real limit at signup; one nightly call uses ~30/month). It is the one legitimately licensable free gold reference found (Appendix A row 3 records the search: FRED's gold series are deleted, LBMA is license-walled, Stooq's keyless CSV is dead, exchange-data scrapers are gray).</td><td>GH secret: <code>GOLDAPI_KEY</code>.</td><td>N3 (gold cell live)</td><td>The gold cell renders its honest "not yet reported" state (C7 rung 4).</td></tr>
+</tbody></table>
+</section>
+<section class="part">
+<div class="part-head">
+<div class="kicker">Part 1</div>
+<h2>The diagnosis (evidence first)</h2>
+</div>
+<h3>1.1 The Macro Pulse is telling the truth twice and the truth zero times</h3>
+<p>The user's screenshot (2026-07-12, 6:20pm ET, production) shows module 01 in this state: every index row is an ETF — "S&amp;P 500 · SPY (ETF PROXY) 754.94", with a SECOND freestanding "ETF PROXY" chip under it — and under all four proxy rows, a footer that says <strong>"Index levels · FRED · prior close."</strong> Three defects in one frame:</p>
+<ol>
+<li><strong>The footer contradicts every row above it.</strong> 754.94 is SPY's price; the S&amp;P 500 was near 6,800. The provenance line is a static copy string written for the happy path, rendered regardless of what the rows actually show. A provenance line that can disagree with its own surface is worse than none (this becomes ruling C6).</li>
+<li><strong>The label says "ETF proxy" twice per row</strong> — once in the label suffix, once in a chip. The R0 spec mandated both belts; on screen they read as noise, and noise is where a beginner stops reading.</li>
+<li><strong>Every slot degraded at once, silently.</strong> The R0 fix (true index levels from FRED into <code>market_context</code>, honest per-slot fallback) is correct code sitting on a database whose rows predate it: the app fell back to the ETF path for all four slots, and nothing anywhere said "index levels are missing tonight." Per-slot fallback is honest; FLEET-WIDE fallback with no degradation notice is a silent failure mode — the exact species the source-status footer exists to catch. (Why the rows were missing is unambiguous from the calendar: the fix landed on a Saturday; Job A last wrote <code>market_context</code> on Friday evening under the old code. It self-heals Monday night — but "the app was confusing all weekend and nobody was told why" is the bug, and it recurs any night the FRED index fetch fails.)</li>
+</ol>
+<p>The hierarchy also predates the F5 rethink in the deployed build (VIX and the 10-year sat below the small-cap row). F5's shelf order fixes the phone; Part 3 finishes the job across both widths and integrates the Part 6 additions.</p>
+<h3>1.2 The footprint disease, named</h3>
+<p>Module 00 — PIPELINE spends a full Surface card, first position, on: a masthead, one date ("Last cloud run — Jul 11"), and a fixed sentence ("Written by the nightly pipeline in the cloud — nothing runs on this device."). Its informational payload is one date and one status that is almost always "fine." Honest accounting: the card's chrome-to-information ratio is the worst in the app, and it sits in the single most valuable position the phone viewport has. The same audit, run over every Desk module, finds smaller cases of the disease (Part 4.2's table). The principle that fixes it without hurting honesty: <strong>freshness must be prominent in proportion to how BAD the news is</strong> — a live pipeline earns one quiet line; a stale one earns amber; a dead one earns the loudest surface on the page. The current design spends hero space on the boring case and has no escalation for the scary one.</p>
+<h3>1.3 Desktop: acres bought, nothing built on them</h3>
+<p>The app's rooms outside the Desk are one column at every width, inside a <code>max-w-[1360px]</code> shell — on a 1440px+ display that is a phone layout with margins. The F-plan's spread fixed the Desk at <code>lg:</code>; the remaining rooms and the new surfaces need the same deliberateness, and the Desk itself still leaves its widest band (≥1536px) unspent. Part 4.3 defines the full grid: breakpoints, containers, per-room column maps, and the VRT rows that lock them.</p>
+<h3>1.4 Numbers without windows</h3>
+<p>The census found the pattern everywhere (Part 5.1 reproduces the full audit table): movers' delta chips don't say 1-day; RVOL columns don't say 20-day (the definition lives in a footnote on one surface and nowhere on others); the watchlist's price/delta/RVOL/sparkline carry no window at all; the ticker's "Last close" delta is unlabeled; breadth's "63% above the 50-day average" names its indicator window but not its as-of. The Range Ladder is the exception that proves it can be done: every row carries <code>n=</code>, its window, and its axis anchor. Part 5 brings every other number up to that standard.</p>
+<h3>1.5 The reader has no hands</h3>
+<p>On a Saturday, the Desk says "last run Jul 11" and offers nothing: no way to refresh what CAN refresh (news, macro stats), no statement of why the rest cannot ("Friday's close is the latest data that exists"), no view of what will run next and when. The pipeline is actually in good shape for manual runs — both nightly workflows already expose <code>workflow_dispatch</code>, publish is idempotent, and a concurrency group already serializes runs — but none of that reaches the reader. Part 8 builds the switchboard and its honesty rules.</p>
+</section>
+<section class="part">
+<div class="part-head">
+<div class="kicker">Part 2</div>
+<h2>The honesty ledger, extended (C-rulings)</h2>
+<p class="dek">Everything preserved before is preserved here: P1–P14 (redesign Part 2.2) and M1–M10 (app-feel Part 2.2) bind every surface this plan adds. The rulings below are new, numbered C1–C10, each with a named guard. The C is for CONTEXT — the family theme is that a number, a headline, or a button without its context is the lie this plan exists to prevent.</p>
+</div>
+<p><strong>C1 · The Front Page is edited by evidence, never by attention.</strong> The News section ranks by the deterministic significance score (Appendix E) and groups by sector and catalyst type — never by price move alone, never by volume of coverage alone, and never by ANY behavioral signal (clicks, views, "most-watched", social mentions — none of which the pipeline even ingests, which is the deepest guard). Forbidden, mechanically: any sort or section named by superlative ("top", "hottest", "biggest", "most"), any gainers/losers rail, any ordering the reader cannot see stated. The feed's order is explained under its own header in mechanical voice: "Ordered by catalyst significance — scope, corroboration, and size of the move it explains." A mover with no catalyst appears ONLY in its honest form (C9), never as a ranked "mover" in this room. Guards: the copy deck contains no superlative section names (unit test on the deck); <code>e2e/news.spec.ts</code> asserts the feed order equals the seeded significance order and that no gainers/losers grouping exists; a new drift rule (take the next free number in check-drift.mjs at build time — the set was still growing while this was written) greps app source for <code>gainers|losers|trending|most active|hot right now</code> outside copy.ts tests.</p>
+<p><strong>C2 · Every number states its window, inline.</strong> Every metric, column header, delta chip, and stat rendered anywhere states the period it covers, in the same visual unit as the number — not in a footnote, not only in a module footer. The vocabulary is fixed and lives in one place (<code>copy.window.<em></code>, Appendix B): <code>1D</code>, <code>5D</code>, <code>1M</code>, <code>3M</code>, <code>6M</code>, <code>1Y</code>, <code>5Y</code>, <code>20d avg</code>, <code>50d avg</code>, <code>wk of {date}</code>, <code>{mon} {yyyy}</code>, <code>as of {date}</code>. A number whose window is genuinely the whole surface's as-of (a price at last close) carries the shared as-of stamp — which every module masthead already prints — plus the word that names it ("last close"), and nothing else needs repeating. Guards: the Part 5.1 table is executable — each row lands as an e2e assertion on its surface; the column-map unit tests assert every metric column's header contains a <code>copy.window.</em></code> token; the <code>new-surface</code> skill gains the checklist line "does every number on this surface state its window?" in the N7 docs sync.</p>
+<p><strong>C3 · Evidence horizons are properties, not preferences.</strong> A base rate's horizon ("higher 10 trading days later"), a vol band's horizon, a signal's resolves-on date, and the Brier resolution window are fixed, evidence-bound properties of their pattern. No time-range control may ever apply to them, and no UI state may vary them. The RangeControl component (Part 5.4) is physically unable to mount on those surfaces: it renders nothing unless its <code>surface</code> prop is in the fixed allowlist (<code>ticker-chart</code>, <code>news-feed</code>), and a unit test asserts the allowlist is exactly that. This is the p-hacking firewall the commission ordered: a reader must never be able to fish across horizons until a pattern flatters them.</p>
+<p><strong>C4 · Images inform; they never urge.</strong> Article imagery is editorial illustration, not salience juice. Concretely: images never animate, autoplay, zoom on hover, or carry motion of any kind (they sit inside <code>data-p2</code>-free static frames, but the no-animation rule is absolute anyway); no red badges, counters, or "LIVE" chips ride on them; image size is uniform within a card tier — a bigger move never buys a bigger picture (size is set by layout slot, not by content); the L4 generated fallback (sector/catalyst-keyed designed treatment) is visually co-equal with photos so a card without a photo never reads as broken or lesser. Guards: VRT locks card geometry per tier; a new drift rule pins that all article imagery renders through the single <code>NewsImage</code> component; the significance→layout mapping is size-blind by construction (the feed template assigns slots by position, not score).</p>
+<p><strong>C5 · A control that cannot act says why, before it is pressed.</strong> Every action in the control room renders in one of its named states (Part 8.5), and the not-applicable states carry the explanation as their primary text — "Markets are closed. Friday's close is the latest data that exists; the next close lands Monday 4:00pm ET." — never a bare disabled button. The explanation always names the NEXT time the action becomes meaningful. Guard: the state machine is a pure function (<code>lib/pipeline-control.ts</code>) with a unit test per state, and the e2e suite drives each state via injected clock/fixtures.</p>
+<p><strong>C6 · Provenance lines are computed from what is rendered.</strong> No surface may carry a static provenance string describing data it might not be showing. The Macro Pulse footer (and every new provenance line in this plan) is assembled from the sources of the rows actually rendered, and a unit test feeds it a degraded mix and asserts the line changes with it. The copy deck supplies fragments; the composition is code.</p>
+<p><strong>C7 · Staleness is data, not absence.</strong> When a macro stat's source fails, the board renders the last stored value WITH its age ("4.54% · as of Jul 9 — source unreachable tonight"; alert color only at the thresholds Part 6.4 rung 5 and Part 4.1 define, as sanctioned additions to P11's consumer list), never a blank, never a silently frozen number pretending to be fresh. A stat with NO stored history yet renders the em-dash and the sentence that says the source has not reported. Guard: unit tests per degradation rung; the seeded VRT set includes a degraded board.</p>
+<p><strong>C8 · A home-built gauge shows its work on the same surface.</strong> The Mood gauge renders its number ONLY alongside its component list (each input's value, window, and direction of contribution) and the sentence naming it ours: "Computed by this app from breadth, volatility, momentum, and range position — not CNN's index." The number without the breakdown may not render anywhere (the component API makes the breakdown a required prop, same enforcement shape as BaseRate). Guard: unit test — rendering without components throws; e2e asserts the methodology line.</p>
+<p><strong>C9 · No-catalyst honesty extends to the Front Page.</strong> Where the pipeline finds a large move with no identifiable catalyst, the News room says exactly that in its own quiet slot ("Moved without a story" — listed after the catalyst cards, never ranked among them, capped at 3, each row carrying the existing noise line). A catalyst card with zero affected tickers in our universe says "No direct listing in our universe" rather than inventing exposure. Guards: e2e on the seeded no-catalyst mover; the cluster builder's unit tests pin both cases.</p>
+<p><strong>C10 · The Front Page never pushes.</strong> No push notifications, no unread badges, no "N new stories" pills, no auto-refresh while the reader is on the page (nightly data; the page states its press time). The room re-renders on navigation like every other ISR room and its masthead carries the same as-of stamp. This inherits M7 and P6 and exists so nobody re-litigates them for news specifically. Guard: drift rule 15's self-moving greps already cover auto-advance; the e2e asserts no badge/count on the News tab item.</p>
+</section>
+<section class="part">
+<div class="part-head">
+<div class="kicker">Part 3</div>
+<h2>The Macro Pulse, finished (commission Part A)</h2>
+<p class="dek">Scope: module 01 and its pipeline feeds. Everything here lands in N1 — it is the correctness phase, first after the instruments, exactly as R0 was for the redesign.</p>
+</div>
+<h3>3.1 Root cause, fixed at the pipeline (TDD first)</h3>
+<ol>
+<li><strong>Index-level degradation becomes loud.</strong> <code>_read_macro</code> (Job A) already fetches SP500 / NASDAQCOM / DJIA levels+priors; tonight its failure mode is <code>None</code> → silent fleet-wide proxy fallback. Add a named source-status key: when any of the three index series returns no usable pair on a session night, <code>pipeline_run.sourceStatus</code> gains <code>"fred-indexes": "degraded"</code> (the existing per-source degradation machinery then does what it already does: the run succeeds, the Desk's source footer reports it, forced-open per M2). Unit tests: all-three-missing, one-missing, weekend-no-op.</li>
+<li><strong>A macro write never regresses to null on a flaky night.</strong> <code>_upsert_market_context</code> currently overwrites with whatever the night fetched. Amend: index level columns update only when the fetch produced a value; a <code>None</code> leaves the prior stored value in place, and the row gains <code>index_levels_as_of</code> (date) so the app can render age honestly (C7). The Desk then shows a stale-but-dated level with its age instead of collapsing to the ETF — the proxy path remains only for slots that have NEVER had an index level (small caps) or whose staleness exceeds 5 sessions (at which point a dated level is worse than an honest proxy; constant in <code>pipeline/config.py</code>, tested at both boundaries).</li>
+<li><strong>The posting-time trap, closed.</strong> Verified against FRED's own update stamps (Appendix A): the index series post their closes AFTER both nightly jobs run — DJIA ~6:03pm ET, SP500 ~8:01pm ET, the Nasdaq series ~11:38pm ET, vs Job A at 6:37pm and Job B at 8:25pm. So a Job-A-time fetch structurally serves levels one session older than everything else on the Desk by the time the user reads it the next morning. Two-part fix: (a) the per-slot <code>index_levels_as_of</code> age display (item 2) makes whatever is shown honest tonight; (b) <code>nightly-a.yml</code> gains a second cron — <code>0 10 <em> </em> 2-6</code> (6:00am EDT / 5:00am EST, after even the Nasdaq post) — that runs the pipeline in <code>macro</code> mode (the Part 8.2 mode machinery, whose pipeline half lands in N4; until then, N1 adds the cron entry with a stage-list branch limited to the macro read + publish + revalidate). Result: by the pre-open coffee read, every index level is the actual prior close. The workflow branches mode on schedule time (a <code>github.event.schedule</code> check — unit-tested in the job's argv parsing, since workflow YAML itself is untestable).</li>
+<li><strong>Verification of the heal.</strong> N1's gate includes a production check (read-only SQL via the session pooler or the app's own rendered page) confirming <code>market_context</code> carries index levels after the first post-N1 morning run, and the screenshot state of 1.1 cannot recur: the seeded e2e includes the "levels missing entirely" variant asserting the degradation notice renders.</li>
+</ol>
+<h3>3.2 One label per row (the grammar)</h3>
+<p>Each slot renders exactly ONE name and ONE provenance mark:</p>
+<ul>
+<li><strong>Index slot, index data (the normal case):</strong> label "S&amp;P 500" · the index level as the figure · delta chip "▲ +0.45% · 1D" (the window token joins the chip — C2). No suffix, no proxy chip, nothing else.</li>
+<li><strong>Index slot, stale index data (≤5 sessions):</strong> same, plus the age note in the slot footer: "as of Jul 9" in muted mono. (The masthead's as-of covers the fresh case; only staleness earns a per-slot date — quiet exactly when normal, per Part 1.2's principle.)</li>
+<li><strong>Proxy slot (small caps by design; any index slot after 5 stale sessions):</strong> label "Small caps" (or the index name for a degraded index slot) · the ETF price as the figure · ONE chip: "IWM · ETF price". The chip is the single proxy mark; the label suffix "(ETF PROXY)" is deleted. The existing label-source coupling test (an index NAME may only sit on index-sourced data) survives with the new grammar — a degraded index slot's label gains "· via SPY" inside the chip, never an unqualified index claim over an ETF price. <code>copy.macro.proxyNote</code> stays as the chip's title text.</li>
+<li><strong>Nasdaq naming:</strong> the index slot is "Nasdaq Composite" (that is what NASDAQCOM is); its proxy chip, when shown, reads "QQQ · Nasdaq-100 ETF price" — the mismatch is stated, not blurred (R0's own rule, kept).</li>
+</ul>
+<h3>3.3 The provenance footer is computed (C6)</h3>
+<p><code>buildMacro</code> returns, alongside the slots, a provenance summary the component renders verbatim; the builder composes it from the slots' actual sources. The three canonical outputs (unit-tested):</p>
+<ul>
+<li>All index slots live: <code>Indexes: FRED, prior close · Small caps: IWM ETF close · VIX: Cboe via FRED · 10-yr: US Treasury via FRED</code></li>
+<li>Mixed: <code>S&amp;P 500, Dow: FRED, prior close · Nasdaq: QQQ ETF close (index level unavailable) · …</code></li>
+<li>Fleet-degraded: <code>Index levels unavailable tonight — showing ETF closes, labeled per row · …</code> (and the source footer independently reports <code>fred-indexes</code> degraded).</li>
+</ul>
+<h3>3.4 The hierarchy, reasoned for a beginner (both widths)</h3>
+<p>The beginner's questions, in order: (1) What did the market do? (2) Should I be worried? (3) What does money cost right now? (4) What about the rest of the market? The module answers in that order at every width, integrated with the Part 6 additions:</p>
+<ul>
+<li><strong>Hero (unchanged position):</strong> S&amp;P 500 index level — the one hero figure, delta chip with window.</li>
+<li><strong>Row 1 — the risk pair (phone shelf order 1–2, desktop first row):</strong> VIX (its existing label and glossary underline, value + 1D delta) and the 10-year yield (value + 1D delta). These carry information the hero does not. (VIX's percentile context lives in ONE place — the Mood gauge's component table — not duplicated here where it would drift.)</li>
+<li><strong>Row 2 — the tape echoes:</strong> Nasdaq Composite, Dow, Small caps (IWM chip grammar). On the phone shelf these ride after the risk pair (F5's order, kept and now reasoned in the same breath as the additions).</li>
+<li><strong>Row 3 — the household board (new, Part 6):</strong> 30-yr mortgage · CPI YoY · Gold · USD→NPR · Mood gauge. On phone this is the second shelf row of the same module (one module, two labeled shelves — "Markets" and "Money &amp; mood"); on desktop it is the module's second grid row. Each cell carries its own as-of because their cadences differ (C2/C7).</li>
+<li><strong>Breadth strip:</strong> stays fixed below (F5's rule — the summary line must not be hideable), gaining its as-of word: "63% above the 50-day average · at Fri's close".</li>
+</ul>
+<p>Order is enforced the same way the ritual order is: a DOM-order e2e assertion.</p>
+<h3>3.5 Tests &amp; gate additions (N1)</h3>
+<p>Pipeline: sourceStatus key (3 cases) · upsert no-regress (value, None, boundary 5 sessions) · <code>index_levels_as_of</code> written. App unit: label grammar per slot state (6 cases incl. the coupling regression lock) · computed footer (3 canonical + degraded-mix property) · delta window token present. E2E (<code>desk.spec.ts</code>): seeded normal state (one label per row, no freestanding proxy chip on index rows, footer matches slots), seeded degraded variant (notice renders, footer switches, source footer forced open). VRT: macro module both themes both widths, plus the degraded variant. Gate: all above green on the <code>nc-1</code> tag; production heal verified after the first nightly.</p>
+</section>
+<section class="part">
+<div class="part-head">
+<div class="kicker">Part 4</div>
+<h2>Footprint &amp; the desktop broadsheet (commission Part A2)</h2>
+</div>
+<h3>4.1 Module 00 becomes the status strip</h3>
+<p><strong>What it is now:</strong> a full Surface card holding one date and one fixed sentence (1.2). <strong>What it becomes:</strong> a one-line strip mounted INSIDE the Desk header block (below the date line, above the grid — it is page chrome, not a ritual station), rendered by a new <code>PipelineStrip</code> component:</p>
+<ul>
+<li><strong>Fresh (ran last session night):</strong> one quiet line, muted mono, ~28px tall: <code>Data through Fri Jul 11 close · pipeline ran 22:41 UTC · next: Mon ~6:37pm ET</code> — with the whole strip acting as the doorway link to the control room (Part 8). No card, no masthead, no icon. The "next:" time comes from the trading calendar (next session + the cron hour).</li>
+<li><strong>Aging (no successful run for exactly one expected session):</strong> the strip gains the amber word <code>stale</code> and the missed night: <code>No run for Mon's session · showing Fri's data · check the pipeline →</code>. Amber here is a sanctioned third consumer of the alert token — this is a genuine alert, exactly what P11 reserves the color for; the drift rule's consumer list gains <code>PipelineStrip</code> and the plan records the amendment (Part 9 docs sync).</li>
+<li><strong>Dead (≥2 expected sessions missed):</strong> the strip becomes a full-width red-bordered banner — the ONE surface in the app allowed to be loud, because a silently dead pipeline serving stale data is the catastrophic failure mode. It states the last good night, what every number on the page is therefore showing, and links to the control room. This banner may never be dismissed; it clears only when a run succeeds.</li>
+<li>The strip's logic is a pure function of (<code>pipeline_run</code> rows, trading calendar, now) — <code>lib/freshness.ts</code>, unit-tested across: fresh Friday-on-Saturday (weekend is NOT stale), holiday gaps, one-missed, two-missed, never-ran.</li>
+</ul>
+<p>Module 00 as a ritual station is retired; the ritual order test updates to 01→07 + scorecard + sources (a deliberate, logged amendment to the "00→07 inviolable" clause — the ORDER of what remains stays inviolable; the strip is not a station and never carries station data). The masthead numbering across the app does not renumber (01 stays 01 — mastheads are names, not an index that must start at zero; renumbering every module, test, and VRT baseline to close a cosmetic gap is churn with regression risk and no reader value; logged).</p>
+<h3>4.2 The footprint audit (every module, same test)</h3>
+<p>The audit rule, applied at N2 and written into the styleguide as a standing principle: <strong>a module's chrome (masthead + padding + footers) may not exceed ~35% of its rendered height in the seeded state, and no module may render a full card when its payload is a single line.</strong> Verdicts from the census:</p>
+<table><thead><tr><th>Module</th><th>Verdict</th><th>Change (N2)</th></tr></thead><tbody>
+<tr><td>00 Pipeline</td><td>replace</td><td>→ the strip (4.1)</td></tr>
+<tr><td>01 Macro pulse</td><td>keep</td><td>payload grows in Part 6; chrome already amortized</td></tr>
+<tr><td>02 Brief</td><td>keep</td><td>the brief never truncates (standing rule) — its height IS payload</td></tr>
+<tr><td>03 Calendar</td><td>keep</td><td>F5's temporal cut already right-sized it</td></tr>
+<tr><td>04 Movers</td><td>keep</td><td>F5's first-3 + disclosure already right-sized it</td></tr>
+<tr><td>05 Watchlist</td><td>keep</td><td>F5 split already right-sized it</td></tr>
+<tr><td>06 Setup cards</td><td>keep</td><td>born modular</td></tr>
+<tr><td>07 Sectors &amp; scans</td><td>shrink</td><td>the one-line count + doorway keeps its own full card today; it becomes a half-width card sharing a desktop row (4.3), full-width one-liner on phone</td></tr>
+<tr><td>Scorecard/journal</td><td>keep</td><td>F5 disclosure already right-sized it</td></tr>
+<tr><td>Sources footer</td><td>shrink</td><td>the all-ok summary line loses its card chrome and renders as a plain footer line under the grid (degraded state unchanged: forced-open card, M2)</td></tr>
+</tbody></table>
+<h3>4.3 The desktop grid, defined once</h3>
+<p><strong>Breakpoints (existing tokens, one addition):</strong> <code>md</code> 768 · <code>lg</code> 1024 · <code>desk</code> 1366 · <strong>new <code>wide</code> 1536</strong> (<code>--breakpoint-wide</code>). Container: <code>max-w-[1360px]</code> to <code>desk:</code>, <code>max-w-[1500px]</code> at <code>wide:</code> (gutters 32px). The 4px grid, card padding, and 24px module gap are unchanged.</p>
+<p><strong>The Desk:</strong></p>
+<ul>
+<li><code>lg:</code> (1024–1365): as F5 built it — main <code>minmax(0,1fr)</code> + rail 320px. Unchanged.</li>
+<li><code>desk:</code> (1366–1535): main + rail 340px (F5), with the Part 6-grown pulse rendering its two labeled rows as 6-up/5-up grids, and module 07 sharing a row with the Mood gauge detail card if Part 6.7 places one (else 07 stays half-width beside the scorecard).</li>
+<li><code>wide:</code> (≥1536): the rail widens to 360px and the main column's GLANCE stations pack two-up where their content is card-shaped: setup cards render 2-up (they are independent cards, not prose), movers stay one-up (READ station — full-width rows), the brief stays one-up at its 65ch measure centered in the main column. No third column: the Desk is a reading ritual, and a second reading column would split the ritual's order into two ambiguous streams (the same reasoning that keeps READ stations off shelves). What ≥1536 buys is internal density, not more columns.</li>
+<li>DOM order stays the ritual order at every width (existing e2e lock).</li>
+</ul>
+<p><strong>Every other room gets an explicit map (all at <code>lg:</code> unless noted; one column below it):</strong></p>
+<table><thead><tr><th>Room</th><th>≥lg composition</th></tr></thead><tbody>
+<tr><td><code>/scans</code></td><td>preset cards 2-up (exists); at <code>wide:</code> 3-up.</td></tr>
+<tr><td><code>/scans/[preset]</code></td><td>header card full-width; table full-width (tables want width); the criteria card and count figure share one row at <code>desk:</code> (7/5 split).</td></tr>
+<tr><td><code>/paper</code></td><td>ticket column 5/12 + (cost mirror above ledger) 7/12; ledger tables full-width of their column. The M3 aside spans.</td></tr>
+<tr><td><code>/track-record</code></td><td>stat summary as a 5-up StatFigure row; forecasts card 5/12 beside the resolved-log table 7/12 at <code>desk:</code>; table full-width at <code>lg:</code>.</td></tr>
+<tr><td><code>/ticker/[symbol]</code></td><td>chart 8/12 + (stats stack: last close, RangeControl, provenance) 4/12; Range Ladder full-width below.</td></tr>
+<tr><td><code>/academy</code></td><td>module cards 2-up ≥lg (exists per F6), 3-up at <code>wide:</code>.</td></tr>
+<tr><td><code>/news</code> (new)</td><td>Part 7.7's own map (feed 8/12 + context rail 4/12, ≥lg; rail widens with the container at <code>desk:</code>).</td></tr>
+<tr><td><code>/settings</code></td><td>cards 2-up ≥lg.</td></tr>
+</tbody></table>
+<p>Implementation is per-room Tailwind grid classes (the app deliberately has no layout framework); what this table adds is the CONTRACT — each row lands as a VRT shot at 1366×768 and 1536×960 (new viewport in the VRT matrix for <code>desk</code>/<code>wide</code> splits, Part 9.5) and an e2e no-horizontal-scroll assertion. Rationale note for the reviewer: this table places DENSITY where content is enumerable (cards, tables, stat rows) and preserves single-column reading where content is prose — that is the difference between a designed broadsheet and a dashboard that tiles everything.</p>
+<h3>4.4 Tests &amp; gate additions (N2, shared with Part 5's phase)</h3>
+<p><code>lib/freshness.ts</code> unit suite (the five calendar cases) · strip states e2e (fresh via seed; aging/dead via injected clock route param in the seeded build — the e2e drives the pure function through a test-only search param the page reads ONLY under <code>MSM_SEEDED</code>, mirroring the existing seeded-flag pattern) · footprint: the Desk phone page-height evidence shot re-measured and recorded (expected: hero-position content rises by roughly the old module 00's height; the number gets recorded, not promised) · VRT: new <code>wide</code> viewport rows for Desk + each room; strip states ×2 themes · e2e: every room at 1536 has no horizontal scroll; ritual order intact with the strip outside the grid.</p>
+</section>
+<section class="part">
+<div class="part-head">
+<div class="kicker">Part 5</div>
+<h2>Every number carries its window (commission Part A3)</h2>
+</div>
+<h3>5.1 The audit table is the spec</h3>
+<p>Each row below is an acceptance criterion: the SURFACE must render the TARGET label, and the e2e/unit noted must pin it. (Census source: the working tree of 2026-07-12; re-verify labels against the tree at N2 start — targets bind, current-state notes do not.)</p>
+<table><thead><tr><th>Surface</th><th>Number</th><th>Today</th><th>Target (exact string per Appendix B)</th></tr></thead><tbody>
+<tr><td>Macro pulse</td><td>index/ETF delta chip</td><td><code>+0.45%</code></td><td><code>+0.45% · 1D</code></td></tr>
+<tr><td>Macro pulse</td><td>VIX / 10-yr values</td><td>unlabeled</td><td>value + <code>· 1D</code> delta chip + as-of via masthead; VIX adds the percentile note (6.5)</td></tr>
+<tr><td>Macro pulse</td><td>breadth</td><td><code>63% above the 50-day average</code></td><td><code>63% above the 50-day average · at Fri's close</code></td></tr>
+<tr><td>Movers</td><td>delta chip</td><td><code>+8.2%</code></td><td><code>+8.2% · 1D</code></td></tr>
+<tr><td>Movers</td><td>RVOL cell</td><td><code>3.1×</code></td><td><code>3.1× · 20d avg</code> (footnote definition stays; the cell no longer depends on it)</td></tr>
+<tr><td>Watchlist rows</td><td>price/delta/RVOL/spark</td><td>unlabeled</td><td>delta <code>· 1D</code>; RVOL <code>· 20d avg</code>; the sparkline gets a caption row under the list: <code>Sparklines: 30 sessions, close only</code> (one caption for the module — per-row would stutter; the honest window stated once where all rows share it)</td></tr>
+<tr><td>Scans tables</td><td>metric columns</td><td>mixed</td><td>every column header carries its window token: <code>1-day move</code>, <code>RVOL · 20d</code>, <code>Gap · open vs prior close</code>, <code>From 52w high</code>, <code>20-day move</code>, <code>5-day move</code>, <code>RSI · 14d</code> etc. — full column map in Appendix B</td></tr>
+<tr><td>Scans header</td><td>count</td><td><code>41 matches today</code></td><td>unchanged (already windowed) + as-of stamp (exists)</td></tr>
+<tr><td>Ticker</td><td>last close delta</td><td>unlabeled</td><td><code>· 1D vs prior close</code></td></tr>
+<tr><td>Ticker chart</td><td>axis/coverage</td><td>none</td><td>the RangeControl states the active window; the chart caption states <code>Daily bars · adjusted · through Fri Jul 11</code></td></tr>
+<tr><td>Range Ladder</td><td>rows</td><td>already exemplary</td><td>unchanged (the model everything else is being raised to)</td></tr>
+<tr><td>Setup cards / base rates</td><td>horizon</td><td>stated in sentence</td><td>unchanged text; C3 forbids controls here — N2 adds the negative test (no RangeControl inside <code>SetupCards</code>/<code>BaseRate</code> render trees)</td></tr>
+<tr><td>Track record</td><td>summary + columns</td><td>prose states 10 trading days</td><td>column header <code>Horizon</code> → <code>Horizon (trading days)</code>; summary line keeps its sentence</td></tr>
+<tr><td>Paper</td><td>cost mirror</td><td>windows present</td><td>unchanged; ledger delta chips gain <code>· at close</code> where they are marks-to-last-close</td></tr>
+<tr><td>News (new)</td><td>mover context on cards</td><td>—</td><td><code>+8.2% · 1D · RVOL 3.1× (20d avg)</code> from birth (Part 7)</td></tr>
+<tr><td>Macro board (new)</td><td>each stat</td><td>—</td><td>per-stat as-of grammar from birth (Part 6)</td></tr>
+</tbody></table>
+<h3>5.2 Enforcement that survives the plan</h3>
+<p>Three mechanisms, so the rule outlives this document: (1) the window vocabulary is a closed set — <code>copy.window.*</code> — and metric-label copy keys compose from it; a deck unit test fails on any metric key whose string lacks a window token (keys are grouped so the test knows which are metric labels); (2) every DataTable column map ships with a unit test asserting header tokens; (3) the <code>new-surface</code> skill checklist gains the window line (N7). A pure grep can't see a missing window on an arbitrary JSX number — the deck test + column tests + the Part 5.1 e2e rows are the practical envelope, and the skill line covers the future.</p>
+<h3>5.3 Where range CONTROLS live, and where they deliberately do not</h3>
+<p>The rigor test from the commission, applied surface by surface (this table is the record of the decision, so nobody re-litigates it by adding a toggle in a quiet PR):</p>
+<table><thead><tr><th>Surface</th><th>Control?</th><th>Why</th></tr></thead><tbody>
+<tr><td>Ticker chart</td><td><strong>YES</strong> — <code>1M / 3M / 6M / 1Y / 5Y</code>, default <code>6M</code></td><td>Daily bars, ~5y of served history. No <code>1D/5D</code>: intraday does not exist in an EOD product, and five daily points is a shrug pretending to be a chart. <code>5Y</code> renders only when the symbol carries ≥ 4y of bars (option hidden below that, with the chart caption stating actual coverage: <code>Showing full history: 2.1y</code>). Default 6M: long enough to show regime, short enough that the last month is readable — and it matches the vol-band framing the ticker page already teaches.</td></tr>
+<tr><td>News room</td><td><strong>YES</strong> — <code>Today / This week</code>, default <code>Today</code></td><td>The nightly ingest accumulates news_items; "this week" = the last 5 sessions' clusters. Nothing finer exists (no intraday), nothing longer is honest yet (retention grows; the control adds <code>This month</code> only when 30 days of clusters exist — the builder checks).</td></tr>
+<tr><td>Macro board sparkline (if 6.7 renders one)</td><td>no</td><td>Fixed 1Y window, labeled — one honest window beats a fishing UI on a stat whose point is its current level.</td></tr>
+<tr><td>Movers / scans / watchlist</td><td>no</td><td>Metrics are as-of the nightly run with fixed lookbacks — a range control would change the DEFINITION, not the view. Labels per 5.1.</td></tr>
+<tr><td>Base rates / vol bands / track record / Brier</td><td>no</td><td>C3. Fixed horizons are the evidence contract.</td></tr>
+</tbody></table>
+<h3>5.4 The RangeControl component (built once, N2)</h3>
+<p><code>components/RangeControl.tsx</code> — a segmented control in the house form-kit grammar (same anatomy as <code>SegmentedControl</code>, radio semantics, 44px targets, 16px labels below <code>md</code>):</p>
+<ul>
+<li>Props: <code>surface: "ticker-chart" | "news-feed"</code> (closed union — C3's guard), <code>options</code> (label + value + <code>available: boolean</code>), <code>value</code>, <code>onChange</code>. Unavailable options render disabled with a <code>title</code> explaining why ("Less than 4 years of history for this symbol") — omission vs explanation follows the commission: options that can NEVER exist for the surface are omitted; options that exist but not for this item are shown disabled with the reason.</li>
+<li>Selection persists per-surface per-session (<code>sessionStorage["msm-range:" + surface]</code>) — a return visit within the session keeps the reader's frame; a fresh session returns to the default (deliberate: defaults are part of the editorial statement, and stale-persisted ranges quietly become the new default).</li>
+<li><strong>No loading state exists by design.</strong> Both consumers receive their FULL data range in the initial ISR payload and slice client-side: the ticker page already serves ~5y of bars to the chart; the news feed serves the week's clusters (bounded, Part 7.7). Switching is a synchronous re-render — no fetch, no skeleton, no ISR interplay, nothing to keep fast because nothing got slow. (Payload check in the gate: the /news document stays under the route-size budget with a full seeded week.)</li>
+<li>Stillness: changing range re-renders the chart complete in its new window — no animated transition between ranges (the chart is a money visual; P2 and the existing CandleChart no-motion rule already bind it, and the RangeControl adds a negative test).</li>
+</ul>
+<h3>5.5 Tests &amp; gate additions (N2)</h3>
+<p>Unit: RangeControl (closed surface union; availability rendering; persistence; default) · freshness of 5.1's column maps · deck window-token test. E2E: ticker range switch changes the rendered domain with zero network requests (route interception asserts none) and the caption updates; a sub-4y seeded symbol hides <code>5Y</code> and states coverage; news Today/Week switch (lands with N5); every 5.1 row's assertion on its surface. VRT: ticker at each range (masked timestamps), RangeControl states in the styleguide.</p>
+</section>
+<section class="part">
+<div class="part-head">
+<div class="kicker">Part 6</div>
+<h2>The macro board (commission Part B)</h2>
+<p class="dek">Five additions to module 01, each with a verified source, an honest cadence, and a degradation ladder. The full source table with citations is Appendix A; this part is the product spec. Phase: N3.</p>
+</div>
+<h3>6.1 The data home: <code>macro_stat</code></h3>
+<p>New Prisma model (verbatim DDL in Appendix C): one row per (seriesKey, asOfDate) with <code>value</code>, <code>prior</code> (the previous observation, for an honest period-over-period delta), <code>asOfLabel</code> (the human window: "wk of Jul 9", "Jun 2026"), <code>fetchedAt</code>, <code>sourceKey</code>, and <code>meta Json</code> (per-series extras: the Mood gauge's component breakdown lives here). Insert-or- update by key; history accumulates (the 1Y context sparklines and the gauge's percentiles read it). The pipeline is the only writer (0.2.3). <code>market_context</code> is unchanged — it stays the per-session market snapshot.</p>
+<h3>6.2 The five stats (cadence-honest fetching)</h3>
+<p>Each stat is fetched by Job A on its own cadence — a source that updates weekly is CHECKED nightly (one cheap call) but only writes a new row when the observation date advances, so "as of" always reflects the SOURCE's date, never our fetch time (the difference between freshness and thrash). Per-stat spec:</p>
+<ol>
+<li><strong>US 30-year fixed mortgage rate</strong> — FRED <code>MORTGAGE30US</code> (Freddie Mac PMMS), weekly, published Thursdays. Display: <code>6.72% · wk of Jul 9</code> with delta vs prior week. Beginner note (title text): "The average rate lenders quote on a 30-year fixed mortgage — the price of housing money."</li>
+<li><strong>US inflation, CPI year-over-year</strong> — FRED <code>CPIAUCNS</code> with <code>units=pc1</code> (percent change from a year ago, computed BY FRED — the pipeline stores what the source publishes and computes nothing; the not-seasonally-adjusted series is the one headline YoY figures quote). Monthly, released mid-month for the prior month. Display: <code>2.7% · Jun 2026</code> with delta vs prior month's YoY in the title, not a chip (a delta-of-a-rate chip invites misreading; the label IS the number's context here).</li>
+<li><strong>Gold, per troy ounce (USD)</strong> — GoldAPI (goldapi.io, key per P-5; XAU/USD). FRED carries NO market gold price (the LBMA/IBA series were deleted January 2022 — verified, Appendix A), LBMA itself is license-walled, and the keyless CSV routes died in early 2026 — the search is recorded so nobody repeats it. Daily (one call, after the US close). Display: <code>$4,085 / oz · 1D delta</code>, provenance <code>indicative spot reference · GoldAPI</code> — never "LBMA price", never "COMEX settlement": those are licensed benchmarks we do not have, and the label may not borrow their authority (C6).</li>
+<li><strong>USD → Nepalese rupee</strong> — Nepal Rastra Bank's official published rates (endpoint verified live, shape in Appendix A; published daily ~00:00 Nepal time, weekends included). NRB publishes buy AND sell; the cell shows the pair — <code>NPR 151.66 buy · 152.26 sell</code> — because picking one side silently answers a question the reader didn't ask; provenance <code>NRB official reference</code>. The mandatory qualifier is the second line: <code>Remittance apps may differ.</code> We do NOT quote any remittance app: none exposes a legitimate rate API (TapTap and Remitly have none; Wise's rates endpoint is affiliate-only — Appendix A records the checks), and a fabricated app rate is exactly the lie the commission forbids. Fallback source when NRB is unreachable: open.er-api.com mid-market (verified, daily, no key), labeled <code>mid-market reference</code> PLUS its contractually required attribution line ("Rates By Exchange Rate API", linked) — the two sources measure different things and the label always names which one is on screen (C6).</li>
+<li><strong>The Mood gauge (ours)</strong> — Part 6.5.</li>
+</ol>
+<h3>6.3 Cadence, caching, and the app side</h3>
+<p>The app reads <code>macro_stat</code> through the same ISR-600 morning loader path as everything else — no new caching machinery, no client fetches. The board's cells each carry their own as-of label (C2) because the masthead's as-of describes the RUN, not the observation. Manual refresh of this board is Part 8's <code>macro</code> mode (fetch + publish + revalidate, minutes, cheap).</p>
+<h3>6.4 Degradation ladder (C7, uniform across stats)</h3>
+<ol>
+<li>Source ok, new observation → fresh row, normal render.</li>
+<li>Source ok, no new observation (weekly/monthly series mid-cycle) → normal render; the as-of label IS the honesty (nothing is stale about a Thursday rate on a Tuesday).</li>
+<li>Source unreachable tonight → render last stored row + age note <code>source unreachable tonight</code> + <code>sourceStatus["macro-{key}"] = "degraded"</code> (footer reports it).</li>
+<li>No stored history (first nights, or a source that has never answered) → em-dash + <code>not yet reported</code> — information, not apology.</li>
+<li>Stored value older than its cadence × 3 → the cell itself goes amber-worded (<code>stale — last {asOfLabel}</code>); this is the same alert-consumer amendment as the strip (Part 4.1), bounded to the module level.</li>
+</ol>
+<h3>6.5 The Mood gauge — our transparent fear/greed equivalent</h3>
+<p><strong>Why home-built:</strong> Appendix A documents the licensing dead-end for CNN's index and the crypto-only scope of alternative.me's. The commission pre-authorized the fallback (0.2.2).</p>
+<p><strong>Definition (deterministic, computed by Job A, all inputs already in the pipeline's possession; constants in <code>pipeline/config.py</code>, changing them is structural):</strong></p>
+<ul>
+<li>Components, each scored as a percentile of its own trailing 252-session history (the gauge's own stored history once it accumulates; the Parquet lake, <code>market_context</code> history, and the FRED series' own history bootstrap the first year):</li>
+<li><strong>Breadth</strong> — % of universe above its 50-day average (higher → greedier).</li>
+<li><strong>Volatility</strong> — VIX level, inverted (higher VIX → more fearful).</li>
+<li><strong>Momentum</strong> — S&amp;P 500 level vs its own 125-session mean (from the FRED SP500 series history; its 10-year rolling window more than covers the lookback), signed distance (higher → greedier).</li>
+<li><strong>Range position</strong> — share of universe within 5% of its 252-day high minus share within 5% of its 252-day low (higher → greedier).</li>
+<li><strong>Credit stress</strong> — the ICE BofA US High Yield option-adjusted spread (FRED <code>BAMLH0A0HYM2</code> — verified still live on FRED: the January 2022 purge removed ICE <em>Benchmark Administration</em> series, not the ICE BofA index family; the build re-verifies and records fixtures before relying on it), inverted (wider spreads → more fearful).</li>
+<li>Score = the unweighted mean of available component percentiles, 0–100, rendered with its word band: 0–24 <code>fearful</code> · 25–44 <code>leaning fearful</code> · 45–55 <code>mixed</code> · 56–75 <code>leaning greedy</code> · 76–100 <code>greedy</code>. The words are deliberately flat (mechanical voice — no "extreme", no exclamation, no color coding beyond ink).</li>
+<li>Fewer than 3 components available → the gauge does not render a score (suppression per the N-gate instinct); it renders <code>insufficient inputs tonight</code> + which are missing.</li>
+<li><strong>Display contract (C8):</strong> the number NEVER renders without its component table (each component: name, tonight's raw value with window, its percentile, arrow of contribution) and the ownership line. Phone: the gauge cell opens a Disclosure with the components; desktop: the components render in the cell's expanded card. The gauge is a <strong>position display, not a dial</strong> (P13 — no gauges/angles; it renders as a labeled 0–100 position strip with a mono numeral).</li>
+<li><strong>Not a signal:</strong> the gauge carries the standing line <code>Context, not a signal — no tendency evidence attaches to this number.</code> It writes no signal_log rows, feeds no setup cards, and appears nowhere but the macro board and its own Academy lesson doorway.</li>
+</ul>
+<h3>6.6 Fear &amp; Greed licensing note (the record)</h3>
+<p>Appendix A row F&amp;G records the verification: CNN publishes no licensed API; the widely scraped <code>production.dataviz.cnn.io</code> endpoint is unofficial and its use would be a terms violation wearing a convenience; RapidAPI resellers of it inherit the same problem; alternative.me's index is crypto-only by its own documentation. Conclusion recorded so nobody re-litigates it: there is no legitimate external source; ours exists because of that fact, and the UI never borrows CNN's name.</p>
+<h3>6.7 Board layout</h3>
+<p>Phone: the module's second labeled shelf (<code>Money &amp; mood — swipe</code>), cells in the order mortgage · CPI · gold · USD→NPR · Mood (household costs first — the reader's own life, then the market's temperature). Desktop: a 5-up row under the market rows; at <code>wide:</code> the Mood cell expands to show its component table inline. Every cell: label, mono figure, as-of, and the per-stat note as title text. No sparklines in v1 (the board's job is current level + honest date; trend claims want more design care than a 40px canvas — logged as a deliberate omission, revisit trigger: user asks for trend context).</p>
+<h3>6.8 Tests &amp; gate additions (N3)</h3>
+<p>Pipeline: per-series adapter tests on recorded fixtures (new fixtures via the record-fixtures flow) · cadence logic (no-new-observation writes nothing; observation-date advance writes) · degradation rungs 3–5 · gauge: component percentiles against a toy history, suppression &lt;3 components, band words at boundaries, determinism (same inputs → same score). App: cell render per rung · gauge breakdown-required guard (render without components throws) · board order e2e · VRT board normal + degraded, both themes, phone + desktop. Gate: <code>nc-3</code> tag green; one real dispatched <code>macro</code> run writes real rows (or the absence is logged with its reason if sources are down that night).</p>
+</section>
+<section class="part">
+<div class="part-head">
+<div class="kicker">Part 7</div>
+<h2>The Front Page (commission Part C)</h2>
+<p class="dek">The News/Discover section: route <code>/news</code>, fed nightly, image-led, filterable, ranked by catalyst significance. Phases: N4 (data), N5 (UI).</p>
+</div>
+<h3>7.1 Why this section serves the mission (the required argument)</h3>
+<p>The app's mission is a calm command center and learning hub that teaches WHY markets move. The Daily Brief answers "what should I take away from today?" — synthesized, five items, one reading. It deliberately does not answer the question a curious reader asks next: "what actually happened out there, in full — and what kind of thing was it?" Today that curiosity has exactly one place to go: the open web, where the answer is a trending feed built to convert curiosity into orders. The Front Page exists to answer it here instead, inside the honesty rules: every story is framed as a CATALYST with a TYPE (an earnings beat, an FDA approval, a Fed statement) — which is literally the Academy's taxonomy of why prices move, applied to today's tape. Every card teaches the connection ("here is the cause, here is what it plausibly affects, here is the size of the reaction"); every detail page offers the lesson that explains the mechanism and the setup card where evidence exists. A mover with no cause says so, which teaches the hardest lesson in the room: most moves are noise. The section's failure mode — the thing it must never become — is the thing it replaces: a salience feed. That is what C1, C4, C9, C10 and the significance formula are for. If those rules ever feel like they are fighting the section, the section is drifting, and the rules win.</p>
+<p><strong>A note on the commissioned reference images.</strong> The commission points at mobile-app reference screenshots "in the reference folder." At authoring time the repo's only reference material was the redesign's own Figma export (<code>FigmaDesignRef/</code>), whose one screenshot carries the relevant language anyway — image-led cards, category filter chips, dense mobile composition, and a "Top Movers" rail that is precisely the content model this plan rejects. The news-app screenshots the commission describes ("Top Gainers Today" / "Top Losers Today") were not in the tree. N5 opens by checking the folder again; if the user has added them, study them for visual grammar under the same standing rule — take the language, reject the leaderboard. Nothing below depends on their presence. [FYI logged.]</p>
+<h3>7.2 Information architecture</h3>
+<ul>
+<li><strong><code>/news</code></strong> — the room: press-time header, filter rows, the ranked feed, the "Moved without a story" quiet slot, provenance footer. ISR-600 like every room.</li>
+<li><strong><code>/news/[cluster]</code></strong> — the story page (drill level 2): the full honest anatomy of one catalyst. Ticker links go to <code>/ticker/[symbol]</code> (level 3). Depth ≤ 3 holds.</li>
+<li><strong>Desk module "08 — Front page"</strong> — a bounded preview: the top 3 clusters as compact rows (headline + catalyst Tag + tickers, no images at this size), the M8 count line ("First 3 of 14 by significance"), doorway "The full front page →". Rides MAIN, pairing with 07 on one desktop row (both are count-plus-doorway glances). Ships in both Part 0 options.</li>
+<li><strong>Navigation:</strong> per Part 0.1's answer (default: sixth tab "News", newspaper icon, between Desk and Scans; desktop RoomNav pill; ⌘K entry either way).</li>
+</ul>
+<h3>7.3 Ingest expansion (pipeline, N4)</h3>
+<p>Today news is fetched only for unusual-volume movers. The Front Page needs the day's market-wide catalysts. Nightly budget (constants in <code>pipeline/config.py</code>; each call through the existing adapter/rate-limit machinery; all counts verified against provider limits in Appendix A):</p>
+<table><thead><tr><th>Call</th><th>Provider</th><th>Budget</th><th>Yield</th></tr></thead><tbody>
+<tr><td>Market news, <code>category=general</code></td><td>Finnhub (free tier: 60 calls/min, no daily cap documented)</td><td>2 calls (second with <code>minId</code> pagination)</td><td>~100–200 items, with <code>image</code> + <code>source</code> fields</td></tr>
+<tr><td>Market news, <code>category=merger</code></td><td>Finnhub</td><td>1 call</td><td>M&amp;A coverage</td></tr>
+<tr><td>Company news for movers</td><td>Finnhub</td><td>≤15 calls (existing)</td><td>mover catalysts, unchanged</td></tr>
+<tr><td>Tagged market news</td><td>Marketaux <code>news/all</code>, <code>countries=us</code>, <code>filter_entities=true</code>, <code>must_have_entities=true</code>, <code>sort=published_on</code></td><td>≤20 calls (free tier: 100 req/day, <strong>3 articles per request</strong>)</td><td>~60 entity-tagged items with <code>image_url</code>, <code>source</code>, <code>entities[].industry</code>, <code>entities[].match_score</code></td></tr>
+</tbody></table>
+<p>Adapters gain the fields they already receive and drop: Finnhub <code>image</code>, <code>source</code>, <code>category</code>; Marketaux <code>image_url</code>, <code>source</code>, <code>description</code>, per-entity <code>industry</code> + <code>match_score</code>, and the <code>similar</code> uuid list (a free clustering hint). All additions are recorded-fixture-first per the new-provider-adapter skill (the fixtures already contain these fields — the recorder does not even need re-running for Finnhub/Marketaux; extend the parse + tests).</p>
+<p><code>news_item</code> gains columns (Appendix C): <code>source</code>, <code>imageUrl</code> (the provider/og candidate as received — the R2 copy lives in <code>news_image</code>), <code>category</code>, <code>industries String[]</code>, <code>clusterId?</code>, plus the write-back of the Stage-A extract into the existing <code>extract Json</code> column (7.5). Backfill: none — old rows simply lack images/sources and never enter new clusters (clusters are per-night forward).</p>
+<h3>7.4 Clustering (deterministic, no LLM)</h3>
+<p>One story arrives as N articles. <code>pipeline/newsdesk/cluster.py</code> (new, pure, TDD):</p>
+<ul>
+<li>Normalize each headline: lowercase, strip punctuation/tickers/source suffixes, tokenize, drop stopwords.</li>
+<li>Two items cluster when ANY of: same canonical URL (post-tracking-param strip) · Marketaux <code>similar</code> links them · token Jaccard ≥ 0.55 AND overlapping ticker sets AND published within 36h of each other. Union-find over the night's items + yesterday's clusters (stories span evenings; a cluster keeps its id and accumulates).</li>
+<li>Each cluster's representative headline = the earliest item from the highest-corroboration source; <code>sources = distinct source count</code>; <code>tickers = union</code>, ranked by Marketaux match_score where present, else mover membership, else mention count.</li>
+<li>Unit tests: the fixture night must produce known clusters; near-miss pairs (same tickers, different stories) stay apart; the 36h boundary; URL-param canonicalization.</li>
+</ul>
+<h3>7.5 Extraction and the narrative line (the existing AI pipeline, extended)</h3>
+<ul>
+<li><strong>Stage A (Haiku, Message Batches — the existing <code>briefing/extract.py</code> machinery):</strong> the nightly batch grows from "movers' articles" to "one representative article per cluster, top ~60 clusters by pre-LLM salience (corroboration count, then ticker-move magnitude)". The <code>ExtractResult</code> schema gains one enum value — <code>event_type</code> adds <code>filing</code> — and is otherwise unchanged. The parsed extract is <strong>written back to <code>news_item.extract</code></strong> (the column reserved for exactly this since P2) and, at cluster level, to the new <code>news_cluster.extract</code>. Items past the cap are ingested (headline/source/image) but not extracted — the feed can render them in the "more items" tail of their sector filter without narrative lines; the cap and its reason are logged per night (<code>stageStatus</code>).</li>
+<li><strong>Stage B-mini (Sonnet, ONE sync call for the whole page):</strong> a single structured call takes the top ~20 clusters' extracts + the computed stats for their tickers (the existing <code>stats.py</code> table, extended with per-ticker move/RVOL stat ids) and returns, per cluster: <code>why_it_matters</code> (≤160 chars, mechanical voice, no advice verbs, no predictions — "the so what", e.g. "A approval this size usually re-prices the whole treatment segment, not one ticker.") and <code>affected_note</code> where the effect is sector-wide. Same citation discipline as the brief: every sentence's numbers must trace to stat/extract ids. Schema in Appendix D.</li>
+<li><strong>The gate (the existing <code>verify.py</code>, reused):</strong> every cluster's narrative fields pass the Appendix-E tolerance check against that cluster's extracts + stats. A failing cluster publishes WITHOUT its narrative line (facts stand, prose is dropped, decision recorded in the night's verification JSON) — the feed never blocks on one bad sentence, and an unverified number never renders (P9 verbatim).</li>
+<li><strong>Ranking (deterministic, after extraction):</strong> the significance formula of Appendix E — scope (index/sector-wide beats single-name), corroboration, magnitude (affected tickers'</li>
+<p>|1D move| in units of their own ATR14), catalyst-class prior, recency decay. Computed by <code>newsdesk/rank.py</code>, stored on the cluster row, EXPLAINED in the room's header line. The LLM never sees or sets a rank.</p>
+</ul>
+<h3>7.6 Publish &amp; schema</h3>
+<p>New tables (verbatim in Appendix C): <code>news_cluster</code> (runDate idx, representative headline, eventType, sectors[], themes[], tickers[], significance, sources, whyItMatters?, verification Json, extract Json, imageId?), <code>catalyst_link</code> (clusterId → symbol with the snapshot: ret1, rvol20, hasSetupCard — snapshotted at publish so the card's numbers and the feed's numbers can never drift apart), <code>news_image</code> (Part 7.9). Movers cross-link: a mover row whose symbol appears in a cluster gets its existing catalyst chip pointed at <code>/news/[cluster]</code> (one story, one page — the mover module stops linking out to a raw article when we host the fuller, verified version; external source links remain on the story page). All inserts land in the same Job-A publish transaction.</p>
+<h3>7.7 The room (<code>/news</code>), spec</h3>
+<ul>
+<li><strong>Header:</strong> serif room title ("Front page"), press-time line (<code>Assembled {date} {time} ET · from {n} articles, {m} catalysts</code>), the ordering sentence (C1), and the RangeControl (<code>Today / This week</code>, default Today).</li>
+<li><strong>Filter rows (client-side over the served payload):</strong> catalyst-type chips (All · Earnings · Guidance · M&amp;A · FDA · Fed/Macro · Analyst · Filings · Legal · Product) and sector/theme chips (11 sectors + AI · Defense · Broad market). Horizontal scroll rows on phone (44px chips, snap proximity, edge fade); wrapped rows on desktop. Active filters restate themselves in the count line: "6 catalysts · Pharma · FDA". Zero-result state: "No FDA catalysts today — that is information, not an error." Filters are AND across the two rows, OR within a row (multi-select), reset chip appears when any active.</li>
+<li><strong>The feed:</strong> phone — one lead card (full-bleed image, 1.91:1) for the top-ranked cluster, then uniform rows (thumbnail left 112×84, content right); the lead slot is a POSITION, not a reward for size of move (C4). Desktop <code>lg:</code> — feed 8/12 (2-up card grid, lead spanning both columns) + context rail 4/12 (the "Moved without a story" card, the press-time/provenance card, the filter state). Pagination by "Page N of M" (M6) at 20 clusters/page; Today rarely exceeds one page.</li>
+<li><strong>Card anatomy (every card, both tiers):</strong> image (7.9) · catalyst-type Tag + sector Tag · headline (serif, 2-line clamp with title attr for overflow) · source + <code>{h}h ago</code> time (absolute date past 24h — and the timestamp is the ARTICLE's, the card's as-of is the room's press time) · ticker chips (≤3, then "+N", each chip carrying its <code>+8.2% · 1D</code> move) · the why-it-matters line in italic prose (or nothing, if the gate dropped it — never a placeholder) · corroboration whisper (<code>3 sources</code>) in the footer.</li>
+<li><strong>"Moved without a story" (C9):</strong> after the feed (rail card on desktop): up to 3 movers with no cluster, each as symbol + move + the standing noise line. Never images, never ranked among catalysts.</li>
+<li><strong>Press cadence honesty (C10):</strong> the room's footer states the schedule: "Assembled nightly after the US close. This page does not update during the day."</li>
+</ul>
+<h3>7.8 The story page (<code>/news/[cluster]</code>), spec</h3>
+<p>Top to bottom: catalyst Tag + sector Tags · serif headline · source list line (every corroborating article: source name → external link, published time) · the image (larger variant, attribution line <code>Photo via {source}</code> linking the article) · <strong>What happened</strong> (the extract summary, mechanical) · <strong>Why it matters</strong> (the verified line, plus <code>affected_note</code> when present) · <strong>By the numbers</strong> (the cluster's key_numbers, each with its source id superscript — same grammar as the brief's citations) · <strong>Affected tickers</strong> — a DataTable: symbol · name · <code>1D move</code> · <code>RVOL · 20d</code> · a <code>Setup card</code> link where <code>hasSetupCard</code> (the doorway to evidence, only where evidence exists) · <strong>Learn the mechanism</strong> — the Academy doorway mapped from catalyst type (Appendix E's map; renders only for authored lessons via the existing manifest gate) · provenance footer (<code>Ingested {t} · extracted by {model} · every number machine-verified against its sources</code>). Return rail back to /news preserves scroll + filters (client state survives bfcache/back).</p>
+<h3>7.9 The image pipeline (the non-negotiable, engineered)</h3>
+<p><strong>Sourcing ladder (fetch at ingest, in the pipeline; NEVER at render):</strong></p>
+<ul>
+<li><strong>L1 — the provider's own image field</strong> (Finnhub <code>image</code>, Marketaux <code>image_url</code>) — this IS the publisher's photo, delivered through the news API we already license. Present on most items; often an empty string on some Finnhub sources (verified), hence:</li>
+<li><strong>L2 — og:image / twitter:image</strong> from the article page: <code>newsdesk/ogimage.py</code> — httpx GET with a descriptive UA (<code>msm-newsdesk/1 (+contact URL)</code>), robots.txt honored, 5s timeout, 512KB read cap (the tags live in <code>&lt;head&gt;</code>), selectolax parse of <code>og:image[:secure_url]</code> → <code>twitter:image</code> → <code>link[rel=image_src]</code>. One attempt per URL per night; failures are data, not errors.</li>
+<li><strong>L3 — publisher identity card:</strong> no image found → the card renders the DESIGNED source-identity treatment: the publisher's favicon (fetched once per domain into R2, same etiquette) composed by the UI onto a generated background in our palette (the component does the composing — no server image generation needed).</li>
+<li><strong>L4 — catalyst identity card:</strong> no favicon either → the sector/catalyst-keyed generated treatment: a deterministic SVG component (<code>NewsImage</code> fallback mode) built from our tokens — sector-tinted wash, the catalyst-type word set large in the display serif, the ticker set in mono. Deterministic from (sector, eventType, tickers) so VRT can lock it. <strong>L3/L4 are designed as first-class outcomes: same geometry, same frame, same visual weight as photos — a text-treatment card next to a photo card must read as an editorial choice, not a failure.</strong> The styleguide renders all four rungs side by side; VRT locks them.</li>
+<li><strong>If a faster path appears</strong> (a provider adding a guaranteed image field), the ladder absorbs it at L1; the outcome contract (every card ships a visual, zero failure states) is what is fixed.</li>
+</ul>
+<p><strong>Processing &amp; storage (pipeline, Pillow — new dep):</strong> fetch L1/L2 candidate → validate (actual image bytes, ≥200px wide, not an SVG/tracking pixel) → recompress to JPEG quality 80, strip EXIF → three variants: 1200w (story page), 640w (lead card), 240w (thumbnail), each capped 1.91:1 center-crop only when within 15% of it (else letterbox to the frame in CSS — never a face-chopping crop; <code>object-fit: cover</code> on uniform frames does the visual cropping client-side) → compute width/height + an 8px-wide base64 JPEG blur placeholder (~300 bytes, stored in the row — the SSR-friendly placeholder; hash formats need client JS) → PUT to the media bucket keyed <code>news/{yyyy-mm}/{sha1(url)}-{w}.jpg</code> via the existing boto3/R2 pattern → row in <code>news_image</code> (clusterId, sourceKind L1|L2|L3-favicon, urls per variant, width, height, blurDataUrl, attribution source+url, dominantColor). Budget: ~60 images/night × ~3 variants ≈ well inside R2's free tier forever (Appendix A math).</p>
+<p><strong>Serving (app):</strong> ONE component, <code>components/news/NewsImage.tsx</code> (the new imagery drift rule: no other <code>&lt;img&gt;</code>/<code>next/image</code> may reference the media bucket): <code>next/image</code> with <code>remotePatterns</code> for the media base URL, explicit <code>width</code>/<code>height</code> from the row (CLS = 0 by construction; the layout-shift budget for /news is the existing hard CLS 0.000 gate), <code>placeholder="blur"</code> with the stored <code>blurDataURL</code>, <code>loading="lazy"</code> for everything except the lead card (<code>loading="eager"</code> — v16 deprecates <code>priority</code> in favor of preload/eager; only the lead is above the fold by definition), <code>sizes</code> matched to the three slots. Vercel image optimization stays within the Hobby transformation budget because variants are pre-sized in the pipeline and <code>minimumCacheTTL</code> is raised to 31 days (immutable objects, hashed keys — Appendix A math: ~1.8k new images/mo × ~2 rendered sizes ≈ 3.6k of the 5k monthly transformations; if the plan's own probe shows the budget breached, the fallback is serving the pre-sized variants as plain <code>&lt;img&gt;</code> with manual <code>srcset</code> — pre-sizing is what makes both paths cheap).</p>
+<p><strong>Public access:</strong> custom domain on the Cloudflare zone if one exists (P-1 asks), else the bucket's <code>r2.dev</code> URL — dev-labeled and rate-limited, but every hot read is served out of Vercel's image cache (the optimizer is the only client that ever fetches the origin), and the single-user readership makes cold-read volume trivial. The provisioning row records whichever base was configured; <code>NEXT_PUBLIC_MEDIA_BASE</code> is the single source for remotePatterns and the pipeline's URL construction.</p>
+<p><strong>Dark theme:</strong> photos render true (no filter — a dimmed photo is a designed lie about the photo); the FRAME adapts (hairline + surface tokens), and L3/L4 generated cards are built from tokens so they theme natively.</p>
+<h3>7.10 Seeds, fixtures, VRT determinism</h3>
+<p>The seeded night gains: 14 clusters across ≥6 catalyst types and ≥5 sectors (incl. one FDA, one M&amp;A, one Fed/macro with zero tickers — the C9 "no direct listing" case), 2 no-catalyst movers, one cluster with a gate-dropped narrative (facts only), and one L3 + one L4 image case. Seed images: 3 tiny CC0 JPEGs committed under <code>app/prisma/fixtures/img/</code> (each &lt;30KB), served in e2e via the seed's local paths (the NewsImage component takes a base URL — the seed points it at <code>/fixtures/</code>); L4 needs no assets (deterministic SVG). VRT: feed both themes both viewports, filtered state, story page, all four image rungs in the styleguide, Desk module 08.</p>
+<h3>7.11 Tests &amp; gate additions (N4 + N5)</h3>
+<p>N4 (data): cluster.py suite (7.4's cases) · rank.py (formula on fixture clusters; ordering pinned; weights from constants) · extract write-back + cap logging · Stage B-mini schema + one-retry + verify-gate drop path · image pipeline (validate/variant/blur on a checked-in JPEG; ladder fall-through L1→L4 on fixture cases; R2 keys; budget counter) · publish transaction writes clusters/links/images atomically · full fixture-night integration test (N articles in → K clusters, ranks, images out — the numbers pinned). Gate: <code>nc-4</code> CI green; one real dispatched news-mode run against live providers (or its absence logged with reason). N5 (UI): e2e — feed order equals seeded significance; filters (type, sector, combined, zero-state, reset); Today/Week; lead card is position-not-size (seed places the biggest mover at rank 3 and asserts it does NOT get the lead slot); story page anatomy (sources, numbers superscripts, tickers table, doorway gating); C9 slots; C10 no-badge; module 08 count line + doorway; drill depth; keyboard/focus order through cards. Unit: card view-model builders. VRT per 7.10. Gate: <code>nc-5</code> tag green incl. axe on /news + story page; route budgets hold (B2/B3 on /news).</p>
+</section>
+<section class="part">
+<div class="part-head">
+<div class="kicker">Part 8</div>
+<h2>The control room (commission Part D)</h2>
+<p class="dek">Manual runs, honestly scoped. Phase: N6. The honest evaluation first, because the commission asked for it.</p>
+</div>
+<h3>8.1 Is user-triggered running a good idea here? (the evaluation)</h3>
+<p>Mostly yes, narrowly. This is an end-of-day product: on a normal weeknight the pipeline has already run and a manual re-run would recompute identical data — the honest control for that case is the EXPLANATION, not the button. But four real cases earn real buttons: (a) a failed or missed nightly run (the recovery case — today it requires the GitHub UI); (b) news re-fetch: catalysts accumulate during the day and the reader may want the evening's news before the scheduled run — cheap, safe, rate-limited; (c) macro stats: FX/gold/rates move on their own cadences and a mid-day refresh is legitimate and nearly free; (d) compute-only re-runs after a code fix (recompute scans/indicators over stored bars without re-ingesting). What stays impossible by design: ingesting TODAY's EOD bars before the close (the data does not exist — the UI says so with the next-close time), and anything that would collide with the nightly (the concurrency group already serializes; the UI states the queue position instead of pretending parallelism).</p>
+<h3>8.2 Mechanism (0.2.3): GitHub Actions, dispatched from the app</h3>
+<ul>
+<li><code>nightly-a.yml</code> gains inputs: <code>mode: full | news | macro | compute</code> (default <code>full</code>) and <code>request_id</code> (echoed into <code>run-name: nightly-a · {mode} · {request_id}</code> for the Actions tab). <code>jobs.job_a</code> branches its stage list on mode: <code>news</code> = catalyst ingest + cluster/ extract/publish news + revalidate; <code>macro</code> = FRED/NRB/gold reads + macro publish + revalidate; <code>compute</code> = snapshot/scans/analytics from the stored lake + publish (skips Alpaca ingest and its coverage gate — the gate binds only stages that ingest); <code>full</code> = today's behavior. Each mode's stage list is a constant with a unit test (a mode may never silently grow a stage).</li>
+<li><code>nightly-b.yml</code> needs no mode (its whole job is the evening assembly); the panel exposes it as "Re-run the evening briefing".</li>
+<li>The app dispatches via <code>POST .../workflows/{file}/dispatches</code> with <code>return_run_details: true</code> (verified current API — the response carries <code>workflow_run_id</code>), stores the id on the request row, and polls <code>GET /actions/runs/{id}</code> for <code>status</code>/<code>conclusion</code> while the panel is open. Fallback if the field is ever absent: match <code>display_title</code> on the <code>request_id</code> via the runs list (the run-name already carries it).</li>
+<li>Auth: the routes live under the session wall (<code>/api/pipeline/*</code> NOT in PUBLIC_PATHS — the proxy 401s JSON unauthenticated); the server action holds <code>GH_DISPATCH_TOKEN</code> (fine-grained PAT, Actions read+write, this repo only). The token never reaches the client; the panel is unreachable logged-out like everything else.</li>
+</ul>
+<h3>8.3 The request ledger: <code>manual_run</code> (✎ app-writable — it IS user state)</h3>
+<p>Appendix C DDL: id, requestedAt, workflow, mode, ghRunId?, status (<code>requested | queued | running | succeeded | failed</code> — the not-applicable and not-configured cases are UI states of the panel, never stored rows: nothing was requested), reason?, finishedAt?. It is the cooldown source (8.4), the audit trail ("what did I run and when"), and the panel's history list (last 10). The pipeline never reads it — dispatch inputs carry everything the job needs.</p>
+<h3>8.4 Guardrails (constants in <code>lib/constants.ts</code>, mirrored where the workflow enforces)</h3>
+<ul>
+<li><strong>Concurrency:</strong> the existing <code>msm-nightly</code> group serializes everything (cancel-in-progress false → a manual run queued behind the nightly WAITS, and the panel says "queued behind tonight's scheduled run"). Only the latest queued run survives by GitHub's semantics — the panel therefore refuses a second dispatch while one is pending (state, not error).</li>
+<li><strong>Cooldowns/caps (per mode, enforced app-side from <code>manual_run</code>, stated in the UI):</strong> <code>macro</code> 30-min cooldown, 6/day · <code>news</code> 2/day (provider arithmetic: each news run spends ~20 of Marketaux's 100 daily requests, so nightly + two manual runs = ~60 in any 24h window — headroom stated, not assumed) · <code>compute</code> 2/day · <code>full</code> 1/day · <code>briefing</code> 2/day. The cap line renders under each button ("2 of 2 left today").</li>
+<li><strong>Cost ceilings, stated where they bind:</strong> a <code>news</code> run spends ~$0.10–0.20 of LLM budget (batch Haiku + one Sonnet call — Appendix A pricing math); the panel prints it (<code>~$0.15 of API budget</code>) so the cost is a stated fact, not a hidden one. GitHub minutes: bounded by the caps at ≈ 60–90 min/day worst case, inside the private-repo free tier with the nightly load included (Appendix A math).</li>
+<li><strong>Session-night guard:</strong> <code>full</code> is not-applicable while the market is open (bars are incomplete) and on already-successful nights (nothing new exists); both render C5 explanations with the next meaningful time.</li>
+</ul>
+<h3>8.5 The panel (in <code>/settings</code>, section "Pipeline"; the Desk strip links here)</h3>
+<p>Layout: the freshness strip's data expanded (last run, stages, per-source status verbatim from <code>pipeline_run</code>), then one row per action — Run tonight's full pipeline · Refresh the news · Refresh macro stats · Recompute scans · Re-run the evening briefing — each rendered in exactly one state:</p>
+<table><thead><tr><th>State</th><th>Render</th></tr></thead><tbody>
+<tr><td>available</td><td>button + what it does in one sentence + cost/cap line</td></tr>
+<tr><td>cooldown</td><td>disabled + "available again at {t}"</td></tr>
+<tr><td>capped</td><td>disabled + "daily limit reached — resets midnight ET"</td></tr>
+<tr><td>not_applicable</td><td>no button; the explanation IS the row (C5): e.g. "Markets are open — today's closing data doesn't exist until 4:00pm ET. The nightly run lands ~6:37pm ET." / "It's the weekend — Friday's close is the latest data that exists; nothing new lands before Monday 4:00pm ET." / "Tonight's run already succeeded at 22:41 UTC — there is nothing newer to fetch."</td></tr>
+<tr><td>requested/queued</td><td>live row: "queued behind the scheduled run"</td></tr>
+<tr><td>running</td><td>live row with elapsed time + link to the GitHub run</td></tr>
+<tr><td>succeeded</td><td>quiet line in history + the page data refreshes itself (the run's own revalidate busts the caches; the panel re-reads on poll)</td></tr>
+<tr><td>failed</td><td>the row says so plainly + links the run log + offers the retry (within caps)</td></tr>
+<tr><td>not_configured</td><td>"Manual runs need a GitHub token — see QUESTIONS-FOR-BISHANT (P-2)."</td></tr>
+</tbody></table>
+<p>State logic is a pure function <code>lib/pipeline-control.ts</code> (inputs: manual_run rows, pipeline_run, trading calendar via a serialized next-sessions payload, clock) — unit-tested per state including the calendar cases (weekend, holiday, pre-close, post-success). The running-state poll is a session-gated route (<code>GET /api/pipeline/status</code>) the client hits every 15s ONLY while the panel is open and a run is live.</p>
+<h3>8.6 Freshness, honestly surfaced (closing the loop with Part 4.1)</h3>
+<p>The strip (Desk) and the panel (settings) read the same <code>lib/freshness.ts</code>. After any successful manual run, the strip reflects it on next render ("Data through … · refreshed manually 2:14pm ET") — manual runs join the provenance story rather than hiding under it.</p>
+<h3>8.7 Tests &amp; gate additions (N6)</h3>
+<p>Unit: <code>pipeline-control.ts</code> full state matrix (every state reachable, calendar cases, cooldown boundaries) · freshness integration of manual runs. Pipeline: mode stage-list constants + per-mode behavior (fixture-driven: news mode touches no bars; compute mode calls no Alpaca; macro mode skips the coverage gate) · dispatch input parsing. E2E (GitHub API mocked at the route boundary; the seeded build injects clock/fixtures): dispatch flow happy path (request row → queued → running → succeeded, panel updates), not-applicable copy renders per case, caps decrement and pin, failed run links the log, strip → panel doorway, unauthenticated API 401s. One REAL end-to-end drill in the gate: dispatch a real <code>macro</code> run from the deployed app, watch it publish and revalidate (this is also P-2's verification). VRT: panel states (masked timestamps). Gate: <code>nc-6</code> tag green + the real-drill evidence in <code>docs/nc-evidence/</code>.</p>
+</section>
+<section class="part">
+<div class="part-head">
+<div class="kicker">Part 9</div>
+<h2>Phases N0–N7 (playbooks + gates)</h2>
+<p class="dek">Same contract as the R- and F-phases: TDD for logic, VRT for pixels, the standing gate at every exit, tag <code>nc-N</code>, roll straight on (autonomy contract). Sequencing logic: instruments and wiring first (N0); the correctness bug before anything cosmetic (N1); the cross-cutting label/density pass before new surfaces inherit old sins (N2); the macro board before the news room (it is smaller, exercises the new adapter/cadence machinery, and the pulse hierarchy Part 3 defined needs its cells); news data before news UI (N4→N5, so the UI is built against real shapes); the control room last of the features (it depends on the mode inputs N4 adds to the workflows); hardening and docs to close.</p>
+</div>
+<p><strong>The standing gate (every phase, in order — the F-plan's gate with this plan's additions):</strong></p>
+<pre>1  npm run typecheck &amp;&amp; npm run lint &amp;&amp; npm test            # app unit
+2  uv run pytest                                            # pipeline
+3  npm run build &amp;&amp; npm run check:routes &amp;&amp; npm run check:bundles
+4  npm run e2e:local                                        # local e2e (--ignore-snapshots; CI is the pixel oracle)
+5  npm run check:drift                                      # incl. this plan's new rules as they land
+6  push → deployment → npm run check:nav -- --report        # budgets hold with the new routes
+7  lighthouse-check.mjs — budgets on / and (from N5) /news
+8  git tag nc-N · push --tags → the CI tag run is the pixel oracle
+   (N0 wires nc-* into ci.yml FIRST — the F0 lesson: an unwired tag pattern makes
+   every later gate claim ornamental)
+9  Update PROGRESS.md · append DECISIONS/LESSONS · confirm the tag CI green</pre>
+<h3>N0 · Ground truth, wiring, seeds [0.5–1 day]</h3>
+<p>FIRST: session ritual; confirm <code>feel-final</code> tagged + CI green (if not, finish that plan first — its contract, not this one). Amend <code>ci.yml</code>: add <code>nc-*</code> to the tag triggers AND both tag-gated job <code>if</code> conditions. Re-audit the tree against this plan's Part 1 claims (they were written against a moving target): record in <code>docs/nc-evidence/n0-audit.md</code> the actual state of module 00, the macro labels, the drift-rule count, the VRT baseline list — and where this plan's file references drifted, note the mapping (intent binds; Part 1's principle). Production checks (read-only): does <code>market_context</code> now carry index levels (post-Monday run)? Is the F-build's desktop spread live? Screenshot both. Extend <code>prisma/seed.mjs</code> with EVERYTHING later phases assert (Part 7.10's news night, macro_stat rows incl. a degraded case, the fixture images) — the seed lands first and alone, then the <code>vrt-baselines</code> CI dispatch re-baselines the seed-affected shots (the vrt-update skill flow), expected diffs named in the commit body. Provisioning probe: which of P-1/P-2/P-3 exist tonight? Record in QUESTIONS + PROGRESS; nothing blocks. <strong>Exit gate additions:</strong> the <code>nc-0</code> tag actually triggers CI (proof of wiring); the audit file exists with screenshots; seed deterministic (two runs → identical VRT pixels).</p>
+<h3>N1 · The macro truth fix [1 day]</h3>
+<p>Part 3 in full: pipeline hardening (sourceStatus key, no-regress upsert, <code>index_levels_as_of</code>), label grammar, computed provenance footer, hierarchy order (without the Part 6 cells — the board row mounts in N3; the order test lands now and extends then). <strong>Exit gate additions:</strong> Part 3.5's suites green; seeded degraded-variant e2e; production heal verified after the next nightly (or the failure diagnosed as its own bug, fixed, and re-verified — this gate is about the LIVE state, not just the tests); VRT macro rows re-baselined deliberately.</p>
+<h3>N2 · Windows, density, the grid [1.5–2 days]</h3>
+<p>Part 4 + Part 5 in full: the strip (+ freshness lib + ritual-order amendment), module 07 + sources-footer shrink, the desktop grid contract (every room's map + the <code>wide</code> breakpoint + VRT viewports), the window-label sweep (every Part 5.1 row), the deck window-token test, RangeControl + ticker ranges + the C3 negative tests. <strong>Exit gate additions:</strong> Part 4.4 + 5.5 suites; the phone Desk height evidence shot (before/after recorded); zero horizontal scroll at 1536 on every room; the 5.1 table's e2e rows all green; alert-consumer drift rule updated for the strip (and the amendment logged).</p>
+<h3>N3 · The macro board [1–1.5 days]</h3>
+<p>Part 6 in full: <code>macro_stat</code> migration, the four fetchers (+ fixtures via the recorder flow), cadence/no-thrash logic, the Mood gauge compute + display contract, degradation rungs, board layout in the pulse, provenance strings. <strong>Exit gate additions:</strong> Part 6.8's suites; the seeded degraded board VRT; a real <code>macro</code> dispatch writes real rows (using the workflow_dispatch that exists today — the panel comes in N6); the board renders on production with honest as-ofs.</p>
+<h3>N4 · The news data layer [1.5–2 days]</h3>
+<p>Part 7.3–7.6 + 7.9's pipeline half: adapter field extensions (fixture-first), ingest budgets, cluster.py, rank.py, Stage-A cap + write-back, Stage B-mini + verify reuse, the image pipeline (Pillow dep, ladder, variants, blur, R2 PUT), schema migrations (news_item columns, news_cluster, catalyst_link, news_image), publish transaction, ANTHROPIC_API_KEY into both workflow env blocks (P-3), <code>mode</code> inputs on nightly-a (the <code>news</code>/<code>macro</code>/<code>compute</code> stage lists — N6 consumes them, the pipeline half lands here with its tests). <strong>Exit gate additions:</strong> Part 7.11-N4 suites incl. the pinned fixture-night integration; R2 writes land in the media bucket (or the fixture path is exercised and P-1's absence logged); one real news-mode dispatch produces clusters in the DB (key present) or the skip is logged with its stage status.</p>
+<h3>N5 · The Front Page UI [1.5–2 days]</h3>
+<p>Part 7.7, 7.8, 7.10's UI half, the Desk module 08, the nav wiring per Part 0.1's answer (default A if unanswered — and the [VETO?] row in QUESTIONS marks the assumption), the news Today/Week RangeControl consumer, copy deck additions, axe pass on both routes. <strong>Exit gate additions:</strong> Part 7.11-N5 suites; VRT set (feed/story/filters/fallback rungs/ module 08, both themes); C1/C4/C9/C10 e2e assertions green; /news holds B2/B3 budgets; CLS 0.000 with images (the blur+dimensions contract proven on the seeded feed).</p>
+<h3>N6 · The control room [1–1.5 days]</h3>
+<p>Part 8 in full: manual_run migration, the dispatch/status routes + server actions, pipeline-control state machine, the panel in /settings, the strip doorway, caps/cooldowns, run-name echo, the GitHub-mocked e2e suite + the one real drill. <strong>Exit gate additions:</strong> Part 8.7's suites; the real macro-mode drill evidence (dispatch → run → publish → revalidate → panel shows succeeded); unauthenticated 401 e2e; concurrency queue state rendered (mock).</p>
+<h3>N7 · Hardening, evidence, docs [1 day]</h3>
+<p>Touch-target sweep re-run WITH the new routes in its list (/news, /news/[cluster], the panel — the sweep is only as honest as its route list); axe full pass; full VRT table; iOS MANUAL checklist (Part 10.5) run on the real device, mobile Safari AND installed standalone, photographed into <code>docs/nc-evidence/</code>; drift rules landed and numbered against the tree; docs sync — DEVELOPMENT-PLAN route map + §2.1 product line gain /news and the panel (dated correction blocks, mirrored into dp-*.html + regenerated per the standing rule), CLAUDE.md commands/conventions touch-up (the constitution's own file — the ONE shared-file edit this plan makes, and it happens here, after the parallel build has long finished), the new-surface skill gains the window-checklist line, QUESTIONS closeout (every [VETO?] this plan logged has its built-on-assumption marker), PROGRESS closing entry. <strong>Gate:</strong> the full standing gate + every evidence file present + <code>nc-final</code> tagged green.</p>
+<p><strong>Sequencing rules:</strong> N0 blocks all. N1 blocks N3 (the pulse must be true before it grows). N2 blocks N5 (the feed consumes RangeControl + the grid) but not N3/N4. N4 blocks N5 and N6. N3 and N4 may interleave if a source blocks (per-source degradation applies to the build itself). A veto of 0.1's default reshapes only TabBar/RoomNav wiring in N5. A veto of any 0.2 row changes only its named sections.</p>
+<p><strong>Estimated total: 8–11 days at R/F-phase pace.</strong></p>
+</section>
+<section class="part">
+<div class="part-head">
+<div class="kicker">Part 10</div>
+<h2>Mobile &amp; iOS specifics (cross-cutting)</h2>
+<p class="dek">The redesign Part 7 + feel-plan Part 7 contracts stand (safe areas, 44px targets, 16px inputs, keyboard tab-bar hide, no page horizontal scroll, shelf physics). This part adds only what the NEW surfaces need. Items marked MANUAL run at N7 on the real device, twice: mobile Safari and the installed standalone app.</p>
+</div>
+<ol>
+<li><strong>Image loading on iOS.</strong> Explicit width/height + blur placeholder on every NewsImage (CLS 0.000 is a hard gate); <code>loading="lazy"</code> everywhere but the lead; no fade-in animation on load (the blur placeholder resolves to the image with no transition — a fade is motion the stillness culture doesn't need, and Safari's lazy-load + fade combo visibly stutters on fling scrolls). MANUAL: fling the feed on device; no white flashes, no layout jumps, no half-painted frames.</li>
+<li><strong>Filter chip rows.</strong> Horizontal scroll containers with <code>overscroll-behavior-x: contain</code>, snap proximity, edge-fade mask on a STATIC wrapper (the WebKit mask-on-scroller compositing lesson, inherited); chips ≥44px tall; the active chip is never scrolled out of existence after selection (on select, if off-screen, it is brought into view by the USER's next glance — no programmatic scrollTo, M3; instead the count line under the row restates the active filters so state is never invisible). MANUAL: chip row pan vs page scroll disambiguation; left-edge swipe in standalone does not trigger back-navigation mid-pan.</li>
+<li><strong>The story page in standalone.</strong> No browser chrome means the return rail IS the way back: the room keeps the house return-rail pattern at the top of /news/[cluster] ("← Front page"), 44px, safe-area-padded. External source links open in the in-app Safari view controller (default anchor behavior) — MANUAL: returning from an external article lands back on the story page with scroll preserved.</li>
+<li><strong>The panel's live states.</strong> The 15s poll pauses on <code>visibilitychange: hidden</code> (backgrounded PWA) and resumes on visible — no timers ticking in a suspended webview. Buttons are real <code>&lt;button&gt;</code>s in forms (server actions), so double-tap zoom is already disabled by the kit's <code>.touch-manipulation</code>.</li>
+<li><strong>MANUAL checklist (N7, photographed):</strong> feed fling + lead image paint · chip pan/ scroll/edge-swipe · story page return + external-link round trip · dark theme photo frames (true photos, themed frames) · panel dispatch → running → succeeded on device · the strip's three states (fresh seeded; aging/dead via the seeded clock param) · RangeControl on the ticker at 390px (targets, no zoom on tap) · VoiceOver: feed cards read as single articles (headline, source, time, tickers in one pass — the card is one focusable article element with internal links reachable), filter chips announce pressed state, the gauge reads its components.</li>
+</ol>
+</section>
+<section class="part">
+<div class="part-head">
+<div class="kicker">Part 11</div>
+<h2>The adversarial pass (attacks run, fixes landed)</h2>
+<p class="dek">Six lenses, per the commission. Each attack is stated the way a hostile reviewer would state it, with where the plan now answers it. Attacks that found real holes changed the text above before delivery; this part is the record.</p>
+</div>
+<h3>11.1 "Your News section will drift into a trending feed."</h3>
+<ul>
+<li><strong>Attack: significance is just salience wearing a suit — magnitude is an input, so big movers float up and you've rebuilt a gainers list.</strong> Answer: magnitude enters ONLY in units of the ticker's own ATR (a 3% day in a sleepy utility outranks an 8% day in a meme name), it is one of five inputs, catalyst-class prior and corroboration dominate the weights (Appendix E), and a mover with NO catalyst cannot enter the feed at all (C9's slot is unranked, capped, image-free). The e2e pins a seed where the biggest mover ranks third.</li>
+<li><strong>Attack: filters become a leaderboard — tap "Tech" and sort by move.</strong> Answer: there is no user sort on the feed at all; filters only subset, order stays significance; the DataTable on story pages is per-cluster context (≤ a handful of rows), not a market ranking.</li>
+<li><strong>Attack: the lead card is a reward for the day's hottest thing.</strong> Answer: lead = top SIGNIFICANCE (often a Fed statement with zero price fireworks); C4 makes layout size-blind and the seed proves it.</li>
+<li><strong>Attack: "This week" becomes a most-read archive.</strong> Answer: week view is the same significance order over more nights, no popularity signal exists anywhere in the schema to rank by — the deepest guard is that the pipeline never ingests attention data.</li>
+</ul>
+<h3>11.2 "The new surfaces will break honesty rules somewhere subtle."</h3>
+<ul>
+<li><strong>Attack: the why-it-matters line is an LLM opinion pipeline-stamped as fact.</strong> Answer: it passes the same deterministic gate as the brief (numbers/tickers/dates must trace to sources), advice verbs and predictions are banned by the same prompt contract, and a failing line is DROPPED, not softened (7.5). The line's job is mechanism, not forecast; Appendix D's prompt says so in the system text.</li>
+<li><strong>Attack: ticker chips with moves on news cards are bare percentages.</strong> Answer: they are 1D price changes with window tokens (C2), not base rates — P4 governs base rates, and none render outside BaseRate anywhere in this plan.</li>
+<li><strong>Attack: the Mood gauge is a composite market-direction gauge — P3 bans those.</strong> Answer: P3 bans composite BUY/SELL/technical-rating aggregates — action recommendations. The gauge aggregates SENTIMENT context, renders as position-not-angle (P13), attaches no tendency claim, no signal, no action verb, and carries the "context, not a signal" line (6.5). The distinction is recorded here precisely because a future reviewer should re-check it: if the gauge ever grows a directional implication ("greed → sell"), it has crossed into P3 and must die.</li>
+<li><strong>Attack: module 00's retirement hides freshness to save pixels — the exact dishonesty the plan claims to prevent.</strong> Answer: the strip is MORE visible when it matters (amber stale, red dead, undismissable), the states are calendar-aware and unit-tested, and the dead state is deliberately the loudest surface in the app (4.1). Freshness prominence now correlates with urgency instead of with real estate.</li>
+<li><strong>Attack: image attribution laundering — you serve publishers' photos from your bucket.</strong> Answer: every image row stores source + article URL; the story page prints "Photo via {source}" linking out; cards link to the story which links to the article; thumbnails are pointer-sized (the fair-use posture the messaging apps rely on), fetched via the APIs' own image fields first (their intended use), UA-identified, robots-honoring (7.9). A single-reader, login-walled app is the minimal-distribution end of this spectrum; the etiquette is followed anyway.</li>
+</ul>
+<h3>11.3 "A macro stat will ship with false provenance."</h3>
+<ul>
+<li><strong>Attack: your gold 'spot price' will actually be a futures settle or a day-old fix.</strong> Answer: Appendix A names the venue in the label itself and forbids the word "spot" unless the source is a spot quote; the plan's rule (C6) makes the label follow the source mechanically.</li>
+<li><strong>Attack: USD→NPR will quietly fall back to a different rate basis and nobody will know.</strong> Answer: the fallback is a DIFFERENT label ("mid-market reference" vs "NRB reference") rendered from the source key, unit-tested; and the qualifier line ("remittance apps may differ") is unconditional.</li>
+<li><strong>Attack: CPI YoY computed wrong (SA vs NSA, or home-rolled arithmetic).</strong> Answer: FRED computes it (<code>units=pc1</code> on the NSA series headline figures use); the pipeline stores the published number and the month label; nothing is derived in-house.</li>
+<li><strong>Attack: the masthead as-of stamps a Thursday mortgage rate as tonight's data.</strong> Answer: per-cell as-of labels are the C2 contract for the board precisely because the cadences differ; the cadence-vs-fetch distinction (6.2) exists for this attack.</li>
+</ul>
+<h3>11.4 "Manual triggers will blow something up."</h3>
+<ul>
+<li><strong>Attack: a manual full run during market hours ingests garbage half-day bars.</strong> Answer: not_applicable state on open sessions, enforced in the state machine AND stated in the UI; the workflow's own mode logic doesn't add a second guard (single source of truth, the app refuses to dispatch) — but the nightly cron path is unchanged and idempotent publish makes even a hostile dispatch (curl straight at GitHub) recoverable, and the PAT needed to do that is the user's own.</li>
+<li><strong>Attack: news re-runs burn the Marketaux daily budget and the nightly starves.</strong> Answer: per-mode caps sized against the provider table (8.4: worst case 60 of 100 requests), and the nightly runs at a fixed hour AFTER the cap window resets midnight ET — the arithmetic is in the plan, not in someone's head.</li>
+<li><strong>Attack: LLM cost creep — every manual news run is a batch + a Sonnet call.</strong> Answer: cost per run printed IN the panel, caps bound it (≤2/day), and the monthly worst case (~$6 incremental) is recorded in Appendix A against the existing ~$15 console cap the user already set.</li>
+<li><strong>Attack: concurrent manual + nightly runs corrupt publish.</strong> Answer: GitHub's concurrency group serializes (verified semantics: queued-pending, latest-queued survives); publish is idempotent by keys; the panel exposes queue state instead of hiding it.</li>
+<li><strong>Attack: the GH PAT leaks.</strong> Answer: server-only env, never in client bundles (the panel talks to our session-gated routes), fine-grained to one repo's Actions scope — rotation is one revoke away and QUESTIONS records the scope so the user can audit it.</li>
+</ul>
+<h3>11.5 "iOS will find a way."</h3>
+<p>Covered in Part 10; the three sharpest pre-answered: lazy-image CLS on fling (dimensions + blur mandatory, no fade), chip-row pan vs standalone edge-swipe (contain + static mask + MANUAL check), suspended-webview timers (visibility-gated polling).</p>
+<h3>11.6 "Opus will stall somewhere you didn't look."</h3>
+<ul>
+<li><strong>Missing secrets</strong> → every provisioning row has a fixture path (0.3); N0 probes and records; nothing blocks.</li>
+<li><strong>The moving-target tree</strong> → N0's audit step exists precisely to re-map this plan's references before any edit; intent-binds rule stated up front.</li>
+<li><strong>The seeded images</strong> → committed fixtures, no network in e2e; L4 needs no assets at all.</li>
+<li><strong>VRT baselines on macOS</strong> → unchanged house rule (CI-born); every phase that moves pixels ends with the vrt-baselines dispatch, and N0 re-baselines once for the seed.</li>
+<li><strong>The 5.1 sweep's blast radius</strong> → each row is one surface + one string + one assertion; they land as a checklist, committable row by row — no big-bang refactor exists in this plan.</li>
+<li><strong>Marketaux's 3-article pages surprising the ingest</strong> → the budget table states it (7.3), the adapter tests pin pagination, and the pre-LLM cap makes volume a non-input to cost.</li>
+<li><strong>GitHub's dispatch API shifting under the plan</strong> → the run-id path AND the run-name fallback are both specced (8.2); either alone suffices.</li>
+<li><strong>A never-anticipated wall</strong> → the standing stall protocol (DEVELOPMENT-PLAN Part 10) applies verbatim: two attempts, then stub behind a named degradation flag, log, move on.</li>
+</ul>
+</section>
+<section class="part">
+<div class="part-head">
+<div class="kicker">Appendix A</div>
+<h2>The macro source table (verified 2026-07-12)</h2>
+<p class="dek">Every row was verified on 2026-07-12: endpoints fetched live where possible, licensing pages read (FRED's site blocks non-browser clients, so its pages were read through a rendering proxy — the quoted text is FRED's own). Posting times are one night's observation (Fri Jul 10) — typical, not contractual; N3 re-observes for a week before hard-coding any assumption tighter than "latest available observation + its date." The build re-verifies each row's endpoint before first use (fixture-first per the adapter skill).</p>
+</div>
+<h3>A.1 Index levels &amp; rates (FRED — existing adapter, new series)</h3>
+<table><thead><tr><th>Series</th><th>What</th><th>Cadence &amp; observed posting</th><th>History</th><th>Notes that bind us</th></tr></thead><tbody>
+<tr><td><code>SP500</code></td><td>S&amp;P 500 close</td><td>daily; posted same evening (~8:01pm ET observed)</td><td>rolling 10-year window</td><td>S&amp;P copyright notice: "Reproduction … prohibited except with prior written permission." Single-user, login-walled display via the FRED API with notices intact is the low-risk posture; never re-serve the series publicly. FRED API attribution line required app-wide (already rendered in the sources footer).</td></tr>
+<tr><td><code>DJIA</code></td><td>Dow close</td><td>daily; ~6:03pm ET observed</td><td>rolling 10-year window</td><td>same S&amp;P DJI notice</td></tr>
+<tr><td><code>NASDAQCOM</code></td><td>Nasdaq Composite close</td><td>daily; <strong>~11:38pm ET observed — after BOTH nightly jobs</strong>; the 6:00am ET macro-mode cron (Part 3.1.3) is what makes the morning read current</td><td>full history (1971→)</td><td>Nasdaq copyright notice, no reproduction clause</td></tr>
+<tr><td><code>NASDAQ100</code></td><td>Nasdaq-100 close</td><td>same as NASDAQCOM</td><td>full history (1986→)</td><td>exists and is live — recorded here because the proxy chip explains QQQ against the 100; we display the Composite</td></tr>
+<tr><td><code>VIXCLS</code></td><td>VIX close</td><td>daily; posts the NEXT business morning (~9:38am ET observed) — the morning cron catches it</td><td>1990→</td><td>Cboe copyright "Reprinted with permission" (FRED's permission, which is why we read it via FRED)</td></tr>
+<tr><td><code>DGS10</code></td><td>10-yr Treasury constant maturity</td><td>daily; posts next business day ~4:16pm ET carrying the prior day (H.15 pattern, confirmed)</td><td>1962→</td><td>public-domain US Treasury data</td></tr>
+<tr><td><code>MORTGAGE30US</code></td><td>30-yr fixed mortgage avg (Freddie Mac PMMS)</td><td>weekly, week ending Thursday; posts Thursday ~12:02pm ET</td><td>1971→</td><td>display "wk of {Thu}"</td></tr>
+<tr><td><code>CPIAUCNS</code> + <code>units=pc1</code></td><td>CPI all items, NSA, % change from year ago — <strong>FRED computes the YoY; we store what it publishes</strong></td><td>monthly; BLS releases 8:30am ET mid-month for the prior month (Jun data → Jul 14); FRED updates ~50 min later</td><td>1913→</td><td>NSA is the series headlines quote (BLS's own release text confirms); SA (<code>CPIAUCSL</code>) would read a few tenths off every headline</td></tr>
+<tr><td><code>BAMLH0A0HYM2</code></td><td>ICE BofA US High Yield OAS (Mood gauge input)</td><td>daily, ~1 business-day lag</td><td>1996→</td><td>verified distinct from the deleted ICE-IBA family; re-verify + fixture at N3</td></tr>
+</tbody></table>
+<h3>A.2 Russell 2000 — the recorded dead end</h3>
+<p>FRED deleted all 36 FTSE Russell series on 2019-10-04 (announcement still served in the old series' place; the Wilshire family followed 2024-06-03). Verified alternatives, each rejected: <strong>Cboe's delayed-quote JSON</strong> works technically and its site terms prohibit automated extraction in bold capitals — knowingly violating stated terms is not this app; <strong>Stooq's</strong> keyless CSV endpoints are dead (~Mar 2026 API-key regime) and its upstream index license is unstated even with a key; <strong>Yahoo's</strong> ToS bans automated collection outright; <strong>FTSE Russell/LSEG</strong> publishes only quarterly month-end spreadsheets free. Conclusion (unchanged from R0, now with the search recorded): the small-caps slot renders IWM's own price with the one-chip proxy grammar of Part 3.2, labeled as an ETF price, never as the Russell 2000 level.</p>
+<h3>A.3 Gold</h3>
+<p>FRED carries no market gold price (LBMA/IBA series deleted 2022-01-31 — announcement verified; the gold tag now holds only volatility/PPI/book-value series). LBMA itself requires an IBA license. metals-api has no free tier (cheapest $19.99/mo). Stooq's XAUUSD CSV is dead. Exchange-data scrapers of COMEX are unlicensed redistribution. <strong>Chosen: GoldAPI (goldapi.io)</strong> — keyed free tier (marketing says ~500 req/mo; VERIFY AT SIGNUP — flagged), XAU/USD JSON, one call nightly ≈ 30/mo. Label exactly: <code>indicative spot reference · GoldAPI</code> — never "LBMA price", never "COMEX settlement" (licensed benchmark names we may not borrow). Keyless fallback services exist (gold-api.com answered live) but carry undisclosed provenance — rejected in favor of C7's honest aging when GoldAPI is down.</p>
+<h3>A.4 USD → NPR</h3>
+<p><strong>Primary: Nepal Rastra Bank</strong> — official documented public API, verified live. <code>GET https://www.nrb.org.np/api/forex/v1/rates?page=1&amp;per_page=5&amp;from={Y-m-d}&amp;to={Y-m-d}</code> (all four params required; structured 400 on omission). Response: <code>data.payload[].rates[]</code> with <code>currency.iso3/unit</code>, <code>buy</code>, <code>sell</code> as STRINGS; USD unit=1 (INR is per-100 — the parser must respect <code>unit</code>). Published every calendar day ~00:00 Nepal time (UTC+5:45), set the prior business afternoon; <strong>weekends repeat Friday's fix</strong> (observed Sat+Sun rows). No published ToU — it is the central bank's own developer API. Display per Part 6.2.4 (buy/sell pair, <code>NRB official reference</code>, weekend note as title). <strong>Fallback: open.er-api.com</strong> <code>GET /v6/latest/USD</code> → <code>rates.NPR</code>, verified live, daily updates incl. weekends, no key; free-tier terms REQUIRE the visible attribution link "Rates By Exchange Rate API" (rendered whenever this source is live — the copy key exists) and allow caching. Rejected: frankfurter (no NPR — ECB list), exchangerate.host (key-walled now), remittance-app rates (Remitly/TapTap have no public APIs; Wise's <code>/v1/rates</code> is affiliate-credential-only — verified in their docs). The two sources measure different things (official reference vs market mid) and the label always names which is rendering (C6).</p>
+<h3>A.5 Fear &amp; Greed (the licensing record behind 0.2.2 and Part 6.5–6.6)</h3>
+<p>CNN: no API or licensing program exists in its ToS ("personal use only … no copying, redistribution, retransmission, publication or commercial exploitation"); the known <code>production.dataviz.cnn.io</code> endpoint answered our probe with HTTP 418 — an internal, bot-blocked chart feed, not an offering; RapidAPI resellers of it are unlicensed scrapers (paying a scraper launders nothing). alternative.me's index: crypto-only by its own methodology (BTC volatility/momentum/social/dominance). AAII sentiment: weekly, free to view, no reuse grant, site bot-blocked. Cboe put/call page: same automated-extraction prohibition as A.2. NAAIM Exposure Index: goes subscription-only 2026-08-01 — a feed about to be paywalled is a dependency about to break. <strong>Conclusion: build ours (Part 6.5), from inputs we already hold legitimately, formula on-surface, never CNN's name.</strong></p>
+<h3>A.6 News, images, infrastructure (the Part 7/8 numbers)</h3>
+<table><thead><tr><th>Fact</th><th>Verified value</th></tr></thead><tbody>
+<tr><td>Finnhub free tier</td><td>60 calls/min (+30/s platform cap, 429 on excess); company-news lookback 1 year; <code>/news</code> categories general/forex/crypto/merger; fields include <code>image</code>, <code>source</code>, <code>datetime</code>, <code>related</code>, <code>category</code> — <code>image</code> is often an empty string (fallback ladder exists for this)</td></tr>
+<tr><td>Finnhub terms</td><td>personal use; no redistribution to third parties — single-user login-walled display fits</td></tr>
+<tr><td>Marketaux free tier</td><td>100 requests/day, <strong>3 articles/request</strong>; fields include <code>image_url</code>, <code>source</code> (domain), <code>published_at</code>, <code>entities[]</code> with <code>industry</code>/<code>match_score</code>/<code>sentiment_score</code>, <code>similar[]</code>; <code>industries</code>/<code>countries</code>/<code>filter_entities</code> params confirmed. Display/caching terms page 404s — flagged unknown; nothing in docs restricts display</td></tr>
+<tr><td>og:image practice</td><td>1200×630 (1.91:1) de-facto standard; tags near-universal on news articles (they exist FOR link previews); fetch etiquette per messenger precedent (identified UA, robots.txt honored, one fetch, cache) — Slack/Discord/iMessage all do exactly this server-side; <em>Perfect 10 v. Amazon</em> covers pointer-size thumbnails; datacenter-IP bot walls are the real failure mode → the ladder's L3/L4 exist for it</td></tr>
+<tr><td>R2</td><td>free tier 10GB storage / 1M writes / 10M reads monthly, <strong>zero egress</strong>; S3 API endpoint <code>https://{account}.r2.cloudflarestorage.com</code>, region <code>auto</code>, boto3 documented; <code>r2.dev</code> is rate-limited/dev-labeled (no published number) with no CDN cache — mitigated by Vercel's image cache being the only origin client; custom domain (requires a zone on the Cloudflare account) puts Cloudflare's cache in front — P-1 asks which exists</td></tr>
+<tr><td>Vercel image optimization</td><td>current model: transformations (Hobby 5k/mo) + cache reads/writes; billed on MISS/STALE only; <code>minimumCacheTTL</code> default is 4h — the plan sets 31 days on immutable hashed variants; budget math: ~1.8k new images/mo × ~2 rendered sizes ≈ 3.6k of 5k — if the probe shows breach, the pre-sized variants serve as plain <code>&lt;img&gt;</code>+<code>srcset</code> (both paths cheap because the pipeline pre-sizes)</td></tr>
+<tr><td>GitHub dispatch</td><td><code>POST …/workflows/{file}/dispatches</code> with <code>return_run_details: true</code> → <strong>200 with <code>workflow_run_id</code></strong> (verified in current docs; 204 without it); fine-grained PAT needs Actions read+write on this repo; concurrency <code>cancel-in-progress: false</code> queues a manual run as pending behind an in-flight one (latest-queued survives); rate limits are orders of magnitude above a few dispatches/day</td></tr>
+<tr><td>GitHub minutes</td><td>private-repo free tier 2,000 min/mo; nightly ≈ 250–330 min/mo + manual caps worst-case ≈ 60–90 min/day never sustained — headroom recorded, and the gate prints actual usage once during N6</td></tr>
+<tr><td>Anthropic (verified pricing page)</td><td>Haiku 4.5 $1/$5 per MTok, batch −50% → the nightly news extraction (~60 items ≈ 68k in/19.5k out) ≈ <strong>$0.08/night batch</strong>; the Stage-B-mini Sonnet call ≈ $0.02–0.05; incremental worst case with manual re-runs ≈ <strong>$6/mo</strong>, inside the existing ~$15 console cap. Note: Sonnet 5 batch $1/$5 through 2026-08-31, then $1.50/$7.50 — the models stay pinned in env per the standing convention</td></tr>
+</tbody></table>
+</section>
+<section class="part">
+<div class="part-head">
+<div class="kicker">Appendix B</div>
+<h2><code>copy.ts</code> additions (mechanical voice; exact strings)</h2>
+<p class="dek">Grouped as the deck is. <code>{x}</code> placeholders use the deck's <code>fill()</code>. Strings are contractual (P12); changing one is structural. The window vocabulary is the closed set C2 references.</p>
+</div>
+<pre>copy.window = {
+  d1: "1D", d5: "5D", m1: "1M", m3: "3M", m6: "6M", y1: "1Y", y5: "5Y",
+  avg20d: "20d avg", avg50d: "50d avg", rsi14: "14d",
+  weekOf: "wk of {date}", monthOf: "{month} {year}", asOf: "as of {date}",
+  atClose: "at {day}'s close", vsPriorClose: "vs prior close",
+}
+copy.pulse = {
+  …existing…,
+  marketsShelf: "Markets — swipe",
+  moneyShelf: "Money &amp; mood — swipe",
+  proxyChip: "{symbol} · ETF price",          // replaces the freestanding "ETF proxy" chip text
+  proxyChipNasdaq: "QQQ · Nasdaq-100 ETF price",
+  staleLevel: "as of {date}",
+  indexesUnavailable: "Index levels unavailable tonight — showing ETF closes, labeled per row",
+  breadthClose: "{pct} above the 50-day average · at {day}'s close",
+}
+copy.macroBoard = {
+  mortgageLabel: "30-yr mortgage", mortgageNote: "Average rate on a 30-year fixed mortgage — the price of housing money.",
+  cpiLabel: "Inflation (CPI YoY)", cpiNote: "Consumer prices vs the same month last year, as published.",
+  goldLabel: "Gold (oz)",
+  nprLabel: "USD → NPR", nprQualifier: "Remittance apps may differ.",
+  nprSourceNrb: "NRB reference", nprSourceMid: "mid-market reference",
+  moodLabel: "Mood gauge",
+  moodOwnership: "Computed by this app from breadth, volatility, momentum, range position, and credit spreads — not CNN's index.",
+  goldProvenance: "indicative spot reference · GoldAPI",
+  nprPair: "{buy} buy · {sell} sell",
+  nprWeekendNote: "weekends carry Friday's fix",
+  erApiAttribution: "Rates By Exchange Rate API",   // REQUIRED, rendered as a link when the fallback source is live
+  moodContext: "Context, not a signal — no tendency evidence attaches to this number.",
+  moodInsufficient: "Insufficient inputs tonight — missing: {names}.",
+  notYetReported: "not yet reported",
+  sourceUnreachable: "source unreachable tonight",
+  staleCell: "stale — last {asOf}",
+}
+copy.moodBands = { f0: "fearful", f25: "leaning fearful", mid: "mixed", g56: "leaning greedy", g76: "greedy" }
+copy.news = {
+  roomTitle: "Front page",
+  pressTime: "Assembled {date} {time} ET · from {articles} articles, {clusters} catalysts",
+  ordering: "Ordered by catalyst significance — scope, corroboration, and the size of the move it explains.",
+  cadence: "Assembled nightly after the US close. This page does not update during the day.",
+  countLine: "{n} catalysts{filters}",
+  zeroState: "No {filter} catalysts today — that is information, not an error.",
+  noListing: "No direct listing in our universe.",
+  noStoryHeader: "Moved without a story",
+  sources: "{n} sources",
+  photoVia: "Photo via {source}",
+  deskPreviewCut: "First {n} of {total} by significance",
+  deskDoorway: "The full front page →",
+  provenance: "Ingested {time} · extracted by {model} · every number machine-verified against its sources",
+  whatHappened: "What happened", whyItMatters: "Why it matters", byTheNumbers: "By the numbers",
+  affected: "Affected tickers", learn: "Learn the mechanism",
+  weekUnavailable: "less than a week of coverage so far — showing all of it",
+}
+copy.strip = {
+  fresh: "Data through {day} close · pipeline ran {time} · next: {next}",
+  freshManual: "Data through {day} close · refreshed manually {time} · next: {next}",
+  aging: "No run for {day}'s session · showing {lastDay}'s data · check the pipeline →",
+  dead: "The pipeline has not run since {lastDay}. Every number on this page is from that night. Check the pipeline →",
+}
+copy.control = {
+  title: "Pipeline",
+  runFull: "Run tonight's full pipeline", runFullDesc: "Ingest the close, recompute everything, publish.",
+  runNews: "Refresh the news", runNewsDesc: "Fetch today's articles, re-rank the front page. ~{cost} of API budget.",
+  runMacro: "Refresh macro stats", runMacroDesc: "Re-read rates, gold, FX and the gauge inputs.",
+  runCompute: "Recompute scans", runComputeDesc: "Re-run indicators and scans over stored data. No new data is fetched.",
+  runBriefing: "Re-run the evening briefing",
+  capLine: "{left} of {cap} left today",
+  cooldown: "available again at {time}",
+  capped: "daily limit reached — resets midnight ET",
+  queuedBehind: "queued behind tonight's scheduled run",
+  running: "running — {elapsed}",
+  naMarketOpen: "Markets are open — today's closing data doesn't exist until 4:00pm ET. The nightly run lands ~{nightly} ET.",
+  naWeekend: "It's the weekend — {lastDay}'s close is the latest data that exists; nothing new lands before {nextDay} 4:00pm ET.",
+  naHoliday: "US markets are closed today ({name}) — {lastDay}'s close stands until {nextDay}.",
+  naAlreadyRan: "Tonight's run already succeeded at {time} — there is nothing newer to fetch.",
+  notConfigured: "Manual runs need a GitHub token — see QUESTIONS-FOR-BISHANT (P-2).",
+  history: "Recent manual runs",
+}
+copy.ticker = { …existing…, rangeCaption: "Daily bars · adjusted · through {date}",
+  rangeCoverage: "Showing full history: {years}",
+  rangeUnavailable: "Less than {min} of history for this symbol" }
+copy.watchlist = { …existing…, sparkCaption: "Sparklines: 30 sessions, close only" }</pre>
+<p>Scan-table column headers (the Part 5.1 sweep, exact): <code>1-day move</code> · <code>RVOL · 20d</code> · <code>Gap · open vs prior close</code> · <code>From 52w high</code> · <code>50-day avg</code> · <code>200-day avg</code> · <code>20-day move</code> · <code>5-day move</code> · <code>RSI · 14d</code> · <code>RSI prior · 14d</code> · <code>$ volume · 1D</code>.</p>
+</section>
+<section class="part">
+<div class="part-head">
+<div class="kicker">Appendix C</div>
+<h2>Schema DDL (Prisma, verbatim additions)</h2>
+</div>
+<pre>model MacroStat {
+  seriesKey  String
+  asOfDate   DateTime @db.Date
+  value      Float
+  prior      Float?
+  asOfLabel  String
+  sourceKey  String
+  fetchedAt  DateTime
+  meta       Json?
+  @@id([seriesKey, asOfDate])
+  @@index([seriesKey, asOfDate(sort: Desc)])
+  @@map("macro_stat")
+}
+
+model NewsCluster {
+  id            String   @id            // sha1 of the SEED member's canonical url (the earliest article) — stable as members accumulate
+  runDate       DateTime @db.Date       // last night this cluster was updated
+  firstSeen     DateTime @map("first_seen")
+  headline      String                  // representative, neutralized by Stage A
+  eventType     String   @map("event_type")
+  sectors       String[]
+  themes        String[]
+  tickers       String[]
+  significance  Float
+  sources       Int
+  whyItMatters  String?  @map("why_it_matters")   // null = gate dropped it or not in the narrated top-20
+  affectedNote  String?  @map("affected_note")
+  extract       Json
+  verification  Json
+  imageId       String?  @map("image_id")
+  image         NewsImage? @relation(fields: [imageId], references: [id])
+  links         CatalystLink[]
+  @@index([runDate, significance(sort: Desc)])
+  @@map("news_cluster")
+}
+
+model CatalystLink {
+  id         String      @id @default(cuid())
+  clusterId  String      @map("cluster_id")
+  cluster    NewsCluster @relation(fields: [clusterId], references: [id])
+  symbol     String
+  ret1       Float?                     // snapshot at publish: 1-day return
+  rvol20     Float?                     // snapshot at publish: RVOL vs 20d avg
+  hasSetupCard Boolean   @map("has_setup_card")
+  @@unique([clusterId, symbol])
+  @@map("catalyst_link")
+}
+
+model NewsImage {
+  id           String  @id               // sha1 of the source image url
+  sourceKind   String  @map("source_kind")   // "provider" | "og" | "favicon"
+  urlFull      String  @map("url_full")      // 1200w R2 public url
+  urlCard      String  @map("url_card")      // 640w
+  urlThumb     String  @map("url_thumb")     // 240w
+  width        Int
+  height       Int
+  blurDataUrl  String  @map("blur_data_url") // ~300B base64 8px JPEG
+  dominantColor String @map("dominant_color")
+  attributionSource String @map("attribution_source")
+  attributionUrl    String @map("attribution_url")
+  fetchedAt    DateTime @map("fetched_at")
+  clusters     NewsCluster[]
+  @@map("news_image")
+}
+
+model ManualRun {                          // ✎ app-writable (user state)
+  id          String    @id @default(cuid())
+  requestedAt DateTime  @default(now()) @map("requested_at")
+  workflow    String                       // "nightly-a" | "nightly-b"
+  mode        String                       // "full" | "news" | "macro" | "compute" | "briefing"
+  ghRunId     BigInt?   @map("gh_run_id")
+  status      String                       // requested|queued|running|succeeded|failed (not_applicable/not_configured are UI states, never stored)
+  reason      String?
+  finishedAt  DateTime? @map("finished_at")
+  @@index([requestedAt(sort: Desc)])
+  @@map("manual_run")
+}
+
+// news_item gains (existing model):
+//   source String? · imageUrl String? @map("image_url") · category String? ·
+//   industries String[] · clusterId String? @map("cluster_id")
+// market_context gains: indexLevelsAsOf DateTime? @db.Date @map("index_levels_as_of")</pre>
+</section>
+<section class="part">
+<div class="part-head">
+<div class="kicker">Appendix D</div>
+<h2>LLM prompt shapes &amp; schemas (newsdesk extension)</h2>
+</div>
+<pre># Stage A (per representative article) — UNCHANGED from briefing/extract.py except:
+#   event_type enum gains "filing". Same system prompt, same Batches flow, same
+#   drop-on-malformed. custom_id = news_item.id; extract written back to news_item.extract
+#   and denormalized onto news_cluster.extract for its representative.
+
+# Stage B-mini — the front-page narrator (one sync call, MODEL_SYNTH, structured output)
+system: You write one-line context notes for a beginner's market front page, in mechanical
+  third person. Inputs: per-catalyst structured extracts (with doc_ids) and a computed-stats
+  table (with stat_ids). For each catalyst, write why_it_matters: what MECHANISM this kind of
+  event moves — the "so what", never a restatement of the headline, never a prediction, never
+  advice. RULES: every number you use appears VERBATIM in the inputs and is cited by id; no
+  advice verbs (buy/sell/should); no directional forecasts; if the event plausibly affects a
+  sector beyond the named tickers, say so in affected_note, mechanically; if you cannot add
+  context beyond the headline, return why_it_matters as null — an honest null beats padding.
+schema: { notes: [ { cluster_id, why_it_matters: string|null (≤160 chars),
+  affected_note: string|null (≤120 chars), citations: [doc_or_stat_id] } ] }
+failure: schema violation ⇒ one retry with the error appended; second failure ⇒ all notes
+  null (facts publish without prose). Appendix-E-style verification runs on every note
+  REGARDLESS (tolerances verbatim from DEVELOPMENT-PLAN Appendix E); a flagged note is
+  dropped to null and the decision recorded in news_cluster.verification.</pre>
+</section>
+<section class="part">
+<div class="part-head">
+<div class="kicker">Appendix E</div>
+<h2>Significance, taxonomy, doorways (the deterministic contracts)</h2>
+</div>
+<p><strong>Significance (computed in <code>newsdesk/rank.py</code>; constants module-level; changing weights is structural):</strong></p>
+<pre>significance = 0.30·scope + 0.25·corroboration + 0.20·magnitude + 0.15·class_prior + 0.10·recency
+scope:         index/Fed/macro-wide = 1.0 · sector-wide (≥3 tickers or an ETF-class event) = 0.6
+               · single-name = 0.3 · no-listing = 0.15
+corroboration: min(sources, 5) / 5
+magnitude:     mean over linked tickers of min(|ret1| / ATR14%, 3) / 3   (0 when no tickers)
+class_prior:   ma/fda/fed-macro 1.0 · earnings/guidance 0.8 · filing/legal 0.6
+               · analyst 0.4 · product/other 0.3
+recency:       1.0 same-session · 0.5 prior session · 0.25 older (week view only)</pre>
+<p><strong>Sector taxonomy (closed set):</strong> Technology · Financials · Health care · Energy · Industrials · Consumer discretionary · Consumer staples · Utilities · Materials · Real estate · Communications — assigned from (1) linked instruments' sector field where present, (2) Marketaux entity <code>industry</code> mapped by a fixed table (in <code>newsdesk/taxonomy.py</code>, ~30 rows, checked in), (3) else <code>Broad market</code>. <strong>Themes (additive):</strong> <code>AI</code> and <code>Defense</code>, from a fixed keyword table over headline+summary (checked in beside it; case-insensitive word boundaries; tests pin inclusions AND near-miss exclusions — "aid" is not "AI").</p>
+<p><strong>Catalyst → Academy doorway map (renders only for authored lessons, via the existing manifest gate):</strong> earnings/guidance → <code>why-base-rates-beat-anecdotes</code>-adjacent earnings lesson if/when authored, else the M1 trading-day lesson · ma → <code>order-types-and-the-spread</code> · fda → the M4 gaps lesson (<code>gaps-what-the-data-says</code>) · macro/fed → <code>reading-the-macro-pulse</code> · analyst → <code>why-base-rates-beat-anecdotes</code> · filing/legal → <code>the-track-record-page</code> · volume-driven no-story movers → <code>volume-and-rvol</code>. (The map is a constant with a unit test; unauthored slugs simply don't render — same gate the brief uses.)</p>
+</section>
+<section class="part">
+<div class="part-head">
+<div class="kicker">Appendix F</div>
+<h2>VRT delta table (added shots; both themes unless noted)</h2>
+</div>
+<table><thead><tr><th>Shot</th><th>Viewports</th></tr></thead><tbody>
+<tr><td>desk (re-baseline: strip, module 07/08, sources line, board row)</td><td>1366×768 · 390×844 · NEW 1536×960</td></tr>
+<tr><td>macro module: normal · all-proxy degraded · board degraded</td><td>1366 · 390</td></tr>
+<tr><td>news feed: default · filtered (Pharma+FDA) · zero-state · week view</td><td>1366 · 390 · 1536</td></tr>
+<tr><td>news story: full anatomy · gate-dropped-prose variant</td><td>1366 · 390</td></tr>
+<tr><td>NewsImage rungs L1–L4 (styleguide)</td><td>1366 (one theme is enough for geometry; both for L4 tint)</td></tr>
+<tr><td>control panel: available/cooldown/na-weekend/running/failed (masked times)</td><td>1366 · 390</td></tr>
+<tr><td>pipeline strip: fresh · aging · dead</td><td>1366 · 390</td></tr>
+<tr><td>RangeControl states (styleguide) · ticker at 1M/6M/5Y (masked)</td><td>1366</td></tr>
+<tr><td>every room at 1536 (the wide-grid lock)</td><td>1536×960, light only</td></tr>
+</tbody></table>
+</section>
+<section class="part">
+<div class="part-head">
+<div class="kicker">Appendix G</div>
+<h2>Logged decisions this plan seeds into DECISIONS.md</h2>
+</div>
+<p>Each lands as a <code>[claude]</code>-marked line when its phase executes (the 0.1 answer lands as user-authored if given): 0.2.1–0.2.8 verbatim · the module-00 retirement + ritual-order amendment (structural) · the alert-consumer additions (strip stale/dead; board stale-cell) (structural) · the <code>wide</code> breakpoint (structural, token addition) · drift-rule additions (imagery single-door; anti-trending greps; strip/board alert consumers) · seed growth · Pillow dependency · per-mode workflow inputs (structural: workflow contract) · <code>return_run_details</code> dispatch pattern (local) · news ingest budgets (structural: cost) · significance weights (structural) · taxonomy tables (local) · the C3 RangeControl allowlist (structural: honesty guard).</p>
+<p><em>End of plan. The commission's closing instruction was zero decisions left mid-build: Part 0 holds the one that is yours, everything else is decided, logged, and guarded. The front page is a newspaper because the whole app is one — press time printed, sources named, corrections loud, and nothing on the page because it is merely popular.</em></p>
+</section>
+</body>
+</html>
