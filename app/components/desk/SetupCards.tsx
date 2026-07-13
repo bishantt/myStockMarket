@@ -66,9 +66,21 @@ export function SetupCards({ asOf, cards }: { asOf: Date; cards: SetupCardView[]
       {cards.length === 0 ? (
         <p className="pt-4 font-ui text-sm text-muted">— &nbsp; No setup cards today.</p>
       ) : (
-        <ul className="pt-2">
+        /*
+         * Two-up on the widest desks (NEWS-AND-CONTROL-PLAN Part 4.3). Setup cards are independent
+         * cards, not prose, so they tile — unlike the brief and the movers, which stay one column at
+         * every width because they exist to be read through.
+         *
+         * The `wide:border-b` is not redundant with the `border-b` beside it. It reinstates the rule
+         * on the LAST card, which `last:border-b-0` removes. In one column that removal is right —
+         * a trailing rule against the card's own edge is a double line. In two columns it is wrong:
+         * the last card would be the only one in its row without a rule under it, and the grid would
+         * look broken rather than designed. Responsive variants sort after pseudo-class variants in
+         * Tailwind's output, so the wide rule wins inside its media query and nowhere else.
+         */
+        <ul className="pt-2 wide:grid wide:grid-cols-2 wide:gap-x-8">
           {cards.map((card) => (
-            <li key={card.id} className="border-b border-hairline last:border-b-0">
+            <li key={card.id} className="border-b border-hairline last:border-b-0 wide:border-b">
               <SetupCard card={card} />
             </li>
           ))}

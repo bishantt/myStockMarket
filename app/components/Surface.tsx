@@ -26,8 +26,15 @@ export type SurfaceLevel = "card" | "raised" | "tinted" | "solid";
 
 type SurfaceProps = {
   level?: SurfaceLevel;
-  /** The element to render. Defaults to `section`, because a Desk module is a section. */
-  as?: "section" | "div" | "article" | "aside" | "li";
+  /**
+   * The element to render. Defaults to `section`, because a Desk module is a section.
+   *
+   * `footer` joined the list in N2: on a night a data source fails, the source-status footer keeps
+   * its card at full strength (the bad night is the whole reason that surface exists), and it is
+   * genuinely a footer — so it should say so to a screen reader rather than pretending to be a
+   * section for the sake of a type.
+   */
+  as?: "section" | "div" | "article" | "aside" | "li" | "footer";
   className?: string;
   children: React.ReactNode;
 } & Omit<React.HTMLAttributes<HTMLElement>, "className" | "children">;

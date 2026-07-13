@@ -85,7 +85,7 @@ export default async function DeskLayout({
          * safe-area inset — without it the last module hides behind the bar, which is the kind of
          * bug that only ever shows up on a real device.
          */}
-        <main className="mx-auto max-w-[1360px] px-4 pb-[calc(64px+env(safe-area-inset-bottom))] md:pb-16 desk:px-8">
+        <main className="mx-auto max-w-[1360px] wide:max-w-[1500px] px-4 pb-[calc(64px+env(safe-area-inset-bottom))] md:pb-16 desk:px-8">
           {children}
         </main>
 
@@ -109,7 +109,7 @@ function DeskNav() {
       <div className="bar-blur">
         <nav
           aria-label="Rooms"
-          className="mx-auto flex max-w-[1360px] items-center gap-4 px-4 py-3 desk:px-8"
+          className="mx-auto flex max-w-[1360px] wide:max-w-[1500px] items-center gap-4 px-4 py-3 desk:px-8"
         >
           <Wordmark />
 

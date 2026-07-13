@@ -145,33 +145,47 @@ export default async function ScanPresetPage({ params }: { params: Promise<{ pre
             )}
           </div>
 
-          <ol className="pt-4">
-            {criteriaClauses(preset.criteria).map((clause, index) => (
-              <li key={clause} className="flex items-baseline gap-3 border-b border-hairline py-2 last:border-b-0">
-                <span className="shrink-0 font-mono text-2xs text-muted">{String(index + 1).padStart(2, "0")}</span>
-                <span className="max-w-[62ch] font-ui text-sm text-ink-2">{clause}</span>
-              </li>
-            ))}
-          </ol>
+          {/*
+           * The recipe and the count share a row from `desk:` (NEWS-AND-CONTROL-PLAN Part 4.3), in a
+           * 7/5 split. Below that they stack, exactly as before.
+           *
+           * The two belong beside each other because they are the same sentence: these are the
+           * clauses, and this is how many names cleared them. Read side by side, the count is
+           * obviously the OUTPUT of the criteria next to it — which is the whole reason the recipe is
+           * on this page at all. Stacked down a 1360px column with 700px of white space to the right
+           * of each, they read as two unrelated facts that happen to share a card.
+           */}
+          <div className="grid grid-cols-1 gap-x-10 desk:grid-cols-12">
+            <ol className="pt-4 desk:col-span-7">
+              {criteriaClauses(preset.criteria).map((clause, index) => (
+                <li key={clause} className="flex items-baseline gap-3 border-b border-hairline py-2 last:border-b-0">
+                  <span className="shrink-0 font-mono text-2xs text-muted">{String(index + 1).padStart(2, "0")}</span>
+                  <span className="max-w-[62ch] font-ui text-sm text-ink-2">{clause}</span>
+                </li>
+              ))}
+            </ol>
 
-          <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1 pt-4">
-            <p className="font-mono text-num-lg tabular-nums text-ink">
-              {total} match{total === 1 ? "" : "es"} today
-            </p>
-            {runDate ? (
-              <time
-                dateTime={runDate.toISOString()}
-                data-vrt="mask"
-                className="font-mono text-2xs uppercase tracking-[0.08em] text-muted"
-              >
-                as of {formatUtcDate(runDate)}
-              </time>
-            ) : null}
+            <div className="pt-4 desk:col-span-5">
+              <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1">
+                <p className="font-mono text-num-lg tabular-nums text-ink">
+                  {total} match{total === 1 ? "" : "es"} today
+                </p>
+                {runDate ? (
+                  <time
+                    dateTime={runDate.toISOString()}
+                    data-vrt="mask"
+                    className="font-mono text-2xs uppercase tracking-[0.08em] text-muted"
+                  >
+                    as of {formatUtcDate(runDate)}
+                  </time>
+                ) : null}
+              </div>
+
+              {capped ? (
+                <p className="max-w-[62ch] pt-3 font-ui text-sm text-ink-2">{fill(copy.scans.cap, { n: total })}</p>
+              ) : null}
+            </div>
           </div>
-
-          {capped ? (
-            <p className="max-w-[62ch] pt-3 font-ui text-sm text-ink-2">{fill(copy.scans.cap, { n: total })}</p>
-          ) : null}
         </Surface>
 
         {rows.length > 0 ? (

@@ -52,39 +52,60 @@ export default async function TrackRecordPage() {
           fills as horizons pass.
         </p>
       ) : (
-        <>
-          {/* The plain summary — the honest headline, no spin. */}
-          <dl className="flex flex-wrap gap-x-10 gap-y-3">
-            <Stat label="Resolved" value={String(summary.total)} />
-            <Stat label="Hits" value={String(summary.hits)} />
-            <Stat label="Misses" value={String(summary.misses)} />
-            <Stat label="Unresolvable" value={String(summary.na)} />
-            <Stat label="Hit rate" value={summary.hitRate ?? "—"} />
-          </dl>
+        /*
+         * The summary as an explicit 5-up row (NEWS-AND-CONTROL-PLAN Part 4.3), not a wrapping flex.
+         *
+         * These five numbers are one sentence — resolved, hits, misses, unresolvable, hit rate — and
+         * a flex-wrap laid them out ragged on a phone, breaking wherever the words happened to end.
+         * A grid puts them in columns, which is what mono numerals are for.
+         */
+        <dl className="grid grid-cols-2 gap-x-8 gap-y-4 sm:grid-cols-3 lg:grid-cols-5">
+          <Stat label="Resolved" value={String(summary.total)} />
+          <Stat label="Hits" value={String(summary.hits)} />
+          <Stat label="Misses" value={String(summary.misses)} />
+          <Stat label="Unresolvable" value={String(summary.na)} />
+          <Stat label="Hit rate" value={summary.hitRate ?? "—"} />
+        </dl>
+      )}
 
-          {/*
+      {/*
+       * The app's record and the reader's own record, side by side from `desk:` (Part 4.3) — the
+       * resolved log at 7/12, the reader's forecasts at 5/12.
+       *
+       * They belong on one row because they are the same claim, made twice: this is how often the
+       * app was right, and this is how often YOU were. The whole point of the forecast section is
+       * that it is graded by the same public standard as the app's own signals, and putting them
+       * beside each other is that argument made in layout rather than prose.
+       */}
+      <div className="grid grid-cols-1 gap-8 desk:grid-cols-12 desk:items-start">
+        {summary.total > 0 ? (
+          /*
            * The ledger, as the house table (F6). This kills the app's last `overflow-x-auto` table —
            * a six-column grid peeked through a 390px keyhole was the phone experience here.
            *
            * The filter defaults to ALL. A default of "hits" would be a product grading its own
            * homework, and the misses ride the same table at the same weight (P5).
-           */}
-          <TrackRecordTable
-            rows={rows.map((row) => ({
-              id: row.id,
-              firedDate: formatUtcDate(row.firedDate),
-              symbol: row.symbol,
-              patternLabel: row.patternLabel,
-              horizonDays: row.horizonDays,
-              outcome: row.outcome,
-              resolvedAt: formatUtcDate(row.resolvedAt),
-            }))}
-          />
-        </>
-      )}
+           */
+          <div className="desk:col-span-7">
+            <TrackRecordTable
+              rows={rows.map((row) => ({
+                id: row.id,
+                firedDate: formatUtcDate(row.firedDate),
+                symbol: row.symbol,
+                patternLabel: row.patternLabel,
+                horizonDays: row.horizonDays,
+                outcome: row.outcome,
+                resolvedAt: formatUtcDate(row.resolvedAt),
+              }))}
+            />
+          </div>
+        ) : null}
 
       {/* YOUR FORECASTS — the user's own calibration, graded the same public way (plan §7 P6 step 4). */}
-      <section aria-label="Your forecasts" className="pt-2">
+      <section
+        aria-label="Your forecasts"
+        className={summary.total > 0 ? "pt-2 desk:col-span-5" : "pt-2 desk:col-span-12"}
+      >
         <h2 className="font-ui text-sm font-bold uppercase tracking-[0.06em] text-ink">Your forecasts</h2>
         <div className="mt-2 h-px bg-hairline" />
         <p className="max-w-[62ch] pt-3 font-prose text-base text-ink-2">
@@ -130,6 +151,7 @@ export default async function TrackRecordPage() {
           </div>
         ) : null}
       </section>
+      </div>
     </div>
   );
 }

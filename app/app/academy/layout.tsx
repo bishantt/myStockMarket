@@ -31,7 +31,7 @@ export default function AcademyLayout({ children }: { children: React.ReactNode 
           <div className="bar-blur">
             <nav
               aria-label="Academy"
-              className="mx-auto flex max-w-[1360px] items-center justify-between gap-6 px-4 py-3 desk:px-8"
+              className="mx-auto flex max-w-[1360px] wide:max-w-[1500px] items-center justify-between gap-6 px-4 py-3 desk:px-8"
             >
               <Link
                 href="/academy"
@@ -55,7 +55,7 @@ export default function AcademyLayout({ children }: { children: React.ReactNode 
           </div>
         </header>
 
-        <main className="mx-auto max-w-[1360px] px-4 py-10 pb-[calc(64px+env(safe-area-inset-bottom))] md:pb-16 desk:px-8">
+        <main className="mx-auto max-w-[1360px] wide:max-w-[1500px] px-4 py-10 pb-[calc(64px+env(safe-area-inset-bottom))] md:pb-16 desk:px-8">
           {children}
         </main>
 

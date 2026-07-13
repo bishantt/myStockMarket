@@ -89,7 +89,7 @@ export default async function ScansPage() {
 
       {/* Two-up from lg. The odd fifth card keeps its column width in flow — a full-width last card
           would read as emphasis, and rsi-extreme has earned none. */}
-      <ul className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+      <ul className="grid grid-cols-1 gap-6 lg:grid-cols-2 wide:grid-cols-3">
         {SCAN_PRESETS.map((preset) => {
           const hits = byPreset.get(preset.key) ?? [];
           const preview = hits.slice(0, PREVIEW_ROWS);

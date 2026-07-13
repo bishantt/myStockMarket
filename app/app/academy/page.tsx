@@ -86,7 +86,7 @@ export default async function AcademyIndex() {
         // Two-up from lg. Seven module cards in one flat column is a receipt with serifs; the odd
         // seventh keeps its column width in flow, exactly like the scans index's fifth preset — a
         // full-width last card would read as emphasis, and no module has earned any.
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 wide:grid-cols-3">
           {Object.entries(byModule).map(([moduleKey, moduleLessons]) => {
             const readCount = moduleLessons.filter((l) => completed.has(l.slug)).length;
             const allRead = readCount === moduleLessons.length;

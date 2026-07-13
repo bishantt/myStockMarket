@@ -1,4 +1,5 @@
 import { Disclosure } from "@/components/Disclosure";
+import { Surface } from "@/components/Surface";
 import { copy, fill } from "@/lib/copy";
 import { cx } from "@/lib/cx";
 
@@ -27,6 +28,24 @@ import { cx } from "@/lib/cx";
 /** One provider's health for the run: its name and status (ok | degraded | down). */
 export type SourceStatus = { name: string; status: string };
 
+/**
+ * THE FOOTPRINT SHRINK (NEWS-AND-CONTROL-PLAN Part 4.2), and the component owns it.
+ *
+ * On a healthy night this footer said "6 sources · all reporting" — one line whose content is
+ * "nothing to report" — inside a full Surface card, in the rail. That is the footprint disease in
+ * miniature: the app spending its most expensive material on its least surprising fact.
+ *
+ * So the CHROME now escalates the same way the pipeline strip's does:
+ *
+ *   all ok    → no card. A plain footer line under the grid. It is a provenance stamp, and a
+ *               provenance stamp is not a station.
+ *   degraded  → the card stays, forced open, naming what failed. It does not shrink by one pixel,
+ *               because the night something broke is the entire reason this surface exists. A
+ *               footer that gets quieter as the news gets worse is the exact inversion of the rule.
+ *
+ * The decision lives here rather than at the call site for the same reason the M2 fold does: a
+ * caller cannot get it wrong, because a caller is never asked.
+ */
 export function SourceStatusFooter({ sources, window }: { sources: SourceStatus[]; window?: string }) {
   const degraded = sources.filter((s) => s.status !== "ok");
   const allOk = degraded.length === 0;
@@ -51,8 +70,8 @@ export function SourceStatusFooter({ sources, window }: { sources: SourceStatus[
     </div>
   );
 
-  return (
-    <footer aria-label="Source status" className="mt-2 flex flex-col gap-2 border-t border-hairline pt-4">
+  const body = (
+    <>
       {sources.length > 0 ? (
         <>
           {/* The summary line. It only ever claims "all reporting" when that is true. */}
@@ -75,6 +94,25 @@ export function SourceStatusFooter({ sources, window }: { sources: SourceStatus[
 
       {/* A licence condition of using the FRED API. Always visible, never behind a fold. */}
       <p className="font-ui text-2xs text-muted">{copy.attribution.fred}</p>
-    </footer>
+    </>
+  );
+
+  // The healthy night: a plain provenance line, no card, no material, no rail slot.
+  if (allOk) {
+    return (
+      <footer
+        aria-label="Source status"
+        className="flex flex-col gap-2 border-t border-hairline pt-4"
+      >
+        {body}
+      </footer>
+    );
+  }
+
+  // The bad night: the card, at full strength. This is what the surface is FOR.
+  return (
+    <Surface as="footer" aria-label="Source status" className="flex flex-col gap-2 p-5">
+      {body}
+    </Surface>
   );
 }

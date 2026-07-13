@@ -1,4 +1,5 @@
 import { db } from "@/lib/db";
+import type { TradingDate } from "@/lib/market-hours";
 
 /**
  * pipeline.ts — the app's read of the nightly pipeline's own heartbeat.
@@ -56,11 +57,30 @@ export async function getLatestRun(): Promise<LatestRun | null> {
  * A row is not an edition. A finished row is an edition.
  */
 export type CompletedRunRow = {
-  /** The trading day the run processed (ISO date string). */
-  runDate: string;
+  /**
+   * The trading day the run processed, as a BARE calendar date: "2026-07-10". Not a timestamp.
+   *
+   * This is load-bearing, and getting it wrong cost a build. `pipeline_run.runDate` is a Prisma
+   * `@db.Date` — a trading DAY, stored at UTC midnight — and calling `.toISOString()` on it (as the
+   * rest of this file does, correctly, for real instants) yields "2026-07-10T00:00:00.000Z". The
+   * freshness state machine walks the trading calendar in bare dates, so it built
+   * `new Date("2026-07-10T00:00:00.000Z" + "T00:00:00Z")` — an Invalid Date, and a RangeError the
+   * moment anything tried to format it.
+   *
+   * The unit tests never saw it, because they hand-fed the state machine bare dates. The bug lived
+   * exactly in the SEAM between the database row and the machine, which is precisely the place a
+   * test that constructs its own fixtures cannot look. The prerender caught it; there is now a test
+   * on this function's own shape (lib/pipeline.test.ts) so the seam is guarded rather than lucky.
+   */
+  runDate: TradingDate;
   /** When it finished — never null, by construction. That is the whole point of this type. */
   finishedAt: string;
 };
+
+/** A `@db.Date` value as the bare calendar date it actually represents. */
+export function toTradingDate(date: Date): TradingDate {
+  return date.toISOString().slice(0, 10);
+}
 
 export async function getLatestCompletedRun(): Promise<CompletedRunRow | null> {
   try {
@@ -70,7 +90,7 @@ export async function getLatestCompletedRun(): Promise<CompletedRunRow | null> {
       select: { runDate: true, finishedAt: true },
     });
     if (!row || !row.finishedAt) return null;
-    return { runDate: row.runDate.toISOString(), finishedAt: row.finishedAt.toISOString() };
+    return { runDate: toTradingDate(row.runDate), finishedAt: row.finishedAt.toISOString() };
   } catch (error) {
     console.error("getLatestCompletedRun: could not read pipeline_run", error);
     return null;

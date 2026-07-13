@@ -131,7 +131,28 @@ function sessionsBetween(from: TradingDate, to: TradingDate): number {
  * `pipeline_run` row for tonight with a null `finishedAt`, and a strip that counted that row as an
  * edition would photograph a crashed pipeline as a healthy one.
  */
+/** A bare trading date and nothing else: "2026-07-10". Not "2026-07-10T00:00:00.000Z". */
+const TRADING_DATE = /^\d{4}-\d{2}-\d{2}$/;
+
 export function freshness(lastRun: CompletedRun | null, now: Date): Freshness {
+  /*
+   * Fail where the mistake IS.
+   *
+   * `runDate` comes from a Prisma `@db.Date` column, and the obvious way to serialise it —
+   * `.toISOString()` — yields a full timestamp. Feed that in and every date this module builds is an
+   * Invalid Date: silently, without error, until some formatter three components away throws a
+   * RangeError that names neither this function nor the loader that actually got it wrong. That is
+   * exactly what happened, and it cost a production build to find.
+   *
+   * So the machine refuses the input at its own front door, and says what it wanted.
+   */
+  if (lastRun && !TRADING_DATE.test(lastRun.runDate)) {
+    throw new TypeError(
+      `freshness: runDate must be a bare trading date like "2026-07-10", got "${lastRun.runDate}". ` +
+        `A @db.Date is a DAY — use toTradingDate(), not .toISOString().`,
+    );
+  }
+
   const nextRunAt = nextScheduledRun(now);
 
   if (!lastRun) {

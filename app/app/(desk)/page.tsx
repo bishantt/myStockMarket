@@ -146,7 +146,17 @@ export default async function DeskPage() {
       {/* The offline band — shows only when the browser is offline, naming what is on screen. */}
       <OfflineRibbon syncedDate={asOf ? formatEtDate(asOf) : "—"} />
 
-      <div className="mx-auto grid max-w-[720px] grid-flow-row-dense grid-cols-1 gap-6 pt-6 lg:max-w-none lg:grid-cols-[minmax(0,1fr)_320px] lg:items-start desk:grid-cols-[minmax(0,1fr)_340px]">
+      {/*
+       * The widest band, `wide:` (≥1536px), buys INTERNAL DENSITY — not a third column.
+       *
+       * The rail widens to 360px and the setup cards go two-up inside the main column (they are
+       * independent cards, not prose). What does NOT change: the brief and the movers stay one-up,
+       * because they are READ stations, and there is no third column at any width. A second reading
+       * column would split the ritual's order into two ambiguous streams — the reader would have to
+       * decide which column comes first, and the whole argument for the ritual is that they never
+       * have to decide anything about the order.
+       */}
+      <div className="mx-auto grid max-w-[720px] grid-flow-row-dense grid-cols-1 gap-6 pt-6 lg:max-w-none lg:grid-cols-[minmax(0,1fr)_320px] lg:items-start desk:grid-cols-[minmax(0,1fr)_340px] wide:grid-cols-[minmax(0,1fr)_360px]">
         {/* 01 — Macro pulse. The hero, and the only module that spans the spread. */}
         {asOf && morning.macro ? (
           <Surface className="p-5 lg:col-span-2 desk:p-6">
@@ -236,6 +246,23 @@ export default async function DeskPage() {
         )}
 
         {/*
+         * 07 + the scorecard SHARE a row on a wide desk (NEWS-AND-CONTROL-PLAN Part 4.2/4.3).
+         *
+         * Module 07's payload is a count, a doorway and one honesty line. On a 1366px desk it was
+         * taking the full width of the main column to say that — roughly 960px of card to carry a
+         * sentence. It is a half-width card now, beside the scorecard, and the wrapper is what puts
+         * it there.
+         *
+         * The wrapper is a grid rather than a wrapping flex row because grid stretches both cards to
+         * the same height, and two cards of visibly different heights side by side is the thing that
+         * makes a spread look assembled rather than designed.
+         *
+         * Below `desk:` it is a single column with the same 24px gap as the outer grid, so the phone
+         * and tablet layouts are pixel-identical to what they were: the ritual is still one column,
+         * and the DOM order is still 07 → scorecard.
+         */}
+        <div className={cx("grid grid-cols-1 items-start gap-6 desk:grid-cols-2", MAIN)}>
+        {/*
          * 07 — scans. A GLANCE station, so it now reads like one.
          *
          * It used to be a paragraph of prose pointing at another page, which is the opposite of a
@@ -243,7 +270,7 @@ export default async function DeskPage() {
          * It is a count and a doorway now. The number comes from one grouped count in the morning
          * loader, amortised by the route's cache.
          */}
-        <Surface className={cx("p-5 desk:p-6", MAIN)}>
+        <Surface className="flex h-full flex-col p-5 desk:p-6">
           <SectionMasthead index={7} title="Sectors & scans" />
           <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-2 pt-4">
             {/*
@@ -271,22 +298,30 @@ export default async function DeskPage() {
         {/* The evening counterpart to the morning ritual: the scorecard and the PM journal. Always
             present so the routine's shape is complete; the journal writes whether or not a run is
             recorded, so it does not gate on asOf. */}
-        <Surface className={cx("p-5 desk:p-6", MAIN)}>
+        <Surface className="flex h-full flex-col p-5 desk:p-6">
           <ScorecardPM
             asOf={asOf ?? undefined}
             resolved={trackRecord.summary}
             savedTonight={morning.journalSavedToday}
           />
         </Surface>
-
-        {/* The provenance line: which sources ran, which degraded, and the FRED attribution. */}
-        <Surface className={cx("p-5", RAIL)}>
-          <SourceStatusFooter
-            sources={morning.sources}
-            window={lastRunFinishedAt ? `until ${formatEtDate(lastRunFinishedAt)}` : undefined}
-          />
-        </Surface>
+        </div>
       </div>
+
+      {/*
+       * The provenance line: which sources ran, which degraded, and the FRED attribution.
+       *
+       * It sits UNDER the grid now, not in the rail (Part 4.2). It is a provenance stamp on the
+       * whole page rather than one more thing to glance at, and a footer belongs at the foot.
+       *
+       * It carries no card wrapper here, because it decides its own chrome: a plain line on a
+       * healthy night, and a full forced-open card on a night a source failed. That decision is
+       * inside the component, where a caller cannot get it wrong.
+       */}
+      <SourceStatusFooter
+        sources={morning.sources}
+        window={lastRunFinishedAt ? `until ${formatEtDate(lastRunFinishedAt)}` : undefined}
+      />
     </RailProvider>
   );
 }

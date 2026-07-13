@@ -84,23 +84,33 @@ export default async function SettingsPage() {
        * Three cards, because this page has always been three things — add a name, curate the list,
        * pick a look — and it was rendering them as three unbounded runs of prose down one column.
        * The cards do not add anything; they admit what was already there.
+       *
+       * Two-up from `lg:` (NEWS-AND-CONTROL-PLAN Part 4.3). The two SMALL cards — a four-field form
+       * and a three-way toggle — sit side by side, and the watchlist spans the full width beneath
+       * them, because it is a list and a list wants width. Stacking a 200px form on top of a 60px
+       * toggle down the middle of a 1500px screen is the receipt problem in its purest form.
+       *
+       * The DOM order is add → look → curate, which is also the reading and tab order, so nothing
+       * here depends on the grid to make sense.
        */}
-      <Surface as="section" aria-label="Add a name" className="p-5 desk:p-6">
-        <AddWatchlistForm />
-      </Surface>
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 lg:items-start">
+        <Surface as="section" aria-label="Add a name" className="p-5 desk:p-6">
+          <AddWatchlistForm />
+        </Surface>
 
-      <Surface as="section" aria-label="Your watchlist" className="p-5 desk:p-6">
-        <WatchlistManager items={items} focusCount={focusCount} />
-      </Surface>
+        <Surface as="section" aria-label="Theme" className="p-5 desk:p-6">
+          <h2 className="font-mono text-xs font-medium uppercase tracking-[0.08em] text-muted">Theme</h2>
+          <div className="mt-1 h-px bg-hairline-strong" />
+          <p className="pt-3 font-ui text-sm text-muted">
+            Applies everywhere — Morning or Midnight, one look at a time. System follows your device.
+          </p>
+          <ThemeToggle />
+        </Surface>
 
-      <Surface as="section" aria-label="Theme" className="p-5 desk:p-6">
-        <h2 className="font-mono text-xs font-medium uppercase tracking-[0.08em] text-muted">Theme</h2>
-        <div className="mt-1 h-px bg-hairline-strong" />
-        <p className="pt-3 font-ui text-sm text-muted">
-          Applies everywhere — Morning or Midnight, one look at a time. System follows your device.
-        </p>
-        <ThemeToggle />
-      </Surface>
+        <Surface as="section" aria-label="Your watchlist" className="p-5 desk:col-span-2 desk:p-6 lg:col-span-2">
+          <WatchlistManager items={items} focusCount={focusCount} />
+        </Surface>
+      </div>
     </div>
   );
 }

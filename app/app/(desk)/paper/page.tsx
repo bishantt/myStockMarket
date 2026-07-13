@@ -93,7 +93,21 @@ export default async function PaperPage() {
         </aside>
       ) : null}
 
-      <section aria-label="Place a paper trade">
+      {/*
+       * THE DESK SPREAD FOR /paper (NEWS-AND-CONTROL-PLAN Part 4.3): the ticket in a 5/12 column,
+       * and the cost mirror above the ledger in a 7/12 column beside it.
+       *
+       * The split is not "two things fit". It is that the ticket is where you ACT and the right-hand
+       * column is what should be true in your head while you do it: the certain cost of trading at
+       * your current pace, and the record of the trades you have already made. Stacked down one
+       * column, the cost mirror is something you scroll PAST on the way to the ledger. Beside the
+       * ticket, it is in your eye while you fill the form — which is the entire argument for the
+       * cost mirror existing.
+       *
+       * Below `lg:` this is one column and the order is ticket → mirror → ledger, unchanged.
+       */}
+      <div className="grid grid-cols-1 gap-8 lg:grid-cols-12 lg:items-start">
+      <section aria-label="Place a paper trade" className="lg:col-span-5">
         <h2 className="font-mono text-xs font-medium uppercase tracking-[0.08em] text-muted">New paper trade</h2>
         <div className="mt-2 h-px bg-hairline" />
         {/*
@@ -107,6 +121,7 @@ export default async function PaperPage() {
         </Suspense>
       </section>
 
+      <div className="flex flex-col gap-8 lg:col-span-7">
       {/*
        * COST MIRROR — the app's most honest artifact, and it is styled like what it is: a receipt.
        *
@@ -175,6 +190,8 @@ export default async function PaperPage() {
         <div className="mt-2 h-px bg-hairline" />
         <PaperLedger open={ledger.openTrades} closed={ledger.closedTrades} />
       </section>
+      </div>
+      </div>
     </div>
   );
 }
