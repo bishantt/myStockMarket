@@ -12,7 +12,7 @@ test passed. Details below.
 
 ---
 
-## The five things worth knowing from N5
+## The six things worth knowing from N5
 
 ### 1. Every photograph on the Front Page was broken, and only the PNG showed it
 
@@ -65,7 +65,23 @@ the extraction stage takes a six-minute wall-clock budget, and when the budget i
 reading, the rest go to the narrator with their headlines, and the page ships. The night says how many
 it gave up on.
 
-### 5. The room would have shipped uncached, with a `revalidate` that did nothing
+### 5. The seed described JSON shapes the pipeline has never produced — and the tests agreed with it
+
+The seeded news night was hand-written in N4, before the narrator existed, and it **guessed** at two
+shapes. The app reads the real ones, so it silently found nothing: the story page told the reader the
+narrator had simply had nothing to add — **when the gate had actually deleted a line** — and every key
+number in the seeded room was thrown away on read, so the **mono emphasis on a verified headline
+figure, whose entire meaning is "this was checked against its source", had never once rendered.**
+
+**And the tests agreed with the fixture.** The fixture test asserted the invented shape, and its
+hand-written TYPE declared it. The fixture agreed with the test, the test agreed with the fixture, and
+neither agreed with the producer. That is N3's fabricated-fixture lesson wearing different clothes:
+there the lie was in the values; here it is in the SHAPE — **and the app reads shapes.**
+
+Caught by the `nc-5` tag's e2e. The guard now runs the whole seed through the app's own boundary
+reader and counts what goes in against what comes out.
+
+### 6. The room would have shipped uncached, with a `revalidate` that did nothing
 
 `/news/[cluster]` re-rendered on **every single request** despite carrying `export const revalidate =
 600`. A dynamic route needs `generateStaticParams` — even an empty array — or the framework silently
@@ -98,8 +114,21 @@ was simply correct and expensive. **A performance budget is the only instrument 
   the Front Page and the evening briefing.
 - **Drift rule 20** (negative-controlled): news imagery has ONE door.
 
-**Counts at nc-5:** 537 app tests · **441 pytest local, 22 skipped** · 20 drift rules · B1 12 of 13
-routes cached · B4 worst 194.8KB under the 200KB ceiling. **Evidence:** `docs/nc-evidence/n5-frontpage.md`.
+**The narrator is LIVE in production.** The final news-mode run:
+
+```
+job_a (news): 163 articles in, 27 filings dropped, 133 stories published.
+              Sources: {finnhub: ok, marketaux: degraded, images: not_configured, narration: ok}
+              narration: 59/60 extracted, 20 notes written, 0 dropped by the gate.
+```
+
+`59/60` is the degradation rule working — one call failed, was dropped, and the other 59 were read.
+The notes it writes name mechanisms, not predictions: *"Rising oil prices feed into headline
+inflation, a channel central banks watch when setting interest rate expectations."*
+
+**Counts at nc-5:** **541 app tests** · **446 pytest local, 22 skipped** · 20 drift rules · 71 VRT
+baselines · B1 12 of 13 routes cached · B4 worst 195.1KB under the 200KB ceiling. **CI is GREEN on the
+`nc-5` tag — all four jobs, including the pixel oracle.** **Evidence:** `docs/nc-evidence/n5-frontpage.md`.
 
 ---
 
@@ -115,7 +144,7 @@ routes cached · B4 worst 194.8KB under the 200KB ceiling. **Evidence:** `docs/n
 
 ---
 
-## The seven amendments to the plan, all logged, all in an honesty rule's favour
+## The eight amendments to the plan, all logged, all in an honesty rule's favour
 
 1. **`copy.news.ordering`** now says the page **ties** (Q-N4-1). Two of the three signals it named are
    near-constant on the real feed. Change the words, not the ranking — inventing a tiebreaker would be
@@ -131,6 +160,9 @@ routes cached · B4 worst 194.8KB under the 200KB ceiling. **Evidence:** `docs/n
 6. **Card timestamps are absolute**, never "3h ago" — a relative time on a cached page is computed at
    build time, which this build has shipped twice.
 7. **The generated cards use one restrained ground**, not twelve sector tints. Colour is scarce.
+8. **The lead card sets sideways on a desktop.** Stacked, a 1.91:1 photo across 1366px is 715px tall
+   and the lead's own headline lands below the fold. A front page you must scroll to read the lead of
+   is a poster.
 
 ---
 

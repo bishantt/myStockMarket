@@ -1,4 +1,4 @@
-# N5 — the Front Page: what the room actually does, and the eight things it found
+# N5 — the Front Page: what the room actually does, and the eleven things it found
 
 *Written 2026-07-13. Every claim below has a test, a measurement, or a production run behind it.
 Where the plan and the tree disagreed, the disagreement is recorded with its reason.*
@@ -39,7 +39,7 @@ is hiding in its own count line ("2 catalysts · FDA · Health care").
 
 ---
 
-## 3. The eight findings
+## 3. The eleven findings
 
 ### 3.1 The corroboration count could not be OPENED
 
@@ -250,17 +250,94 @@ forbids — so it has no producer until P-1 lands. The branch exists and the sty
 
 ---
 
+### 3.9 The seed modelled JSON shapes the pipeline has never emitted — and the tests agreed with it
+
+Caught by the `nc-5` tag's e2e. The seeded night was hand-authored in N4, before the narrator
+existed, and it **guessed** at two shapes:
+
+| The seed wrote | The pipeline actually writes |
+|---|---|
+| `verification: { status: "dropped", flags: [<string>] }` | `{ narrated, dropped, reason, checked, citations, flags: [{location, entity, kind, reason}] }` |
+| `key_numbers: [{ id, label, value }]` | `[{ value_str, what }]` |
+
+The app reads the real ones, so it silently found nothing. The story page told the reader the
+narrator had simply had nothing to add — **when the gate had actually DELETED a line.** And every key
+number in the seeded room was discarded on read, so the **mono emphasis on a verified headline
+figure — the treatment whose entire meaning is "this was checked against its source" — had never
+once rendered.**
+
+**And the tests agreed with the fixture.** `fixtures.test.ts` asserted `verification.status ===
+"dropped"`, and its hand-written `Cluster` *type* declared that shape. The fixture agreed with the
+test, the test agreed with the fixture, and neither agreed with the producer.
+
+**This is N3's fabricated-fixture lesson in different clothes.** There the lie was in the VALUES;
+here it is in the SHAPE — and the app reads shapes. The guard is `lib/news-fixture.test.ts`: it runs
+the whole seed through the app's own boundary reader and **counts what goes in against what comes
+out**, because a silently-dropped key number is invisible to any test that merely asks "did some
+survive?". Both halves negative-controlled.
+
+### 3.10 The narrator was never told the limit it was being held to
+
+Three live runs in a row lost their prose. The ≤160-character cap is enforced by pydantic on the way
+back IN, and **the API does not enforce string lengths** — `api_schema` strips `maxLength` before
+sending, because the structured-output layer rejects it. So the prompt was the only place the model
+could ever learn the cap, **and the prompt never mentioned it.** Every note it wrote was thrown away
+for breaking a rule nobody had given it.
+
+Compounding it: the NoteSet was validated as ONE object, so a single over-long sentence invalidated
+the other nineteen — the "one bad item kills the batch" disease again, one layer up from where it had
+just been fixed. Each note is validated alone now.
+
+And `_MAX_TOKENS` was 4096, which twenty notes overflow — producing a **truncated JSON document** the
+tolerant parser cannot balance. It reported "malformed", spent its retry, truncated again, and the
+page published without prose, with nothing anywhere saying "you ran out of room". **A token cap that
+fails silently is the worst kind.**
+
+### 3.11 A bundle baseline that was never a measurement
+
+B4 failed: `/news` at 195.1KB against a 184.2KB baseline — "grown 11KB". The changes since were 51
+lines of comments and CSS classes, which cannot cost 11KB gzipped. So instead of re-baselining on a
+shrug, I rebuilt the **baseline commit** and measured it. **It was 194.9KB there too.**
+
+The route never grew. The baseline had been read out of a `.next` that predated that commit's final
+build, so it described a page that had already changed. **A baseline is a measurement, and a
+measurement taken from a stale artifact is a guess wearing a number's clothes** — precisely the
+species of error the bundles guard exists to catch. It caught mine.
+
+---
+
 ## 7. What the live runs actually printed
 
 The final production news-mode run, after all four production bugs above were fixed:
 
+The final production news-mode run, after all six production bugs were fixed:
+
 ```
-job_a (news): 2026-07-10 — 223 articles in, 28 regulatory filings dropped,
-              191 stories published, 131 past the extraction cap.
-              Sources: {news-finnhub: ok, news-marketaux: ok, news-images: not_configured, ...}
+job_a (news): 2026-07-10 — 163 articles in, 27 regulatory filings dropped,
+              133 stories published, 73 past the extraction cap.
+              Sources: {news-finnhub: ok, news-marketaux: degraded,
+                        news-images: not_configured, news-narration: ok}
+job_a (news): narration: 59/60 extracted, 20 notes written,
+              0 dropped by the gate, 0 left blank by the narrator.
 ```
 
-Note `news-images: not_configured` — still no bucket (P-1), so **every card in production renders the
+**`59/60` is the degradation rule working**: one extraction call failed, was dropped, and the other
+59 were read. **`20 notes written`** is the narrator live. And `news-marketaux: degraded` on the same
+run is the per-provider status doing its job — one provider's outage costs its own articles and
+nothing else.
+
+The notes it wrote, read back out of the live database:
+
+> **"Rising oil prices feed into headline inflation, a channel central banks watch when setting
+> interest rate expectations."**
+> **"Oil-linked supply shocks complicate central bank decisions by mixing inflation risk with growth
+> risk simultaneously."**
+
+Mechanisms, not predictions. No advice verbs. No restatement of the headline. And the live lead is
+**"ONGC approves project to expand strategic crude reserves"** — an Indian oil company at 0.600,
+which is Q-N4-1's tie, in the wild, on a page whose header sentence now says the page ties.
+
+**`news-images: not_configured`** — still no bucket (P-1), so **every card in production renders the
 L4 generated catalyst card.** That is the room today, and it is a designed outcome rather than an
 empty state.
 
@@ -293,7 +370,8 @@ empty state.
 | B4 — worst first-load JS | **194.8 KB** against the 200 KB ceiling |
 | VRT baselines | **71** (was 55) |
 
-**Three of the eight findings above were found in production, and two by looking at a picture. None
-was found by a test.** That is not an argument against the tests — 537 of them hold the room's
+**Six of the eleven findings above were found in production or by looking at a picture. Only two
+were found by a test — and one of those was the tag's e2e catching a fixture the unit tests had been
+agreeing with for a whole phase.** That is not an argument against the tests — 537 of them hold the room's
 honesty rules. It is an argument for running the thing and looking at it, which is now seven bugs
 deep in this build and has not missed yet.
