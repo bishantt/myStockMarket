@@ -53,8 +53,28 @@ const PUBLIC_PATHS = new Set([
   "/mark.svg",
 ]);
 
-/** Prefixes that are public. Kept separate from the exact-match set so the check stays cheap. */
-const PUBLIC_PREFIXES = ["/_next/", "/icons/"];
+/**
+ * Prefixes that are public. Kept separate from the exact-match set so the check stays cheap.
+ *
+ * `/fixtures/` joined the list in N5, and the reason is a genuine trap rather than a convenience.
+ *
+ * The image optimizer does not proxy the reader's request — it makes its OWN server-side fetch of
+ * the source image, and that fetch carries no session cookie. So a same-origin image sitting behind
+ * the login wall gets a 307 to /login, and the optimizer reports back "The requested resource isn't
+ * a valid image" and serves a 400. Every photograph in the seeded room rendered as a broken-image
+ * icon, while the generated fallback cards — which need no optimizer — rendered perfectly.
+ *
+ * Nothing is being exposed: these are the three generated placeholder JPEGs committed under
+ * `public/fixtures/`, and they are the only same-origin images in the app. In production the news
+ * images come from the media bucket (a remote origin the optimizer fetches directly, with no
+ * middleware in the path at all), so this is a seed-and-test concern — which is to say it is a
+ * VISUAL-REGRESSION concern, and the baselines are the app's eyes.
+ *
+ * The licensing wall is untouched. It exists to keep market DATA behind a login; a placeholder JPEG
+ * that is already committed to this repository is not market data, and `/_next/` and `/icons/` have
+ * been public since P1 for exactly the same structural reason.
+ */
+const PUBLIC_PREFIXES = ["/_next/", "/icons/", "/fixtures/"];
 
 function isPublic(pathname: string): boolean {
   return (

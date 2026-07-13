@@ -131,19 +131,28 @@ export default async function StoryPage({ params }: StoryPageProps) {
         <h2 className="font-mono text-2xs font-medium uppercase tracking-[0.08em] text-muted">
           {copy.news.sourceList}
         </h2>
-        <ul className="flex flex-col gap-1.5">
-          {card.articles.map((article) => (
-            <li key={article.url} className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
-              <ExternalLink href={article.url} className="font-ui text-sm">
-                {article.source}
-              </ExternalLink>
-              <span className="font-mono text-2xs text-muted">
-                {formatEtDate(article.published)} · {formatEtClock(article.published)} ET
-              </span>
-              <span className="w-full font-serif text-sm text-ink-2">{article.headline}</span>
-            </li>
-          ))}
-        </ul>
+        {card.articles.length > 0 ? (
+          <ul className="flex flex-col gap-1.5">
+            {card.articles.map((article) => (
+              <li key={article.url} className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+                <ExternalLink href={article.url} className="font-ui text-sm">
+                  {article.source}
+                </ExternalLink>
+                <span className="font-mono text-2xs text-muted">
+                  {formatEtDate(article.published)} · {formatEtClock(article.published)} ET
+                </span>
+                <span className="w-full font-serif text-sm text-ink-2">{article.headline}</span>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          // A story published before the app kept its article list. The count is real and it cannot
+          // be checked, and the page says exactly that rather than printing an empty list under a
+          // heading — which would tell the reader the story had no sources, which is false.
+          <p data-testid="news-sources-not-kept" className="max-w-prose font-ui text-sm text-muted">
+            {copy.news.sourcesNotKept}
+          </p>
+        )}
       </section>
 
       <figure className="flex flex-col gap-1.5">

@@ -4,6 +4,7 @@ Covers the happy path, idempotent re-runs, signal_log insert-only + ON CONFLICT 
 per-run scan replacement, and atomic rollback (a failure leaves nothing behind).
 """
 
+import json
 import math
 from datetime import date
 
@@ -402,3 +403,48 @@ def test_the_prior_is_filled_from_what_we_already_hold_when_the_source_gives_non
         "SELECT prior FROM macro_stat WHERE series_key = 'usd_npr' AND as_of_date = '2026-07-13'"
     ).fetchall()
     assert prior == 152.33
+
+
+# ----- the JSON boundary (N5) -----
+#
+# The bug: news_cluster.articles carries each article's PUBLISHED TIME, which is a datetime, nested
+# inside a list of dicts. `_json_safe` only ever looked at a scalar float, so the datetime sailed
+# straight through into json.dumps and the whole publish transaction died with
+# "TypeError: Object of type datetime is not JSON serializable" — AFTER the night had already spent
+# four and a half minutes doing every model call. The facts, the ranking and the prose were all
+# computed correctly and none of it was written.
+#
+# A function called `_json_safe` that is not safe for JSON is worse than no function: every caller
+# believes the boundary is guarded.
+
+from datetime import datetime, timezone
+
+from publish import _json_safe
+
+
+def test_json_safe_reaches_INSIDE_lists_and_dicts():
+    """It never recursed. A NaN or a datetime one level down was invisible to it."""
+    payload = {
+        "articles": [
+            {"source": "Reuters", "published": datetime(2026, 7, 10, 18, 2, tzinfo=timezone.utc)},
+        ],
+        "score": float("nan"),
+    }
+
+    safe = _json_safe(payload)
+
+    assert safe["articles"][0]["published"] == "2026-07-10T18:02:00+00:00"
+    assert safe["score"] is None
+
+
+def test_json_safe_output_actually_serializes():
+    """The assertion that matters. The old one would have passed a shape check and still crashed."""
+    payload = [{"at": datetime(2026, 7, 10, tzinfo=timezone.utc), "v": float("inf")}]
+
+    json.dumps(_json_safe(payload))  # must not raise
+
+
+def test_json_safe_still_nulls_a_bare_nan():
+    """The original contract, unchanged: a NaN metric is an honest null, not a token Postgres refuses."""
+    assert _json_safe(float("nan")) is None
+    assert _json_safe(1.5) == 1.5

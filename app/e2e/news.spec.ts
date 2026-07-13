@@ -154,6 +154,30 @@ test.describe("The Front Page", () => {
   }) => {
     await expect(page.getByTestId("news-lead")).toContainText("No direct listing in our universe.");
   });
+
+  test("the photograph actually LOADS — a broken image is invisible to every other assertion", async ({
+    page,
+  }) => {
+    /*
+     * The bug this exists for, found by the pixel oracle and by nothing else: the login wall was
+     * redirecting /fixtures/, and the image optimizer does not proxy the reader's request — it makes
+     * its OWN server-side fetch, with no session cookie. So it followed a 307 to the login page,
+     * decided the source was not an image, and served a 400. EVERY photograph in the room rendered
+     * as a broken-image icon, while the generated fallback cards — which need no optimizer —
+     * rendered perfectly, so the page still looked plausible.
+     *
+     * Every DOM assertion passed throughout. The <img> was present, visible, correctly sized (the
+     * width and height come from the row, which is exactly what makes the layout shift zero), and
+     * carrying the right src. `naturalWidth` is the only thing in the browser that knows the
+     * difference between an image and a broken one.
+     */
+    const image = page.getByTestId("news-lead").locator("img");
+    await expect(image).toBeVisible();
+
+    await expect
+      .poll(() => image.evaluate((element: HTMLImageElement) => element.naturalWidth))
+      .toBeGreaterThan(0);
+  });
 });
 
 test.describe("A story page", () => {
@@ -228,7 +252,12 @@ test.describe("The Desk's front-page module", () => {
 
   test("the News room is one tap from anywhere", async ({ page }) => {
     await signIn(page);
-    await page.getByRole("navigation", { name: "Rooms" }).getByRole("link", { name: "News" }).click();
+
+    // Both navs carry it and only one of them is on screen: the phone's tab bar below `md`, the
+    // desktop's room strip above it. Clicking "whichever one the reader can actually see" is the
+    // assertion that holds for both, and it is the one a reader would make.
+    await page.getByRole("link", { name: "News", exact: true }).filter({ visible: true }).first().click();
+
     await expect(page).toHaveURL("/news");
   });
 });

@@ -22,7 +22,7 @@ from __future__ import annotations
 
 import json
 import math
-from datetime import date
+from datetime import date, datetime
 from typing import Any, Iterable, Mapping
 
 import polars as pl
@@ -35,15 +35,33 @@ from macro_levels import StoredLevels, resolve_index_levels
 
 def _json_safe(value: Any) -> Any:
     """
-    Make a metric value safe for Postgres jsonb, which — unlike Python and JSON5 — rejects the
-    non-finite floats NaN and ±Infinity outright.
+    Make a value safe for Postgres jsonb — all the way down.
 
-    An indicator that could not be computed (say RVOL for a name with too little volume history)
-    surfaces as a float NaN out of Polars. NaN in a metrics map is not a number the app should ever
-    show, so it becomes null: the honest "no value" rather than a token Postgres refuses to store.
+    Two things jsonb will not take. Postgres rejects the non-finite floats NaN and ±Infinity
+    outright (an indicator that could not be computed — say RVOL for a name with too little volume
+    history — surfaces as a float NaN out of Polars), and `json.dumps` cannot serialize a datetime
+    at all.
+
+    IT DID NOT RECURSE, AND THAT COST A WHOLE NIGHT'S RUN. It only ever inspected a scalar float, so
+    anything one level down was invisible to it. N5 put each article's publication time — a datetime
+    — inside a list of dicts on `news_cluster.articles`, and the entire publish transaction died with
+    "Object of type datetime is not JSON serializable" AFTER the run had spent four and a half
+    minutes making every model call. The facts, the ranking and the prose were all computed
+    correctly, and not one row was written.
+
+    **A function named `_json_safe` that is not safe for JSON is worse than no function**, because
+    every caller believes the boundary is guarded. It walks the whole structure now, and a test
+    asserts the output actually serializes rather than merely looking right.
     """
     if isinstance(value, float) and not math.isfinite(value):
         return None
+    if isinstance(value, (datetime, date)):
+        # ISO 8601, which is what every reader of this column already expects a timestamp to be.
+        return value.isoformat()
+    if isinstance(value, Mapping):
+        return {key: _json_safe(item) for key, item in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [_json_safe(item) for item in value]
     return value
 
 

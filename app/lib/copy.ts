@@ -305,6 +305,15 @@ export const copy = {
     sources: "{n} sources",
     oneSource: "1 source",
     photoVia: "Photo via {source}",
+    /**
+     * A story published BEFORE the app kept its article list (every row in production written before
+     * N5's migration). The count is real — it was computed from articles that existed — but they were
+     * not saved, so it cannot be opened. Saying that is the only honest move available: printing the
+     * "Sources" heading over an empty list would tell the reader the story had none, which is false,
+     * and hiding the section entirely would hide the fact that the claim is uncheckable.
+     */
+    sourcesNotKept:
+      "The articles behind this story were not kept when it was published, so this count cannot be opened. Stories published from now on carry their sources.",
     deskPreviewCut: "First {n} of {total} by significance",
     deskDoorway: "The full front page →",
     provenance:
