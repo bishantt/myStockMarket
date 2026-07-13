@@ -54,16 +54,31 @@ _MONTHS = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct",
 
 # One combined scanner, alternatives tried in priority order at each position so a more specific
 # entity (a dated ISO string, a money figure, a percent) wins over a bare number sitting inside it.
-# A number must be free-standing — not glued to a letter (so "Q3" and "3rd" are not "3").
+#
+# A bare number must be free-standing — not glued to a letter — so "Q3" is not the number 3 and "3rd"
+# is not the number 3. Two things that rule got wrong, both found by the Front Page's note gate (N5):
+#
+#   1. A MULTIPLIER IS A NUMBER. "2.1x its usual volume" is the natural way to write relative volume,
+#      and 2.1 is a figure the pipeline actually computes. It gets its own alternative, so it is
+#      CHECKED — which also means a made-up "9.9x" is refused.
+#   2. The bare-number rule used to TRUNCATE rather than refuse. Faced with "2.1x" it backtracked to
+#      a shorter match and produced the number "2" — a figure nobody wrote, flagged against sources
+#      that of course did not contain it. The quantifiers are possessive now, so a decimal welded to
+#      letters yields no entity at all instead of a phantom one.
+#
+# The second was the dangerous one. On the briefing a phantom flag costs a flag; on the Front Page it
+# DELETES the note, and a deleted note prints nothing — so the gate could have been quietly throwing
+# away every honest sentence about volume and no screen would ever have said so.
 _SCANNER = re.compile(
     r"""
     (?P<date_iso>\b\d{4}-\d{2}-\d{2}\b)
   | (?P<date_word>\b(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?\s+\d{1,2}(?:,\s*\d{4})?\b)
   | (?P<money_unit>\$?\s?\d[\d,]*(?:\.\d+)?\s?(?:trillion|billion|million|thousand|bn|mn|tn|[bmkt])\b)
   | (?P<percent>-?\d[\d,]*(?:\.\d+)?\s?%)
+  | (?P<multiple>-?\d[\d,]*(?:\.\d+)?\s?x\b)
   | (?P<money_dollar>\$\s?\d[\d,]*(?:\.\d+)?)
   | (?P<ticker>\$[A-Za-z]{1,5}\b)
-  | (?P<number>(?<![A-Za-z0-9$])-?\d[\d,]*(?:\.\d+)?(?![A-Za-z]))
+  | (?P<number>(?<![A-Za-z0-9$])-?\d[\d,]*+(?:\.\d++)?+(?![A-Za-z]))
     """,
     re.VERBOSE | re.IGNORECASE,
 )
@@ -114,6 +129,54 @@ class VerificationResult:
         }
 
 
+@dataclass(frozen=True)
+class SourceSet:
+    """Everything a generated sentence is ALLOWED to say, already parsed into matchable form.
+
+    This is the gate's raw material, lifted out of `verify` so that a second narrated surface — the
+    Front Page's one-line context notes (N4/N5) — can be checked against the SAME tolerances without
+    growing a second copy of "what counts as verified". Two definitions of that would be one too
+    many: the day they drifted apart, one of the two surfaces would start publishing numbers the
+    other would have refused, and nobody would find out from a test.
+    """
+
+    numbers: "_Sources"
+    tickers: frozenset[str]
+    run_date: date
+
+
+def build_source_set(
+    *,
+    extracts: Iterable[ExtractResult],
+    stats: Iterable[Stat],
+    instruments: Iterable[str],
+    run_date: date,
+) -> SourceSet:
+    """The allowed set: the union of the extraction key-numbers and the stats table, plus the
+    instrument universe for cashtags. A number that is not in here cannot be published."""
+    return SourceSet(
+        numbers=_build_sources(extracts, stats, run_date),
+        tickers=frozenset(symbol.upper() for symbol in instruments),
+        run_date=run_date,
+    )
+
+
+def check_text(sources: SourceSet, text: str, *, location: str) -> tuple[tuple[Flag, ...], int]:
+    """Scan ONE string and return (flags, entities_checked).
+
+    The count comes back with the flags on purpose. A gate that reports "0 flags" without saying how
+    many entities it looked at cannot be distinguished from a gate that looked at nothing — and this
+    build has shipped seven guards that passed because the thing they measured was absent.
+    """
+    flags: list[Flag] = []
+    checked = 0
+    for kind, raw, value in _entities(text, sources.run_date):
+        checked += 1
+        if not _matches(kind, value, sources.numbers, sources.tickers):
+            flags.append(Flag(location=location, entity=raw, kind=kind, reason="no source match"))
+    return tuple(flags), checked
+
+
 def verify(
     draft: BriefDraft,
     *,
@@ -128,16 +191,16 @@ def verify(
     validated against the instrument universe. Numbers use the Appendix E tolerances; dates and
     counts match exactly; tickers match after uppercasing and stripping the leading $.
     """
-    sources = _build_sources(extracts, stats, run_date)
-    tickers = {symbol.upper() for symbol in instruments}
+    sources = build_source_set(
+        extracts=extracts, stats=stats, instruments=instruments, run_date=run_date
+    )
 
     flags: list[Flag] = []
     checked = 0
     for location, text in _draft_fields(draft):
-        for kind, raw, value in _entities(text, run_date):
-            checked += 1
-            if not _matches(kind, value, sources, tickers):
-                flags.append(Flag(location=location, entity=raw, kind=kind, reason="no source match"))
+        found, count = check_text(sources, text, location=location)
+        flags.extend(found)
+        checked += count
 
     held_reason = _verdict(flags)
     status = "held" if held_reason else "ok"
@@ -221,6 +284,10 @@ def _entities(text: str, run_date: date) -> list[tuple[str, str, object]]:
             out.append(("money", raw, _to_money(raw)))
         elif group == "percent":
             out.append(("percent", raw, _to_float(raw.rstrip("% ").strip())))
+        elif group == "multiple":
+            # "2.1x" is a claim about the number 2.1 — checked as a plain number, against the same
+            # sources (relative volume is rendered into the stats table as "2.1").
+            out.append(("number", raw, _to_float(raw.lower().rstrip("x ").strip())))
         elif group == "ticker":
             out.append(("ticker", raw, raw[1:].upper()))
         elif group == "number":

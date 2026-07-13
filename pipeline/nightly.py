@@ -176,6 +176,10 @@ class FrontPageRead:
     articles_in: int = 0
     boilerplate_dropped: int = 0
     stage_a_capped: int = 0
+    # What the two LLM stages did, in one plain-English line for the night's log. It rides here
+    # because a page with no notes is invisible on screen — a null why_it_matters prints nothing,
+    # and it prints the same nothing whether the narrator had nothing to add or was never asked.
+    narration: str = ""
 
 
 @dataclass(frozen=True)

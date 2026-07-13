@@ -114,16 +114,16 @@ def extract_json_schema() -> dict:
     """The JSON schema handed to the extraction call's structured-output format. Derived from the
     pydantic model so the two never drift; string length limits are advisory to the API (it does
     not enforce them) but pydantic enforces them on parse, which is the real guard."""
-    return _api_schema(ExtractResult)
+    return api_schema(ExtractResult)
 
 
 def synthesis_json_schema() -> dict:
     """The JSON schema for the synthesis call's structured output. Same derive-from-pydantic rule as
     the extraction schema."""
-    return _api_schema(BriefDraft)
+    return api_schema(BriefDraft)
 
 
-def _api_schema(model: type[BaseModel]) -> dict:
+def api_schema(model: type[BaseModel]) -> dict:
     """Turn a pydantic model into a JSON schema the Messages API structured-output layer accepts.
 
     The API requires `additionalProperties: false` on every object and does not support string

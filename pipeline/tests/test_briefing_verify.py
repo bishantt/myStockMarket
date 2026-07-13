@@ -172,3 +172,58 @@ def test_verification_json_is_serializable_and_records_decisions():
     assert payload["status"] == "ok"
     assert payload["flags"][0]["entity"].startswith("$9.9")
     assert payload["checked"] >= 1
+
+
+# ----- the multiplier bug (found by the Front Page's note gate, N5) -----
+#
+# The scanner's bare-number rule refuses a number glued to a letter, so "Q3" is not the number 3 and
+# "3rd" is not the number 3. That is right. But when the glued number is a DECIMAL the pattern used
+# to backtrack to a shorter match instead of refusing the token: "2.1x" produced the number "2".
+#
+# "2.1x its usual volume" is exactly how anyone writes relative volume, and 2.1 is a real computed
+# stat. The gate would score the phantom "2" against the sources, find nothing, and flag the
+# sentence. On the briefing that costs a flag; on the Front Page the note is DELETED — and a deleted
+# note prints nothing, so nothing on screen would ever have told us.
+
+def test_a_multiplier_is_the_number_it_says_it_is():
+    """"2.1x" is a claim about the number 2.1. It must be CHECKED, and it must pass when 2.1 is a
+    computed stat — otherwise every honest sentence about relative volume is thrown away."""
+    stats = [Stat("rvol-ACME", "2.1", label="ACME relative volume")]
+    draft = _draft(items=[_item(by_the_numbers="ACME traded 2.1x its usual volume.")])
+
+    result = verify(draft, extracts=[], stats=stats, instruments=INSTRUMENTS, run_date=RUN_DATE)
+
+    assert result.status == "ok"
+    assert result.flags == ()
+    assert result.checked >= 1, "the multiplier must be checked, not merely skipped"
+
+
+def test_a_fabricated_multiplier_is_still_caught():
+    """The other half of the same rule. Reading "2.1x" as a number is only worth doing if a made-up
+    multiple is refused."""
+    stats = [Stat("rvol-ACME", "2.1", label="ACME relative volume")]
+    draft = _draft(items=[_item(by_the_numbers="ACME traded 9.9x its usual volume.")])
+
+    result = verify(draft, extracts=[], stats=stats, instruments=INSTRUMENTS, run_date=RUN_DATE)
+
+    assert result.flags[0].entity.startswith("9.9")
+
+
+def test_a_decimal_glued_to_letters_is_not_silently_truncated():
+    """The bug itself, pinned. Whatever "3.5pp" is, it is NOT the number 3, and inventing a phantom
+    "3" to flag is how an honest sentence gets thrown away for a number nobody wrote."""
+    draft = _draft(items=[_item(by_the_numbers="The spread widened 3.5pp.")])
+
+    result = verify(draft, extracts=[], stats=[], instruments=INSTRUMENTS, run_date=RUN_DATE)
+
+    assert all(flag.entity != "3" for flag in result.flags), "the gate invented a number"
+
+
+def test_an_ordinal_is_still_not_a_number():
+    """The original rule, still standing: "Q3" and "3rd" are not claims about 3."""
+    draft = _draft(items=[_item(by_the_numbers="Q3 was the 3rd straight quarter.")])
+
+    result = verify(draft, extracts=[], stats=[], instruments=INSTRUMENTS, run_date=RUN_DATE)
+
+    assert result.flags == ()
+    assert result.checked == 0

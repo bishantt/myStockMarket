@@ -43,6 +43,33 @@ def build_stats(
     return stats
 
 
+def build_ticker_stats(
+    symbols: Iterable[str],
+    *,
+    moves: Mapping[str, Any],
+    rvol: Mapping[str, float | None],
+) -> list[Stat]:
+    """The quotable numbers for the Front Page's narrated stories (plan 7.5).
+
+    The same table, for a different narrator. The front-page notes may cite a linked ticker's 1-day
+    move and its relative volume — and nothing else — so those two figures are rendered HERE, through
+    the very same function the evening briefing's movers go through. That is the point of putting it
+    in this module rather than in the newsdesk: a figure rendered twice, by two functions, is a figure
+    that can be rounded two ways, and then the same fact publishes as 3.4% on one surface and 3.44% on
+    the other, with both surfaces' gates calling their own version verified.
+
+    `moves` is keyed by symbol and carries a fractional `ret1` (the newsdesk's TickerMove); `rvol` is
+    relative volume against the 20-day average. A symbol with neither contributes nothing — an absent
+    number must not become a quotable one.
+    """
+    movers: list[dict] = []
+    for symbol in dict.fromkeys(symbols):  # de-duplicated, order preserved
+        move = moves.get(symbol)
+        ret_1 = getattr(move, "ret1", None) if move is not None else None
+        movers.append({"symbol": symbol, "ret_1": ret_1, "rvol20": rvol.get(symbol)})
+    return _mover_stats(movers)
+
+
 def _macro_stats(market_context: Mapping[str, Any] | None) -> list[Stat]:
     if market_context is None:
         return []

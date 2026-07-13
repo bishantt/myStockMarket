@@ -37,6 +37,7 @@ from catalyst_ingest import build_catalyst_fetcher
 from config import Settings, load_settings
 from macro_stats import MacroStatRow
 from newsdesk.ingest import FINNHUB_MARKET_CATEGORIES, MARKETAUX_PAGES, build_night
+from newsdesk.narrate import NarrationResult, NoteDecision, Story, run_narration
 from newsdesk.rank import TickerMove
 from newsdesk.resolve import Instrument as NewsInstrument
 from newsdesk.resolve import TickerResolver
@@ -758,17 +759,37 @@ def _build_front_page(settings: Settings, conn, run_date: date) -> Callable[[], 
         rvol = _read_rvol(conn, run_date)
         carded = _read_setup_card_symbols(conn)
 
+        sectors_by_symbol = _read_sectors(conn)
         night = build_night(
             articles=articles,
             resolver=resolver,
             moves=moves,
             session_date=run_date,
-            sectors_by_symbol=_read_sectors(conn),
+            sectors_by_symbol=sectors_by_symbol,
         )
 
         media_base = os.environ.get("NEXT_PUBLIC_MEDIA_BASE", "")
         if not media_base:
             status["news-images"] = "not_configured"
+
+        narration = _narrate_front_page(
+            settings,
+            night=night,
+            articles=articles,
+            moves=moves,
+            rvol=rvol,
+            instruments=list(sectors_by_symbol),
+            run_date=run_date,
+            status=status,
+        )
+
+        default_note = NoteDecision(
+            why_it_matters=None,
+            affected_note=None,
+            # Prose is written only for the narrated top of the page. Everywhere else this is an
+            # honest null, and a null prints NOTHING on the card — never a placeholder (P9).
+            verification={"narrated": False, "reason": "outside the narrated top of the page"},
+        )
 
         cluster_rows = [
             {
@@ -782,12 +803,10 @@ def _build_front_page(settings: Settings, conn, run_date: date) -> Callable[[], 
                 "tickers": list(cluster.tickers),
                 "significance": cluster.significance,
                 "sources": cluster.sources,
-                # Prose is added by the LLM stages; until they run, an honest null. A null here
-                # prints NOTHING on the card — never a placeholder (P9).
-                "why_it_matters": None,
-                "affected_note": None,
-                "extract": {},
-                "verification": {"narrated": False, "reason": "stage B not run for this cluster"},
+                "why_it_matters": narration.decisions.get(cluster.id, default_note).why_it_matters,
+                "affected_note": narration.decisions.get(cluster.id, default_note).affected_note,
+                "extract": narration.extracts.get(cluster.id, {}),
+                "verification": narration.decisions.get(cluster.id, default_note).verification,
                 "image_id": None,
                 "links": [
                     {
@@ -810,19 +829,105 @@ def _build_front_page(settings: Settings, conn, run_date: date) -> Callable[[], 
             articles_in=night.articles_in,
             boilerplate_dropped=night.boilerplate_dropped,
             stage_a_capped=night.stage_a_capped,
+            narration=narration.summary(),
         )
 
     return read
+
+
+def _narrate_front_page(
+    settings: Settings,
+    *,
+    night,
+    articles: list[dict],
+    moves: dict,
+    rvol: dict,
+    instruments: list[str],
+    run_date: date,
+    status: dict[str, str],
+) -> NarrationResult:
+    """
+    Write the front page's context lines — or don't, and say so (plan 7.5).
+
+    THIS IS THE LAST THING THAT RUNS, AND THE FIRST THING THAT MAY FAIL. Every story is already
+    found, linked, classified and ordered by the time this is called. If there is no key, if the
+    extractor chokes, if the narrator fails its schema twice, or if the gate deletes every line — the
+    same stories publish, in the same order, with the same numbers. The only thing lost is prose.
+
+    Which is exactly why it needs a status key and a spoken summary. A page with no notes is
+    invisible: a null why_it_matters prints nothing on the card, and it prints the same nothing
+    whether the narrator had nothing to add, or was never asked.
+    """
+    if not settings.anthropic_api_key:
+        status["news-narration"] = "not_configured"
+        print("job_a: ANTHROPIC_API_KEY not set; the front page publishes its facts without prose.")
+        return NarrationResult()
+
+    import anthropic
+
+    by_id = {str(article["id"]): article for article in articles}
+    stories: list[Story] = []
+    for cluster in night.stage_a_clusters:
+        article = by_id.get(cluster.representative_id)
+        if article is None:
+            continue
+        stories.append(
+            Story(
+                cluster_id=cluster.id,
+                headline=cluster.headline,
+                event_type=cluster.event_type,
+                sectors=cluster.sectors,
+                tickers=cluster.tickers,
+                sources=cluster.sources,
+                article={
+                    "id": str(article["id"]),
+                    "headline": article.get("headline", ""),
+                    "snippet": article.get("summary", ""),
+                    "url": article.get("url", ""),
+                    "tickers": list(cluster.tickers),
+                },
+            )
+        )
+
+    if not stories:
+        status["news-narration"] = "ok"
+        return NarrationResult()
+
+    try:
+        result = run_narration(
+            anthropic.Anthropic(api_key=settings.anthropic_api_key),
+            stage_a=stories,
+            stage_b_ids=[cluster.id for cluster in night.stage_b_clusters],
+            moves=moves,
+            rvol=rvol,
+            instruments=instruments,
+            run_date=run_date,
+            model_extract=settings.model_extract,
+            model_synth=settings.model_synth,
+        )
+    except Exception as error:  # noqa: BLE001 — the narrator's outage is not the page's
+        status["news-narration"] = "degraded"
+        print(f"job_a: the narrator failed ({error}); the front page publishes its facts without prose.")
+        return NarrationResult()
+
+    status["news-narration"] = "ok"
+    return result
 
 
 def run_news_mode(settings: Settings) -> None:
     """
     Rebuild the front page, and touch nothing else (MODE_STAGES["news"]).
 
-    THE PROMISE THIS FUNCTION KEEPS. It re-reads the news providers, resolves, clusters, ranks and
-    publishes — and it does not ingest a single bar, recompute a single indicator, rebuild a single
-    scan or spend a cent of LLM budget. That is what makes it safe to run at ANY hour, including
-    while the market is open, because nothing it writes depends on a session having closed.
+    THE PROMISE THIS FUNCTION KEEPS. It re-reads the news providers, resolves, clusters, ranks,
+    narrates and publishes — and it does not ingest a single bar, recompute a single indicator or
+    rebuild a single scan. That is what makes it safe to run at ANY hour, including while the market
+    is open, because nothing it writes depends on a session having closed.
+
+    IT DOES SPEND LLM BUDGET, and it used to promise the opposite. The promise was written when the
+    front page had no prose, and the honest scope of a "refresh the news" button is the WHOLE front
+    page — facts and context lines together. A refresh that rebuilt the stories while silently
+    blanking their notes would be a button that quietly makes the page worse, which is not a refresh.
+    The cost is bounded and small: at most 60 extraction calls and one narration call (plan 7.5).
 
     It is also why `main` dispatches here EXPLICITLY rather than falling through to the full night.
     Before this branch existed, any mode that was not "macro" ran the whole nightly — so a user
@@ -852,6 +957,8 @@ def run_news_mode(settings: Settings) -> None:
         f"{front_page.stage_a_capped} past the extraction cap. "
         f"Sources: {front_page.source_status}."
     )
+    if front_page.narration:
+        print(f"job_a (news): {front_page.narration}.")
 
 
 # The entrypoint stays at the very BOTTOM of the module, and that is not a style choice.

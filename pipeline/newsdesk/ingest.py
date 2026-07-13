@@ -62,7 +62,11 @@ class RankedCluster:
     sources: int
     first_seen: datetime
     members: list[Item]
-    # Kept alongside significance because the Stage-A cap ranks on it directly (see stage_a_clusters).
+    # The one article the extractor reads for this story: the cluster's SEED — the earliest report
+    # from the most-corroborated outlet, which is the same article whose headline the card carries.
+    # Reading a later rewrite would extract a story the card does not show.
+    representative_id: str = ""
+    # Part of the rank's evidence, kept on the row so a score can be explained after the fact.
     magnitude: float = 0.0
     image_candidate: str = ""
 
@@ -79,23 +83,35 @@ class NightResult:
     @property
     def stage_a_clusters(self) -> list[RankedCluster]:
         """
-        The clusters the extraction batch will actually read — chosen by PRE-LLM salience.
+        The clusters the extractor will actually read: the top of the page, by significance.
 
-        Deliberately not by significance, and the plan was right to insist. Significance depends on
-        event_type, and for the top clusters event_type is supposed to come FROM Stage A — so
-        choosing what Stage A reads by significance would mean choosing it with the answer Stage A
-        exists to produce. The circle is broken by ranking here on the two things the pipeline knows
-        entirely on its own: how many independent outlets carried the story, and how big a move it
-        explains.
+        THIS RULE WAS WRONG ONCE, AND THE WAY IT WAS WRONG IS WORTH KEEPING. It originally ranked
+        the extraction queue by "pre-LLM salience" — corroboration first, then ticker-move magnitude
+        — to avoid a circle the plan had warned about: significance depends on event_type, and
+        event_type was supposed to come from Stage A, so choosing what Stage A reads by significance
+        would mean choosing it with the answer Stage A exists to produce.
+
+        The circle does not exist in this tree. `rank.classify_event` classifies the event
+        DETERMINISTICALLY, from the provider's own category and the headline, before any model runs
+        (N4 built the classifier rather than taking the class from the model). Significance is
+        therefore fully known pre-LLM, and nothing is being chosen with an answer it has not got.
+
+        What the old rule actually did, measured on the recorded night: of the 20 stories the
+        narrator was asked to write about, EIGHT were never read by the extractor — and they were
+        the eight biggest stories of the night, the whole Gulf/Hormuz/oil cluster. Corroboration is
+        1 for 131 of 134 clusters and magnitude is 0 for the ~130 that name no company, so a
+        single-source macro story — which is precisely what a market-wide event IS — sorted to the
+        bottom of the extraction queue while sitting at the top of the page.
+
+        Both caps now rank by the same measure, so the narrated set is a SUBSET of the extracted set
+        BY CONSTRUCTION, at any cap sizes. A story the app puts first is a story the app has read.
         """
-        return sorted(
-            self.clusters,
-            key=lambda c: (-c.sources, -c.magnitude, c.first_seen, c.id),
-        )[:STAGE_A_CLUSTER_CAP]
+        return self.clusters[:STAGE_A_CLUSTER_CAP]
 
     @property
     def stage_b_clusters(self) -> list[RankedCluster]:
-        """The clusters the narrator will write a context line for."""
+        """The clusters the narrator will write a context line for. A subset of stage_a_clusters —
+        see the note there, and the test that holds it."""
         return self.clusters[:STAGE_B_CLUSTER_CAP]
 
 
@@ -187,7 +203,8 @@ def _rank_cluster(
     by_id = {str(a["id"]): a for a in articles}
     members = [by_id[item.id] for item in cluster.members if item.id in by_id]
 
-    seed = by_id.get(cluster._seed().id, {})
+    seed_id = cluster._seed().id
+    seed = by_id.get(seed_id, {})
     category = seed.get("category", "")
     summary = seed.get("summary", "")
 
@@ -231,6 +248,7 @@ def _rank_cluster(
         sources=cluster.sources,
         first_seen=cluster.first_seen,
         members=cluster.members,
+        representative_id=seed_id,
         magnitude=magnitude,
         image_candidate=candidate,
     )

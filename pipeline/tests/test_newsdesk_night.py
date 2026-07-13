@@ -173,6 +173,34 @@ def test_the_stage_a_cap_is_a_stated_cut_not_a_hidden_one():
     assert night.stage_a_capped > 0, "the recorded night is big enough to exercise the cap"
 
 
+def test_every_story_the_narrator_writes_about_has_actually_been_READ():
+    """
+    THE INVARIANT THE FIRST CAP BROKE, measured on the recorded night: 8 of the 20 stories Stage B
+    was asked to narrate were never read by Stage A — and they were the eight biggest stories of the
+    night, the entire Gulf/Hormuz/oil cluster.
+
+    The old cap ranked what to extract by corroboration and then by ticker-move magnitude. On this
+    feed both are near-constant (corroboration is 1 for 131 of 134 clusters; magnitude is 0 for the
+    ~130 that name no company), so a single-source macro story — which is what a market-wide event
+    IS — sorted to the very bottom of the extraction queue while sitting at the top of the page.
+
+    The narrator would have written the front page's most important lines from a headline and nothing
+    else, and the failure would have been invisible: an unread story produces an honest null, and a
+    null prints nothing.
+
+    The guarantee is now structural rather than lucky: both caps rank by significance, so the
+    narrated set is a SUBSET of the extracted set by construction, at any cap sizes.
+    """
+    night = _night()
+
+    extracted = {cluster.id for cluster in night.stage_a_clusters}
+    narrated = [cluster.id for cluster in night.stage_b_clusters]
+
+    assert narrated, "the recorded night must actually have stories to narrate"
+    unread = [cluster_id for cluster_id in narrated if cluster_id not in extracted]
+    assert unread == [], f"{len(unread)} narrated stories were never read by the extractor"
+
+
 def test_every_cluster_carries_a_sector_even_when_it_is_broad_market():
     """"Broad market" is an answer, not a failure to classify — and most of this night IS macro."""
     night = _night()
