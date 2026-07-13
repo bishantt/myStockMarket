@@ -161,12 +161,18 @@ test.describe("visual regression — the design system", () => {
   // Every token and primitive renders here, so this one page is the highest-value baseline in the
   // suite: a token that silently changes value shows up here before it shows up anywhere else.
 
-  test("styleguide — Morning", async ({ page }) => {
+  test("styleguide — Morning", async ({ page }, testInfo) => {
+    // The wide project locks the ROOM GRIDS only (Appendix F). This shot is not a room grid — it is
+    // already pinned at 1366, and a 1536 copy of it would be a second picture of the same answer.
+    test.skip(testInfo.project.name === "wide", "the wide project locks room layouts only");
     await useTheme(page, "light");
     await shoot(page, "/styleguide", "styleguide-light", { allowSkeletons: true });
   });
 
-  test("styleguide — Midnight", async ({ page }) => {
+  test("styleguide — Midnight", async ({ page }, testInfo) => {
+    // The wide project locks the ROOM GRIDS only (Appendix F). This shot is not a room grid — it is
+    // already pinned at 1366, and a 1536 copy of it would be a second picture of the same answer.
+    test.skip(testInfo.project.name === "wide", "the wide project locks room layouts only");
     await useTheme(page, "dark");
     await shoot(page, "/styleguide", "styleguide-dark", { allowSkeletons: true });
   });
@@ -193,8 +199,18 @@ test.describe("visual regression — the design system", () => {
 
   for (const room of SEEDED_ROOMS) {
     for (const theme of ["light", "dark"] as const) {
-      test(`${room.name} — ${theme === "light" ? "Morning" : "Midnight"}`, async ({ page }) => {
+      test(`${room.name} — ${theme === "light" ? "Morning" : "Midnight"}`, async ({ page }, testInfo) => {
         test.skip(!process.env.MSM_SEEDED, "needs the seeded database");
+        /*
+         * The WIDE project (1536) locks the GRID, not the palette (Appendix F: "every room at 1536,
+         * light only"). The colours are already pinned at 1366 and 390 in both themes; a third set
+         * of dark baselines up here would be pure cost — twice the pictures to regenerate on every
+         * restyle, for no question that is not already answered.
+         *
+         * What 1536 answers, and nothing else can, is whether the wide column maps hold.
+         */
+        test.skip(testInfo.project.name === "wide" && theme === "dark", "wide locks layout, not palette");
+
         await useTheme(page, theme);
         await shoot(page, room.path, `${room.name}-${theme}`);
       });
@@ -209,8 +225,12 @@ test.describe("visual regression — the design system", () => {
    * sort is instant (a FLIP-animated sort would be a screenful of money figures in motion, which is
    * banned — so there is no animation to wait out).
    */
-  test("scans table sorted by RVOL — the header state", async ({ page, isMobile }) => {
+  test("scans table sorted by RVOL — the header state", async ({ page, isMobile }, testInfo) => {
     test.skip(!process.env.MSM_SEEDED, "needs the seeded database");
+    // The wide project locks the ROOM GRIDS only (Appendix F). This shot is not a room grid — it is
+    // already pinned at 1366, and a 1536 copy of it would be a second picture of the same answer.
+    test.skip(testInfo.project.name === "wide", "the wide project locks room layouts only");
+
     test.skip(!!isMobile, "the desktop table is the thing being locked here");
     await useTheme(page, "light");
     await page.goto("/scans/unusual-volume");
@@ -224,8 +244,12 @@ test.describe("visual regression — the design system", () => {
     });
   });
 
-  test("scans table page 2 — the pagination footer", async ({ page, isMobile }) => {
+  test("scans table page 2 — the pagination footer", async ({ page, isMobile }, testInfo) => {
     test.skip(!process.env.MSM_SEEDED, "needs the seeded database");
+    // The wide project locks the ROOM GRIDS only (Appendix F). This shot is not a room grid — it is
+    // already pinned at 1366, and a 1536 copy of it would be a second picture of the same answer.
+    test.skip(testInfo.project.name === "wide", "the wide project locks room layouts only");
+
     test.skip(!!isMobile, "one shot is enough for the footer state");
     await useTheme(page, "light");
     await page.goto("/scans/unusual-volume");
@@ -245,8 +269,9 @@ test.describe("visual regression — the design system", () => {
     await shoot(page, "/ticker/AAPL", "ticker-light");
   });
 
-  test("ticker with the Range Ladder — Midnight", async ({ page }) => {
+  test("ticker with the Range Ladder — Midnight", async ({ page }, testInfo) => {
     test.skip(!process.env.MSM_SEEDED, "needs the seeded database");
+    test.skip(testInfo.project.name === "wide", "wide locks layout, not palette");
     await useTheme(page, "dark");
     await shoot(page, "/ticker/AAPL", "ticker-dark");
   });
@@ -254,7 +279,10 @@ test.describe("visual regression — the design system", () => {
 
   // ── login: the first thing anyone sees ───────────────────────────────────────────────────
 
-  test("login", async ({ page }) => {
+  test("login", async ({ page }, testInfo) => {
+    // The wide project locks the ROOM GRIDS only (Appendix F). This shot is not a room grid — it is
+    // already pinned at 1366, and a 1536 copy of it would be a second picture of the same answer.
+    test.skip(testInfo.project.name === "wide", "the wide project locks room layouts only");
     // Signed in already, so sign out by clearing cookies to see the wall itself.
     await page.context().clearCookies();
     await shoot(page, "/login", "login");
@@ -278,7 +306,11 @@ test.describe("visual regression — the design system", () => {
  * nothing, and this one had been proving nothing.
  */
 test.describe("visual regression — the pre-swap fallback", () => {
-  test("login with the fonts blocked — the fallback layout still holds", async ({ page, context }) => {
+  test("login with the fonts blocked — the fallback layout still holds", async ({ page, context }, testInfo) => {
+    // The wide project locks the ROOM GRIDS only (Appendix F). This shot is not a room grid — it is
+    // already pinned at 1366, and a 1536 copy of it would be a second picture of the same answer.
+    test.skip(testInfo.project.name === "wide", "the wide project locks room layouts only");
+
     let blocked = 0;
     await context.route("**/*.woff2", (route) => {
       blocked += 1;

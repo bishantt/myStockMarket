@@ -1,5 +1,6 @@
 import { AppWash } from "@/components/AppWash";
 import { PipelineStrip } from "@/components/desk/PipelineStrip";
+import { MacroPulse } from "@/components/desk/MacroPulse";
 import { BaseRate } from "@/components/BaseRate";
 import { SectionMasthead } from "@/components/SectionMasthead";
 import { KitSpecimens } from "./KitSpecimens";
@@ -56,6 +57,7 @@ export default function StyleguidePage() {
           <CopyDeck />
           <Kit />
           <FreshnessLadder />
+          <DegradedMacro />
         </div>
       </div>
     </>
@@ -693,6 +695,75 @@ function Kit() {
       intro="The six primitives the app-feel plan added, and the rulings they carry. A table states the order it is in and never calls it 'top'. A disclosure says how much it is hiding and as of when. A shelf moves only when the reader pushes it. A skeleton may stand for a container, never for a number: figure slots load as a still em-dash, and the chart reservation is still geometry — because a pulsing rectangle where a price is about to appear manufactures exactly the anticipation the stillness rule exists to forbid."
     >
       <KitSpecimens />
+    </Section>
+  );
+}
+
+/**
+ * 11 — The Macro Pulse, DEGRADED (NEWS-AND-CONTROL-PLAN Part 3, ruling C6).
+ *
+ * The state the user actually screenshotted in production, reproduced deterministically so it can be
+ * pixel-locked — because this is the frame the whole plan opened with, and it must never come back.
+ *
+ * What went wrong that night: FRED's index series returned nothing, so every slot fell back to an
+ * ETF price — and the footer, a FIXED STRING written for the happy path, went on declaring "Index
+ * levels · FRED · prior close" underneath four ETF prices. The Desk's hero numeral read ~755 while
+ * the S&P 500 sat near 6,800, with a provenance line insisting the number was the index.
+ *
+ * A provenance line that can disagree with its own surface is worse than no provenance line at all,
+ * because it converts a visible degradation into an invisible lie. So the footer is COMPOSED from
+ * the rows that actually rendered (C6), and here you can see it saying so.
+ *
+ * It lives in the styleguide rather than in an end-to-end test on purpose. Driving this state
+ * through the seeded database would mean one spec mutating market_context and every later spec —
+ * including the pixel oracle — reading whatever it left behind. That is not hypothetical: it is
+ * exactly the bug that made the Academy baselines unphotographable in N1. Props are deterministic,
+ * a component test proves the composer, and this proves the picture.
+ */
+function DegradedMacro() {
+  const proxy = (label: string, value: string, symbol: string, delta: string, dir: "up" | "down") => ({
+    label,
+    value,
+    deltaPct: delta,
+    direction: dir as never,
+    source: "etf-proxy" as const,
+    proxySymbol: symbol,
+    proxyChip: fill(copy.macro.proxyChipDegraded, { symbol }),
+  });
+
+  return (
+    <Section
+      id="macro-degraded"
+      index={11}
+      title="Macro pulse — degraded"
+      intro="The night FRED's index series fail, every slot falls back to an ETF price. That is honest — an ETF is a real number and the chip says exactly what it is. What is NOT honest is a provenance line that goes on claiming these are index levels, and that is what production printed: the Desk's hero read 755 under the label 'S&P 500' while the index sat near 6,800, with a fixed footer underneath insisting the figure came from FRED. The footer is composed from the rows that actually rendered now, so it cannot disagree with its own surface. Each row carries ONE mark, and on a degraded index slot that mark denies the misreading outright — 'SPY · ETF price — not the index level'."
+    >
+      <Surface className="p-5 desk:p-6">
+        <MacroPulse
+          asOf={FROZEN_INSTANT}
+          spx={proxy("S&P 500", "754.94", "SPY", "+0.41%", "up")}
+          indices={[
+            proxy("Nasdaq Composite", "612.30", "QQQ", "+0.62%", "up"),
+            proxy("Dow", "441.05", "DIA", "−0.18%", "down"),
+            {
+              label: "Small caps",
+              value: "228.71",
+              deltaPct: "+0.94%",
+              direction: "up" as never,
+              source: "etf-proxy" as const,
+              proxySymbol: "IWM",
+              // The small-caps slot is a proxy BY DESIGN — FRED deleted every free Russell series in
+              // 2019 — so its chip is the ordinary one, not the degraded denial. It never claimed an
+              // index level, so it has nothing to deny.
+              proxyChip: fill(copy.macro.proxyChip, { symbol: "IWM" }),
+            },
+          ]}
+          breadth={{ advancers: 3210, decliners: 1780, pctAbove50dma: "61%", asOf: "at Thu's close" }}
+          vix="15.84"
+          tenYear="4.54%"
+          provenance={copy.macro.indexesUnavailable}
+        />
+      </Surface>
     </Section>
   );
 }

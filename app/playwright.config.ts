@@ -91,6 +91,30 @@ export default defineConfig({
   projects: [
     { name: "desktop", use: { ...devices["Desktop Chrome"], viewport: { width: 1366, height: 768 } } },
     { name: "phone", use: { ...devices["Pixel 7"] } },
+    /*
+     * The WIDE desk (NEWS-AND-CONTROL-PLAN Part 4.3), new in N2.
+     *
+     * Above 1536px the app was buying acres and building nothing on them: every room outside the
+     * Desk was one column inside a 1360px shell, which on a 27" display is a phone layout with
+     * enormous margins. The `wide` band packs the enumerable content — cards three-up, setup cards
+     * two-up, a wider rail — while prose stays in one column at its measure.
+     *
+     * It gets its own project because a breakpoint with no pixel lock is a breakpoint that silently
+     * stops working: nothing else in the suite renders above 1366, so a broken wide grid would be
+     * invisible to every other test in the file. Only the layout is being locked here, so it shoots
+     * the rooms in one theme — the palette is already locked at the other two widths, and a third
+     * set of dark baselines would be cost with no new information.
+     */
+    {
+      name: "wide",
+      // Scoped, deliberately. A third project would otherwise re-run the ENTIRE suite at 1536 —
+      // tripling the e2e time to re-answer questions the other two widths have already answered
+      // (auth works, the offline cache works, the copy is right). What only 1536 can answer is
+      // whether the wide GRID holds: does it lay out, and does it stay on-axis. So it runs the pixel
+      // oracle and the sideways-scroll sweep, and nothing else.
+      testMatch: /(vrt|hardening)\.spec\.ts/,
+      use: { ...devices["Desktop Chrome"], viewport: { width: 1536, height: 960 } },
+    },
   ],
 
   webServer: {
