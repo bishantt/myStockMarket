@@ -10,6 +10,44 @@ Format: newest first. I mark each as [FYI], [VETO?], or [NEED] so you can scan.
 
 ## 2026-07-12 — the app-feel build (F0–F7)
 
+### The one thing I need you to decide
+
+- **[NEED] Grey text on glass cards fails the accessibility contrast floor, and fixing it means
+  changing a colour you signed off on.** The axe sweep at F7 found this and I did not fix it, because
+  the palette is yours, not the plan's.
+
+  The detail: `--color-muted` was checked against the PAPER colour and clears it (4.83:1, where the
+  standard wants 4.5:1). But a card is translucent — so what you actually see that grey against is the
+  card composited over the lavender wash, not the paper. Measured on screen, it does not clear the
+  floor. Every glass card in the app is affected, in both themes.
+
+  **The fix is small and contained:** darken `--color-muted` until it clears 4.5:1 against the
+  composited glass, in both themes, and re-shoot the baselines. One token, two values, about seventy
+  screenshots. It will make the muted grey a shade darker everywhere — provenance lines, timestamps,
+  column labels.
+
+  **What I did instead:** I fixed everything that was unambiguously a mistake rather than a choice —
+  a link nested inside a button (you could not tab to a mover's source link), a shelf a keyboard could
+  not scroll, and 58 nodes of real information rendered in `faint`, a colour the design system has
+  always reserved for placeholders ("never body text", it says, and we used it for disclosure counts
+  and unknown values). Accessibility went 93 → 100 on Lighthouse. The contrast finding is excluded
+  from the gate with a comment pointing at docs/feel-evidence/accessibility.md, and the gate still
+  holds the line on everything else, so a new violation cannot hide behind this one.
+
+  **Say the word and it is a ten-minute change.** I left it because a design system does not survive
+  an executor repainting it at 2am on the last night of a build.
+
+- **[FYI] The iOS device checklist could not be run.** The plan's F7 calls for a manual pass on a real
+  iPhone — shelf momentum, the combobox under the keyboard, double-tap on a sort header, the rail
+  sheet's home-indicator band — in both mobile Safari and the installed app. I have no device. Every
+  item is covered by the automated matrix as far as Chromium/Pixel-7 can cover it, and the specific
+  iOS hazards are handled in code with the reasons written down (the mask lives on the shelf's
+  non-scrolling wrapper; the combobox dismisses on `pointerdown` because iOS sends no click; the
+  listbox caps at five rows because the keyboard leaves ~330px; `touch-action: manipulation` on every
+  double-tappable control; the rail sheet has its safe-area inset). **This is the one gate that is
+  genuinely pending, and it needs your phone.**
+
+
 Nothing here blocks me. I have made the most reasonable call on each item, marked in the code and
 in DECISIONS.md what was built on that assumption, and kept going — per your standing directive.
 A veto of any one of these changes only its own sections; none of them ripple.

@@ -24,3 +24,27 @@ Lighthouse first-load budget — only to themselves, across commits.
 | `/styleguide` | 162.9 | exact | 5 |
 | `/ticker/[symbol]` | 193 | upper bound | 10 |
 | `/track-record` | 142 | upper bound | 9 |
+
+
+---
+
+## FINAL (F7, feel-final)
+
+### 2026-07-13 00:04 UTC — first-load JS per route (gzip)
+
+| Route | gzip KB | Kind | Chunks |
+|---|---|---|---|
+| `/` | 182 | exact | 9 |
+| `/academy` | 169.6 | exact | 8 |
+| `/academy/[slug]` | 147.4 | upper bound | 12 |
+| `/academy/glossary` | 169 | exact | 8 |
+| `/academy/review` | 170.2 | exact | 8 |
+| `/login` | 164.1 | exact | 6 |
+| `/offline` | 163 | exact | 5 |
+| `/paper` | 191.1 | exact | 11 |
+| `/scans` | 183.1 | exact | 10 |
+| `/scans/[preset]` | 148.8 | upper bound | 12 |
+| `/settings` | 184.1 | exact | 10 |
+| `/styleguide` | 174.3 | exact | 8 |
+| `/ticker/[symbol]` | 145.4 | upper bound | 10 |
+| `/track-record` | 182 | exact | 9 |

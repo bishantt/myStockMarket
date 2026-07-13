@@ -70,3 +70,29 @@ _2 route(s) were re-probed once after missing the budget on the first round._
 
 _A non-200 row is not a fast route — it is a route that served nothing. The gate treats it as a miss._
 
+
+
+---
+
+## FINAL (F7, feel-final) — every product route, after the cure
+
+### 2026-07-13 00:03 UTC — authenticated TTFB (5 samples, https://mystockmarket-eight.vercel.app)
+
+| Route | HTTP | Warm median (2–5) | Cold (sample 1) | All samples | x-vercel-cache | Region |
+|---|---|---|---|---|---|---|
+| `/` | 200 | **133ms** | 403ms | 403, 225, 119, 132, 134 | PRERENDER, HIT, HIT, HIT, HIT | iad1 |
+| `/scans` | 200 | **61ms** | 373ms | 373, 67, 55, 71, 53 | PRERENDER, HIT, HIT, HIT, HIT | iad1 |
+| `/scans/unusual-volume` | 200 | **59ms** | 224ms | 224, 64, 57, 53, 61 | PRERENDER, HIT, HIT, HIT, HIT | iad1 |
+| `/paper` | 200 | **67ms** | 334ms | 334, 77, 405, 51, 56 | PRERENDER, HIT, HIT, HIT, HIT | iad1 |
+| `/track-record` | 200 | **59ms** | 144ms | 144, 57, 61, 66, 51 | PRERENDER, HIT, HIT, PRERENDER, HIT | iad1 |
+| `/ticker/SPY` | 200 | **58ms** | 1162ms | 1162, 55, 107, 61, 51 | MISS, HIT, HIT, HIT, HIT | iad1 |
+| `/settings` | 200 | **53ms** | 237ms | 237, 56, 49, 53, 52 | PRERENDER, HIT, HIT, HIT, HIT | iad1 |
+| `/academy` | 200 | **52ms** | 208ms | 208, 48, 55, 56, 43 | PRERENDER, HIT, HIT, HIT, HIT | iad1 |
+| `/academy/review` | 200 | **57ms** | 699ms | 699, 61, 53, 52, 72 | PRERENDER, HIT, HIT, HIT, HIT | iad1 |
+| `/academy/reading-a-base-rate-sentence` | 200 | **56ms** | 151ms | 151, 58, 55, 57, 51 | PRERENDER, HIT, HIT, HIT, HIT | iad1 |
+| `/login` _(control)_ | 200 | 54ms | 57ms | 57, 66, 40, 64, 44 | HIT, HIT, HIT, HIT, HIT | iad1 |
+| `/academy/glossary` _(control)_ | 200 | 57ms | 241ms | 241, 60, 51, 54, 59 | PRERENDER, HIT, HIT, HIT, HIT | iad1 |
+
+_A non-200 row is not a fast route — it is a route that served nothing. The gate treats it as a miss,_
+_unless it is a route a later phase has not built yet, which is reported as pending and never scored._
+

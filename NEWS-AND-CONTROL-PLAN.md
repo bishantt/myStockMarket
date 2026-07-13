@@ -594,4 +594,516 @@ caption updates; a sub-4y seeded symbol hides `5Y` and states coverage; news Tod
 switch (lands with N5); every 5.1 row's assertion on its surface. VRT: ticker at each range
 (masked timestamps), RangeControl states in the styleguide.
 
-<!-- CONTINUES: Part 6 (macro board), Part 7 (Front Page), Part 8 (control room), Part 9 (phases), Part 10 (iOS), Part 11 (adversarial), Appendices -->
+---
+
+## Part 6 — The macro board (commission Part B)
+
+*Five additions to module 01, each with a verified source, an honest cadence, and a
+degradation ladder. The full source table with citations is Appendix A; this part is the
+product spec. Phase: N3.*
+
+### 6.1 The data home: `macro_stat`
+
+New Prisma model (verbatim DDL in Appendix C): one row per (seriesKey, asOfDate) with
+`value`, `prior` (the previous observation, for an honest period-over-period delta),
+`asOfLabel` (the human window: "wk of Jul 9", "Jun 2026"), `fetchedAt`, `sourceKey`, and
+`meta Json` (per-series extras: the Mood gauge's component breakdown lives here). Insert-or-
+update by key; history accumulates (the 1Y context sparklines and the gauge's percentiles
+read it). The pipeline is the only writer (0.2.3). `market_context` is unchanged — it stays
+the per-session market snapshot.
+
+### 6.2 The five stats (cadence-honest fetching)
+
+Each stat is fetched by Job A on its own cadence — a source that updates weekly is CHECKED
+nightly (one cheap call) but only writes a new row when the observation date advances, so
+"as of" always reflects the SOURCE's date, never our fetch time (the difference between
+freshness and thrash). Per-stat spec:
+
+1. **US 30-year fixed mortgage rate** — FRED `MORTGAGE30US` (Freddie Mac PMMS), weekly,
+   published Thursdays. Display: `6.72% · wk of Jul 9` with delta vs prior week. Beginner
+   note (title text): "The average rate lenders quote on a 30-year fixed mortgage —
+   the price of housing money."
+2. **US inflation, CPI year-over-year** — FRED `CPIAUCNS` with `units=pc1` (percent change
+   from a year ago, computed BY FRED — the pipeline stores what the source publishes and
+   computes nothing; the not-seasonally-adjusted series is the one headline YoY figures
+   quote). Monthly, released mid-month for the prior month. Display: `2.7% · Jun 2026` with
+   delta vs prior month's YoY in the title, not a chip (a delta-of-a-rate chip invites
+   misreading; the label IS the number's context here).
+3. **Gold, per troy ounce (USD)** — source per Appendix A's verification (FRED's LBMA series
+   are discontinued; the honest free path is the one Appendix A row records, labeled
+   exactly as what it is — a reference price, its venue named, never "spot" if the source
+   is a futures settle). Daily. Display: `$X,XXX · {venue} reference · 1D delta`.
+4. **USD → Nepalese rupee** — Nepal Rastra Bank's published reference rate (the official
+   source; endpoint and shape per Appendix A), daily. Display: `रु 1 USD = NPR 139.42 ·
+   NRB reference` with the mandatory qualifier as the second line: `Remittance apps may
+   differ.` We do NOT quote any remittance app: no legitimate rate API for TapTap/Remitly
+   exists (Appendix A records the check), and a fabricated app rate is exactly the lie the
+   commission forbids. Fallback source: the open mid-market rate feed named in Appendix A,
+   labeled `mid-market reference` when in use (C6 — the label follows the actual source).
+5. **The Mood gauge (ours)** — Part 6.5.
+
+### 6.3 Cadence, caching, and the app side
+
+The app reads `macro_stat` through the same ISR-600 morning loader path as everything else —
+no new caching machinery, no client fetches. The board's cells each carry their own as-of
+label (C2) because the masthead's as-of describes the RUN, not the observation. Manual
+refresh of this board is Part 8's `macro` mode (fetch + publish + revalidate, minutes, cheap).
+
+### 6.4 Degradation ladder (C7, uniform across stats)
+
+1. Source ok, new observation → fresh row, normal render.
+2. Source ok, no new observation (weekly/monthly series mid-cycle) → normal render; the
+   as-of label IS the honesty (nothing is stale about a Thursday rate on a Tuesday).
+3. Source unreachable tonight → render last stored row + age note `source unreachable
+   tonight` + `sourceStatus["macro-{key}"] = "degraded"` (footer reports it).
+4. No stored history (first nights, or a source that has never answered) → em-dash + `not
+   yet reported` — information, not apology.
+5. Stored value older than its cadence × 3 → the cell itself goes amber-worded (`stale —
+   last {asOfLabel}`); this is the same alert-consumer amendment as the strip (Part 4.1),
+   bounded to the module level.
+
+### 6.5 The Mood gauge — our transparent fear/greed equivalent
+
+**Why home-built:** Appendix A documents the licensing dead-end for CNN's index and the
+crypto-only scope of alternative.me's. The commission pre-authorized the fallback (0.2.2).
+
+**Definition (deterministic, computed by Job A, all inputs already in the pipeline's
+possession; constants in `pipeline/config.py`, changing them is structural):**
+
+- Components, each scored as a percentile of its own trailing 252-session history (the
+  gauge's own stored history once it accumulates; the Parquet lake + `market_context`
+  history bootstrap the first year):
+  1. **Breadth** — % of universe above its 50-day average (higher → greedier).
+  2. **Volatility** — VIX level, inverted (higher VIX → more fearful).
+  3. **Momentum** — S&P 500 level vs its own 125-session mean (from the FRED SP500 series
+     history), signed distance (higher → greedier).
+  4. **Range position** — share of universe within 5% of its 252-day high minus share
+     within 5% of its 252-day low (higher → greedier).
+- Score = the unweighted mean of available component percentiles, 0–100, rendered with its
+  word band: 0–24 `fearful` · 25–44 `leaning fearful` · 45–55 `mixed` · 56–75 `leaning
+  greedy` · 76–100 `greedy`. The words are deliberately flat (mechanical voice — no
+  "extreme", no exclamation, no color coding beyond ink).
+- Fewer than 3 components available → the gauge does not render a score (suppression per
+  the N-gate instinct); it renders `insufficient inputs tonight` + which are missing.
+- **Display contract (C8):** the number NEVER renders without its component table (each
+  component: name, tonight's raw value with window, its percentile, arrow of contribution)
+  and the ownership line. Phone: the gauge cell opens a Disclosure with the components;
+  desktop: the components render in the cell's expanded card. The gauge is a **position
+  display, not a dial** (P13 — no gauges/angles; it renders as a labeled 0–100 position
+  strip with a mono numeral).
+- **Not a signal:** the gauge carries the standing line `Context, not a signal — no
+  tendency evidence attaches to this number.` It writes no signal_log rows, feeds no setup
+  cards, and appears nowhere but the macro board and its own Academy lesson doorway.
+
+### 6.6 Fear & Greed licensing note (the record)
+
+Appendix A row F&G records the verification: CNN publishes no licensed API; the widely
+scraped `production.dataviz.cnn.io` endpoint is unofficial and its use would be a terms
+violation wearing a convenience; RapidAPI resellers of it inherit the same problem;
+alternative.me's index is crypto-only by its own documentation. Conclusion recorded so
+nobody re-litigates it: there is no legitimate external source; ours exists because of that
+fact, and the UI never borrows CNN's name.
+
+### 6.7 Board layout
+
+Phone: the module's second labeled shelf (`Money & mood — swipe`), cells in the order
+mortgage · CPI · gold · USD→NPR · Mood (household costs first — the reader's own life, then
+the market's temperature). Desktop: a 5-up row under the market rows; at `wide:` the Mood
+cell expands to show its component table inline. Every cell: label, mono figure, as-of, and
+the per-stat note as title text. No sparklines in v1 (the board's job is current level +
+honest date; trend claims want more design care than a 40px canvas — logged as a deliberate
+omission, revisit trigger: user asks for trend context).
+
+### 6.8 Tests & gate additions (N3)
+
+Pipeline: per-series adapter tests on recorded fixtures (new fixtures via the
+record-fixtures flow) · cadence logic (no-new-observation writes nothing; observation-date
+advance writes) · degradation rungs 3–5 · gauge: component percentiles against a toy
+history, suppression <3 components, band words at boundaries, determinism (same inputs →
+same score). App: cell render per rung · gauge breakdown-required guard (render without
+components throws) · board order e2e · VRT board normal + degraded, both themes, phone +
+desktop. Gate: `nc-3` tag green; one real dispatched `macro` run writes real rows (or the
+absence is logged with its reason if sources are down that night).
+
+---
+
+## Part 7 — The Front Page (commission Part C)
+
+*The News/Discover section: route `/news`, fed nightly, image-led, filterable, ranked by
+catalyst significance. Phases: N4 (data), N5 (UI).*
+
+### 7.1 Why this section serves the mission (the required argument)
+
+The app's mission is a calm command center and learning hub that teaches WHY markets move.
+The Daily Brief answers "what should I take away from today?" — synthesized, five items,
+one reading. It deliberately does not answer the question a curious reader asks next:
+"what actually happened out there, in full — and what kind of thing was it?" Today that
+curiosity has exactly one place to go: the open web, where the answer is a trending feed
+built to convert curiosity into orders. The Front Page exists to answer it here instead,
+inside the honesty rules: every story is framed as a CATALYST with a TYPE (an earnings
+beat, an FDA approval, a Fed statement) — which is literally the Academy's taxonomy of why
+prices move, applied to today's tape. Every card teaches the connection ("here is the
+cause, here is what it plausibly affects, here is the size of the reaction"); every detail
+page offers the lesson that explains the mechanism and the setup card where evidence
+exists. A mover with no cause says so, which teaches the hardest lesson in the room: most
+moves are noise. The section's failure mode — the thing it must never become — is the
+thing it replaces: a salience feed. That is what C1, C4, C9, C10 and the significance
+formula are for. If those rules ever feel like they are fighting the section, the section
+is drifting, and the rules win.
+
+### 7.2 Information architecture
+
+- **`/news`** — the room: press-time header, filter rows, the ranked feed, the
+  "Moved without a story" quiet slot, provenance footer. ISR-600 like every room.
+- **`/news/[cluster]`** — the story page (drill level 2): the full honest anatomy of one
+  catalyst. Ticker links go to `/ticker/[symbol]` (level 3). Depth ≤ 3 holds.
+- **Desk module "08 — Front page"** — a bounded preview: the top 3 clusters as compact
+  rows (headline + catalyst Tag + tickers, no images at this size), the M8 count line
+  ("First 3 of 14 by significance"), doorway "The full front page →". Rides MAIN, pairing
+  with 07 on one desktop row (both are count-plus-doorway glances). Ships in both Part 0
+  options.
+- **Navigation:** per Part 0.1's answer (default: sixth tab "News", newspaper icon, between
+  Desk and Scans; desktop RoomNav pill; ⌘K entry either way).
+
+### 7.3 Ingest expansion (pipeline, N4)
+
+Today news is fetched only for unusual-volume movers. The Front Page needs the day's
+market-wide catalysts. Nightly budget (constants in `pipeline/config.py`; each call through
+the existing adapter/rate-limit machinery; all counts verified against provider limits in
+Appendix A):
+
+| Call | Provider | Budget | Yield |
+|---|---|---|---|
+| Market news, `category=general` | Finnhub (free tier: 60 calls/min, no daily cap documented) | 2 calls (second with `minId` pagination) | ~100–200 items, with `image` + `source` fields |
+| Market news, `category=merger` | Finnhub | 1 call | M&A coverage |
+| Company news for movers | Finnhub | ≤15 calls (existing) | mover catalysts, unchanged |
+| Tagged market news | Marketaux `news/all`, `countries=us`, `filter_entities=true`, `must_have_entities=true`, `sort=published_on` | ≤20 calls (free tier: 100 req/day, **3 articles per request**) | ~60 entity-tagged items with `image_url`, `source`, `entities[].industry`, `entities[].match_score` |
+
+Adapters gain the fields they already receive and drop: Finnhub `image`, `source`,
+`category`; Marketaux `image_url`, `source`, `description`, per-entity `industry` +
+`match_score`, and the `similar` uuid list (a free clustering hint). All additions are
+recorded-fixture-first per the new-provider-adapter skill (the fixtures already contain
+these fields — the recorder does not even need re-running for Finnhub/Marketaux; extend the
+parse + tests).
+
+`news_item` gains columns (Appendix C): `source`, `imageUrl` (the provider/og candidate as
+received — the R2 copy lives in `news_image`), `category`, `industries String[]`,
+`clusterId?`, plus the write-back of the Stage-A extract into the existing `extract Json`
+column (7.5). Backfill: none — old rows simply lack images/sources and never enter new
+clusters (clusters are per-night forward).
+
+### 7.4 Clustering (deterministic, no LLM)
+
+One story arrives as N articles. `pipeline/newsdesk/cluster.py` (new, pure, TDD):
+
+- Normalize each headline: lowercase, strip punctuation/tickers/source suffixes, tokenize,
+  drop stopwords.
+- Two items cluster when ANY of: same canonical URL (post-tracking-param strip) · Marketaux
+  `similar` links them · token Jaccard ≥ 0.55 AND overlapping ticker sets AND published
+  within 36h of each other. Union-find over the night's items + yesterday's clusters
+  (stories span evenings; a cluster keeps its id and accumulates).
+- Each cluster's representative headline = the earliest item from the highest-corroboration
+  source; `sources = distinct source count`; `tickers = union`, ranked by Marketaux
+  match_score where present, else mover membership, else mention count.
+- Unit tests: the fixture night must produce known clusters; near-miss pairs (same tickers,
+  different stories) stay apart; the 36h boundary; URL-param canonicalization.
+
+### 7.5 Extraction and the narrative line (the existing AI pipeline, extended)
+
+- **Stage A (Haiku, Message Batches — the existing `briefing/extract.py` machinery):** the
+  nightly batch grows from "movers' articles" to "one representative article per cluster,
+  top ~60 clusters by pre-LLM salience (corroboration count, then ticker-move magnitude)".
+  The `ExtractResult` schema gains one enum value — `event_type` adds `filing` — and is
+  otherwise unchanged. The parsed extract is **written back to `news_item.extract`** (the
+  column reserved for exactly this since P2) and, at cluster level, to the new
+  `news_cluster.extract`. Items past the cap are ingested (headline/source/image) but not
+  extracted — the feed can render them in the "more items" tail of their sector filter
+  without narrative lines; the cap and its reason are logged per night (`stageStatus`).
+- **Stage B-mini (Sonnet, ONE sync call for the whole page):** a single structured call
+  takes the top ~20 clusters' extracts + the computed stats for their tickers (the existing
+  `stats.py` table, extended with per-ticker move/RVOL stat ids) and returns, per cluster:
+  `why_it_matters` (≤160 chars, mechanical voice, no advice verbs, no predictions — "the so
+  what", e.g. "A approval this size usually re-prices the whole treatment segment, not one
+  ticker.") and `affected_note` where the effect is sector-wide. Same citation discipline as
+  the brief: every sentence's numbers must trace to stat/extract ids. Schema in Appendix D.
+- **The gate (the existing `verify.py`, reused):** every cluster's narrative fields pass
+  the Appendix-E tolerance check against that cluster's extracts + stats. A failing
+  cluster publishes WITHOUT its narrative line (facts stand, prose is dropped, decision
+  recorded in the night's verification JSON) — the feed never blocks on one bad sentence,
+  and an unverified number never renders (P9 verbatim).
+- **Ranking (deterministic, after extraction):** the significance formula of Appendix E —
+  scope (index/sector-wide beats single-name), corroboration, magnitude (affected tickers'
+  |1D move| in units of their own ATR14), catalyst-class prior, recency decay. Computed by
+  `newsdesk/rank.py`, stored on the cluster row, EXPLAINED in the room's header line. The
+  LLM never sees or sets a rank.
+
+### 7.6 Publish & schema
+
+New tables (verbatim in Appendix C): `news_cluster` (runDate idx, representative headline,
+eventType, sectors[], themes[], tickers[], significance, sources, whyItMatters?,
+verification Json, extract Json, imageId?), `catalyst_link` (clusterId → symbol with the
+snapshot: ret1, rvol20, hasSetupCard — snapshotted at publish so the card's numbers and the
+feed's numbers can never drift apart), `news_image` (Part 7.9). Movers cross-link: a mover
+row whose symbol appears in a cluster gets its existing catalyst chip pointed at
+`/news/[cluster]` (one story, one page — the mover module stops linking out to a raw
+article when we host the fuller, verified version; external source links remain on the
+story page). All inserts land in the same Job-A publish transaction.
+
+### 7.7 The room (`/news`), spec
+
+- **Header:** serif room title ("Front page"), press-time line (`Assembled {date} {time} ET
+  · from {n} articles, {m} catalysts`), the ordering sentence (C1), and the RangeControl
+  (`Today / This week`, default Today).
+- **Filter rows (client-side over the served payload):** catalyst-type chips (All ·
+  Earnings · Guidance · M&A · FDA · Fed/Macro · Analyst · Filings · Legal · Product) and
+  sector/theme chips (11 sectors + AI · Defense · Broad market). Horizontal scroll rows on
+  phone (44px chips, snap proximity, edge fade); wrapped rows on desktop. Active filters
+  restate themselves in the count line: "6 catalysts · Pharma · FDA". Zero-result state:
+  "No FDA catalysts today — that is information, not an error." Filters are AND across the
+  two rows, OR within a row (multi-select), reset chip appears when any active.
+- **The feed:** phone — one lead card (full-bleed image, 1.91:1) for the top-ranked
+  cluster, then uniform rows (thumbnail left 112×84, content right); the lead slot is a
+  POSITION, not a reward for size of move (C4). Desktop `lg:` — feed 8/12 (2-up card grid,
+  lead spanning both columns) + context rail 4/12 (the "Moved without a story" card, the
+  press-time/provenance card, the filter state). Pagination by "Page N of M" (M6) at 20
+  clusters/page; Today rarely exceeds one page.
+- **Card anatomy (every card, both tiers):** image (7.9) · catalyst-type Tag + sector Tag ·
+  headline (serif, 2-line clamp with title attr for overflow) · source + `{h}h ago` time
+  (absolute date past 24h — and the timestamp is the ARTICLE's, the card's as-of is the
+  room's press time) · ticker chips (≤3, then "+N", each chip carrying its `+8.2% · 1D`
+  move) · the why-it-matters line in italic prose (or nothing, if the gate dropped it —
+  never a placeholder) · corroboration whisper (`3 sources`) in the footer.
+- **"Moved without a story" (C9):** after the feed (rail card on desktop): up to 3 movers
+  with no cluster, each as symbol + move + the standing noise line. Never images, never
+  ranked among catalysts.
+- **Press cadence honesty (C10):** the room's footer states the schedule: "Assembled
+  nightly after the US close. This page does not update during the day."
+
+### 7.8 The story page (`/news/[cluster]`), spec
+
+Top to bottom: catalyst Tag + sector Tags · serif headline · source list line (every
+corroborating article: source name → external link, published time) · the image (larger
+variant, attribution line `Photo via {source}` linking the article) · **What happened** (the
+extract summary, mechanical) · **Why it matters** (the verified line, plus `affected_note`
+when present) · **By the numbers** (the cluster's key_numbers, each with its source id
+superscript — same grammar as the brief's citations) · **Affected tickers** — a DataTable:
+symbol · name · `1D move` · `RVOL · 20d` · a `Setup card` link where `hasSetupCard` (the
+doorway to evidence, only where evidence exists) · **Learn the mechanism** — the Academy
+doorway mapped from catalyst type (Appendix E's map; renders only for authored lessons via
+the existing manifest gate) · provenance footer (`Ingested {t} · extracted by {model} ·
+every number machine-verified against its sources`). Return rail back to /news preserves
+scroll + filters (client state survives bfcache/back).
+
+### 7.9 The image pipeline (the non-negotiable, engineered)
+
+**Sourcing ladder (fetch at ingest, in the pipeline; NEVER at render):**
+- **L1 — the provider's own image field** (Finnhub `image`, Marketaux `image_url`) — this IS
+  the publisher's photo, delivered through the news API we already license. Present on most
+  items; often an empty string on some Finnhub sources (verified), hence:
+- **L2 — og:image / twitter:image** from the article page: `newsdesk/ogimage.py` — httpx
+  GET with a descriptive UA (`msm-newsdesk/1 (+contact URL)`), robots.txt honored, 5s
+  timeout, 512KB read cap (the tags live in `<head>`), selectolax parse of
+  `og:image[:secure_url]` → `twitter:image` → `link[rel=image_src]`. One attempt per URL
+  per night; failures are data, not errors.
+- **L3 — publisher identity card:** no image found → the card renders the DESIGNED
+  source-identity treatment: the publisher's favicon (fetched once per domain into R2, same
+  etiquette) composed by the UI onto a generated background in our palette (the component
+  does the composing — no server image generation needed).
+- **L4 — catalyst identity card:** no favicon either → the sector/catalyst-keyed generated
+  treatment: a deterministic SVG component (`NewsImage` fallback mode) built from our
+  tokens — sector-tinted wash, the catalyst-type word set large in the display serif, the
+  ticker set in mono. Deterministic from (sector, eventType, tickers) so VRT can lock it.
+  **L3/L4 are designed as first-class outcomes: same geometry, same frame, same visual
+  weight as photos — a text-treatment card next to a photo card must read as an editorial
+  choice, not a failure.** The styleguide renders all four rungs side by side; VRT locks
+  them.
+- **If a faster path appears** (a provider adding a guaranteed image field), the ladder
+  absorbs it at L1; the outcome contract (every card ships a visual, zero failure states)
+  is what is fixed.
+
+**Processing & storage (pipeline, Pillow — new dep):** fetch L1/L2 candidate → validate
+(actual image bytes, ≥200px wide, not an SVG/tracking pixel) → recompress to JPEG quality
+80, strip EXIF → three variants: 1200w (story page), 640w (lead card), 240w (thumbnail),
+each capped 1.91:1 center-crop only when within 15% of it (else letterbox to the frame in
+CSS — never a face-chopping crop; `object-fit: cover` on uniform frames does the visual
+cropping client-side) → compute width/height + an 8px-wide base64 JPEG blur placeholder
+(~300 bytes, stored in the row — the SSR-friendly placeholder; hash formats need client
+JS) → PUT to the media bucket keyed `news/{yyyy-mm}/{sha1(url)}-{w}.jpg` via the existing
+boto3/R2 pattern → row in `news_image` (clusterId, sourceKind L1|L2|L3-favicon, urls per
+variant, width, height, blurDataUrl, attribution source+url, dominantColor). Budget: ~60
+images/night × ~3 variants ≈ well inside R2's free tier forever (Appendix A math).
+
+**Serving (app):** ONE component, `components/news/NewsImage.tsx` (drift rule 18: no other
+`<img>`/`next/image` may reference the media bucket): `next/image` with
+`remotePatterns` for the media base URL, explicit `width`/`height` from the row (CLS = 0 by
+construction; the layout-shift budget for /news is the existing hard CLS 0.000 gate),
+`placeholder="blur"` with the stored `blurDataURL`, `loading="lazy"` for everything except
+the lead card (`loading="eager"` — v16 deprecates `priority` in favor of preload/eager;
+only the lead is above the fold by definition), `sizes` matched to the three slots. Vercel
+image optimization stays within the Hobby transformation budget because variants are
+pre-sized in the pipeline and `minimumCacheTTL` is raised to 31 days (immutable objects,
+hashed keys — Appendix A math: ~1.8k new images/mo × ~2 rendered sizes ≈ 3.6k of the 5k
+monthly transformations; if the plan's own probe shows the budget breached, the fallback is
+serving the pre-sized variants as plain `<img>` with manual `srcset` — pre-sizing is what
+makes both paths cheap).
+
+**Public access:** custom domain on the Cloudflare zone if one exists (P-1 asks), else the
+bucket's `r2.dev` URL — dev-labeled and rate-limited, but every hot read is served out of
+Vercel's image cache (the optimizer is the only client that ever fetches the origin), and
+the single-user readership makes cold-read volume trivial. The provisioning row records
+whichever base was configured; `NEXT_PUBLIC_MEDIA_BASE` is the single source for
+remotePatterns and the pipeline's URL construction.
+
+**Dark theme:** photos render true (no filter — a dimmed photo is a designed lie about the
+photo); the FRAME adapts (hairline + surface tokens), and L3/L4 generated cards are built
+from tokens so they theme natively.
+
+### 7.10 Seeds, fixtures, VRT determinism
+
+The seeded night gains: 14 clusters across ≥6 catalyst types and ≥5 sectors (incl. one
+FDA, one M&A, one Fed/macro with zero tickers — the C9 "no direct listing" case), 2
+no-catalyst movers, one cluster with a gate-dropped narrative (facts only), and one L3 +
+one L4 image case. Seed images: 3 tiny CC0 JPEGs committed under `app/prisma/fixtures/img/`
+(each <30KB), served in e2e via the seed's local paths (the NewsImage component takes a
+base URL — the seed points it at `/fixtures/`); L4 needs no assets (deterministic SVG).
+VRT: feed both themes both viewports, filtered state, story page, all four image rungs in
+the styleguide, Desk module 08.
+
+### 7.11 Tests & gate additions (N4 + N5)
+
+N4 (data): cluster.py suite (7.4's cases) · rank.py (formula on fixture clusters; ordering
+pinned; weights from constants) · extract write-back + cap logging · Stage B-mini schema +
+one-retry + verify-gate drop path · image pipeline (validate/variant/blur on a checked-in
+JPEG; ladder fall-through L1→L4 on fixture cases; R2 keys; budget counter) · publish
+transaction writes clusters/links/images atomically · full fixture-night integration test
+(N articles in → K clusters, ranks, images out — the numbers pinned). Gate: `nc-4` CI
+green; one real dispatched news-mode run against live providers (or its absence logged with
+reason).
+N5 (UI): e2e — feed order equals seeded significance; filters (type, sector, combined,
+zero-state, reset); Today/Week; lead card is position-not-size (seed places the biggest
+mover at rank 3 and asserts it does NOT get the lead slot); story page anatomy (sources,
+numbers superscripts, tickers table, doorway gating); C9 slots; C10 no-badge; module 08
+count line + doorway; drill depth; keyboard/focus order through cards. Unit: card
+view-model builders. VRT per 7.10. Gate: `nc-5` tag green incl. axe on /news + story page;
+route budgets hold (B2/B3 on /news).
+
+---
+
+## Part 8 — The control room (commission Part D)
+
+*Manual runs, honestly scoped. Phase: N6. The honest evaluation first, because the
+commission asked for it.*
+
+### 8.1 Is user-triggered running a good idea here? (the evaluation)
+
+Mostly yes, narrowly. This is an end-of-day product: on a normal weeknight the pipeline has
+already run and a manual re-run would recompute identical data — the honest control for
+that case is the EXPLANATION, not the button. But four real cases earn real buttons: (a) a
+failed or missed nightly run (the recovery case — today it requires the GitHub UI); (b)
+news re-fetch: catalysts accumulate during the day and the reader may want the evening's
+news before the scheduled run — cheap, safe, rate-limited; (c) macro stats: FX/gold/rates
+move on their own cadences and a mid-day refresh is legitimate and nearly free; (d)
+compute-only re-runs after a code fix (recompute scans/indicators over stored bars without
+re-ingesting). What stays impossible by design: ingesting TODAY's EOD bars before the
+close (the data does not exist — the UI says so with the next-close time), and anything
+that would collide with the nightly (the concurrency group already serializes; the UI
+states the queue position instead of pretending parallelism).
+
+### 8.2 Mechanism (0.2.3): GitHub Actions, dispatched from the app
+
+- `nightly-a.yml` gains inputs: `mode: full | news | macro | compute` (default `full`) and
+  `request_id` (echoed into `run-name: nightly-a · {mode} · {request_id}` for the Actions
+  tab). `jobs.job_a` branches its stage list on mode: `news` = catalyst ingest + cluster/
+  extract/publish news + revalidate; `macro` = FRED/NRB/gold reads + macro publish +
+  revalidate; `compute` = snapshot/scans/analytics from the stored lake + publish (skips
+  Alpaca ingest and its coverage gate — the gate binds only stages that ingest); `full` =
+  today's behavior. Each mode's stage list is a constant with a unit test (a mode may
+  never silently grow a stage).
+- `nightly-b.yml` needs no mode (its whole job is the evening assembly); the panel exposes
+  it as "Re-run the evening briefing".
+- The app dispatches via `POST .../workflows/{file}/dispatches` with
+  `return_run_details: true` (verified current API — the response carries
+  `workflow_run_id`), stores the id on the request row, and polls
+  `GET /actions/runs/{id}` for `status`/`conclusion` while the panel is open. Fallback
+  if the field is ever absent: match `display_title` on the `request_id` via the runs list
+  (the run-name already carries it).
+- Auth: the routes live under the session wall (`/api/pipeline/*` NOT in PUBLIC_PATHS —
+  the proxy 401s JSON unauthenticated); the server action holds `GH_DISPATCH_TOKEN`
+  (fine-grained PAT, Actions read+write, this repo only). The token never reaches the
+  client; the panel is unreachable logged-out like everything else.
+
+### 8.3 The request ledger: `manual_run` (✎ app-writable — it IS user state)
+
+Appendix C DDL: id, requestedAt, workflow, mode, ghRunId?, status (`requested | queued |
+running | succeeded | failed | not_applicable | not_configured`), reason? (the
+not-applicable explanation shown), finishedAt?. It is the cooldown source (8.4), the audit
+trail ("what did I run and when"), and the panel's history list (last 10). The pipeline
+never reads it — dispatch inputs carry everything the job needs.
+
+### 8.4 Guardrails (constants in `lib/constants.ts`, mirrored where the workflow enforces)
+
+- **Concurrency:** the existing `msm-nightly` group serializes everything
+  (cancel-in-progress false → a manual run queued behind the nightly WAITS, and the panel
+  says "queued behind tonight's scheduled run"). Only the latest queued run survives by
+  GitHub's semantics — the panel therefore refuses a second dispatch while one is pending
+  (state, not error).
+- **Cooldowns/caps (per mode, enforced app-side from `manual_run`, stated in the UI):**
+  `macro` 30-min cooldown, 6/day · `news` 2/day (provider budget: each news run spends
+  ~20 Marketaux requests of the 100/day — two manual + one nightly = 60, safe) · `compute`
+  2/day · `full` 1/day · `briefing` 2/day. The cap line renders under each button
+  ("2 of 2 left today").
+- **Cost ceilings, stated where they bind:** a `news` run spends ~$0.10–0.20 of LLM budget
+  (batch Haiku + one Sonnet call — Appendix A pricing math); the panel prints it
+  (`~$0.15 of API budget`) so the cost is a stated fact, not a hidden one. GitHub minutes:
+  bounded by the caps at ≈ 60–90 min/day worst case, inside the private-repo free tier
+  with the nightly load included (Appendix A math).
+- **Session-night guard:** `full` is not-applicable while the market is open (bars are
+  incomplete) and on already-successful nights (nothing new exists); both render C5
+  explanations with the next meaningful time.
+
+### 8.5 The panel (in `/settings`, section "Pipeline"; the Desk strip links here)
+
+Layout: the freshness strip's data expanded (last run, stages, per-source status verbatim
+from `pipeline_run`), then one row per action — Run tonight's full pipeline · Refresh the
+news · Refresh macro stats · Recompute scans · Re-run the evening briefing — each rendered
+in exactly one state:
+
+| State | Render |
+|---|---|
+| available | button + what it does in one sentence + cost/cap line |
+| cooldown | disabled + "available again at {t}" |
+| capped | disabled + "daily limit reached — resets midnight ET" |
+| not_applicable | no button; the explanation IS the row (C5): e.g. "Markets are open — today's closing data doesn't exist until 4:00pm ET. The nightly run lands ~6:37pm ET." / "It's the weekend — Friday's close is the latest data that exists; nothing new lands before Monday 4:00pm ET." / "Tonight's run already succeeded at 22:41 UTC — there is nothing newer to fetch." |
+| requested/queued | live row: "queued behind the scheduled run" |
+| running | live row with elapsed time + link to the GitHub run |
+| succeeded | quiet line in history + the page data refreshes itself (the run's own revalidate busts the caches; the panel re-reads on poll) |
+| failed | the row says so plainly + links the run log + offers the retry (within caps) |
+| not_configured | "Manual runs need a GitHub token — see QUESTIONS-FOR-BISHANT (P-2)." |
+
+State logic is a pure function `lib/pipeline-control.ts` (inputs: manual_run rows,
+pipeline_run, trading calendar via a serialized next-sessions payload, clock) — unit-tested
+per state including the calendar cases (weekend, holiday, pre-close, post-success). The
+running-state poll is a session-gated route (`GET /api/pipeline/status`) the client hits
+every 15s ONLY while the panel is open and a run is live.
+
+### 8.6 Freshness, honestly surfaced (closing the loop with Part 4.1)
+
+The strip (Desk) and the panel (settings) read the same `lib/freshness.ts`. After any
+successful manual run, the strip reflects it on next render ("Data through … · refreshed
+manually 2:14pm ET") — manual runs join the provenance story rather than hiding under it.
+
+### 8.7 Tests & gate additions (N6)
+
+Unit: `pipeline-control.ts` full state matrix (every state reachable, calendar cases,
+cooldown boundaries) · freshness integration of manual runs. Pipeline: mode stage-list
+constants + per-mode behavior (fixture-driven: news mode touches no bars; compute mode
+calls no Alpaca; macro mode skips the coverage gate) · dispatch input parsing. E2E (GitHub
+API mocked at the route boundary; the seeded build injects clock/fixtures): dispatch flow
+happy path (request row → queued → running → succeeded, panel updates), not-applicable
+copy renders per case, caps decrement and pin, failed run links the log, strip →
+panel doorway, unauthenticated API 401s. One REAL end-to-end drill in the gate: dispatch a
+real `macro` run from the deployed app, watch it publish and revalidate (this is also
+P-2's verification). VRT: panel states (masked timestamps). Gate: `nc-6` tag green + the
+real-drill evidence in `docs/nc-evidence/`.
+
+<!-- CONTINUES: Part 9 (phases), Part 10 (iOS), Part 11 (adversarial), Appendices -->
