@@ -497,3 +497,58 @@ def test_a_narrator_that_throws_publishes_the_facts_without_prose() -> None:
             raise TimeoutError("Request timed out or interrupted.")
 
     assert narrate(_Throwing(), [_cluster()], _stats(), model="claude-sonnet-5") is None
+
+
+# ----- one bad note is one dropped note, not a dead page (N5, found in production) -----
+#
+# The third live run extracted 59 of 60 articles and then reported "the narrator failed its schema
+# twice — the page publishes without prose". The whole page lost its notes.
+#
+# TWO MISTAKES, both mine. The 160-character cap is enforced by pydantic on OUR side, and the API
+# does not enforce string lengths — we strip maxLength from the schema before sending it. So the
+# model was never TOLD the limit, wrote past it, and every note it wrote was thrown away for breaking
+# a rule nobody had given it. And because the NoteSet was validated as one object, a single over-long
+# sentence invalidated the other nineteen: the same "one bad item kills the batch" disease that had
+# just been fixed one stage upstream.
+
+_LONG = "x" * (WHY_MAX_CHARS + 40)
+
+
+def test_one_over_long_note_does_not_delete_the_other_nineteen() -> None:
+    payload = (
+        '{"notes": ['
+        '{"cluster_id": "c1", "why_it_matters": "' + _LONG + '"},'
+        '{"cluster_id": "c2", "why_it_matters": "A clearance re-prices the segment."}'
+        ']}'
+    )
+    client = FakeClient(payload)
+
+    result = narrate(client, [_cluster(), _cluster("c2")], _stats(), model="claude-sonnet-5")
+
+    assert result is not None, "one bad sentence must not cost the page its prose"
+    assert [note.cluster_id for note in result.notes] == ["c2"]
+    assert len(client.calls) == 1, "and it must not waste a retry on a response that mostly parsed"
+
+
+def test_a_response_where_NOTHING_parses_is_still_retried() -> None:
+    """The other side of the rule: if not one note survived, something is systematically wrong and
+    the one retry Appendix D allows is worth spending."""
+    bad = '{"notes": [{"cluster_id": "c1", "why_it_matters": "' + _LONG + '"}]}'
+    good = _noteset_json()
+    client = FakeClient(bad, good)
+
+    result = narrate(client, [_cluster()], _stats(), model="claude-sonnet-5")
+
+    assert result is not None
+    assert len(client.calls) == 2
+    assert result.notes[0].why_it_matters is not None
+
+
+def test_the_model_is_TOLD_the_limit_it_is_being_held_to() -> None:
+    """It was not, and every note it wrote was rejected for breaking a rule it never saw. The API
+    does not enforce string lengths — the schema's maxLength is stripped before it is sent — so the
+    prompt is the ONLY place the model can learn the cap."""
+    system, _user = build_notes_prompt([_cluster()], _stats())
+
+    assert str(WHY_MAX_CHARS) in system
+    assert str(AFFECTED_MAX_CHARS) in system

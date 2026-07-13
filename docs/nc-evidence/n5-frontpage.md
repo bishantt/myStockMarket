@@ -1,4 +1,4 @@
-# N5 — the Front Page: what the room actually does, and the four things it found
+# N5 — the Front Page: what the room actually does, and the eight things it found
 
 *Written 2026-07-13. Every claim below has a test, a measurement, or a production run behind it.
 Where the plan and the tree disagreed, the disagreement is recorded with its reason.*
@@ -39,7 +39,7 @@ is hiding in its own count line ("2 catalysts · FDA · Health care").
 
 ---
 
-## 3. The four findings
+## 3. The eight findings
 
 ### 3.1 The corroboration count could not be OPENED
 
@@ -91,7 +91,74 @@ close). Both times the string was well-formed and simply false.
 top, so between the two the reader knows exactly how old everything is — which is more than "3h ago"
 ever told them.
 
-### 3.4 The plan's filter chips could not reach every story on the page
+### 3.4 EVERY PHOTOGRAPH ON THE PAGE WAS BROKEN, and only the PNG showed it
+
+The room's first VRT baseline came back with the lead card as a **715-pixel box containing a
+broken-image icon**, and all three thumbnails the same. The generated fallback cards — which need no
+optimizer — rendered perfectly, so the page still looked plausible at a glance.
+
+**The cause:** the image optimizer does not proxy the reader's request. It makes its **own
+server-side fetch** of the source image, and that fetch carries no session cookie. `/fixtures/` sat
+behind the login wall, so the optimizer followed a 307 to `/login`, decided the source was not an
+image, and served a 400 (`"The requested resource isn't a valid image."` — reproduced locally in two
+curls).
+
+**Every DOM assertion passed.** The `<img>` was present, visible, correctly sized (the width and
+height come from the database row, which is exactly what makes CLS zero) and carrying the right
+`src`. **`naturalWidth` is the only thing in a browser that knows an image from a broken one**, and
+nothing was asking it. The e2e now does.
+
+Had the baselines been committed as they stood, **every visual-regression gate from here on would
+have been locking in a picture of this bug** — the same trap F0 hit with fonts.
+
+### 3.5 The lead story's headline was below the fold
+
+Same photograph, second finding. A 1.91:1 image is a comfortable 204px on a 390px phone. Across a
+1366px desktop column it is **715 pixels** — so above the fold sat the masthead, the two filter rows,
+and a picture, and nothing else.
+
+**A front page whose lead headline you have to scroll to find is not a front page; it is a poster.**
+
+Capping the height was the obvious fix and the wrong one — it crops a photograph to solve a layout
+problem. The ratio was never wrong; the COLUMN was. Above `lg` the lead now sets the way a broadsheet
+has always set one: the picture on the left at 55%, the headline beside it. ~420px instead of ~1000.
+
+### 3.6 The narrator could hold the night open for HOURS
+
+The first live news run sat in Stage A for **over twenty minutes** and had to be cancelled. The
+Anthropic SDK's default per-call timeout is **ten minutes**, with retries on top, and Stage A makes up
+to 60 sequential calls.
+
+That is backwards. The narrator runs LAST precisely so that everything before it can publish without
+it — **a context line does not get to make the front page late.** The client is bounded per call now,
+and the extraction stage takes a six-minute wall-clock budget: when it is gone, the extractor stops,
+the remaining stories go to the narrator with their headlines, and the page ships. The night says how
+many it gave up on.
+
+### 3.7 One slow call took down the whole newsdesk — and the docstring said it wouldn't
+
+The next live run published its 191 stories and reported:
+
+```
+Sources: {news-finnhub: ok, news-marketaux: ok, news-images: not_configured, news-narration: degraded}
+narration: 0/0 extracted, 0 notes written, 0 dropped by the gate, 0 left blank by the narrator
+```
+
+**Sixty articles were queued to be read and not one of them was, because the first call timed out.**
+
+`sync_extract`'s docstring said *"A failed article is skipped"*. It only skipped articles whose
+response failed to **parse**. An API exception — a timeout, a 529, a dropped connection — unwound
+straight out of the loop and killed the entire stage. **"A source degrades ALONE" is the rule this
+whole pipeline is built on, and this loop did not honour it.** The evening briefing's remainder pass
+had the identical hole.
+
+And the 30-second timeout I had just added was itself too tight: **a bound that trips on a healthy
+night is not a safety rail, it is an outage.** 90 seconds.
+
+**The counts are the only reason any of this was visible.** A narrator with nothing to say and a dead
+narrator produce exactly the same page — `0/0 extracted` is what told the difference.
+
+### 3.8 The plan's filter chips could not reach every story on the page
 
 Appendix B's chip list is: Earnings · Guidance · M&A · FDA · Fed/Macro · Analyst · Filings · Legal ·
 Product. The classifier's tenth class — **`other`, the escape hatch that exists so it never has to
@@ -118,6 +185,7 @@ turn and asserts the counts sum to the whole page.
 | 5 | L3/L4 generated cards tinted **by sector** | One restrained ground; distinguished by **typography** | Twelve sector hues is twelve colours whose only job is decoration. UI-REDESIGN-PLAN (which outranks this plan on looks) says colour is scarce and always means something. A reader cannot learn twelve hues, so they would carry no meaning and would only add noise beside the two colours that DO mean something here — up and down. |
 | 6 | "This week" shown **disabled** when the archive is shallow | Always enabled; the window **says how deep it goes** | A shallow archive does not make the week meaningless — it makes it short, and "everything I have, which is less than a week" is a true and useful answer. Disabling it would hide the coverage the app actually holds behind a greyed-out button. (The plan's own copy string, `weekUnavailable`, reads "showing all of it" — it was always a note, not a refusal.) |
 | 7 | Relative timestamps on cards | Absolute ET timestamps | See 3.3. |
+| 8 | The lead card stacks its image above its headline | It sets **sideways** above `lg` | See 3.5. The ratio is right on a phone and ruinous on a desktop, and the fold is what says so. |
 
 ---
 
@@ -182,7 +250,23 @@ forbids — so it has no producer until P-1 lands. The branch exists and the sty
 
 ---
 
-## 7. Guards added
+## 7. What the live runs actually printed
+
+The final production news-mode run, after all four production bugs above were fixed:
+
+```
+job_a (news): 2026-07-10 — 223 articles in, 28 regulatory filings dropped,
+              191 stories published, 131 past the extraction cap.
+              Sources: {news-finnhub: ok, news-marketaux: ok, news-images: not_configured, ...}
+```
+
+Note `news-images: not_configured` — still no bucket (P-1), so **every card in production renders the
+L4 generated catalyst card.** That is the room today, and it is a designed outcome rather than an
+empty state.
+
+---
+
+## 8. Guards added
 
 - **Drift rule 20** — one door for imagery: news visuals render only through
   `components/news/NewsImage.tsx`. **Negative-controlled** (a planted second `next/image` consumer
@@ -198,12 +282,18 @@ forbids — so it has no producer until P-1 lands. The branch exists and the sty
 
 ---
 
-## 8. Counts at `nc-5`
+## 9. Counts at `nc-5`
 
 | | |
 |---|---|
 | App unit tests | **537** (was 507) |
-| Pipeline tests | **436 local, 22 skipped** (was 409) |
+| Pipeline tests | **443 local, 22 skipped** (was 409) |
 | Anti-drift rules | **20** (was 19) |
 | B1 — routes cached | **12 of 13** (settings is the allowlisted writer) |
 | B4 — worst first-load JS | **194.8 KB** against the 200 KB ceiling |
+| VRT baselines | **71** (was 55) |
+
+**Three of the eight findings above were found in production, and two by looking at a picture. None
+was found by a test.** That is not an argument against the tests — 537 of them hold the room's
+honesty rules. It is an argument for running the thing and looking at it, which is now seven bugs
+deep in this build and has not missed yet.

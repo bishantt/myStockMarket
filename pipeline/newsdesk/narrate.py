@@ -79,7 +79,15 @@ _SYSTEM = (
     "advice. RULES: every number you use appears VERBATIM in the inputs and is cited by id; no "
     "advice verbs (buy/sell/should); no directional forecasts; if the event plausibly affects a "
     "sector beyond the named tickers, say so in affected_note, mechanically; if you cannot add "
-    "context beyond the headline, return why_it_matters as null — an honest null beats padding."
+    "context beyond the headline, return why_it_matters as null — an honest null beats padding. "
+    # THE LIMITS HAVE TO BE IN THE PROMPT, and this is not belt-and-braces — it is the ONLY place the
+    # model can learn them. The API does not enforce string lengths: `api_schema` strips `maxLength`
+    # before the schema is sent, because the structured-output layer rejects it. So pydantic enforced
+    # a cap on the way back in that nobody had ever stated on the way out, and in production every
+    # note the narrator wrote was thrown away for breaking a rule it had never been given.
+    f"HARD LIMITS: why_it_matters is at most {WHY_MAX_CHARS} characters and affected_note at most "
+    f"{AFFECTED_MAX_CHARS} characters, INCLUDING spaces. A note that runs past its limit is dropped "
+    "and the story publishes with no note at all, so a shorter true sentence always beats a longer one."
 )
 
 
@@ -460,16 +468,43 @@ def _create(client: Any, model: str, system: str, messages: list[dict]) -> Any:
 
 
 def _parse_notes(text: str) -> NoteSet | None:
-    """Parse the model text into a NoteSet, tolerating prose around the JSON object."""
+    """Parse the model text into a NoteSet, NOTE BY NOTE.
+
+    Validating the whole set as one object was a mistake, and production found it: a single sentence
+    forty characters too long invalidated the other nineteen, and the entire page published without
+    prose. That is the same "one bad item kills the batch" disease the extraction stage had one layer
+    up, and it is just as wrong here — a note is one sentence about one story, and its failure should
+    cost exactly that story its sentence.
+
+    So each note is validated alone and a bad one is dropped. The 160-character cap still bites (an
+    over-long note does NOT publish), it simply no longer takes its neighbours with it.
+
+    Returning None — which spends the one retry Appendix D allows — is reserved for a response that
+    produced NO usable note at all. That is the signature of something systematically wrong with the
+    response, and it is worth one more ask.
+    """
     from briefing.extract import _extract_json_object  # the shared tolerant JSON finder
 
     payload = _extract_json_object(text)
     if payload is None:
         return None
-    try:
-        return NoteSet.model_validate(payload)
-    except Exception:  # noqa: BLE001 — an invalid note set triggers the retry, then a page with no prose
+
+    raw = payload.get("notes")
+    if not isinstance(raw, list):
         return None
+
+    notes: list[ClusterNote] = []
+    for entry in raw:
+        try:
+            notes.append(ClusterNote.model_validate(entry))
+        except Exception:  # noqa: BLE001 — one malformed note is one dropped note
+            continue
+
+    # An empty list the model MEANT is a valid answer ("nothing to add tonight"). An empty list
+    # because everything failed to validate is not — that is a response worth asking again for.
+    if raw and not notes:
+        return None
+    return NoteSet(notes=notes)
 
 
 def _message_text(message: Any) -> str:
