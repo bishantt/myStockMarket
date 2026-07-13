@@ -200,7 +200,74 @@ not the day a session closed, which is why it is labeled an indicative spot refe
 
 ---
 
-## 6. What is NOT done in N4 (carried to N5)
+## 6. The two bugs production found AFTER the first publish
+
+Both were found by querying the live database and *reading the rows*, not by any test.
+
+### 6.1 The resolver named companies that were not in the story
+
+It passed every test against a 44-name test universe — including adversarial ones loaded with trap
+names. Against production's **12,933 instruments** it immediately produced:
+
+| False link | Came from | Attached to |
+|---|---|---|
+| `UAE` (iShares MSCI UAE ETF) | the word "**UAE**" — a country | "…export Nvidia AI chips and military equipment to the UAE" |
+| `LNG` (Cheniere Energy) | the word "**LNG**" — a commodity | "Baker Hughes wins E.U. approval… after LNG tech divestiture" |
+| `NDAQ` (Nasdaq, Inc.) | the word "**Nasdaq**" — the index | five separate stories |
+| `MSTR` (Strategy Inc) | the word "**strategy**" | a truck-maker acquisition |
+| `PPLI` (People Inc) | the word "**people**" | a parasite outbreak |
+| `BPOP` (Popular, Inc.) | the word "**popular**" | viral internet trends |
+| `TISI` (Team, Inc.) | the word "**team**" | — |
+| `FOSL` (Fossil Group) | the word "**fossil**" | a nuclear power plant |
+
+**Two rules were wrong, and the error has the same shape in both.** The bare-uppercase rule assumed a
+stoplist of acronyms could fence it — but in a universe of thirteen thousand tickers *almost every
+three-to-five letter uppercase string is somebody's ticker*. The single-word-name rule assumed a
+curated list of ~90 "names that are also words" could fence it — but a great many of thirteen thousand
+companies are named after ordinary words **on purpose**.
+
+**The fix inverts the test: list the WORDS, not the names.** A closed English word list refuses
+"strategy", "people" and "fossil" while keeping "Nvidia", "Pfizer" and "Conmed", and it needs to know
+nothing about the universe it protects. The bare-uppercase rule is deleted outright — it produced no
+correct link across the whole night that the other rules did not already make.
+
+### 6.2 A provider's symbol is not our symbol
+
+Marketaux tagged *"VitalHub Announces Acquisition of Buddy Healthcare"* with **VHI** — correctly, for
+VitalHub on the **Toronto** exchange. In our instrument table VHI is **Valhi, Inc.**, a New York
+chemicals holding company with no connection to the story at all.
+
+Unchecked, the card would have printed **Valhi's real one-day price move** under a headline about a
+Canadian health-software acquisition. Every number on it would have been true, and the card would have
+been a lie.
+
+A symbol identifies a *listing on an exchange*, not a company in the world. Provider tags are now
+cross-checked against our instrument names, and a symbol we hold no listing for is refused outright
+(Marketaux routinely tags SKLTF, RYAOF, SAFRF — lines this app does not carry).
+
+**Re-published, and verified clean:** 209 clusters, 169 catalyst links, **zero false links.**
+
+### 6.3 And one the pixel oracle found in the APP
+
+The Desk's VRT baselines failed on the `nc-4` tag, and the diff was not N4's code at all: the strip
+read **"markets open"** where the baseline said **"markets closed"**.
+
+`/` is an ISR-cached route, and the page computed `marketOpen={marketState(new Date()) === "open"}` in
+a **server component** — so the phrase was evaluated when the page was *generated* and served to every
+reader until the cache turned over. **A Desk built at 3:55pm went on telling readers "markets open"
+long past the close.**
+
+It is F4's cooling-off bug exactly: a server-interpolated "now" records when the page was BUILT, not
+when the reader arrived, and on a cached page those are different moments. It is computed in the
+reader's browser now (`useSyncExternalStore`), like the strip's freshness grading already was.
+
+It was invisible to every test — the string was well-formed, merely stale. It surfaced only because
+the Desk baselines had quietly become **photographs of whatever the market happened to be doing when
+CI last ran**: green at 3am, red at 10am.
+
+---
+
+## 7. What is NOT done in N4 (carried to N5)
 
 - **Stage A write-back and Stage B-mini (the narrative line).** Every cluster currently publishes with
   `why_it_matters = null`, which the schema and the card design already treat as a first-class state ("a

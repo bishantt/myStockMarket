@@ -14,7 +14,7 @@ clustered *nothing at all*. Details below.
 
 ---
 
-## The five things worth knowing from N4
+## The six things worth knowing from N4
 
 ### 1. A secret in GitHub is not a secret in the job — and this build has now shipped that bug TWICE
 
@@ -71,7 +71,27 @@ sitting **dead last at 0.165**, while *"An emboldened India holds out for better
 talks"* **led the page** because it contained the words "trade talks". The macro keyword vocabulary now
 covers what actually moves markets. **Six real bugs, this way, and by no other means.**
 
-### 5. The ranking signal is thinner than the plan assumed — read Q-N4-1 before N5
+### 5. Production found two more, AFTER the first publish — and one of them was in the app
+
+**The resolver named companies that were not in the story.** It was clean against a 44-name test
+universe. Against production's **12,933 instruments** it linked **UAE** (a country) and **LNG** (a
+commodity) to real ETFs, **NDAQ** to five stories about the *index*, and the ordinary words
+"strategy", "people", "popular", "team" and "fossil" to Strategy Inc, People Inc, Popular Inc, Team
+Inc and Fossil Group. **A stoplist that has to grow with the data it filters is the wrong shape of
+guard** — so the test was inverted: list the WORDS, not the names. Re-published and verified: **zero
+false links.**
+
+**And a provider's symbol is not our symbol.** Marketaux tagged the VitalHub story with VHI — right
+for VitalHub in *Toronto*, and in our table VHI is **Valhi, Inc.** of New York. The card would have
+printed Valhi's real price move under a headline about a Canadian software acquisition: every number
+true, the card a lie.
+
+**The pixel oracle then found one in the APP.** The Desk's baselines failed, and it was not N4's
+code: `/` is ISR-cached and computed "markets open/closed" in a **server component**, so the phrase was
+frozen at cache-generation time. **A Desk built at 3:55pm told readers "markets open" long past the
+close.** F4's cooling-off bug again. It reads the browser's clock now.
+
+### 6. The ranking signal is thinner than the plan assumed — read Q-N4-1 before N5
 
 corroboration = 1 for **131 of 134** clusters; magnitude = 0 for **~130**. That is **45% of the
 formula's weight sitting nearly constant**, so the order collapses onto scope + class prior, and
