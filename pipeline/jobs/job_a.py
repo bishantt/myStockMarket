@@ -588,8 +588,6 @@ def _revalidate_desk(settings: Settings) -> None:
         print(f"job_a: Desk revalidation failed ({error}); the app will refresh on its time fallback.")
 
 
-if __name__ == "__main__":
-    main()
 
 
 # ---------------------------------------------------------------------------------------------
@@ -850,3 +848,13 @@ def run_news_mode(settings: Settings) -> None:
         f"{front_page.stage_a_capped} past the extraction cap. "
         f"Sources: {front_page.source_status}."
     )
+
+
+# The entrypoint stays at the very BOTTOM of the module, and that is not a style choice.
+#
+# It was briefly above run_news_mode, because that function was appended after it. Python executes
+# this block the moment it reaches it, so main() ran while run_news_mode was still an undefined name
+# — and every unit test passed, because a test IMPORTS this module and never executes it as a script.
+# Production found it in eleven seconds. Nothing goes below this line.
+if __name__ == "__main__":
+    main()

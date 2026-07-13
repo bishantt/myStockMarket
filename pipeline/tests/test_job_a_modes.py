@@ -104,3 +104,41 @@ def test_every_declared_mode_has_a_handler_and_no_mode_can_fall_through_to_a_ful
 
     source = inspect.getsource(main)
     assert "has no handler" in source, "main() must refuse a mode it cannot run, not fall through"
+
+
+def test_nothing_is_defined_below_the_entrypoint():
+    """
+    THE BUG THIS EXISTS FOR SHIPPED TO PRODUCTION AND EVERY UNIT TEST PASSED.
+
+    `run_news_mode` was appended to job_a.py after the `if __name__ == "__main__": main()` block.
+    Python executes that block the moment it reaches it, so main() ran while run_news_mode was still
+    an undefined name, and the first real news-mode run died with a NameError in eleven seconds.
+
+    No unit test could have caught it: a test IMPORTS the module, which defines every function and
+    never executes the entrypoint. The module only breaks when it is RUN as a script, which is the one
+    thing the test suite never does. So the check is structural instead — read the file's own syntax
+    tree and require that nothing is defined after the entrypoint, which is the actual invariant.
+    """
+    import ast
+    from pathlib import Path
+
+    source = Path(__file__).resolve().parent.parent / "jobs" / "job_a.py"
+    tree = ast.parse(source.read_text())
+
+    entrypoints = [
+        i for i, node in enumerate(tree.body)
+        if isinstance(node, ast.If) and ast.unparse(node.test) == "__name__ == '__main__'"
+    ]
+    assert entrypoints, "job_a has no entrypoint block — this guard is measuring nothing"
+
+    defined_after = [
+        node.name
+        for node in tree.body[entrypoints[0] + 1:]
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef))
+    ]
+
+    assert not defined_after, (
+        f"{defined_after} are defined BELOW the `if __name__ == '__main__'` block, so they do not "
+        f"exist yet when main() runs. Every unit test will still pass, and the job will die on its "
+        f"first real run."
+    )
