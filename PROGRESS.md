@@ -18,12 +18,12 @@ That is the whole plan in a sentence, and it is the one thing you will feel in t
 
 | | Budget | Before | Now |
 |---|---|---|---|
-| B1 | Rooms served from a cache | 2 of 10 | **10 of 10** |
+| B1 | Rooms served from a cache | 2 of 10 | **10 of 11** (settings is a writer — see below) |
 | B2 | Production server answer (warm median) | 382–1237ms | **48–133ms** (ceiling 150) |
 | B3 | Phone: tap → the room is there | Scans **1342ms** | Scans **280ms** |
 | B4 | First-load JavaScript, `/ticker` | 193KB | **145KB** |
 | B5 | Layout shift | 0.000 | **0.000**, both regimes |
-| B6 | Lighthouse | perf 93 · a11y 93 | perf **86** · a11y **100** |
+| B6 | Lighthouse | perf 93 · a11y 93 | perf **86** · a11y **100**, contrast gate fully on |
 
 **B6's performance score fell seven points on purpose, and you should know why.** The app now
 prefetches the five tab rooms while the browser is idle — that is precisely the mechanism that took a
@@ -42,23 +42,48 @@ is written down: `docs/feel-evidence/lighthouse-tradeoff.md`. Flagged [FYI] in Q
    landed in the database and the button said "Saving…" forever. Live since 2026-07-11. It survived
    six phases because the test asserted a marker that renders on the form's *initial* state — a guard
    that could not fail. Now fixed with `after()`, and the test asserts the textarea actually cleared.
-3. **Accessibility, 93 → 100.** A link nested inside a button (unreachable by keyboard), a scroll
-   region no keyboard could reach, the TradingView attribution link sealed inside the chart's
-   `role="img"` box, and 58 nodes of real information printed in `text-faint` — a colour the token
-   sheet has reserved for placeholders since R1, at 2.23:1 where AA wants 4.5:1. All fixed; drift
-   rule 18 stops the colour one coming back.
+3. **Accessibility, 93 → 100, and the contrast floor is now closed.** A link nested inside a button
+   (unreachable by keyboard), a scroll region no keyboard could reach, the TradingView attribution
+   link sealed inside the chart's `role="img"` box, and `text-faint` carrying real information at
+   2.08:1 where AA wants 4.5:1. All fixed; drift rule 18 stops the colour one coming back.
+
+## The contrast fix you approved — done, and it corrected two of my own claims
+
+You approved darkening the muted grey. Doing it properly meant measuring it properly, and the
+measurement showed I had been wrong twice.
+
+- **The palette is `#676577` in Morning (was #6e6c80) and `#9c99b1` in Midnight (was #918ea6).** Both
+  now clear 4.5:1 against **the lightest card the grey ever sits on** — 4.99:1 and 5.10:1. The change
+  is so slight the visual-regression suite cannot even see it: not one of the 46 baselines moved,
+  because the shift is below the pixel oracle's own threshold. Axe can measure it; your eye will
+  read it; the screenshots can't tell. That is exactly the price you said you were happy to pay.
+- **The "58 failing nodes" I reported was my own test lying to me.** Every page here fades in, and axe
+  composites a text colour through any ancestor's transparency — so it was measuring the page *while
+  it was still arriving* and reporting the colours of a half-transparent screen. Wait for the fade and
+  58 collapse to **one** real finding. The gate has a `settle()` helper now, and the lesson
+  generalises: never measure a colour, a size or a position while the page is still animating.
+- **I told you Midnight didn't need the fix. It did.** Its grey cleared 5.00:1 on the standard card —
+  measured by a survey I ran on the desktop project only. The phone Desk's shelf cards are *raised*,
+  and there the same grey measured 4.44:1. I measured half the app and called all of it clean. CI
+  caught it. The gate runs both themes and both device sizes now, which is what would have caught me.
+- **The gate holds the full line: nothing is excluded, 42 checks, green.**
+
+**One thing fell out of it.** The extra measurement made a latent bug reproducible: add a name to your
+watchlist, click Focus, and the row could *vanish* — the page you got back was the cached copy from
+before your click. The rule: **a page may be cached, or it may be written to and read back in the same
+click — not both.** Settings is the only room that is a writer rather than a reader, so it renders on
+request now. B1 reads **10 of 11 cached** instead of "all of them", with `/settings` in the allowlist
+and its reason written down. That is the honest number, and the guard still fails the build for any
+other route that reaches for the same flag.
 
 ## What is waiting for you (nothing is blocked on it)
 
-- **One [NEED] in QUESTIONS-FOR-BISHANT.md: `text-muted` on a glass card does not clear 4.5:1.** The
-  token was measured against paper (4.83:1) and clears that, but a Surface is translucent, so what a
-  reader actually sees it against is the card composited over the lavender wash. This is a palette
-  decision and the palette is the redesign plan's territory, not this one's — so it is recorded with
-  its numbers rather than changed unilaterally at 2am. The fix is one token, two values, and a
-  re-shoot of the baselines. `docs/feel-evidence/accessibility.md`.
-- **The iOS device pass has not happened** — there is no iPhone here. The rules a machine can check
-  (44px targets, 16px inputs, no sideways scroll, no manufactured motion) are checked by the suite on
-  every push. The checklist for the ten minutes of hand-checking is in QUESTIONS.
+- **The iOS device pass is yours to run, and I have left the gate open.** There is no iPhone here. The
+  rules a machine can check (44px targets, 16px inputs, no sideways scroll, no manufactured motion,
+  and now the full axe sweep in both themes and both device sizes) are checked on every push. What
+  remains is the ten minutes only a real device can do — VoiceOver, the notch, Safari's URL bar, real
+  thumbs. The checklist is in QUESTIONS-FOR-BISHANT.md. **Pending your verification, not mine — I
+  have not marked it passed.**
 - **The two PDFs are not re-rendered.** The markdown plans carry the Part 9 amendments
   (DEVELOPMENT-PLAN §4.5 and §3.8, the route map, the commands); `docs/*.pdf` still show the old text.
 

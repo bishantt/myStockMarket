@@ -30,13 +30,26 @@ Format: newest first. I mark each as [FYI], [VETO?], or [NEED] so you can scan.
   measured **4.48:1**. It missed the readability floor by two hundredths, on the only background that
   counts. It is **`#676577`** now — **4.99:1** on the glass. A shade darker, nothing else moved.
 
-  **Midnight did not need it.** Its grey already measures 5.00:1 on its own cards and axe finds zero
-  contrast failures in dark, so I left it alone and said so in the token sheet. A colour that passes
-  is not a colour to change — you asked for a floor, not a repaint.
+  **Midnight needed it too — and I told you it didn't.** I first reported that Midnight already
+  cleared the floor and left it alone. That was measured against the standard card (5.00:1, true) by a
+  survey I had run **on the desktop project only** — and the phone Desk's shelf cards are *raised*,
+  where the same grey measures **4.44:1**. I measured half the app and called all of it clean. CI
+  caught it. Midnight's grey is `#9c99b1` now: **5.10:1** on the lightest card it ever sits on. Both
+  themes clear the floor against their worst background, which is the only version of the question
+  worth asking.
 
   **The gate holds the full line now.** Colour contrast is back in, nothing is excluded, and the sweep
-  runs in **both** themes (42 checks, green) — a two-theme app whose gate only checked one theme was
-  checking half its colours. Numbers and the full story: `docs/feel-evidence/accessibility.md`.
+  runs in **both themes and both device sizes** (42 checks, green) — which is what would have caught
+  my own mistake. Numbers and the full story: `docs/feel-evidence/accessibility.md`.
+
+- **[FYI] One thing fell out of fixing that: the settings room is no longer cached, on purpose.** The
+  contrast work made a latent bug reproducible — add a name to your watchlist, click Focus, and the
+  row could *vanish*, because the page you got back was the cached copy from before your click. The
+  rule that came out of it: **a page may be cached, or it may be written to and read back in the same
+  click — not both.** Settings is the only room in the app that is a writer rather than a reader, so
+  it renders on request now. It is the one entry in the routes allowlist, with its reason written
+  down, and the guard still fails the build for any other route that tries the same flag. B1 reads
+  "10 of 11 cached" instead of "all of them", and that is the honest number.
 
 ### Still yours to close
 

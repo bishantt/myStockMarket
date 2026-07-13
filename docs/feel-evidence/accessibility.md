@@ -45,9 +45,25 @@ It missed the floor by two hundredths, on the only background that counts. **Fix
 `--color-tier-weak` was the same hex on purpose (weak tier *is* the provenance grey) and moved with
 it, so the two do not silently drift into being two different greys.
 
-**Midnight was already fine.** Its `muted` (#918ea6) measures **5.00:1** on its own composited card,
-and axe finds zero contrast failures in dark. A colour that passes is not a colour to change, so it
-did not change.
+### Midnight, and a second measuring mistake
+
+I first wrote here that **Midnight was already fine** — its `muted` (#918ea6) measures 5.00:1 on its
+composited card, and my survey found zero contrast failures in dark. Both of those statements are
+true and the conclusion drawn from them was wrong.
+
+CI failed on the phone Desk in dark. `#918ea6` measures **4.44:1** on a **raised** card (#2c293d),
+not the standard one — and the phone Desk's shelf cards are raised. My survey missed it because I had
+run it on the **desktop project only**, and the shelf is phone-only. I measured half the app and
+called all of it clean.
+
+| Midnight `muted` | on a raised card `#2c293d` | on a standard card `#231f38` |
+|---|---|---|
+| Old `#918ea6` | **4.44:1** ✗ | 5.00:1 ✓ |
+| New `#9c99b1` | **5.10:1** ✓ | 5.74:1 ✓ |
+
+**Fixed.** Both themes now clear the floor against the *lightest card the grey ever sits on*, which is
+the only version of the question worth asking. The gate runs on both projects and both themes, so the
+next person cannot make this mistake quietly.
 
 ## The other three, from the same sweep
 
