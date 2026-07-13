@@ -1,22 +1,50 @@
 # ci.yml — the checks that gate every push (plan §6.1, §6.4, Appendix C).
 #
-# On every push: the app's typecheck, lint, unit tests, and build, plus the pipeline's pytest.
-# The heavier browser suite (Playwright + axe + visual regression + PWA) and Lighthouse run only on
-# the phase-exit tags — phase-* for the build phases, redesign-* for the UI redesign, feel-* for the
-# app-feel plan, nc-* for the news-and-control plan — because they need a browser and a full build
-# and would slow every push down for little gain mid-phase.
+# WHAT RUNS WHERE (rewritten at G0, 2026-07-13, to describe reality — the old header did not):
 #
-# The tag list here and the `if:` conditions on the tag-gated jobs below must be kept in step. A tag
-# family that appears in one but not the other is a gate that silently never runs.
+# - Branch pushes, including main: the `app` job (typecheck, lint, drift, unit tests, build, and the
+#   route/bundle/font budgets) and the `pipeline` job (pytest). This is the everyday proof, and it
+#   is where a commit earns its green.
+#
+# - Phase-exit tags: ONLY the `e2e` job — the browser oracle (Playwright + axe + visual regression
+#   + PWA), which needs a browser, a seeded database, and a full build. The app and pipeline jobs
+#   deliberately SIT OUT tag runs: a tag points at a SHA that already ran them green on main minutes
+#   earlier, and re-running them there was ~43% of this repo's entire CI bill for no new information
+#   (GATE-EFFICIENCY-ANALYSIS.md §2.3-#5). The oracle is the only thing a tag adds, so it is the
+#   only thing a tag runs.
+#
+# - `gh workflow run ci.yml -f job=vrt-baselines`: the manual baseline mint, and nothing else.
+#
+# LIGHTHOUSE DOES NOT RUN HERE, and never has. The old header claimed it ran "on the phase-exit
+# tags"; no Lighthouse job has ever existed in any workflow in this repo's history. Lighthouse runs
+# locally against the live Vercel deployment via `npm run check:lighthouse` (gate step 7). A false
+# sentence inside the gate's own definition file is precisely the disease the next paragraph warns
+# about, so it is gone.
+#
+# THE TAG LIST BELOW AND THE `if:` ON THE e2e JOB MUST BE KEPT IN STEP. A tag family that appears in
+# one but not the other is a gate that silently never runs — either the tag starts nothing at all,
+# or it starts a run whose green proved nothing because the oracle sat it out. This is no longer an
+# honour system: `pipeline/tests/test_ci_tag_families.py` reads this file and fails when they drift.
+# The families: phase-* (the build phases) · redesign-* (the UI redesign) · feel-* (app-feel) ·
+# nc-* (news & control) · gate-* (this efficiency reform) · pd-* (polish & depth, wired ahead of PD0).
 #
 # Red CI blocks a phase exit — no exceptions (plan §6.4).
 
 name: ci
 
+# One live run per ref. A re-pushed tag, or a main push that supersedes another, kills its
+# predecessor the moment it starts. Before G0 nothing cancelled anything: nc-final's endgame burned
+# a 785-second run and a 229-second run on tags that had already been superseded, and a 13-minute
+# zombie once had to be cancelled by hand. Branch refs and tag refs are distinct groups, so tagging
+# a commit never cancels that commit's own main run.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
 on:
   push:
     branches: ["**"]
-    tags: ["phase-*", "redesign-*", "feel-*", "nc-*"]
+    tags: ["phase-*", "redesign-*", "feel-*", "nc-*", "gate-*", "pd-*"]
   workflow_dispatch:
     inputs:
       job:
@@ -29,7 +57,11 @@ on:
 
 jobs:
   app:
-    name: app — typecheck, lint, unit, build
+    name: app — typecheck, lint, drift, unit, build
+    # Branch pushes only. A tag points at a SHA this job already passed on main; re-running it there
+    # proved nothing and cost ~208 billed minutes across this build. A workflow_dispatch (the
+    # baseline mint) never needed it either. See the header.
+    if: github.event_name == 'push' && !startsWith(github.ref, 'refs/tags/')
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -47,6 +79,14 @@ jobs:
 
       - run: npm run typecheck
       - run: npm run lint
+
+      # The 20 anti-drift rules — a one-second grep that, until G0, ran in NO CI workflow at all.
+      # It was local discipline only: if a session forgot gate step 5, nothing mechanical noticed
+      # (GATE-EFFICIENCY-ANALYSIS.md §4.8). The local step stays; this is the backstop for the
+      # forgotten one.
+      - name: Anti-drift rules (gate step 5 — was local-only until G0)
+        run: npm run check:drift
+
       - run: npm test
 
       # The production build uses webpack, because Serwist's service-worker injection is a webpack
@@ -77,6 +117,8 @@ jobs:
 
   pipeline:
     name: pipeline — pytest
+    # Branch pushes only, for the same reason as the app job above.
+    if: github.event_name == 'push' && !startsWith(github.ref, 'refs/tags/')
     runs-on: ubuntu-latest
     # A throwaway Postgres for the publish integration tests (plan §6.1). The rest of the suite
     # uses recorded fixtures and mock transports — never a live key. TEST_DATABASE_URL below points
@@ -102,6 +144,10 @@ jobs:
 
       - name: Install uv
         uses: astral-sh/setup-uv@v6
+        with:
+          # Cache the resolved wheels across runs. uv was uncached for ~300 runs.
+          enable-cache: true
+          cache-dependency-glob: pipeline/uv.lock
 
       - run: uv sync --frozen
 
@@ -120,8 +166,9 @@ jobs:
         run: uv run pytest -q
 
   e2e:
-    name: e2e + VRT + PWA (phase-exit tags only — phase-*, redesign-*, feel-*, nc-*)
-    if: startsWith(github.ref, 'refs/tags/phase-') || startsWith(github.ref, 'refs/tags/redesign-') || startsWith(github.ref, 'refs/tags/feel-') || startsWith(github.ref, 'refs/tags/nc-')
+    name: e2e + VRT + PWA + axe (the browser oracle — phase-exit tags)
+    # Keep in step with `on.push.tags` above. test_ci_tag_families.py fails the build if they drift.
+    if: startsWith(github.ref, 'refs/tags/phase-') || startsWith(github.ref, 'refs/tags/redesign-') || startsWith(github.ref, 'refs/tags/feel-') || startsWith(github.ref, 'refs/tags/nc-') || startsWith(github.ref, 'refs/tags/gate-') || startsWith(github.ref, 'refs/tags/pd-')
     runs-on: ubuntu-latest
     # A throwaway Postgres, seeded with the deterministic synthetic morning (prisma/seed.mjs), so
     # the Desk data journey (desk.spec.ts) asserts real rendered values end to end. This is a TEST
@@ -165,6 +212,16 @@ jobs:
         run: |
           npx prisma migrate deploy
           npm run db:seed
+
+      # Chromium is ~150 MB and was re-downloaded on every single browser run. The install step below
+      # stays exactly as it was — with the cache warm it finds the binary already there and becomes a
+      # fast no-op, and `--with-deps` still installs the OS libraries, which are not cached. The key
+      # is the lockfile, so bumping Playwright's version invalidates it automatically.
+      - name: Cache the Playwright browser
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('app/package-lock.json') }}
 
       - name: Install Playwright browser
         run: npx playwright install --with-deps chromium
@@ -239,6 +296,16 @@ jobs:
         run: |
           npx prisma migrate deploy
           npm run db:seed
+
+      # Chromium is ~150 MB and was re-downloaded on every single browser run. The install step below
+      # stays exactly as it was — with the cache warm it finds the binary already there and becomes a
+      # fast no-op, and `--with-deps` still installs the OS libraries, which are not cached. The key
+      # is the lockfile, so bumping Playwright's version invalidates it automatically.
+      - name: Cache the Playwright browser
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('app/package-lock.json') }}
 
       - name: Install Playwright browser
         run: npx playwright install --with-deps chromium

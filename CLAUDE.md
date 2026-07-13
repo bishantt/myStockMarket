@@ -24,6 +24,10 @@ a phase with a question. Anything that would be a question goes to QUESTIONS-FOR
 most reasonable assumption made and marked.
 
 ## Autonomy (standing directive — user, 2026-07-11, permanent)
+**[Amended 2026-07-13, G0: "roll straight into the next phase" is REPEALED by the Session-rhythm
+rule above — ONE phase, then stop and check in with Bishan. Within a phase, this contract below
+holds in full: never ask, never wait, never end a phase with a question.]**
+
 Run the entire plan to completion without pausing. Do NOT stop at phase boundaries or ask
 permission to continue: after tagging a phase, roll straight into the next one. Work through every
 remaining phase autonomously, in order, following all the rules below (TDD, plain English, the
@@ -73,6 +77,12 @@ db-drift: npm run check:migrations — is the LIVE database running the schema i
 budgets:  npm run check:routes (every room cached) · check:nav (TTFB, needs AUTH_COOKIE_SECRET) · check:bundles
 e2e:      npx playwright test  ·  LOCAL: npm run e2e:local (--ignore-snapshots; CI is the pixel oracle)
           Seeded journeys need MSM_SEEDED=1 and a seeded Postgres — CI sets both; this Mac has neither.
+rehearse: gh workflow run ci.yml -f job=e2e — run the FULL browser oracle on a candidate SHA BEFORE
+          tagging it. Not wired yet: it arrives at GATE-EFFICIENCY-PLAN G1. Until then the tag run is
+          still the first real test, which is the whole disease that plan is curing.
+ci shape: (G0, 2026-07-13) branch pushes run app + pipeline; TAGS RUN ONLY THE BROWSER ORACLE — the
+          tagged SHA already proved app+pipeline on main, and re-running them was 43% of the CI bill.
+          One live run per ref: a superseded push or re-pushed tag now auto-cancels its predecessor.
 pipeline: uv run pytest      jobs: uv run python -m jobs.job_a (fixtures: MSM_FIXTURES=1)
 modes:    job_a runs in FOUR modes, pinned in MODE_STAGES (pipeline/jobs/job_a.py), and main() REFUSES
           any mode it has no handler for — an unrecognised mode used to fall through to the full

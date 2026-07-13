@@ -1354,13 +1354,23 @@ features (PD9 wraps the finished pages); hardening to close (PD10).*
 8  git tag pd-N · push --tags → the CI tag run is the pixel oracle
    (PD0 wires pd-* into ci.yml FIRST — trigger AND both tag-gated job conditions;
     an unwired tag pattern makes every later gate claim ornamental — the F0 lesson)
+   [DONE 2026-07-13 by GATE-EFFICIENCY-PLAN G0 — pd-* is already in on.push.tags AND in the e2e
+    job's if:, and pipeline/tests/test_ci_tag_families.py now FAILS THE BUILD if the two ever drift
+    apart, so this can no longer be forgotten. Note the detail the sentence above gets wrong: there
+    is exactly ONE tag-gated job (e2e, the browser oracle), not two — vrt-baselines is gated on
+    workflow_dispatch, never on a tag. PD0 should VERIFY this wiring, not redo it.]
 9  Update PROGRESS.md · append DECISIONS/LESSONS · confirm the tag CI green
 ```
 
 ### PD0 · Session truth — the dating contract [0.5–1 day]
 FIRST: session ritual; confirm `nc-final` tagged + CI green (if not, finish the news plan
 first — its contract, not this one). Amend `ci.yml`: add `pd-*` to the tag triggers AND both
-tag-gated job `if:` conditions; add the TZ-matrix leg to the app job. Re-audit the tree
+tag-gated job `if:` conditions; add the TZ-matrix leg to the app job.
+**[Amended 2026-07-13, GATE-EFFICIENCY-PLAN G0: the `pd-*` wiring is DONE — trigger and the e2e
+job's `if:` both carry it, guarded by `pipeline/tests/test_ci_tag_families.py`. Verify it, do not
+redo it. The TZ-matrix leg is still PD0's to build. Read GATE-EFFICIENCY-PLAN.md Part 3 before
+this phase's exit: the gate ritual changed — you REHEARSE the browser oracle before tagging, the
+tag stays put once green, and the intelligence files land as ONE commit after the tag.]** Re-audit the tree
 against Part 1's claims (they were written against a moving target; N7's docs sync may have
 moved details) — record deltas in `docs/pd-evidence/pd0-dates.md`. Then Part 3 in full:
 run-date derivation (3.1, per-mode), the publish invariant (3.2 + its TDD list), the app-side
