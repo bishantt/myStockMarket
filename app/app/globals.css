@@ -90,9 +90,23 @@
   --color-down-bar: rgb(234 88 12 / 0.35);
 
   /* Reserved amber — the REGION is reserved, not just the hex (§3.3): only losses and
-   * these two consumers (gate flag, fired-signal) may sit in the amber–orange range. */
+   * these consumers (gate flag, fired-signal, and — added in N2 — the pipeline strip's
+   * AGING state) may sit in the amber–orange range. */
   --color-alert: #8a5200;
   --color-alert-wash: #f7ead0;
+
+  /* Danger — "this app is broken", and nothing else. ONE consumer, ever: the pipeline strip's
+   * DEAD state (NEWS-AND-CONTROL-PLAN Part 4.1), which is the one surface in this app allowed to
+   * be loud, because a silently dead pipeline serving stale data is the catastrophic failure mode.
+   *
+   * It borrows the hue the palette already owns (--color-grade-folklore's red, hue 0°, outside the
+   * reserved amber band) so that NO NEW HUE enters the app — colour stays scarce. What it does not
+   * borrow is the MEANING: a grade says "this pattern is folklore", a danger says "do not trust the
+   * numbers on this page". Two meanings, two token names, and drift rule 19 keeps the second to its
+   * single consumer. Reusing `down` here would have been worse than either: it would have painted a
+   * broken pipeline in the colour of a falling market. */
+  --color-danger: #b91c1c;
+  --color-danger-wash: rgb(185 28 28 / 0.07);
 
   /* Tier chips (§3.3) — word always inside the chip; moderate is TEAL, not amber */
   --color-tier-strong: #047857;   --color-tier-strong-wash: rgb(5 150 105 / 0.10);
@@ -161,6 +175,16 @@
 
   /* ── Layout ───────────────────────────────────────────────────────────────────────── */
   --breakpoint-desk: 1366px;
+
+  /* The broadsheet's widest band (NEWS-AND-CONTROL-PLAN Part 4.3). Above 1536px the app was
+   * buying acres and building nothing on them: every room outside the Desk was one column inside a
+   * 1360px shell, which on a 27" display is a phone layout with enormous margins.
+   *
+   * What `wide` buys is INTERNAL DENSITY, not more columns — cards pack two- and three-up where
+   * their content is enumerable, and prose stays in one column at its measure. The Desk gains no
+   * third column at any width: a second reading column would split the ritual's order into two
+   * ambiguous streams, and the ritual's order is the one thing the layout may not break. */
+  --breakpoint-wide: 1536px;
 }
 
 :root {
@@ -207,6 +231,7 @@
   --color-up-bar: rgb(96 165 250 / 0.38);
   --color-down-bar: rgb(251 146 60 / 0.38);
   --color-alert: #e0a83e; --color-alert-wash: #3a2f14;
+  --color-danger: #e06c6c; --color-danger-wash: rgb(224 108 108 / 0.10);
   --color-tier-strong: #4cbf7e;   --color-tier-strong-wash: rgb(76 191 126 / 0.14);
   --color-tier-moderate: #45c7b8; --color-tier-moderate-wash: rgb(69 199 184 / 0.14);
   --color-tier-weak: #9c99b1;     --color-tier-weak-wash: rgb(145 142 166 / 0.14);
@@ -255,6 +280,7 @@
     --color-up-bar: rgb(96 165 250 / 0.38);
     --color-down-bar: rgb(251 146 60 / 0.38);
     --color-alert: #e0a83e; --color-alert-wash: #3a2f14;
+  --color-danger: #e06c6c; --color-danger-wash: rgb(224 108 108 / 0.10);
     --color-tier-strong: #4cbf7e;   --color-tier-strong-wash: rgb(76 191 126 / 0.14);
     --color-tier-moderate: #45c7b8; --color-tier-moderate-wash: rgb(69 199 184 / 0.14);
     --color-tier-weak: #9c99b1;     --color-tier-weak-wash: rgb(145 142 166 / 0.14);

@@ -1,4 +1,5 @@
 import { AppWash } from "@/components/AppWash";
+import { PipelineStrip } from "@/components/desk/PipelineStrip";
 import { BaseRate } from "@/components/BaseRate";
 import { SectionMasthead } from "@/components/SectionMasthead";
 import { KitSpecimens } from "./KitSpecimens";
@@ -54,6 +55,7 @@ export default function StyleguidePage() {
           <MotionSpec />
           <CopyDeck />
           <Kit />
+          <FreshnessLadder />
         </div>
       </div>
     </>
@@ -140,11 +142,19 @@ function Colours() {
     },
     {
       heading: "RESERVED — the amber–orange region",
-      note: "The REGION is reserved, not merely the hex. Its only occupants are losses and amber's two consumers: the verification-gate flag and the fired-signal marker. No chip, tier, grade, or module hue may sit anywhere in this band — a Desk full of amber-ish “moderate” chips would drown the gate flag even with no hex collision. A unit test measures the hues; a grep counts the consumers.",
+      note: "The REGION is reserved, not merely the hex. Its only occupants are losses and amber's three consumers: the verification-gate flag, the fired-signal marker, and (added in N2) the pipeline strip when a session's edition never landed. No chip, tier, grade, or module hue may sit anywhere in this band — a Desk full of amber-ish “moderate” chips would drown the gate flag even with no hex collision. A unit test measures the hues; a grep counts the consumers.",
       swatches: [
-        { name: "alert", className: "bg-alert", note: "gate flag + fired signal. Nothing else." },
+        { name: "alert", className: "bg-alert", note: "gate flag · fired signal · stale pipeline" },
         { name: "alert-wash", className: "bg-alert-wash", note: "the wash behind them" },
         { name: "down", className: "bg-down", note: "a loss — the region's other rightful tenant" },
+      ],
+    },
+    {
+      heading: "DANGER — one consumer, and only one, ever",
+      note: "Amber says “something degraded”. Red says something else entirely: “do not trust the numbers on this page.” Exactly one surface may make that claim — the pipeline strip's DEAD state — because the moment a second one can, the reader has to work out which red is which, and a colour that needs interpreting is not an alarm. It borrows the hue the palette already owns (the folklore grade's red, hue 0°, outside the reserved amber band) so no new hue enters the app; what it does not borrow is the meaning. Drift rule 19 fails the build for a second consumer.",
+      swatches: [
+        { name: "danger", className: "bg-danger", note: "the dead pipeline. Nothing else, ever." },
+        { name: "danger-wash", className: "bg-danger-wash", note: "the banner's fill" },
       ],
     },
     {
@@ -624,6 +634,56 @@ function CopyDeck() {
  * whole kit. Photographing a skeleton by racing a real page load would be a flaky test with extra
  * steps; photographing one here is a pixel lock.
  */
+/**
+ * 10 — The freshness ladder (NEWS-AND-CONTROL-PLAN Part 4.1).
+ *
+ * The three states of the pipeline strip, side by side, which is the ONLY place they can be seen
+ * together — in the product they are mutually exclusive, and two of them appear only on nights
+ * nobody wants. Seeing them stacked is how the escalation gets reviewed at all.
+ *
+ * Every specimen is driven from a fixed run and a fixed clock, so these are true pixel locks rather
+ * than pictures of whatever tonight happens to be.
+ */
+function FreshnessLadder() {
+  // Friday 2026-07-10's run is the last completed one in all three. Only the clock changes — which
+  // is precisely the argument: the same data is fresh, stale, or an emergency depending on nothing
+  // but how many sessions have passed without an edition.
+  const friday = { runDate: "2026-07-10", finishedAt: "2026-07-10T22:41:00Z" };
+  const specimens = [
+    { label: "fresh — read Saturday morning", at: "2026-07-11T09:00:00-04:00", run: friday },
+    { label: "aging — read Monday night, Monday's run never landed", at: "2026-07-13T22:00:00-04:00", run: friday },
+    { label: "dead — read Tuesday night, two sessions gone", at: "2026-07-14T22:00:00-04:00", run: friday },
+    { label: "never — an empty database is not a dead pipeline", at: "2026-07-13T22:00:00-04:00", run: null },
+  ];
+
+  return (
+    <Section
+      id="freshness"
+      index={10}
+      title="Freshness"
+      intro="Module 00 spent the best card on the Desk saying 'last cloud run — Jul 11' in the same quiet voice every day, whether the pipeline was healthy or three days dead. That is not a freshness indicator; it is a decoration that mentions freshness. The rule that replaced it: freshness is prominent in proportion to how BAD the news is. A live pipeline earns one quiet line. A stale one earns amber — which is exactly what the reserved amber is reserved for. A dead one earns the loudest surface in the application, undismissable, because a silently dead pipeline serving stale data is the catastrophic failure mode: the app keeps looking authoritative and keeps being wrong. The escalation is carried three times over — by the colour, by the word, and by the ARIA role — because if it lived only in the hue, a screen-reader user would get the app's calmest voice on its worst night."
+    >
+      <div className="flex flex-col gap-6">
+        {specimens.map((s) => (
+          <Surface key={s.label} level="card" as="div" className="p-5">
+            <h3 className="font-mono text-2xs uppercase tracking-[0.08em] text-muted">{s.label}</h3>
+            <PipelineStrip run={s.run} serverNow={new Date(s.at).toISOString()} />
+          </Surface>
+        ))}
+      </div>
+
+      <p className="max-w-[70ch] pt-4 font-ui text-2xs text-muted">
+        The clock these are graded against is the READER’S, not the cache’s. The Desk is served from
+        a cache, and a cached render carries the clock it was made with — so a strip graded on the
+        server would have been graded on the morning the cache was filled. A pipeline that died
+        overnight would still have been photographed as “fresh” on the reader’s first paint, by the
+        one surface whose entire job is to catch exactly that. The last completed run is data and it
+        is cached; “now” is not data, and it is supplied by the browser.
+      </p>
+    </Section>
+  );
+}
+
 function Kit() {
   return (
     <Section

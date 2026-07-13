@@ -134,6 +134,29 @@ export const copy = {
     scanCount: "{n} matches across {k} scans",
   },
 
+  /**
+   * THE PIPELINE STRIP (NEWS-AND-CONTROL-PLAN Part 4.1, Appendix B).
+   *
+   * Module 00 used to spend a whole card — the best position on the phone — saying "last cloud run
+   * — Jul 11" in the same quiet voice every day, whether the pipeline was healthy or three days
+   * dead. Its payload was one date and a status that is almost always "fine".
+   *
+   * These four strings are the replacement, and the ESCALATION between them is the honest part.
+   * Freshness is prominent in proportion to how BAD the news is: a live pipeline earns one quiet
+   * line, a stale one earns amber, a dead one earns the loudest surface in the app. The old design
+   * spent hero space on the boring case and had no escalation at all for the frightening one.
+   */
+  strip: {
+    fresh: "Data through {day} close · pipeline ran {time} · next: {next}",
+    aging: "No run for {day}'s session · showing {lastDay}'s data · check the pipeline →",
+    dead: "The pipeline has not run since {lastDay}. Every number on this page is from that night. Check the pipeline →",
+    /** An empty database is not a dead pipeline — it is one that has not started. No alarm. */
+    never: "No pipeline run recorded yet · the nightly jobs write here after each US close",
+    /** The word that makes the amber mean something. It names the state, so colour is never alone. */
+    staleWord: "stale",
+    deadWord: "pipeline down",
+  },
+
   mover: {
     /** The honest alternative to inventing a reason. A mover renders this or a real catalyst. */
     noNews: "No news found — most moves this size have no identifiable cause; likely noise.",

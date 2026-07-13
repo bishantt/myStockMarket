@@ -133,3 +133,29 @@ export function formatUtcDateLong(date: Date): string {
 export function formatAsOf(instant: Date): string {
   return `as of ${formatEtClock(instant)} ET`;
 }
+
+/**
+ * The short weekday of a BARE calendar date, e.g. "Fri" — read from its UTC components.
+ *
+ * The pipeline strip talks in sessions, and a session has a name a reader recognises: "showing
+ * Fri's data" lands where "showing 2026-07-10's data" does not. Same UTC-components rule as
+ * formatUtcDate above: a trading day is a day, and formatting it in ET rolls it back one.
+ */
+const utcWeekdayFormatter = new Intl.DateTimeFormat("en-US", {
+  timeZone: "UTC",
+  weekday: "short",
+});
+
+export function formatUtcWeekday(date: Date): string {
+  return utcWeekdayFormatter.format(date);
+}
+
+/** The short weekday of a real instant, in New York, e.g. "Mon" — for "next: Mon 18:37 ET". */
+const etWeekdayFormatter = new Intl.DateTimeFormat("en-US", {
+  timeZone: "America/New_York",
+  weekday: "short",
+});
+
+export function formatEtWeekday(instant: Date): string {
+  return etWeekdayFormatter.format(instant);
+}

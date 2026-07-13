@@ -43,8 +43,23 @@ const BLUR_ALLOWED = [
 const ALERT_ALLOWED = [
   "components/desk/BriefArticle.tsx",
   "components/desk/Watchlist.tsx",
+  // Added in N2 (NEWS-AND-CONTROL-PLAN Part 4.1, logged as a structural amendment). The strip's
+  // AGING state — a session's edition never landed — is a genuine alert about a real degradation,
+  // which is precisely what the reserved amber is reserved FOR. It is a sanctioned addition to
+  // P11's consumer list, not a loophole: the list stays short and every entry is argued.
+  "components/desk/PipelineStrip.tsx",
   "app/styleguide/page.tsx",
 ];
+
+/**
+ * DANGER (red) has exactly ONE consumer, and that is the strictest colour rule in the app.
+ *
+ * Amber is reserved for "something degraded". Red means something else entirely: "do not trust the
+ * numbers on this page." That claim may be made by exactly one surface — the pipeline strip's DEAD
+ * state — because the moment a second surface can make it, the reader has to start working out
+ * which red is which, and a colour that requires interpretation is not an alarm.
+ */
+const DANGER_ALLOWED = ["components/desk/PipelineStrip.tsx", "app/styleguide/page.tsx"];
 
 /** The P2 files: probability and money visuals. Nothing in them may move (§3.6). */
 const P2_FILES = [
@@ -122,9 +137,25 @@ const RULES = [
   },
   {
     id: 5,
-    name: "HONESTY — amber (alert) has exactly two consumers (§3.3, P11)",
+    name: "HONESTY — amber (alert) has a short, argued consumer list (§3.3, P11)",
     skip: [...TOKEN_FILES, ...ALERT_ALLOWED],
     match: (line) => /\b(bg|text|border)-alert\b|\balert-wash\b/.test(line),
+  },
+  {
+    id: 19,
+    name: "HONESTY — danger (red) has exactly ONE consumer: the dead-pipeline strip",
+    /*
+     * The one surface in this app allowed to be loud (NEWS-AND-CONTROL-PLAN Part 4.1). A silently
+     * dead pipeline serving stale data is the catastrophic failure mode — the app goes on looking
+     * authoritative and goes on being wrong — so it gets a red banner nobody can miss and nobody
+     * can dismiss.
+     *
+     * The value of that banner is entirely in its scarcity. A second red surface anywhere in the
+     * app makes the reader ask "which red is this?", and the answer to that question always arrives
+     * too late. So: one consumer, and this rule fails the build for the second.
+     */
+    skip: [...TOKEN_FILES, ...DANGER_ALLOWED],
+    match: (line) => /\b(bg|text|border)-danger\b|\bdanger-wash\b/.test(line),
   },
   {
     id: 6,

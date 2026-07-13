@@ -179,7 +179,7 @@ test.describe("The Desk, chunked", () => {
     await expect(page).toHaveURL("/");
   });
 
-  test("the ritual order is intact — the modules still mount 00 → 07 in the DOM", async ({ page }) => {
+  test("the ritual order is intact — the modules mount 01 → 07 in the DOM", async ({ page }) => {
     await page.goto("/");
     // The order is the invariant: it mirrors the documented professional pre-market sequence, so the
     // layout itself teaches the routine. Modules are placed into the desktop spread by CSS grid,
@@ -188,6 +188,39 @@ test.describe("The Desk, chunked", () => {
     const indexed = mastheads.filter((m) => /^0\d —/.test(m));
     const numbers = indexed.map((m) => Number(m.slice(0, 2)));
     expect(numbers).toEqual([...numbers].sort((a, b) => a - b));
+
+    /*
+     * MODULE 00 IS RETIRED (NEWS-AND-CONTROL-PLAN Part 4.1), and this asserts the retirement rather
+     * than merely tolerating it.
+     *
+     * The sorted-numbers check above would happily pass whether or not 00 exists — which is exactly
+     * the shape of a guard that cannot fail. The ritual now STARTS at 01, and if a future change
+     * reinstates a pipeline card in the grid, the strip and the card would both be on the page and
+     * nobody would notice.
+     *
+     * The mastheads do not renumber: 01 stays 01. A masthead is a name, not an index that has to
+     * start at zero, and renumbering every module, test and VRT baseline to close a cosmetic gap is
+     * churn with regression risk and no reader value.
+     */
+    expect(numbers, "module 00 was retired into the pipeline strip — it must not be back in the grid")
+      .not.toContain(0);
+    expect(numbers[0]).toBe(1);
+  });
+
+  test("the pipeline strip is page chrome — one quiet line, above the grid, and a doorway", async ({
+    page,
+  }) => {
+    await page.goto("/");
+
+    // The seeded database has a completed run for the seeded session, so the strip is in its FRESH
+    // state: quiet, no colour, no card, no masthead. It states the three facts module 00's whole
+    // card never managed — the session on screen, when the pipeline wrote it, and when it next runs.
+    const strip = page.getByRole("status").filter({ hasText: "Data through" });
+    await expect(strip).toBeVisible();
+    await expect(strip).toContainText("next:");
+
+    // And it is the doorway to the control room (Part 8, built in N6).
+    await expect(strip.getByRole("link")).toHaveAttribute("href", /\/settings/);
   });
 
   test("BOTH seeded high-importance rows are visible while the calendar is still collapsed", async ({ page }) => {

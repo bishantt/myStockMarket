@@ -1,7 +1,6 @@
 import Link from "next/link";
 
 import { SectionMasthead } from "@/components/SectionMasthead";
-import { StatFigure } from "@/components/StatFigure";
 import { Surface } from "@/components/Surface";
 import { MacroPulse } from "@/components/desk/MacroPulse";
 import { BriefArticle } from "@/components/desk/BriefArticle";
@@ -12,13 +11,14 @@ import { ScorecardPM } from "@/components/desk/ScorecardPM";
 import { SetupCards } from "@/components/desk/SetupCards";
 import { CalendarTimeline } from "@/components/desk/CalendarTimeline";
 import { SourceStatusFooter } from "@/components/desk/SourceStatusFooter";
+import { PipelineStrip } from "@/components/desk/PipelineStrip";
 import { RailProvider } from "@/components/rail/Rail";
 import { OfflineRibbon } from "@/components/OfflineRibbon";
-import { getLatestRun } from "@/lib/pipeline";
+import { getLatestCompletedRun, getLatestRun } from "@/lib/pipeline";
 import { marketState } from "@/lib/market-hours";
 import { getMorning } from "@/lib/morning";
 import { getTrackRecord } from "@/lib/track-record";
-import { formatEtDate, formatUtcDate } from "@/lib/time";
+import { formatEtDate } from "@/lib/time";
 import { copy, fill } from "@/lib/copy";
 import { cx } from "@/lib/cx";
 
@@ -79,8 +79,9 @@ function Placeholder({
 }
 
 export default async function DeskPage() {
-  const [latest, morning, trackRecord] = await Promise.all([
+  const [latest, lastCompleted, morning, trackRecord] = await Promise.all([
     getLatestRun(),
+    getLatestCompletedRun(),
     getMorning(),
     getTrackRecord(1),
   ]);
@@ -123,39 +124,29 @@ export default async function DeskPage() {
         />
       ) : null}
 
+      {/*
+       * The pipeline strip — page CHROME, not a ritual station (NEWS-AND-CONTROL-PLAN Part 4.1).
+       *
+       * Module 00 used to be a full Surface card in the first grid position — the most valuable slot
+       * the phone viewport has — carrying one date and one sentence that never changed. It looked
+       * identical on a healthy night and on a night the pipeline had been dead for a week, which
+       * means it was not a freshness indicator; it was a decoration that mentioned freshness.
+       *
+       * It is one line now, and it escalates: quiet when fresh, amber when a session was missed, and
+       * the loudest surface in the app when the pipeline is actually dead. It mounts HERE, above the
+       * grid and outside the ritual, because it describes the whole page rather than being one
+       * station within it. The ritual now runs 01 → 07, and that order stays inviolable — retiring a
+       * station is not reordering the ones that remain.
+       *
+       * It renders even when nothing has ever run: an empty database gets the quiet "not yet" line,
+       * not silence.
+       */}
+      <PipelineStrip run={lastCompleted} serverNow={new Date().toISOString()} />
+
       {/* The offline band — shows only when the browser is offline, naming what is on screen. */}
       <OfflineRibbon syncedDate={asOf ? formatEtDate(asOf) : "—"} />
 
       <div className="mx-auto grid max-w-[720px] grid-flow-row-dense grid-cols-1 gap-6 pt-6 lg:max-w-none lg:grid-cols-[minmax(0,1fr)_320px] lg:items-start desk:grid-cols-[minmax(0,1fr)_340px]">
-        {/*
-         * 00 — the pipeline heartbeat: the app renders what the cloud wrote, and says so.
-         *
-         * It spans the spread rather than sitting in the rail, and that is a layout FIX, not a
-         * preference. Placed in the rail it occupied the first row's right-hand cell, and the grid's
-         * dense backfill then pulled the Brief (module 02) up into the empty cell beside it — so the
-         * Desk rendered 02 above 01. The ritual order is the one thing this layout may not break.
-         */}
-        <Surface className="p-5 lg:col-span-2">
-          <SectionMasthead
-            index={0}
-            title="Pipeline"
-            asOf={lastRunFinishedAt ?? undefined}
-            provenance="GitHub Actions · nightly, after the US close"
-          />
-          <div className="flex flex-wrap items-baseline gap-x-8 gap-y-2 pt-4">
-            <StatFigure
-              label="Last cloud run"
-              value={latest ? formatUtcDate(new Date(latest.runDate)) : "—"}
-              scale="body"
-            />
-            <p className="font-ui text-2xs text-muted">
-              {latest
-                ? "Written by the nightly pipeline in the cloud — nothing runs on this device."
-                : "No run recorded yet. The nightly jobs write here after each US close."}
-            </p>
-          </div>
-        </Surface>
-
         {/* 01 — Macro pulse. The hero, and the only module that spans the spread. */}
         {asOf && morning.macro ? (
           <Surface className="p-5 lg:col-span-2 desk:p-6">

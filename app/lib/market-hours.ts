@@ -116,3 +116,71 @@ export function marketState(instant: Date): MarketState {
   const close = HALF_DAYS.has(date) ? HALF_DAY_CLOSE_MINUTE : CLOSE_MINUTE;
   return minute >= OPEN_MINUTE && minute < close ? "open" : "closed";
 }
+
+/* ────────────────────────────────────────────────────────────────────────────────────────────
+ * The trading-day calendar, walkable.
+ *
+ * `marketState` above answers "is the market open at this instant?". The pipeline's freshness
+ * (lib/freshness.ts) asks a different question — "which DAYS owed us an edition?" — and to answer
+ * it, something has to be able to step over weekends and holidays a day at a time. That walk lives
+ * here, next to the holiday list, because a second copy of the NYSE calendar is a second calendar
+ * to keep in step, and it would fall out of step.
+ *
+ * The unit is an ET calendar date as a plain "YYYY-MM-DD" string. Dates, not instants: a trading
+ * day is a day, and doing this arithmetic with Date objects in a timezone is how you end up one day
+ * off for five hours every evening.
+ * ──────────────────────────────────────────────────────────────────────────────────────────── */
+
+/** An ET calendar date, "YYYY-MM-DD" — the day the reader in New York is living in. */
+export type TradingDate = string;
+
+/** The ET calendar date of an instant. */
+export function etDateOf(instant: Date): TradingDate {
+  return easternParts(instant).date;
+}
+
+/** The ET wall-clock minute of an instant (minutes since ET midnight). */
+export function etMinuteOf(instant: Date): number {
+  return easternParts(instant).minute;
+}
+
+/**
+ * Is this calendar date a trading session?
+ *
+ * A half day IS a session — it opens, it closes, it has a close price, and the pipeline owes an
+ * edition for it. Only weekends and full closures are not sessions.
+ *
+ * Past the end of the hardcoded holiday list this falls back to "any weekday", and says so here
+ * rather than silently. The consequence is bounded and one-directional: after 2028 the strip could
+ * show an amber "no run" on a holiday. That over-alarms; it never under-alarms. A freshness lamp
+ * that errs toward "check the pipeline" is the safe direction to err in.
+ */
+export function isTradingDay(date: TradingDate): boolean {
+  // Parsed as UTC midnight and read back in UTC — pure calendar arithmetic, no timezone anywhere.
+  const weekday = new Date(`${date}T00:00:00Z`).getUTCDay();
+  if (weekday === 0 || weekday === 6) return false;
+  return !HOLIDAYS.has(date);
+}
+
+/** Step one calendar day. */
+function shiftDate(date: TradingDate, days: number): TradingDate {
+  const d = new Date(`${date}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + days);
+  return d.toISOString().slice(0, 10);
+}
+
+/** The most recent session STRICTLY before this date. */
+export function previousTradingDay(date: TradingDate): TradingDate {
+  let cursor = shiftDate(date, -1);
+  // A ten-day bound: the longest gap the NYSE calendar can produce is a holiday against a weekend,
+  // which is four days. Ten is slack, and it means a malformed date can never spin forever.
+  for (let i = 0; i < 10 && !isTradingDay(cursor); i += 1) cursor = shiftDate(cursor, -1);
+  return cursor;
+}
+
+/** The next session STRICTLY after this date. */
+export function nextTradingDay(date: TradingDate): TradingDate {
+  let cursor = shiftDate(date, 1);
+  for (let i = 0; i < 10 && !isTradingDay(cursor); i += 1) cursor = shiftDate(cursor, 1);
+  return cursor;
+}
