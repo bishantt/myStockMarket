@@ -425,6 +425,94 @@ export const copy = {
     sparkCaption: "Sparklines: 30 sessions, close only",
   },
 
+  /**
+   * The control room (N6, plan Part 8 + Appendix B).
+   *
+   * THE "NOT AVAILABLE" SENTENCES ARE THE FEATURE, not the error messages around the feature.
+   *
+   * The commission asked for buttons that re-run the pipeline. Part 8.1 did the honest evaluation
+   * and found that on a normal weeknight the pipeline HAS ALREADY RUN, and a manual re-run would
+   * recompute byte-identical data. For that case — which is most cases — **the honest control is the
+   * EXPLANATION, not the button.** So most of the time this panel is not a row of buttons at all. It
+   * is a short piece of writing that tells the reader why there is nothing worth pressing, and when
+   * there will be. Ruling C5: an empty state is information, not an apology.
+   *
+   * A button that is present but pointless invites a press that changes nothing, and a product that
+   * lets you do something pointless and says nothing about it has lied to you about what you did.
+   */
+  control: {
+    title: "Pipeline",
+
+    runFull: "Run tonight's full pipeline",
+    runFullDesc: "Ingest the close, recompute everything, publish.",
+    runNews: "Refresh the news",
+    /**
+     * `{cost}` is a MEASURED number (lib/constants NEWS_RUN_COST_USD), not a guess, and it is
+     * printed because this is the only button that spends money. N5 amended news mode's promise: it
+     * runs the narrator now — up to 60 Haiku extracts and one Sonnet call — because the honest scope
+     * of "refresh the news" is the WHOLE page, facts and context lines together. A refresh that
+     * rebuilt the stories while silently blanking their notes would be a button that quietly makes
+     * the page worse, which is not a refresh.
+     */
+    runNewsDesc: "Fetch today's articles, re-rank the front page. ~{cost} of API budget.",
+    runMacro: "Refresh macro stats",
+    runMacroDesc: "Re-read rates, gold, FX and the gauge inputs.",
+    runCompute: "Recompute scans",
+    runComputeDesc: "Re-run indicators and scans over stored data. No new data is fetched.",
+    runBriefing: "Re-run the evening briefing",
+    runBriefingDesc: "Re-assemble tonight's brief from the data already stored.",
+
+    capLine: "{left} of {cap} left today",
+    cooldown: "available again at {time}",
+    capped: "daily limit reached — resets midnight ET",
+
+    queuedBehind: "queued behind tonight's scheduled run",
+    running: "running — {elapsed}",
+
+    /**
+     * What the OTHER buttons say while one run is in flight (plan 8.4).
+     *
+     * The jobs share a GitHub concurrency group (`msm-nightly`, cancel-in-progress false), so runs
+     * are serialized — and GitHub keeps only the LATEST queued run in a group, silently discarding
+     * any it superseded. So a second dispatch fired now would not "also run"; it might simply
+     * evaporate. The panel refuses it as a STATE rather than letting the reader press a button whose
+     * result would be a run that quietly never happened.
+     */
+    blocked: "waiting for the run already in flight",
+
+    // The C5 explanations. Each one names the reason AND the next moment something changes, because
+    // "not available" without a "next" is a dead end, and a dead end is where a reader gives up.
+    naMarketOpen:
+      "Markets are open — today's closing data doesn't exist until 4:00pm ET. The nightly run lands ~{nightly} ET.",
+    naWeekend:
+      "It's the weekend — {lastDay}'s close is the latest data that exists; nothing new lands before {nextDay} 4:00pm ET.",
+    naHoliday: "US markets are closed today ({name}) — {lastDay}'s close stands until {nextDay}.",
+    naAlreadyRan: "Tonight's run already succeeded at {time} — there is nothing newer to fetch.",
+
+    /**
+     * P-2 is not provisioned. The panel renders every one of its real states against the missing
+     * secret and says plainly what is missing — it does not hide, and it does not pretend to work.
+     */
+    notConfigured: "Manual runs need a GitHub token — see QUESTIONS-FOR-BISHANT (P-2).",
+
+    /**
+     * THE SENTENCE THAT STOPS A SILENT FAILURE.
+     *
+     * The dispatch API answers 204 with an empty body, so the run id is not returned — it has to be
+     * recovered by matching the request id in the run's name. Usually that takes a second or two.
+     * When it never resolves, the panel must NOT sit on "requested…" indefinitely, because then a
+     * run that fired and a run that never fired look exactly the same from the couch. It says this
+     * instead, and links the Actions tab so the reader can see for themselves.
+     */
+    lost: "Dispatched, but the run never appeared. It may still be starting — check the Actions tab.",
+    failed: "That run failed.",
+    viewRun: "View the run log →",
+
+    history: "Recent manual runs",
+    /** The empty history. Nothing has been run by hand — which is the normal, healthy state. */
+    historyEmpty: "You haven't run anything by hand yet. The scheduled runs are doing their job.",
+  },
+
   /** The ticker's chart captions — what the bars ARE, and through when (C2). */
   ticker: {
     rangeCaption: "Daily bars · adjusted · through {date}",

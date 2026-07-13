@@ -159,3 +159,21 @@ const etWeekdayFormatter = new Intl.DateTimeFormat("en-US", {
 export function formatEtWeekday(instant: Date): string {
   return etWeekdayFormatter.format(instant);
 }
+
+/**
+ * The LONG weekday of a bare calendar date, e.g. "Friday" — for the control room's C5 sentences
+ * ("Friday's close is the latest data that exists; nothing new lands before Monday").
+ *
+ * Takes a TradingDate ("2026-07-17"), not an instant, and reads it in UTC. A trading day is a DAY:
+ * parse it at UTC noon and read it back in UTC, and it cannot drift a day either way. Doing this
+ * arithmetic with a local Date is how you end up naming the wrong weekday for five hours every
+ * evening — which is the same class of bug as the relative timestamps N5 refused to ship.
+ */
+const utcWeekdayLongFormatter = new Intl.DateTimeFormat("en-US", {
+  timeZone: "UTC",
+  weekday: "long",
+});
+
+export function formatWeekdayLong(date: string): string {
+  return utcWeekdayLongFormatter.format(new Date(`${date}T12:00:00Z`));
+}

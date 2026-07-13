@@ -383,7 +383,7 @@ def run_nightly(deps: NightlyDeps) -> NightlyResult:
     # the symbols the user actually sees cards for — which is fast and honest via the N-gate. The
     # full-universe historical replay for larger N is a logged enhancement.)
     if deps.publish_analytics is not None:
-        _run_analytics(deps, bars, snapshot, served, market_context)
+        _run_analytics(deps.conn, deps.publish_analytics, deps.run_date, bars, snapshot, served, market_context)
 
     return NightlyResult(
         run_date=deps.run_date,
@@ -392,6 +392,103 @@ def run_nightly(deps: NightlyDeps) -> NightlyResult:
         scan_matches=scans.height,
         served_symbols=served_bars["symbol"].n_unique() if served_bars.height else 0,
         breadth=breadth,
+    )
+
+
+# ── `compute` mode: recompute the derived layer over bars we already have (N6, plan 8.1d) ─────
+
+
+@dataclass(frozen=True)
+class ComputeDeps:
+    """Everything `run_compute` needs — and, far more importantly, everything it CANNOT reach.
+
+    THIS STRUCT IS THE PROMISE. Compare it with NightlyDeps above: there is no `fetch_universe`, no
+    `fetch_bars`, no `read_macro`, no `fetch_catalysts`, no `build_front_page`, no
+    `submit_extraction`. Every one of those is a door to a provider, and none of them is here. That
+    is what makes "Recompute scans" the one button in the control room that is safe to press at any
+    hour, including with the market open: it physically cannot fetch anything.
+
+    A mode is a promise about what a run will not touch, and a promise the code merely *intends* to
+    keep is worth nothing. This one is held by the type, and a test enumerates these five fields.
+    """
+
+    # The stored lake, already pulled down from R2. Returns every bar we hold, every symbol.
+    read_bars: Callable[[], pl.DataFrame]
+    read_served_symbols: Callable[[], list[str]]
+    # Publishes the derived layer ONLY, preserving what the night recorded about its sources.
+    publish_compute: Callable[..., None]
+    publish_analytics: Callable[..., None] | None
+    conn: Any
+
+
+@dataclass(frozen=True)
+class ComputeResult:
+    """What a recompute did, for the job's log line."""
+
+    run_date: date
+    symbols: int
+    scan_matches: int
+
+
+def run_compute(deps: ComputeDeps) -> ComputeResult:
+    """Re-run the indicators, the scans and the analytics over the stored bars. Fetch nothing.
+
+    This is the "I fixed a detector, recompute last night with the new code" button (plan 8.1d).
+
+    THE RUN DATE COMES FROM THE DATA, NOT THE CLOCK, and that is what makes the button safe at any
+    hour. Ask the clock and a recompute fired at noon on Tuesday stamps its scans with Tuesday — a
+    session that has not closed, whose bars do not exist, and whose row would then sit on the Desk
+    presenting itself as today's edition. The lake knows exactly which session it holds; ask it.
+    (This build has now shipped a "computed against the wrong clock" bug three times — F4's
+    cooling-off stamp, N4's markets-open strip, and N5's relative timestamps. Not a fourth.)
+    """
+    bars = deps.read_bars()
+    if bars.height == 0:
+        # An empty read is a broken R2 sync, not a market with no stocks in it. Publishing here
+        # would DELETE the session's scan results (the publish replaces them for the run date) and
+        # leave the scans room empty behind a green run. Fail loud instead.
+        raise RuntimeError(
+            "compute: the stored lake came back empty — refusing to publish a blank recompute, "
+            "which would delete the session's scan results. Check the R2 sync."
+        )
+
+    # The newest session the lake actually holds. This is the edition being recomputed.
+    run_date = bars["date"].max()
+
+    indicated = build_indicated(bars)
+    snapshot = snapshot_from_indicated(indicated)
+    scans = run_all(snapshot)
+
+    served = set(deps.read_served_symbols())
+    scan_results = curated_scans(scans)
+
+    # The signal log is INSERT-ONLY and idempotent on (fired_date, pattern_key, symbol, horizon).
+    # So a recompute after a detector fix ADDS whatever the new code fires and REMOVES NOTHING — and
+    # that is correct, not a limitation. A signal this app published last night is a historical fact
+    # about what it told the reader; quietly deleting it because the code changed its mind would be
+    # rewriting the track record, which is the one thing the ledger exists to make impossible. (The
+    # table has a trigger blocking UPDATE and DELETE, so it is impossible rather than merely
+    # discouraged.)
+    signal_logs = build_signal_logs(scans, run_date)
+
+    deps.publish_compute(
+        deps.conn,
+        run_date=run_date,
+        scan_results=scan_results if scan_results.height else None,
+        signal_logs=signal_logs,
+    )
+
+    # The regime the setup cards condition on is breadth, which is a property of the STORED bars —
+    # so a recompute can honestly restate it. The macro cells (VIX, the 10-year) are not: those come
+    # from FRED, this run did not call FRED, and it therefore has nothing new to say about them.
+    if deps.publish_analytics is not None:
+        breadth = compute_breadth(snapshot)
+        _run_analytics(deps.conn, deps.publish_analytics, run_date, bars, snapshot, served, breadth)
+
+    return ComputeResult(
+        run_date=run_date,
+        symbols=bars["symbol"].n_unique(),
+        scan_matches=scans.height,
     )
 
 
@@ -552,7 +649,8 @@ def mover_symbols(scans: pl.DataFrame) -> list[str]:
     return scans.filter(pl.col("preset_key") == UNUSUAL_VOLUME)["symbol"].to_list()
 
 
-def _run_analytics(deps: NightlyDeps, bars: pl.DataFrame, snapshot: pl.DataFrame, served: set[str],
+def _run_analytics(conn: Any, publish_analytics: Callable[..., None], run_date: date,
+                   bars: pl.DataFrame, snapshot: pl.DataFrame, served: set[str],
                    market_context: Mapping[str, Any]) -> None:
     """Compute and publish the P4 honesty engine over the served universe's history.
 
@@ -560,6 +658,10 @@ def _run_analytics(deps: NightlyDeps, bars: pl.DataFrame, snapshot: pl.DataFrame
     today's fired events on served symbols into setup cards (tier + stated rate), and computes vol
     bands from each served symbol's recent closes. A failure here degrades the cards, not the
     morning — the core data already published above — so it is caught and logged, not raised.
+
+    It takes its three collaborators explicitly rather than a deps object, because it has TWO
+    callers now: the full night, and N6's `compute` recompute. Those two hand it different structs,
+    and the honest way to share a function between them is to ask for exactly what it uses.
     """
     try:
         served_bars = bars.filter(pl.col("symbol").is_in(list(served)))
@@ -573,13 +675,13 @@ def _run_analytics(deps: NightlyDeps, bars: pl.DataFrame, snapshot: pl.DataFrame
         regime = "risk_on" if market_context["pct_above_50dma"] >= _REGIME_LINE else "risk_off"
         bucket_of = _bucket_of(snapshot, served)
         cards = analytics.build_setup_cards(
-            events, base_rates, run_date=deps.run_date, served=served,
+            events, base_rates, run_date=run_date, served=served,
             bucket_of=bucket_of, regime=regime, horizon=_CARD_HORIZON,
         )
-        vol_bands = analytics.build_vol_bands(_closes_by_symbol(indicated, served), run_date=deps.run_date)
+        vol_bands = analytics.build_vol_bands(_closes_by_symbol(indicated, served), run_date=run_date)
 
-        deps.publish_analytics(
-            deps.conn, run_date=deps.run_date, base_rates=base_rates, setup_cards=cards, vol_bands=vol_bands,
+        publish_analytics(
+            conn, run_date=run_date, base_rates=base_rates, setup_cards=cards, vol_bands=vol_bands,
         )
         print(f"nightly: analytics — {len(base_rates)} base rates, {len(cards)} cards, {len(vol_bands)} vol bands.")
     except Exception as error:  # noqa: BLE001 — analytics degrades the cards, not the published morning

@@ -106,6 +106,59 @@ def publish(
         raise
 
 
+def publish_compute(
+    conn: psycopg.Connection,
+    *,
+    run_date: date,
+    scan_results: pl.DataFrame | None = None,
+    signal_logs: Iterable[Mapping[str, Any]] = (),
+) -> None:
+    """
+    Publish a `compute` recompute: the derived layer only (N6, plan 8.1d).
+
+    WHY THIS IS NOT `publish()` WITH MOST ARGUMENTS OMITTED — which is what I tried first, and it is
+    a data-destroying bug.
+
+    `_upsert_pipeline_run` sets `source_status = EXCLUDED.source_status` on conflict: a WHOLESALE
+    REPLACE. So a recompute calling publish() with a bare status dict would OVERWRITE the night's
+    record of how each provider behaved. A night on which Marketaux was degraded would, the moment
+    the reader pressed "Recompute scans", start reporting every source healthy — the degradation
+    erased, with nothing anywhere saying so.
+
+    That is ruling M2 ("a degraded source cannot be folded away") broken by the back door, and it is
+    the exact species of quiet lie this pipeline is built to refuse. A run that called no provider
+    KNOWS NOTHING ABOUT ANY PROVIDER'S HEALTH, and the honest thing for it to say about them is
+    nothing at all. So this function never touches `source_status`, and it MERGES `stage_status`
+    (`||`) rather than replacing it, so the night's own record of what it ran survives the
+    recompute that came after it.
+
+    (The same trap is already documented one function up, where `batch_id` is COALESCE'd for
+    precisely this reason. The status columns were simply never given the same care.)
+    """
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                INSERT INTO pipeline_run (run_date, started_at, finished_at, stage_status, source_status)
+                VALUES (%(run_date)s, now(), now(), %(stage)s, '{}'::jsonb)
+                ON CONFLICT (run_date) DO UPDATE SET
+                    finished_at = now(),
+                    stage_status = pipeline_run.stage_status || EXCLUDED.stage_status
+                """,
+                {
+                    "run_date": run_date,
+                    # What this run actually did, and nothing more. `ingest` is conspicuously absent.
+                    "stage": Json({"compute": "ok", "scan": "ok", "publish": "ok"}),
+                },
+            )
+            _replace_scan_results(cur, run_date, scan_results)
+            _insert_signal_logs(cur, signal_logs)
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        raise
+
+
 def publish_macro(
     conn: psycopg.Connection,
     *,

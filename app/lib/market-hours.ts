@@ -26,40 +26,62 @@ const HALF_DAY_CLOSE_MINUTE = 13 * 60;
  * auditable, and correct. It runs out at the end of 2028, and `marketState` says so loudly rather
  * than guessing past it.
  */
-const HOLIDAYS = new Set([
+/*
+ * The names are DATA now, not comments, and N6 is why.
+ *
+ * The control room has to tell the reader why a button is not there: "US markets are closed today
+ * (Thanksgiving) — Wednesday's close stands until Friday." That sentence needs the holiday's NAME,
+ * and a name that lives in a `//` comment is a name the program cannot read.
+ *
+ * The alternative was a second list somewhere else mapping dates to names, which is a second NYSE
+ * calendar to keep in step — and it would fall out of step, in the same way and for the same reason
+ * every duplicated calendar in this codebase has. One list. It already had the names; they were just
+ * written where only a human could see them.
+ */
+const HOLIDAYS = new Map<string, string>([
   // 2026
-  "2026-01-01", // New Year's Day
-  "2026-01-19", // Martin Luther King Jr. Day
-  "2026-02-16", // Washington's Birthday
-  "2026-04-03", // Good Friday
-  "2026-05-25", // Memorial Day
-  "2026-06-19", // Juneteenth
-  "2026-07-03", // Independence Day (observed — the 4th is a Saturday)
-  "2026-09-07", // Labor Day
-  "2026-11-26", // Thanksgiving
-  "2026-12-25", // Christmas
+  ["2026-01-01", "New Year's Day"],
+  ["2026-01-19", "Martin Luther King Jr. Day"],
+  ["2026-02-16", "Washington's Birthday"],
+  ["2026-04-03", "Good Friday"],
+  ["2026-05-25", "Memorial Day"],
+  ["2026-06-19", "Juneteenth"],
+  ["2026-07-03", "Independence Day"], // observed — the 4th is a Saturday
+  ["2026-09-07", "Labor Day"],
+  ["2026-11-26", "Thanksgiving"],
+  ["2026-12-25", "Christmas"],
   // 2027
-  "2027-01-01",
-  "2027-01-18",
-  "2027-02-15",
-  "2027-03-26", // Good Friday
-  "2027-05-31",
-  "2027-06-18", // Juneteenth observed (the 19th is a Saturday)
-  "2027-07-05", // Independence Day observed (the 4th is a Sunday)
-  "2027-09-06",
-  "2027-11-25",
-  "2027-12-24", // Christmas observed (the 25th is a Saturday)
+  ["2027-01-01", "New Year's Day"],
+  ["2027-01-18", "Martin Luther King Jr. Day"],
+  ["2027-02-15", "Washington's Birthday"],
+  ["2027-03-26", "Good Friday"],
+  ["2027-05-31", "Memorial Day"],
+  ["2027-06-18", "Juneteenth"], // observed — the 19th is a Saturday
+  ["2027-07-05", "Independence Day"], // observed — the 4th is a Sunday
+  ["2027-09-06", "Labor Day"],
+  ["2027-11-25", "Thanksgiving"],
+  ["2027-12-24", "Christmas"], // observed — the 25th is a Saturday
   // 2028
-  "2028-01-17",
-  "2028-02-21",
-  "2028-04-14", // Good Friday
-  "2028-05-29",
-  "2028-06-19",
-  "2028-07-04",
-  "2028-09-04",
-  "2028-11-23",
-  "2028-12-25",
+  ["2028-01-17", "Martin Luther King Jr. Day"],
+  ["2028-02-21", "Washington's Birthday"],
+  ["2028-04-14", "Good Friday"],
+  ["2028-05-29", "Memorial Day"],
+  ["2028-06-19", "Juneteenth"],
+  ["2028-07-04", "Independence Day"],
+  ["2028-09-04", "Labor Day"],
+  ["2028-11-23", "Thanksgiving"],
+  ["2028-12-25", "Christmas"],
 ]);
+
+/**
+ * The name of the holiday closing the market on this date, or null if it is not a holiday.
+ *
+ * Used by the control room to explain, in words, why there is no button today. A closed market is
+ * information, not an error, and a sentence that names the reason is the whole feature (ruling C5).
+ */
+export function holidayName(date: TradingDate): string | null {
+  return HOLIDAYS.get(date) ?? null;
+}
 
 /** Days the market closes at 1:00pm ET: the eve of a holiday, and the day after Thanksgiving. */
 const HALF_DAYS = new Set([

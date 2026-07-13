@@ -2,6 +2,10 @@ import { db } from "@/lib/db";
 import { Surface } from "@/components/Surface";
 import { FOCUS_CAP } from "@/lib/watchlist";
 import { ThemeToggle } from "@/components/desk/ThemeToggle";
+import { PipelinePanel } from "@/components/settings/PipelinePanel";
+import { readPanel } from "@/lib/pipeline-runs";
+import { toTradingDate } from "@/lib/pipeline";
+import { formatEtClock, formatEtDate } from "@/lib/time";
 import { AddWatchlistForm } from "./AddWatchlistForm";
 import { WatchlistManager, type ManagedItem } from "./WatchlistManager";
 
@@ -58,8 +62,43 @@ async function watchlistRows() {
   }
 }
 
+/**
+ * The control room's data (N6): what can be run, what cannot, and what the pipeline last did.
+ *
+ * Wrapped like watchlistRows() above, and for the same reason: CI builds with no database, and a
+ * settings page that cannot render without one is a settings page that fails the build. An absent
+ * panel is also the honest state here — if we cannot read the ledger, we cannot say what is safe to
+ * run, and the last thing this surface should do is guess.
+ */
+async function pipelinePanel() {
+  try {
+    const panel = await readPanel();
+    const run = await db.pipelineRun.findFirst({
+      where: { finishedAt: { not: null } },
+      orderBy: { runDate: "desc" },
+      select: { runDate: true, finishedAt: true, stageStatus: true, sourceStatus: true },
+    });
+
+    return {
+      ...panel,
+      lastRun: run?.finishedAt
+        ? {
+            session: toTradingDate(run.runDate),
+            finishedAt: `${formatEtDate(run.finishedAt)} ${formatEtClock(run.finishedAt)}`,
+            stages: (run.stageStatus ?? {}) as Record<string, string>,
+            sources: (run.sourceStatus ?? {}) as Record<string, string>,
+          }
+        : null,
+    };
+  } catch (error) {
+    console.error("SettingsPage: could not read the pipeline panel", error);
+    return null;
+  }
+}
+
 export default async function SettingsPage() {
-  const rows = await watchlistRows();
+  const [rows, panel] = await Promise.all([watchlistRows(), pipelinePanel()]);
+
   const items: ManagedItem[] = rows.map((r) => ({
     id: r.id,
     symbol: r.symbol,
@@ -110,6 +149,43 @@ export default async function SettingsPage() {
         <Surface as="section" aria-label="Your watchlist" className="p-5 desk:col-span-2 desk:p-6 lg:col-span-2">
           <WatchlistManager items={items} focusCount={focusCount} />
         </Surface>
+
+        {/*
+         * THE CONTROL ROOM (N6, plan 8.5). Full width, below the watchlist, because it is a
+         * READ station before it is a control one — most weeknights every row here is a sentence
+         * explaining why there is nothing worth pressing, and sentences want a measure to be read at.
+         *
+         * It renders even with no GitHub token (P-2 is unprovisioned): every row says so plainly and
+         * none of them pretends it could dispatch. A panel that hid itself when its secret was
+         * missing would leave the reader with no way to discover the feature exists, or what it needs.
+         */}
+        {/*
+         * `id="pipeline"` IS THE OTHER HALF OF A DOORWAY THAT HAS BEEN HALF-BUILT SINCE N2.
+         *
+         * The Desk's freshness strip has linked to `/settings#pipeline` from all three of its states
+         * — including the loud one, the alert a reader sees when the pipeline is DEAD and they most
+         * need to get here and re-run it. There was no element with that id, so the fragment matched
+         * nothing and the browser silently dropped the reader at the top of the settings page,
+         * looking at a form for adding a stock to a watchlist.
+         *
+         * It never 404'd and nothing ever failed, which is exactly why it survived: a fragment that
+         * matches nothing is not an error, it is just a link that quietly does half of what it says.
+         */}
+        {panel ? (
+          <Surface
+            as="section"
+            id="pipeline"
+            aria-label="Pipeline"
+            className="scroll-mt-24 p-5 desk:col-span-2 desk:p-6 lg:col-span-2"
+          >
+            <PipelinePanel
+              rows={panel.rows}
+              history={panel.history}
+              lastRun={panel.lastRun}
+              configured={panel.configured}
+            />
+          </Surface>
+        ) : null}
       </div>
     </div>
   );

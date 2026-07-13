@@ -11,10 +11,22 @@
 
 name: nightly-b
 
+# The control room's "Re-run the evening briefing" button dispatches this. Job B has no modes — its
+# whole job IS the evening assembly — so it takes only the request id, and for the same reason
+# nightly-a does: the dispatch API returns 204 with an empty body, so the run id has to be recovered
+# by matching this name. See the long note in nightly-a.yml.
+run-name: nightly-b · ${{ inputs.request_id || 'cron' }}
+
 on:
   schedule:
     - cron: "25 0 * * 2-6"
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      request_id:
+        description: "The control room's request id (leave blank for a hand-run from this tab)"
+        type: string
+        required: false
+        default: ""
 
 concurrency:
   group: msm-nightly

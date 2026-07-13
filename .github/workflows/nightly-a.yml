@@ -25,6 +25,27 @@
 
 name: nightly-a
 
+# THE RUN NAME IS LOAD-BEARING. It is not decoration for the Actions tab.
+#
+# The control room (N6) dispatches this workflow and then has to find the run it just created, so it
+# can show the reader "running…", "succeeded" or "failed". The obvious way would be for the dispatch
+# API to tell us the run id — and the plan said it did, and GitHub's own REST docs say it does.
+#
+# BOTH ARE WRONG. Recorded against the live API on 2026-07-13:
+#
+#     POST /repos/{owner}/{repo}/actions/workflows/nightly-a.yml/dispatches
+#     -> HTTP 204 No Content. Empty body. No workflow_run_id. No run_url.
+#
+# There is no run id in the response, and no `return_run_details` parameter to ask for one. So the id
+# must be RECOVERED rather than received: the app stamps each request with a `request_id`, this line
+# prints it into the run's name, and the app finds its run by matching that id in the runs list
+# (`display_title` is the run-name when one is set).
+#
+# Which means: DELETE THIS LINE AND THE CONTROL ROOM GOES BLIND. Every button would dispatch a real
+# run and then report "we can't find it" forever — a run that fired and a run that never fired would
+# look identical from the couch. There is a test asserting this line carries `request_id`.
+run-name: nightly-a · ${{ inputs.mode || 'scheduled' }} · ${{ inputs.request_id || 'cron' }}
+
 on:
   schedule:
     # The full nightly, after the US close.
@@ -46,9 +67,12 @@ on:
           - full      # the whole night: ingest, compute, scan, catalysts, news, publish
           - news      # rebuild the front page only — touches no price, no scan, no base rate
           - macro     # re-read the rates, gold, FX and the gauge inputs
-          # `compute` lands with N6, which builds the panel these buttons belong to. It is left OUT
-          # rather than listed-and-broken: job_a refuses a mode it has no handler for, and a dropdown
-          # option that always errors is worse than an option that is not there yet.
+          - compute   # recompute indicators/scans/analytics over STORED bars — fetches nothing
+      request_id:
+        description: "The control room's request id (leave blank for a hand-run from this tab)"
+        type: string
+        required: false
+        default: ""
 
 # One nightly run at a time. Job A and Job B share this group so they never overlap.
 concurrency:

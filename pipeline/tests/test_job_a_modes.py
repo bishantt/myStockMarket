@@ -93,17 +93,29 @@ def test_every_declared_mode_has_a_handler_and_no_mode_can_fall_through_to_a_ful
     re-ingests the entire market. Pressed at noon, it would write half a day of unformed bars over
     the last good close.
 
-    That is why "compute" is deliberately not in this table yet: N6 builds it, along with the panel
-    it belongs to. Until then the set is exactly what the job can actually do, and main() refuses
-    anything else rather than guessing.
+    "compute" JOINED THIS SET IN N6, and the fact that you are reading this sentence in a diff is
+    the point of the test. It was held out of the table for two phases precisely so that the mode,
+    its handler and the button that fires it would land in one commit — a declared mode with no
+    handler is the dangerous state described above, and the only way to reach it is to edit this
+    line. Nobody does that by accident.
+
+    The set is exactly what the job can actually do, and main() refuses anything else rather than
+    guessing.
     """
-    assert set(MODE_STAGES) == {"full", "macro", "news"}
+    assert set(MODE_STAGES) == {"full", "macro", "news", "compute"}
 
     from jobs.job_a import main  # noqa: F401 — imported to prove the handler guard exists
     import inspect
 
     source = inspect.getsource(main)
     assert "has no handler" in source, "main() must refuse a mode it cannot run, not fall through"
+
+    # Every non-full mode is dispatched by name. This is the assertion that actually closes the
+    # hole: the "has no handler" string above proves the guard EXISTS, and this proves no declared
+    # mode ever reaches it.
+    for mode in MODE_STAGES:
+        if mode != "full":
+            assert f'mode == "{mode}"' in source, f"{mode!r} is declared but main() never dispatches it"
 
 
 def test_nothing_is_defined_below_the_entrypoint():

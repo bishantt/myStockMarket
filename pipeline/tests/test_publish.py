@@ -448,3 +448,103 @@ def test_json_safe_still_nulls_a_bare_nan():
     """The original contract, unchanged: a NaN metric is an honest null, not a token Postgres refuses."""
     assert _json_safe(float("nan")) is None
     assert _json_safe(1.5) == 1.5
+
+
+# ── publish_compute: a recompute may not erase what the night knew (N6) ──────────────────────
+
+
+def test_a_recompute_does_not_erase_the_nights_record_of_a_degraded_source(db):
+    """
+    THE BUG THIS FUNCTION EXISTS TO PREVENT, pinned from the outside.
+
+    `publish()` sets `source_status = EXCLUDED.source_status` on conflict — a wholesale replace. So
+    a recompute that went through publish() would overwrite the night's per-provider health. A night
+    on which Marketaux was degraded would start reporting every source healthy the moment the reader
+    pressed "Recompute scans", and the Desk's source list would quietly lose the record.
+
+    That is ruling M2 ("a degraded source cannot be folded away") broken by the back door. A run that
+    called no provider knows nothing about any provider, and must say nothing about them.
+    """
+    # The night ran, and one provider was unhealthy.
+    pub.publish(
+        db,
+        run_date=RUN,
+        stage_status={"ingest": "ok", "compute": "ok", "scan": "ok", "publish": "ok"},
+        source_status={"alpaca": "ok", "news-marketaux": "degraded"},
+    )
+
+    # Then the reader pressed "Recompute scans".
+    pub.publish_compute(db, run_date=RUN, scan_results=None, signal_logs=())
+
+    stage, source = db.execute(
+        "SELECT stage_status, source_status FROM pipeline_run WHERE run_date = %s", (RUN,)
+    ).fetchone()
+
+    # The degradation SURVIVES. This is the whole test.
+    assert source == {"alpaca": "ok", "news-marketaux": "degraded"}
+    # And the night's own stage record survives too — merged, not replaced. `ingest` is still there,
+    # because the night really did ingest; the recompute simply did not.
+    assert stage["ingest"] == "ok"
+    assert stage["compute"] == "ok"
+    assert stage["scan"] == "ok"
+
+
+def test_a_recompute_replaces_the_scan_results_for_its_session(db):
+    """The point of the button: yesterday's matches, recomputed by today's code."""
+    pub.publish(
+        db,
+        run_date=RUN,
+        stage_status={},
+        source_status={},
+        scan_results=pl.DataFrame(
+            {"preset_key": ["unusual-volume"], "symbol": ["OLD"], "rank": [1], "ret_1": [0.01]}
+        ),
+    )
+
+    pub.publish_compute(
+        db,
+        run_date=RUN,
+        scan_results=pl.DataFrame(
+            {"preset_key": ["unusual-volume"], "symbol": ["NEW"], "rank": [1], "ret_1": [0.02]}
+        ),
+        signal_logs=(),
+    )
+
+    symbols = [r[0] for r in db.execute("SELECT symbol FROM scan_result WHERE run_date = %s", (RUN,)).fetchall()]
+    assert symbols == ["NEW"]
+
+
+def test_a_recompute_cannot_duplicate_the_track_record(db):
+    """
+    signal_log is insert-only and idempotent on its natural key, so pressing the button twice adds
+    nothing the second time. If it did, every signal would double-count in the track record — the
+    one artifact in this product whose whole job is to keep it honest about being wrong.
+    """
+    signals = [
+        {"fired_date": RUN, "symbol": "AAPL", "pattern_key": "rsi-reversal",
+         "horizon_days": 10, "resolves_on": date(2026, 7, 14)},
+    ]
+
+    pub.publish_compute(db, run_date=RUN, scan_results=None, signal_logs=signals)
+    pub.publish_compute(db, run_date=RUN, scan_results=None, signal_logs=signals)
+
+    count = db.execute("SELECT count(*) FROM signal_log WHERE fired_date = %s", (RUN,)).fetchone()[0]
+    assert count == 1
+
+
+def test_a_recompute_of_a_session_no_night_ever_ran_records_itself_honestly(db):
+    """An orphan recompute writes its own row rather than failing — and claims no source health.
+
+    The lake can hold a session the serving database has no run row for (a failed publish, a restored
+    backup). The recompute is still real work and still says what it did; it simply has nothing to
+    say about any provider, and an empty source map is the honest way to say nothing.
+    """
+    pub.publish_compute(db, run_date=RUN, scan_results=None, signal_logs=())
+
+    stage, source = db.execute(
+        "SELECT stage_status, source_status FROM pipeline_run WHERE run_date = %s", (RUN,)
+    ).fetchone()
+
+    assert stage == {"compute": "ok", "scan": "ok", "publish": "ok"}
+    assert "ingest" not in stage  # it did not ingest, and does not claim to
+    assert source == {}

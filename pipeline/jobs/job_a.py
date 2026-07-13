@@ -48,10 +48,19 @@ from newsdesk.narrate import (
 from newsdesk.rank import TickerMove
 from newsdesk.resolve import Instrument as NewsInstrument
 from newsdesk.resolve import TickerResolver
-from nightly import FrontPageRead, MacroRead, MacroStatsRead, MoodHistory, NightlyDeps, run_nightly
-from parquet_store import ParquetStore
+from nightly import (
+    ComputeDeps,
+    FrontPageRead,
+    MacroRead,
+    MacroStatsRead,
+    MoodHistory,
+    NightlyDeps,
+    run_compute,
+    run_nightly,
+)
+from parquet_store import PRICES, ParquetStore
 from storage import R2Store
-from trading_calendar import previous_session
+from trading_calendar import is_trading_session, previous_session
 from universe import CORE_SERVED
 
 # The market's clock: run_date is the US trading day, computed in Eastern time. Proper trading-day
@@ -433,17 +442,24 @@ MODE_STAGES: dict[str, tuple[str, ...]] = {
     # base rate — so it is safe to run at any hour, including while the market is open, because
     # nothing it writes depends on a session having closed.
     "news": ("news", "publish", "revalidate"),
+    # N6 adds the last one, and it lands in the SAME COMMIT as its handler and its button — which is
+    # why it was left out for two phases rather than declared early.
+    #
+    # `compute` re-runs the indicators, the scans and the analytics over bars ALREADY IN THE LAKE. It
+    # fetches nothing: no Alpaca, no FRED, no news, no LLM. That is what makes it the one button
+    # besides `news` that is safe to press with the market open — and the promise is held by the
+    # TYPE, not by this comment: run_compute takes a ComputeDeps, which has no provider on it at all
+    # (nightly.py, and the test that enumerates its fields).
+    "compute": ("compute", "scan", "publish", "revalidate"),
 }
 
-# `compute` (recompute indicators and scans over stored data, fetching nothing) is DELIBERATELY ABSENT
-# until N6 builds it, and its absence is the honest state rather than an oversight.
-#
-# A mode is a promise about what a run will not touch. Declaring "compute" here without a handler in
-# main() would not have produced a broken button — it would have produced a button that silently ran
-# the ENTIRE NIGHTLY, because every mode that main() does not recognise falls through to the full
-# run. A user pressing "recompute scans" at noon would have re-ingested the market mid-session and
-# written half a day of unformed bars over the last good close. The guard in main() now refuses any
-# mode it has no handler for, so that failure is impossible rather than merely unlikely.
+# A mode is a promise about what a run will not touch. Declaring a mode here without a handler in
+# main() would not produce a broken button — it would produce a button that silently ran the ENTIRE
+# NIGHTLY, because every mode main() did not recognise used to fall through to the full run. A user
+# pressing "recompute scans" at noon would have re-ingested the market mid-session and written half a
+# day of unformed bars over the last good close. The guard in main() refuses any mode it has no
+# handler for, so that failure is impossible rather than merely unlikely — and a test now walks
+# MODE_STAGES and asserts main() dispatches every mode in it.
 
 
 def parse_mode(argv: list[str]) -> str:
@@ -524,6 +540,9 @@ def main() -> None:
     if mode == "news":
         run_news_mode(settings)
         return
+    if mode == "compute":
+        run_compute_mode(settings)
+        return
     if mode != "full":
         # Belt and braces. parse_mode already rejects a mode that is not in MODE_STAGES; this
         # refuses a mode that IS in the table but has no handler here, which is the more dangerous
@@ -534,6 +553,33 @@ def main() -> None:
         )
 
     run_date = datetime.now(_MARKET_TZ).date()
+
+    # A NIGHT WITH NO SESSION HAS NOTHING TO INGEST, AND MUST NOT SAY OTHERWISE.
+    #
+    # Found by looking at N6's own panel against production, which opened with the line
+    # "Data through 2026-07-11" — a SATURDAY. There is no close on a Saturday, so there are no bars;
+    # Alpaca returns Friday's. The run had stamped Friday's data with Saturday's date, and the Desk
+    # had been telling the reader its data was "through" a day the market never opened.
+    #
+    # It was not a one-off. The cron is `37 22 * * 1-5`, so it never fires at a weekend — but it DOES
+    # fire on every market HOLIDAY, which is a weekday. Roughly nine times a year this job would wake
+    # up on a closed market, ingest nothing new, and publish a pipeline_run and a market_context row
+    # dated to a session that did not happen. Every gate would stay green, because nothing failed.
+    #
+    # So it stops, and says so, and exits cleanly. A skipped run on a closed market is the CORRECT
+    # outcome, not an error — failing the workflow would send a red e-mail every Thanksgiving and
+    # teach the reader to ignore exactly the alert that matters on the night it is real.
+    #
+    # (This also makes the promise the control room's `full` button already makes to the reader —
+    # "today's closing data doesn't exist until 4:00pm ET" — true of the JOB and not merely of the
+    # UI. A rule enforced only at the button is a rule the Actions tab can walk straight past.)
+    if not is_trading_session(run_date):
+        print(
+            f"job_a: {run_date.isoformat()} is not a trading session — the market never opened, so "
+            f"there is no close to ingest. Skipping. (The last session's data stands, correctly "
+            f"stamped with the last session's date.)"
+        )
+        return
 
     alpaca = _alpaca(settings)
     fred = _fred(settings)
@@ -985,6 +1031,51 @@ def run_news_mode(settings: Settings) -> None:
     )
     if front_page.narration:
         print(f"job_a (news): {front_page.narration}.")
+
+
+def run_compute_mode(settings: Settings) -> None:
+    """
+    Recompute the derived layer over the stored lake, and fetch nothing (MODE_STAGES["compute"]).
+
+    This is the "I fixed a detector, re-run last night with the new code" button (plan 8.1d). It
+    pulls the history lake down from R2, rebuilds the indicators, the scans, the signal log and the
+    analytics, and republishes them. It calls no provider — not Alpaca, not FRED, not a news feed,
+    not a model — which is what makes it safe to press at any hour of any day.
+
+    THE LAKE IS THE INPUT, AND ON A FRESH RUNNER THE LAKE IS EMPTY. Every Actions run starts from a
+    bare checkout, so the Parquet root has nothing in it. The full nightly does not care — it pulls
+    five years of bars from Alpaca and writes them. This mode has no Alpaca, so it must sync DOWN
+    from R2 first, and without R2 it cannot run at all. It says so rather than "succeeding" over an
+    empty lake, which would republish an empty session and wipe the scans room.
+    """
+    r2 = R2Store.from_settings(settings) if settings.r2_account_id else None
+    if r2 is None:
+        raise RuntimeError(
+            "job_a[compute]: the history lake (R2) is not configured, and a recompute has nothing "
+            "to recompute from. This mode reads stored bars and fetches nothing by design."
+        )
+
+    store = ParquetStore(_PARQUET_ROOT)
+    pulled = r2.sync_down(store.root)
+    print(f"job_a[compute]: pulled {len(pulled)} partition file(s) down from the history lake.")
+
+    with psycopg.connect(settings.database_url_psycopg) as conn:
+        deps = ComputeDeps(
+            read_bars=lambda: store.scan(PRICES).collect(),
+            read_served_symbols=_read_served_symbols(conn),
+            publish_compute=pub.publish_compute,
+            publish_analytics=pub.publish_analytics,
+            conn=conn,
+        )
+        result = run_compute(deps)
+
+    _revalidate_desk(settings)
+
+    print(
+        f"job_a (compute): recomputed {result.run_date.isoformat()} from stored bars — "
+        f"{result.symbols} symbols, {result.scan_matches} scan matches. "
+        f"No provider was called; the night's own source health is untouched."
+    )
 
 
 # The entrypoint stays at the very BOTTOM of the module, and that is not a style choice.
