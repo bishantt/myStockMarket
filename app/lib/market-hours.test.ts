@@ -91,9 +91,9 @@ describe("the Desk's market state is the READER's, not the cache's", () => {
     expect(header).toContain("MarketStateLine");
     expect(header).not.toMatch(/state:\s*marketOpen\s*\?/);
 
-    // …and the delegate must consult the READER's clock after mount.
+    // …and the delegate must consult the READER's clock, not the one the cache was built with.
     expect(line).toContain("use client");
-    expect(line).toMatch(/useEffect\(/);
+    expect(line).toMatch(/useSyncExternalStore\(/);
     expect(line).toMatch(/marketState\(new Date\(\)\)/);
   });
 });

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useSyncExternalStore } from "react";
 
 import { copy, fill } from "@/lib/copy";
 import { marketState } from "@/lib/market-hours";
@@ -25,6 +25,9 @@ import { formatAsOf, formatUtcDate } from "@/lib/time";
  * nothing. With the state computed in the browser, Playwright's pinned clock reaches it, and the shot
  * is deterministic again.
  */
+/** The market state never pushes an update at us; we simply read it when React asks. */
+const noSubscription = () => () => {};
+
 export function MarketStateLine({
   runDate,
   updatedAt,
@@ -32,15 +35,21 @@ export function MarketStateLine({
 }: {
   runDate: Date;
   updatedAt: Date | null;
-  /** What the server thought when it rendered. Used for the first paint only, then corrected. */
+  /** What the server believed when it generated the page. The FIRST PAINT only — never the truth. */
   serverOpen: boolean;
 }) {
-  const [open, setOpen] = useState(serverOpen);
-
-  // After mount, ask the READER's clock. This is the value that is actually true for them.
-  useEffect(() => {
-    setOpen(marketState(new Date()) === "open");
-  }, []);
+  /*
+   * useSyncExternalStore is the right primitive here and not a flourish: it is React's own way of
+   * saying "this value is read from outside React, and the server's copy of it is not the client's".
+   * The third argument IS that admission — the server snapshot is the cache's stale guess, the client
+   * snapshot is the reader's real clock, and React swaps one for the other on hydration without a
+   * mismatch and without a setState inside an effect.
+   */
+  const open = useSyncExternalStore(
+    noSubscription,
+    () => marketState(new Date()) === "open", // the reader's clock — the one that is true
+    () => serverOpen, // what the cache happened to be built with
+  );
 
   const status = fill(copy.desk.status, {
     state: open ? "open" : "closed",
