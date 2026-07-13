@@ -73,10 +73,14 @@ async function watchlistRows() {
 async function pipelinePanel() {
   try {
     // These two reads know nothing about each other, so they go together. /settings is the ONE room
-    // in the app that is deliberately not cached (it is a writer — see B1's allowlist), which means
-    // every visit pays for its queries in real time: at N7 it measured 455ms against a 150ms budget,
-    // and each sequential round-trip to Supabase is roughly a hundred of those milliseconds. Awaiting
-    // these in series spent one for nothing.
+    // in the app that is deliberately not cached (it is a writer — see B1's allowlist), so every
+    // visit pays for its queries in real time: 455ms measured against a 150ms budget at N7.
+    //
+    // Measured after the change: 434ms. About 20ms, not the ~100ms a round-trip to Supabase costs —
+    // so these two queries were NOT the room's problem, and the honest reading is that the cost lives
+    // somewhere else (most of it in `readPanel`'s own work, which is already parallel internally).
+    // Kept because a sequential await of two independent reads is wrong however little it happens to
+    // cost, but do not come here expecting to find the missing 300ms. It is not here.
     const [panel, run] = await Promise.all([
       readPanel(),
       db.pipelineRun.findFirst({

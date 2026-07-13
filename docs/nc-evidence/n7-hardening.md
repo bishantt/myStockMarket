@@ -111,9 +111,18 @@ or it may be written to and read back in the same click — not both.* `/setting
 that is a writer, so it is the only route on B1's allowlist, and it renders on request every time.
 Every other product route is served from a cache and answers in 50–103ms.
 
-**One free improvement, taken.** Inside the panel's loader, `readPanel()` and the last-run query know
-nothing about each other and were awaited in series — one sequential Supabase round-trip, roughly a
-hundred milliseconds, spent for nothing. They go together now.
+**One free improvement, taken — and it did not do what I predicted.** Inside the panel's loader,
+`readPanel()` and the last-run query know nothing about each other and were awaited in series. I
+expected that to be worth a full Supabase round-trip, roughly 100ms. **Measured on the deployed app:
+455ms → 434ms. About 20ms.**
+
+The change is kept — a sequential await of two independent reads is wrong however little it happens to
+cost — but **the prediction was wrong, and the number is what goes in the record.** The honest reading
+is that these two queries were never this room's problem, and the remaining ~280ms over the cached
+rooms lives somewhere I have not measured. **I have not gone looking for it**, because `/settings` is
+a room the single user of this app opens rarely and deliberately, and a 434ms settings page is not a
+defect worth a phase. If it ever becomes one, that paragraph is the starting point, and it starts by
+saying where the time is *not*.
 
 **B2 remains in report mode for this route, and that is the honest posture:** the 150ms budget
 describes a cached room, and this room cannot be cached without breaking the read-after-write it
