@@ -296,3 +296,109 @@ def test_a_failed_fred_night_does_not_wipe_the_index_levels_it_already_had(db):
     assert as_of == RUN
     # The cells that DID come back are updated normally — this is not a freeze, it is a floor.
     assert vix == 16.10
+
+
+# ── the macro board (N3, Part 6) — the cadence rule, against a real database ──────────────────
+
+def _stat(series_key, as_of, value, prior=None, source="fred", meta=None):
+    import macro_stats as ms
+    from datetime import datetime
+
+    return ms.MacroStatRow(
+        series_key=series_key, as_of_date=as_of, value=value, prior=prior,
+        as_of_label=ms.label_for(series_key, as_of), source_key=source,
+        fetched_at=datetime(2026, 7, 13, 22, 39), meta=meta,
+    )
+
+
+def test_a_macro_stat_checked_again_with_no_new_observation_writes_nothing(db):
+    """
+    THE NO-THRASH RULE, END TO END.
+
+    Tuesday night. The mortgage rate is checked, and Freddie Mac has published nothing since
+    Thursday. The row already in the database is exactly what came back.
+
+    Writing it again would move `fetched_at` to tonight — which is a claim, on the record, that a
+    weekly number was refreshed tonight. It was not. So nothing is written, `fetched_at` still says
+    Thursday, and the cell goes on truthfully saying "wk of Jul 9".
+    """
+    from datetime import date as _date, datetime
+
+    thursday = _stat("mortgage30us", _date(2026, 7, 9), 6.49, prior=6.43)
+    pub.publish_macro_stats(db, rows=[thursday])
+
+    # Tuesday's check: same observation, same value, a later fetch time.
+    import macro_stats as ms
+    tuesday_check = ms.MacroStatRow(
+        **{**thursday.__dict__, "fetched_at": datetime(2026, 7, 14, 22, 39)}
+    )
+    written = pub.publish_macro_stats(db, rows=[tuesday_check])
+
+    assert written == []
+    [(fetched_at,)] = db.execute("SELECT fetched_at FROM macro_stat WHERE series_key = 'mortgage30us'").fetchall()
+    assert fetched_at.day == 13, "an unchanged weekly rate must not be re-stamped with tonight's date"
+
+
+def test_a_new_weeks_rate_lands_beside_the_old_one_rather_than_replacing_it(db):
+    """History accumulates: the key is (series, as-of date), so each week's rate is its own row."""
+    from datetime import date as _date
+
+    pub.publish_macro_stats(db, rows=[_stat("mortgage30us", _date(2026, 7, 9), 6.49)])
+    written = pub.publish_macro_stats(db, rows=[_stat("mortgage30us", _date(2026, 7, 16), 6.55)])
+
+    assert len(written) == 1
+    rows = db.execute(
+        "SELECT as_of_date, value FROM macro_stat WHERE series_key = 'mortgage30us' ORDER BY as_of_date"
+    ).fetchall()
+    assert [(r[0].isoformat(), r[1]) for r in rows] == [("2026-07-09", 6.49), ("2026-07-16", 6.55)]
+
+
+def test_a_revision_under_the_same_date_updates_the_row_in_place(db):
+    """Agencies restate their prints. A changed value under an unchanged date is new information."""
+    from datetime import date as _date
+
+    pub.publish_macro_stats(db, rows=[_stat("cpi_yoy", _date(2026, 5, 1), 4.24867)])
+    written = pub.publish_macro_stats(db, rows=[_stat("cpi_yoy", _date(2026, 5, 1), 4.31002)])
+
+    assert len(written) == 1
+    rows = db.execute("SELECT value FROM macro_stat WHERE series_key = 'cpi_yoy'").fetchall()
+    assert rows == [(4.31002,)]   # one row, revised in place — not two rows disagreeing
+
+
+def test_the_mood_gauge_stores_its_full_component_breakdown(db):
+    """
+    Ruling C8 at the storage layer. The app makes the breakdown a required prop, so a gauge row
+    without one cannot render — which means a row without one is a cell that silently disappears.
+    The breakdown travels with the number, always, from the moment it is written.
+    """
+    from datetime import date as _date
+
+    meta = {
+        "score": 42, "band": "leaning fearful",
+        "components": [
+            {"key": "breadth", "label": "Breadth", "value": 0.61, "window": "% above 50-day",
+             "percentile": 0.55, "contributes": "greedy"},
+        ],
+    }
+    pub.publish_macro_stats(db, rows=[_stat("mood", _date(2026, 7, 9), 42.0, source="computed", meta=meta)])
+
+    [(stored,)] = db.execute("SELECT meta FROM macro_stat WHERE series_key = 'mood'").fetchall()
+    assert stored["band"] == "leaning fearful"
+    assert stored["components"][0]["percentile"] == 0.55
+
+
+def test_the_prior_is_filled_from_what_we_already_hold_when_the_source_gives_none(db):
+    """
+    The rupee and the gauge have no source-supplied prior, so theirs is the observation we last
+    stored. Neither cell renders a delta from it — a delta whose two ends might be days apart,
+    wearing a "1D" label, is exactly the quiet lie this board exists to prevent.
+    """
+    from datetime import date as _date
+
+    pub.publish_macro_stats(db, rows=[_stat("usd_npr", _date(2026, 7, 10), 152.33, source="nrb")])
+    pub.publish_macro_stats(db, rows=[_stat("usd_npr", _date(2026, 7, 13), 152.23, source="nrb")])
+
+    [(prior,)] = db.execute(
+        "SELECT prior FROM macro_stat WHERE series_key = 'usd_npr' AND as_of_date = '2026-07-13'"
+    ).fetchall()
+    assert prior == 152.33

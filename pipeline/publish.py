@@ -29,6 +29,7 @@ import polars as pl
 import psycopg
 from psycopg.types.json import Json
 
+import macro_stats
 from macro_levels import StoredLevels, resolve_index_levels
 
 
@@ -141,6 +142,73 @@ def publish_macro(
     else:
         conn.rollback()
     return bool(updated)
+
+
+def publish_macro_stats(conn: psycopg.Connection, *, rows: Iterable[Any]) -> list[Any]:
+    """
+    Write the macro board's new observations — and only the NEW ones. Returns what was written.
+
+    This is where the cadence rule meets the database (macro_stats.is_new_observation). Every source
+    is checked nightly, but a source that has published nothing new since last night writes nothing:
+    re-writing an unchanged row would move its `fetched_at` to tonight, which is a claim that a
+    weekly mortgage rate was refreshed tonight. It was not, and the whole board is built on never
+    making that claim.
+
+    THE PRIOR, WHEN THE SOURCE DOES NOT GIVE US ONE. FRED hands over the previous observation with
+    the current one, and GoldAPI sends a previous close — for those cells the prior is the source's
+    own. The rupee and the Mood gauge have no such thing, so their prior is filled from the row we
+    already hold. That is honest as a record of "the observation before this one", and it is safe
+    because NEITHER of those two cells renders a delta from it: a delta whose two ends might be days
+    apart, wearing a "1D" label, is exactly the sort of quiet lie this plan exists to prevent.
+    """
+    written: list[Any] = []
+    try:
+        with conn.cursor() as cur:
+            stored = _stored_macro_stats(cur)
+            fresh = macro_stats.new_observations(list(rows), stored)
+
+            for row in fresh:
+                previous = stored.get(row.series_key)
+                columns = row.as_columns()
+                if columns["prior"] is None and previous is not None:
+                    columns["prior"] = previous[1]
+
+                cur.execute(
+                    """
+                    INSERT INTO macro_stat
+                        (series_key, as_of_date, value, prior, as_of_label, source_key, fetched_at, meta)
+                    VALUES
+                        (%(series_key)s, %(as_of_date)s, %(value)s, %(prior)s, %(as_of_label)s,
+                         %(source_key)s, %(fetched_at)s, %(meta)s)
+                    ON CONFLICT (series_key, as_of_date) DO UPDATE SET
+                        value = EXCLUDED.value,
+                        prior = EXCLUDED.prior,
+                        as_of_label = EXCLUDED.as_of_label,
+                        source_key = EXCLUDED.source_key,
+                        fetched_at = EXCLUDED.fetched_at,
+                        meta = EXCLUDED.meta
+                    """,
+                    {**columns, "meta": Json(columns["meta"]) if columns["meta"] is not None else None},
+                )
+                written.append(row)
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        raise
+
+    return written
+
+
+def _stored_macro_stats(cur) -> dict[str, tuple[date, float]]:
+    """The newest stored (as-of date, value) for every series — what the cadence rule compares against."""
+    cur.execute(
+        """
+        SELECT DISTINCT ON (series_key) series_key, as_of_date, value
+        FROM macro_stat
+        ORDER BY series_key, as_of_date DESC
+        """
+    )
+    return {row[0]: (row[1], row[2]) for row in cur.fetchall()}
 
 
 def publish_analytics(

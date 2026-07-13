@@ -8,69 +8,69 @@
   "file_type": "json",
   "order_by": "observation_date",
   "sort_order": "desc",
-  "count": 2610,
+  "count": 795,
   "offset": 0,
   "limit": 10,
   "observations": [
     {
       "realtime_start": "2026-07-10",
       "realtime_end": "2026-07-10",
-      "date": "2026-07-10",
-      "value": "7575.39"
-    },
-    {
-      "realtime_start": "2026-07-10",
-      "realtime_end": "2026-07-10",
       "date": "2026-07-09",
-      "value": "7543.64"
+      "value": "2.70"
     },
     {
       "realtime_start": "2026-07-10",
       "realtime_end": "2026-07-10",
       "date": "2026-07-08",
-      "value": "7482.71"
+      "value": "2.70"
     },
     {
       "realtime_start": "2026-07-10",
       "realtime_end": "2026-07-10",
       "date": "2026-07-07",
-      "value": "7503.85"
+      "value": "2.67"
     },
     {
       "realtime_start": "2026-07-10",
       "realtime_end": "2026-07-10",
       "date": "2026-07-06",
-      "value": "7537.43"
+      "value": "2.72"
     },
     {
       "realtime_start": "2026-07-10",
       "realtime_end": "2026-07-10",
       "date": "2026-07-03",
-      "value": "."
+      "value": "2.74"
     },
     {
       "realtime_start": "2026-07-10",
       "realtime_end": "2026-07-10",
       "date": "2026-07-02",
-      "value": "7483.24"
+      "value": "2.75"
     },
     {
       "realtime_start": "2026-07-10",
       "realtime_end": "2026-07-10",
       "date": "2026-07-01",
-      "value": "7483.23"
+      "value": "2.74"
     },
     {
       "realtime_start": "2026-07-10",
       "realtime_end": "2026-07-10",
       "date": "2026-06-30",
-      "value": "7499.36"
+      "value": "2.75"
     },
     {
       "realtime_start": "2026-07-10",
       "realtime_end": "2026-07-10",
       "date": "2026-06-29",
-      "value": "7440.43"
+      "value": "2.80"
+    },
+    {
+      "realtime_start": "2026-07-10",
+      "realtime_end": "2026-07-10",
+      "date": "2026-06-26",
+      "value": "2.83"
     }
   ]
 }

@@ -18,6 +18,16 @@ from adapters.base import Adapter
 _OBSERVATIONS = "https://api.stlouisfed.org/fred/series/observations"
 _RELEASE_DATES = "https://api.stlouisfed.org/fred/releases/dates"
 
+# How many rows a "latest value" read asks for. More than one, because FRED writes "." on holidays
+# and unpublished days, so the newest ROW is not always the newest VALUE.
+_LATEST_LIMIT = 10
+
+# How many rows a history read asks for — the Mood gauge's trailing distributions (Part 6.5). It is
+# 600 rather than 252 because the tightest component (momentum: the S&P against its own 125-session
+# mean) spends its first 125 rows before producing a single score, and then needs 252 of those
+# scores to have a distribution to sit in. See scripts/record_fred.py for the arithmetic.
+_HISTORY_LIMIT = 600
+
 
 @dataclass(frozen=True)
 class Observation:
@@ -42,7 +52,7 @@ class FredAdapter(Adapter):
     def __init__(self, client, limiter) -> None:
         super().__init__("fred", client, limiter)
 
-    def latest_value(self, series_id: str) -> Observation:
+    def latest_value(self, series_id: str, *, units: str | None = None) -> Observation:
         """
         Return the most recent REAL observation of a series.
 
@@ -50,12 +60,12 @@ class FredAdapter(Adapter):
         not always a number; this asks for the observations newest-first and returns the first one
         that actually has a value. Raises ValueError if the series has no real value at all.
         """
-        for observation in self._real_observations(series_id):
+        for observation in self._real_observations(series_id, units=units):
             return observation
 
         raise ValueError(f"FRED series {series_id} has no real value in the recent window")
 
-    def latest_two(self, series_id: str) -> list[Observation]:
+    def latest_two(self, series_id: str, *, units: str | None = None) -> list[Observation]:
         """
         Return the two most recent REAL observations of a series, newest first.
 
@@ -63,29 +73,57 @@ class FredAdapter(Adapter):
         change can only be stated honestly by subtracting two real closes. Returns fewer than two
         items when the series has fewer than two real values in the recent window — one value still
         renders the level, and the change renders "—" rather than being borrowed from somewhere else.
+
+        The macro board needs both for the same reason, one cadence up: a mortgage rate against LAST
+        WEEK's, a CPI print against LAST MONTH's. The two observations are whatever the series' own
+        cadence makes adjacent — this method does not know or care which.
         """
         observations: list[Observation] = []
-        for observation in self._real_observations(series_id):
+        for observation in self._real_observations(series_id, units=units):
             observations.append(observation)
             if len(observations) == 2:
                 break
         return observations
 
-    def _real_observations(self, series_id: str):
+    def history(
+        self, series_id: str, *, limit: int = _HISTORY_LIMIT, units: str | None = None
+    ) -> list[Observation]:
+        """
+        Return a long run of a series' REAL observations, newest first — the Mood gauge's
+        distributions (Part 6.5).
+
+        The gauge does not score a component by its value; it scores it by where that value SITS in
+        its own trailing year. A VIX of 15.84 is not "calm" in the abstract — it is calm relative to
+        the last 252 sessions of VIX, and a percentile is the only honest way to say so. That means
+        every FRED-sourced component needs its distribution, not just its latest number.
+        """
+        return list(self._real_observations(series_id, units=units, limit=limit))
+
+    def _real_observations(
+        self, series_id: str, *, units: str | None = None, limit: int = _LATEST_LIMIT
+    ):
         """
         Yield a series' observations newest-first, skipping the days FRED marks with a "." (holidays
-        and unpublished releases). Both public readers above are thin wrappers around this.
+        and unpublished releases). Every public reader above is a thin wrapper around this.
+
+        `units` is passed straight through to FRED, and exactly one series uses it: CPI is requested
+        as `pc1` — the year-over-year percent change, COMPUTED BY FRED. That is deliberate and it is
+        an honesty rule, not an optimisation. The moment this pipeline divides one CPI level by
+        another, it owns an inflation number of its own making — one that can disagree with the
+        headline the reader saw on the news, with no way to explain the difference. We store what
+        the source publishes.
         """
-        payload = self.get(
-            _OBSERVATIONS,
-            params={
-                "series_id": series_id,
-                "api_key": os.environ.get("FRED_KEY", ""),
-                "file_type": "json",
-                "sort_order": "desc",
-                "limit": 10,
-            },
-        ).json()
+        params: dict[str, object] = {
+            "series_id": series_id,
+            "api_key": os.environ.get("FRED_KEY", ""),
+            "file_type": "json",
+            "sort_order": "desc",
+            "limit": limit,
+        }
+        if units:
+            params["units"] = units
+
+        payload = self.get(_OBSERVATIONS, params=params).json()
 
         for observation in payload.get("observations", []):
             raw = observation.get("value")

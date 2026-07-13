@@ -310,3 +310,121 @@ def test_a_non_session_night_does_not_flag_the_indexes_degraded():
     nightly.run_nightly(deps)
 
     assert "fred-indexes" not in publish.calls[0]["source_status"]
+
+
+# ── the macro board's stage (N3, Part 6) ─────────────────────────────────────────────────────
+
+
+class RecordingMacroStatsPublish:
+    def __init__(self):
+        self.rows = None
+
+    def __call__(self, conn, *, rows):
+        self.rows = list(rows)
+
+
+def _board_deps(*, mood_history=None, board_rows=(), board_status=None, publish_stats=None):
+    """A night with enough history for the gauge's market components to actually compute.
+
+    THE LENGTH OF THIS HISTORY IS THE TEST, and it took two goes to get right. The range-position
+    component needs a full 252-session window per symbol before it produces its FIRST value, and
+    then 60 of those values before a percentile against them means anything. So a fake night with
+    260 bars yields nine range readings, the component drops out below the history floor, and the
+    gauge quietly computes from four inputs — while a test asserting "a gauge was written" sails
+    through, having proved nothing about the path it was written to cover.
+
+    340 sessions is what it takes for all five components to actually exist, which is what makes
+    this test capable of failing. (Production is never near this line: the night carries five years
+    of bars.)
+    """
+    sessions = 340
+    universe = [{"symbol": s, "name": s, "exchange": "NASDAQ"} for s in ("SPY", "AAA", "BBB")]
+    bars = {
+        "SPY": _history("SPY", [400.0 + i for i in range(sessions)]),
+        "AAA": _history("AAA", [100.0 + i for i in range(sessions)]),
+        "BBB": _history("BBB", [300.0 - i * 0.5 for i in range(sessions)]),
+    }
+
+    history = mood_history if mood_history is not None else nightly.MoodHistory(
+        vix=[15.0 + (i % 10) for i in range(300)],
+        sp500=[4000.0 + i for i in range(300)],
+        credit=[3.0 + (i % 5) * 0.1 for i in range(300)],
+    )
+
+    deps = _deps(universe, bars, served=("SPY",))
+    return nightly.NightlyDeps(
+        **{
+            **deps.__dict__,
+            "read_macro_stats": lambda: nightly.MacroStatsRead(
+                rows=list(board_rows), source_status=dict(board_status or {}),
+            ),
+            "read_mood_history": lambda: history,
+            "publish_macro_stats": publish_stats or RecordingMacroStatsPublish(),
+        }
+    )
+
+
+def test_the_night_computes_the_mood_gauge_and_writes_it_with_its_full_breakdown():
+    """
+    Ruling C8, enforced at the source: the gauge is stored WITH its components, always.
+
+    If this row could ever be written without them, the app's required-prop guard would be the only
+    thing standing between a reader and a naked sentiment number — and a guard at the edge of the
+    system is a guard that eventually gets bypassed by a code path nobody thought about.
+    """
+    publish_stats = RecordingMacroStatsPublish()
+    deps = _board_deps(publish_stats=publish_stats)
+
+    nightly.run_nightly(deps)
+
+    gauge = next(r for r in publish_stats.rows if r.series_key == "mood")
+    assert gauge.source_key == "computed"          # ours. never a provider's name (C8)
+    assert 0 <= gauge.value <= 100
+    assert gauge.meta["components"], "a gauge row without its breakdown must never be written"
+    assert gauge.meta["band"] in {"fearful", "leaning fearful", "mixed", "leaning greedy", "greedy"}
+
+    # All five components, and every one of them carries what C8 requires: what it measured, over
+    # what window, where that sits in its own history, and which way it is pulling.
+    keys = {c["key"] for c in gauge.meta["components"]}
+    assert keys == {"breadth", "volatility", "momentum", "range", "credit"}
+    for component in gauge.meta["components"]:
+        assert component["window"] and component["label"]
+        assert 0.0 <= component["percentile"] <= 1.0
+        assert component["contributes"] in {"greedy", "fearful"}
+
+
+def test_a_gauge_with_too_few_inputs_is_not_written_at_all():
+    """
+    Every FRED series is down. Breadth and range survive (they come from our own bars), so two
+    components remain — below the floor of three, and the gauge suppresses itself.
+
+    Nothing is written. The board renders "insufficient inputs tonight" and names what is missing,
+    which is a true statement, where a two-component average dressed up as a market mood would not be.
+    """
+    publish_stats = RecordingMacroStatsPublish()
+    deps = _board_deps(
+        mood_history=nightly.MoodHistory(vix=[], sp500=[], credit=[]),
+        publish_stats=publish_stats,
+    )
+
+    nightly.run_nightly(deps)
+
+    assert publish_stats.rows is None or not any(r.series_key == "mood" for r in publish_stats.rows)
+
+
+def test_each_degraded_stat_reports_itself_under_its_own_source_key():
+    """
+    One key cannot describe two failures (the N1 lesson, applied per cell).
+
+    A night where gold is unreachable and the rupee is fine must say exactly that — not "macro:
+    degraded", which tells the reader something is broken and nothing about what.
+    """
+    publish = RecordingPublish()
+    deps = _board_deps(board_status={"macro-gold_usd": "degraded", "macro-usd_npr": "ok"})
+    deps = nightly.NightlyDeps(**{**deps.__dict__, "publish": publish})
+
+    nightly.run_nightly(deps)
+
+    status = publish.calls[0]["source_status"]
+    assert status["macro-gold_usd"] == "degraded"
+    assert status["macro-usd_npr"] == "ok"

@@ -68,8 +68,19 @@ def build_snapshot(bars: pl.DataFrame) -> pl.DataFrame:
     for the crossing presets, and the 60-day return skewness is taken over each symbol's last
     `_SKEW_WINDOW` returns. The result is one row per symbol, its latest bar.
     """
-    indicated = build_indicated(bars)
+    return snapshot_from_indicated(build_indicated(bars))
 
+
+def snapshot_from_indicated(indicated: pl.DataFrame) -> pl.DataFrame:
+    """
+    The same reduction, but starting from an ALREADY-INDICATED frame.
+
+    It exists because the indicator pass is the most expensive thing the night does — every symbol,
+    every bar, five years deep — and from N3 the nightly needs that frame TWICE: once for the scans
+    and once for the Mood gauge, whose breadth and range-position components are measured across the
+    whole universe's history. Computing it twice would double the heaviest step of the run to obtain
+    a frame we were already holding.
+    """
     with_prev = indicated.with_columns(
         pl.col("rsi14").shift(1).over("symbol").alias("rsi14_prev"),
         pl.col("sma50").shift(1).over("symbol").alias("sma50_prev"),

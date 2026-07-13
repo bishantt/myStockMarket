@@ -26,16 +26,25 @@ from __future__ import annotations
 
 import hashlib
 from dataclasses import dataclass
-from datetime import date
+from datetime import UTC, date, datetime
 from typing import Any, Callable, Mapping
 
 import polars as pl
 
 import analytics
 import detectors as det
+import macro_stats
+import mood
 from catalysts import classify
 from parquet_store import PRICES, ParquetStore
-from scans import HORIZON_DAYS, UNUSUAL_VOLUME, build_indicated, build_snapshot, run_all
+from scans import (
+    HORIZON_DAYS,
+    UNUSUAL_VOLUME,
+    build_indicated,
+    build_snapshot,
+    run_all,
+    snapshot_from_indicated,
+)
 from storage import R2Store
 from trading_calendar import is_trading_session
 from trading_calendar import sessions_ahead
@@ -122,6 +131,36 @@ class MacroRead:
 
 
 @dataclass(frozen=True)
+class MacroStatsRead:
+    """
+    What one night's macro-board fetch yields: the rows worth storing, and each source's health.
+
+    The rows here are the FOUR EXTERNAL stats only (mortgage, CPI, gold, the rupee). The Mood gauge
+    is not among them and cannot be: it is computed from the night's own universe snapshot, and a
+    run that did not ingest the market has no business restating how the market feels.
+    """
+
+    rows: list[Any]  # list[macro_stats.MacroStatRow]
+    source_status: dict[str, str]
+
+
+@dataclass(frozen=True)
+class MoodHistory:
+    """
+    The three FRED distributions the Mood gauge scores its market-independent components against.
+
+    Each list is OLDEST FIRST — the natural order for series maths — and the newest element is
+    tonight's reading. Empty when the source was unreachable, which costs the gauge that one
+    component rather than the whole gauge (and if enough of them are empty, the gauge suppresses
+    itself and says which are missing).
+    """
+
+    vix: list[float]
+    sp500: list[float]
+    credit: list[float]
+
+
+@dataclass(frozen=True)
 class NightlyDeps:
     """Everything run_nightly needs from the outside world — injected so the flow is fully fakeable."""
 
@@ -144,6 +183,14 @@ class NightlyDeps:
     # Publish the P4 honesty engine (base rates, setup cards, vol bands). Optional: None skips the
     # analytics stage (used by the fast fake-driven tests). Signature mirrors publish_analytics.
     publish_analytics: Callable[..., None] | None = None
+    # The macro board (N3). Each is optional so the fake-driven tests can skip the whole board.
+    #
+    # `read_macro_stats` fetches the four external stats, catching each source on its own so one
+    # dead provider degrades one cell. `read_mood_history` reads the three FRED distributions the
+    # gauge needs. `publish_macro_stats` writes whatever is genuinely new (the cadence rule).
+    read_macro_stats: Callable[[], MacroStatsRead] | None = None
+    read_mood_history: Callable[[], MoodHistory] | None = None
+    publish_macro_stats: Callable[..., None] | None = None
 
 
 @dataclass(frozen=True)
@@ -180,7 +227,11 @@ def run_nightly(deps: NightlyDeps) -> NightlyResult:
     if deps.r2 is not None:
         deps.r2.sync_up(deps.store.root)
 
-    snapshot = build_snapshot(bars)
+    # The indicator pass is the most expensive thing the night does, and from N3 it is needed twice:
+    # once by the scans, and once by the Mood gauge (whose breadth and range-position components are
+    # measured across the whole universe's history). It is computed ONCE and shared.
+    indicated = build_indicated(bars)
+    snapshot = snapshot_from_indicated(indicated)
     scans = run_all(snapshot)
 
     macro = deps.read_macro()
@@ -239,6 +290,19 @@ def run_nightly(deps: NightlyDeps) -> NightlyResult:
             source_status = {**source_status, "briefing": "degraded"}
             print(f"nightly: extraction batch submit failed ({error}); briefing degrades.")
 
+    # The macro board (N3, Part 6). Fetched BEFORE the publish because each stat's health becomes a
+    # source-status key on the run row — and written AFTER it, into its own table, so a slow gold
+    # provider can never delay or endanger the transaction that carries the morning itself.
+    macro_stat_rows: list[Any] = []
+    if deps.read_macro_stats is not None:
+        board = deps.read_macro_stats()
+        macro_stat_rows.extend(board.rows)
+        source_status = {**source_status, **board.source_status}
+
+    gauge_row = _build_mood_row(deps, indicated, breadth)
+    if gauge_row is not None:
+        macro_stat_rows.append(gauge_row)
+
     deps.publish(
         deps.conn,
         run_date=deps.run_date,
@@ -253,6 +317,11 @@ def run_nightly(deps: NightlyDeps) -> NightlyResult:
         calendar_events=calendar_events,
         batch_id=batch_id,
     )
+
+    # The board's rows go in after the morning is safely published. The cadence rule (which of these
+    # are genuinely new) lives inside publish_macro_stats, where the stored rows can be seen.
+    if deps.publish_macro_stats is not None and macro_stat_rows:
+        deps.publish_macro_stats(deps.conn, rows=macro_stat_rows)
 
     # The P4 honesty engine: base rates, setup cards, and vol bands over the served universe's
     # history. Published separately so a heavier compute never risks the core morning's transaction.
@@ -270,6 +339,115 @@ def run_nightly(deps: NightlyDeps) -> NightlyResult:
         served_symbols=served_bars["symbol"].n_unique() if served_bars.height else 0,
         breadth=breadth,
     )
+
+
+def _build_mood_row(deps: NightlyDeps, indicated: pl.DataFrame, breadth: dict) -> Any | None:
+    """
+    Compute tonight's Mood gauge and shape it as a macro_stat row — or return None.
+
+    THE GAUGE IS COMPUTED BY THE FULL NIGHTLY AND BY NOTHING ELSE. Two of its five components
+    (breadth, and where the universe sits in its own 252-day range) can only be measured from a run
+    that actually ingested the market. The 6am macro refresh does not ingest the market — it exists
+    to re-read three numbers FRED published late — so it leaves the gauge alone rather than
+    recomputing a thinner version of it and overwriting a five-component reading with a
+    three-component one. A run that did not look at the market does not get to say how it feels.
+
+    Every component is assembled independently and any of them may come back None: a dead FRED
+    series costs the gauge that one input, not the gauge. If fewer than three survive, `mood.compute`
+    suppresses the score entirely and the board says which inputs are missing.
+    """
+    if deps.read_mood_history is None:
+        return None
+
+    try:
+        history = deps.read_mood_history()
+        components = _mood_components(history, indicated, breadth)
+        gauge = mood.compute(components)
+        if gauge is None:
+            print(
+                f"nightly: mood gauge suppressed — only {len(components)} of 5 components available "
+                f"(needs {mood.MIN_COMPONENTS}). The board will say which are missing."
+            )
+            return None
+
+        return macro_stats.MacroStatRow(
+            series_key=macro_stats.MOOD,
+            as_of_date=deps.run_date,
+            value=float(gauge.score),
+            prior=None,  # filled from the previously stored gauge at publish time
+            as_of_label=macro_stats.label_for(macro_stats.MOOD, deps.run_date),
+            # "computed", never a provider name. This number is ours and the board says so out loud
+            # (ruling C8) — the whole reason it exists is that no honest external source does.
+            source_key="computed",
+            fetched_at=datetime.now(UTC),
+            meta=gauge.as_meta(),
+        )
+    except Exception as error:  # noqa: BLE001 — a broken gauge costs the gauge, never the morning
+        print(f"nightly: the mood gauge failed to compute ({error}); the board renders it absent.")
+        return None
+
+
+def _mood_components(history: MoodHistory, indicated: pl.DataFrame, breadth: dict) -> list[Any]:
+    """
+    The five inputs, each scored as a percentile of its OWN trailing year and each oriented so that
+    higher means greedier (Part 6.5).
+
+    Two of them are inverted, and this is where that happens: a HIGH VIX and a WIDE credit spread
+    are both fear. Everything downstream — the unweighted mean, the band word — depends on all five
+    pointing the same way, and this is the only place that is true by construction rather than by
+    someone remembering.
+    """
+    components: list[Any] = []
+
+    # 1. Breadth — the share of the universe above its own 50-day average.
+    breadth_history = mood.breadth_series(indicated)["value"].to_list()
+    breadth_today = breadth["pct_above_50dma"]
+    percentile = mood.percentile_of(breadth_today, breadth_history)
+    if percentile is not None:
+        components.append(mood.Component(
+            key="breadth", label="Breadth", value=breadth_today,
+            window="% of universe above its 50-day average", percentile=percentile,
+        ))
+
+    # 2. Volatility — the VIX, INVERTED. A high VIX is fear.
+    if history.vix:
+        percentile = mood.percentile_of(history.vix[-1], history.vix, invert=True)
+        if percentile is not None:
+            components.append(mood.Component(
+                key="volatility", label="Volatility (VIX)", value=history.vix[-1],
+                window="last close", percentile=percentile,
+            ))
+
+    # 3. Momentum — the S&P against its own 125-session mean.
+    momentum = mood.momentum_series(history.sp500)
+    if momentum:
+        percentile = mood.percentile_of(momentum[-1], momentum)
+        if percentile is not None:
+            components.append(mood.Component(
+                key="momentum", label="Momentum", value=momentum[-1],
+                window="S&P 500 vs its 125-session mean", percentile=percentile,
+            ))
+
+    # 4. Range position — the share near 252-day highs minus the share near 252-day lows.
+    range_history = mood.range_position_series(indicated)["value"].to_list()
+    if range_history:
+        percentile = mood.percentile_of(range_history[-1], range_history)
+        if percentile is not None:
+            components.append(mood.Component(
+                key="range", label="Range position", value=range_history[-1],
+                window="share near 252-day highs minus share near lows", percentile=percentile,
+            ))
+
+    # 5. Credit stress — high-yield spreads, INVERTED. Wider spreads are fear.
+    if history.credit:
+        percentile = mood.percentile_of(history.credit[-1], history.credit, invert=True)
+        if percentile is not None:
+            components.append(mood.Component(
+                key="credit", label="Credit spreads", value=history.credit[-1],
+                window="ICE BofA US High Yield OAS, last close", percentile=percentile,
+            ))
+
+    return components
 
 
 def _bars_frame(by_symbol: dict[str, list[Any]]) -> pl.DataFrame:

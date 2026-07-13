@@ -15,20 +15,25 @@ from __future__ import annotations
 
 import os
 import sys
-from datetime import date, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 from zoneinfo import ZoneInfo
 
 import httpx
 import psycopg
 
+import macro_stats
 import publish as pub
 from adapters.alpaca import AlpacaAdapter
 from adapters.base import TokenBucket
+from adapters.erapi import ErApiAdapter
 from adapters.fred import FredAdapter
+from adapters.goldapi import GoldApiAdapter
+from adapters.nrb import NrbAdapter
 from briefing.extract import submit_batch
 from catalyst_ingest import build_catalyst_fetcher
 from config import Settings, load_settings
-from nightly import MacroRead, NightlyDeps, run_nightly
+from macro_stats import MacroStatRow
+from nightly import MacroRead, MacroStatsRead, MoodHistory, NightlyDeps, run_nightly
 from parquet_store import ParquetStore
 from storage import R2Store
 from trading_calendar import previous_session
@@ -57,6 +62,12 @@ _TEN_YEAR_SERIES = "DGS10"
 _SP500_SERIES = "SP500"
 _NASDAQ_SERIES = "NASDAQCOM"
 _DJIA_SERIES = "DJIA"
+
+# How far back the rupee's window reaches. NRB publishes every calendar day, so a handful of days
+# always contains a published rate — enough to survive a run that lands just after midnight Nepal
+# time, before that day's rate is posted, without ever reaching so far back that a genuinely dead
+# source could pass as a live one.
+_NRB_WINDOW_DAYS = 5
 
 # Where the Parquet lake lives on the runner before it is synced to R2. Overridable for local runs.
 _PARQUET_ROOT = os.environ.get("MSM_PARQUET_ROOT", "parquet-store")
@@ -155,6 +166,202 @@ def _latest_pair(fred: FredAdapter, series_id: str) -> tuple[float | None, float
     return (level, prior)
 
 
+# ── the macro board (N3, Part 6) ─────────────────────────────────────────────────────────────
+
+
+def _read_macro_stats(settings: Settings, fred: FredAdapter, run_date: date):
+    """
+    Return the reader for the board's four EXTERNAL stats: the mortgage rate, CPI, gold, the rupee.
+
+    Every source is fetched inside its own try/except, and that is the whole architecture of this
+    function. A dead GoldAPI costs the gold cell and nothing else — it does not cost the rupee, it
+    does not cost the morning, and it does not fail the night. Each failure writes its own key into
+    the source status ("macro-gold_usd"), because one key cannot describe two different failures —
+    the lesson N1 learned when a single `fred: ok` had to stand for both a healthy VIX read and
+    three missing index levels.
+
+    The Mood gauge is deliberately not here: it is computed from the night's own universe snapshot
+    (see nightly._build_mood_row), not fetched.
+    """
+
+    def read() -> MacroStatsRead:
+        rows: list[MacroStatRow] = []
+        status: dict[str, str] = {}
+        fetched_at = datetime.now(UTC)
+
+        def attempt(series_key: str, fetch) -> None:
+            """Run one source's fetch; a failure degrades that one cell and says so."""
+            try:
+                row = fetch()
+            except Exception as error:  # noqa: BLE001 — one dead source is one degraded cell
+                status[macro_stats.source_status_key(series_key)] = "degraded"
+                print(
+                    f"job_a: macro stat {series_key} unavailable ({error}); the cell keeps its last "
+                    f"stored value and says the source was unreachable tonight."
+                )
+                return
+            status[macro_stats.source_status_key(series_key)] = "ok"
+            rows.append(row)
+
+        attempt(macro_stats.MORTGAGE, lambda: _fred_stat(
+            fred, macro_stats.MORTGAGE, macro_stats.MORTGAGE_SERIES, fetched_at,
+        ))
+        attempt(macro_stats.CPI_YOY, lambda: _fred_stat(
+            fred, macro_stats.CPI_YOY, macro_stats.CPI_SERIES, fetched_at, units=macro_stats.CPI_UNITS,
+        ))
+        attempt(macro_stats.GOLD, lambda: _gold_stat(settings, fetched_at))
+        attempt(macro_stats.USD_NPR, lambda: _npr_stat(run_date, fetched_at))
+
+        return MacroStatsRead(rows=rows, source_status=status)
+
+    return read
+
+
+def _fred_stat(
+    fred: FredAdapter, series_key: str, series_id: str, fetched_at: datetime, *, units: str | None = None
+) -> MacroStatRow:
+    """One FRED-sourced board cell: the latest observation, and the one before it for the delta.
+
+    The as-of date is the SOURCE's observation date — a Thursday for the mortgage rate, the first of
+    the month for CPI — never tonight. That single choice is what lets the board show a weekly number
+    without ever implying it was refreshed nightly.
+    """
+    observations = fred.latest_two(series_id, units=units)
+    if not observations:
+        raise ValueError(f"FRED series {series_id} has no real observation")
+
+    latest = observations[0]
+    prior = observations[1].value if len(observations) > 1 else None
+
+    return MacroStatRow(
+        series_key=series_key,
+        as_of_date=latest.date,
+        value=latest.value,
+        prior=prior,
+        as_of_label=macro_stats.label_for(series_key, latest.date),
+        source_key="fred",
+        fetched_at=fetched_at,
+    )
+
+
+def _gold_stat(settings: Settings, fetched_at: datetime) -> MacroStatRow:
+    """
+    Gold's spot reference — and the one cell whose key does not exist yet (provisioning row P-5).
+
+    A missing key raises here, exactly like a network failure would, and the difference is recorded
+    in the message rather than in the behaviour: either way the cell has no value tonight. What the
+    reader sees is decided by what is STORED, not by why the fetch failed — a cell with history shows
+    it with an age note (rung 3), and a cell with no history at all says "not yet reported" (rung 4),
+    which is what gold honestly says in production today.
+    """
+    if not settings.goldapi_key:
+        raise ValueError(
+            "GOLDAPI_KEY is not set (provisioning row P-5) — gold has no source until it lands"
+        )
+
+    adapter = GoldApiAdapter(
+        httpx.Client(timeout=30),
+        TokenBucket(rate_per_sec=1.0, capacity=1.0),
+        api_key=settings.goldapi_key,
+    )
+    quote = adapter.spot()
+
+    return MacroStatRow(
+        series_key=macro_stats.GOLD,
+        as_of_date=quote.date,
+        value=quote.price,
+        prior=quote.prior,
+        as_of_label=macro_stats.label_for(macro_stats.GOLD, quote.date),
+        source_key=quote.source_key,
+        fetched_at=fetched_at,
+    )
+
+
+def _npr_stat(run_date: date, fetched_at: datetime) -> MacroStatRow:
+    """
+    The rupee — Nepal Rastra Bank's official reference rate, with a mid-market fallback.
+
+    The two sources measure DIFFERENT THINGS: NRB publishes the central bank's official reference,
+    open.er-api publishes a market mid-rate. So the fallback is not a silent substitution — the row
+    records WHICH source answered (`source_key`), and the board's label follows that key
+    mechanically (ruling C6). The reader is never shown a mid-market rate under the central bank's
+    name, and the attribution the fallback's licence requires renders only when the fallback is the
+    one showing.
+
+    The cell carries the pair (buy AND sell) rather than picking a side, because picking one
+    silently answers a question the reader never asked. The mid-market fallback has no sides, and
+    the cell says so by simply not printing them.
+    """
+    limiter = TokenBucket(rate_per_sec=1.0, capacity=1.0)
+
+    try:
+        # A short window ending today. NRB publishes every calendar day (weekends repeat the fix set
+        # on the preceding business afternoon), so a few days back always contains a published rate.
+        nrb = NrbAdapter(httpx.Client(timeout=30), limiter)
+        rate = nrb.latest_rate("USD", run_date - timedelta(days=_NRB_WINDOW_DAYS), run_date)
+        return MacroStatRow(
+            series_key=macro_stats.USD_NPR,
+            as_of_date=rate.date,
+            # `value` carries the BUY side so that any single-number consumer has a defined answer,
+            # while the cell itself renders the pair from meta.
+            value=rate.buy,
+            prior=None,
+            as_of_label=macro_stats.label_for(macro_stats.USD_NPR, rate.date),
+            source_key=rate.source_key,
+            fetched_at=fetched_at,
+            meta={"buy": rate.buy, "sell": rate.sell},
+        )
+    except Exception as error:  # noqa: BLE001 — NRB down means we try the fallback, not that we give up
+        print(f"job_a: NRB unreachable ({error}); falling back to the mid-market reference.")
+
+    erapi = ErApiAdapter(httpx.Client(timeout=30), limiter)
+    quote = erapi.latest("NPR")
+    return MacroStatRow(
+        series_key=macro_stats.USD_NPR,
+        as_of_date=quote.date,
+        value=quote.rate,
+        prior=None,
+        as_of_label=macro_stats.label_for(macro_stats.USD_NPR, quote.date),
+        source_key=quote.source_key,
+        fetched_at=fetched_at,
+        # No buy/sell: a mid-market rate HAS no sides, and inventing a spread around it to keep the
+        # cell's shape consistent would be fabricating the very number the reader came to check.
+        meta=None,
+    )
+
+
+def _read_mood_history(fred: FredAdapter):
+    """
+    Return the reader for the three FRED distributions the Mood gauge scores against.
+
+    The gauge does not ask "is the VIX high?" — it asks "where does tonight's VIX sit in its own
+    trailing year?", which is the only form of that question with an honest answer. So each series
+    arrives as a distribution, oldest first, and a series that fails comes back empty: the gauge
+    loses that one component and, if too many are lost, suppresses itself and names what is missing.
+    """
+
+    def read() -> MoodHistory:
+        return MoodHistory(
+            vix=_series_history(fred, _VIX_SERIES),
+            sp500=_series_history(fred, _SP500_SERIES),
+            credit=_series_history(fred, macro_stats.CREDIT_SPREAD_SERIES),
+        )
+
+    return read
+
+
+def _series_history(fred: FredAdapter, series_id: str) -> list[float]:
+    """One FRED series' recent history, OLDEST FIRST. An unreachable series costs its own component."""
+    try:
+        observations = fred.history(series_id)
+    except Exception as error:  # noqa: BLE001 — one dead series is one missing gauge component
+        print(f"job_a: FRED {series_id} history unavailable ({error}); that mood component drops out.")
+        return []
+
+    # FRED answers newest-first; series maths wants oldest-first.
+    return [observation.value for observation in reversed(observations)]
+
+
 def _build_submit_extraction(settings: Settings):
     """Return a callable that submits the night's news as an extraction batch, or None if no
     Anthropic key is configured (the briefing simply degrades — the data still publishes).
@@ -220,7 +427,7 @@ def parse_mode(argv: list[str]) -> str:
 
 
 def run_macro_mode(settings: Settings) -> None:
-    """The dawn run: re-read FRED and update the last session's index levels. Nothing else.
+    """The dawn run: re-read FRED, fix the last session's index levels, refresh the board. Nothing else.
 
     FRED posts the index closes after both nightly jobs have run (the Nasdaq Composite lands around
     11:38pm ET, against Job A at 6:37pm), so the levels the night stored are structurally one session
@@ -229,25 +436,45 @@ def run_macro_mode(settings: Settings) -> None:
 
     It updates the PREVIOUS session, not today: at 6am the market has not opened, so the close being
     fetched belongs to the session before this one.
+
+    N3 ADDS THE BOARD'S FOUR EXTERNAL STATS — AND DELIBERATELY NOT THE MOOD GAUGE.
+
+    The four external cells are exactly the kind of thing this run exists for: they are published by
+    other people, on other people's schedules, and several of them land after the night has finished.
+    Re-reading them at dawn is what makes the board current by the time anyone looks at it.
+
+    The gauge is different in kind. Two of its five components — breadth, and where the universe sits
+    in its own 252-day range — can only be measured by a run that actually ingested the market, and
+    this run does not. Recomputing it here would either produce a thinner three-component gauge and
+    overwrite the night's five-component one, or silently reuse yesterday's market shape under
+    today's date. Both are worse than leaving it alone. A run that did not look at the market does
+    not get to say how the market feels — the same principle that stops this function creating a
+    breadth-less market_context row.
     """
     fred = _fred(settings)
     session = previous_session(datetime.now(_MARKET_TZ).date())
     macro = _read_macro(fred)()
 
+    board = _read_macro_stats(settings, fred, session)()
+
     with psycopg.connect(settings.database_url_psycopg) as conn:
         updated = pub.publish_macro(conn, run_date=session, macro=macro.as_columns())
+        # The board's rows are keyed by the SOURCE's own observation date, not by a run date, so they
+        # are written whether or not a market_context row exists for this session. A mortgage rate
+        # published on Thursday is a fact about Thursday; it does not need the market to have opened.
+        written = pub.publish_macro_stats(conn, rows=board.rows)
 
     if not updated:
         # No nightly has written this session yet. There is nothing to correct, and we will NOT
         # create a row: market_context's breadth is NOT NULL because a night that ingested the market
         # always knows how many names advanced, and a macro-only run does not.
-        print(f"job_a[macro]: no market_context row for {session.isoformat()} yet — nothing to update.")
-        return
+        print(f"job_a[macro]: no market_context row for {session.isoformat()} yet — index levels not updated.")
 
     _revalidate_desk(settings)
     levels = "complete" if macro.has_every_index_level() else "PARTIAL — some index series did not answer"
     print(
-        f"job_a[macro]: {session.isoformat()} index levels refreshed ({levels}); "
+        f"job_a[macro]: {session.isoformat()} index levels {levels}; "
+        f"board wrote {len(written)} new observation(s) of {len(board.rows)} fetched; "
         f"vix={macro.vix} ten_year={macro.ten_year} sp500={macro.sp500}."
     )
 
@@ -285,6 +512,9 @@ def main() -> None:
             fetch_catalysts=build_catalyst_fetcher(settings, run_date),
             submit_extraction=_build_submit_extraction(settings),
             publish_analytics=pub.publish_analytics,
+            read_macro_stats=_read_macro_stats(settings, fred, run_date),
+            read_mood_history=_read_mood_history(fred),
+            publish_macro_stats=pub.publish_macro_stats,
         )
         result = run_nightly(deps)
 

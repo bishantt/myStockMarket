@@ -69,6 +69,9 @@ class Settings(BaseSettings):
     marketaux_key: str | None = None
     fred_key: str | None = None
     edgar_user_agent: str | None = None
+    # The macro board's gold cell (provisioning row P-5). Absent today, and the board says so on
+    # screen — the cell renders "not yet reported" rather than a number nobody checked.
+    goldapi_key: str | None = None
 
     # LLM briefing. Models are pinned with defaults; reconfirm pricing at build time (plan §2.1).
     anthropic_api_key: str | None = None
