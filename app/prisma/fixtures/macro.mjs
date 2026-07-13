@@ -38,6 +38,14 @@ const FETCHED_AT = new Date("2026-07-09T22:39:00.000Z");
  * The score is the unweighted mean of the percentiles: (0.55 + 0.38 + 0.48 + 0.35 + 0.34) / 5
  * = 0.42 → 42, which falls in the 25–44 band, "leaning fearful". The arithmetic is stated here so
  * the pipeline's own computation (N3) can be checked against a number a human worked out.
+ *
+ * CORRECTED IN N3, AND THE CORRECTION IS THE POINT. `contributes` was written here by hand, and one
+ * of them was already wrong: momentum sat at the 48th percentile — BELOW its own median, so pulling
+ * the gauge downward — and was labelled "greedy". Nothing broke, because nothing was checking.
+ *
+ * The arrow is now DERIVED from the percentile in both the pipeline and the app, so the two cannot
+ * disagree. The values below are kept in step with that rule and a fixture test asserts it, which is
+ * the guard that would have caught the drift the day it was written.
  */
 const MOOD_COMPONENTS = [
   {
@@ -64,7 +72,12 @@ const MOOD_COMPONENTS = [
     value: 0.021,
     window: "S&P 500 vs its 125-session mean",
     percentile: 0.48,
-    contributes: "greedy",
+    // 0.48 is BELOW the 50th percentile — below momentum's own median — so this component is pulling
+    // the gauge DOWN, not up. It read "greedy" until N3. (The raw value is positive, which is
+    // presumably where the mistake came from: the index does sit above its 125-day mean. But the
+    // gauge does not ask "is momentum positive?" — it asks "is it strong FOR THIS MARKET, against
+    // its own year?" — and the answer to that is no.)
+    contributes: "fearful",
   },
   {
     key: "range",

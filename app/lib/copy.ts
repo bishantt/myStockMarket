@@ -88,6 +88,15 @@ export const copy = {
     asOf: "as of {date}",
     atClose: "at {day}'s close",
     vsPriorClose: "vs prior close",
+    /**
+     * Added in N3, on purpose and in a diff — which is what the closed set is FOR.
+     *
+     * The macro board states a mortgage rate's change against LAST WEEK'S survey, and there was no
+     * honest way to say that with the tokens that existed. "5D" would have been a lie of precision:
+     * Freddie Mac publishes a weekly survey, not five trading days of quotes, and a reader learning
+     * what these words mean deserves the one that is true.
+     */
+    vsPriorWeek: "vs prior week",
   },
 
   /**
@@ -125,6 +134,76 @@ export const copy = {
     indexesUnavailable: "Index levels unavailable tonight — showing ETF closes, labeled per row",
     /** Breadth gains its as-of, like every other number (C2). */
     breadthClose: "at {day}'s close",
+  },
+
+  /**
+   * THE MACRO BOARD (NEWS-AND-CONTROL-PLAN Part 6, Appendix B).
+   *
+   * Five household stats that answer what a market number cannot: what does a mortgage cost, what
+   * did prices do, what is gold worth, what is a dollar worth in rupees — and how does the market
+   * feel. The first four are other people's numbers, and the strings below name whose. The fifth is
+   * OURS, and the strings below say so out loud, because that is the only thing that makes it
+   * legitimate to show at all.
+   */
+  macroBoard: {
+    mortgageLabel: "30-yr mortgage",
+    mortgageNote: "Average rate on a 30-year fixed mortgage — the price of housing money.",
+    cpiLabel: "Inflation (CPI YoY)",
+    cpiNote: "Consumer prices vs the same month last year, as published.",
+    goldLabel: "Gold (oz)",
+    /**
+     * "Indicative spot reference" — and NEVER "LBMA price", never "COMEX settlement". Those are
+     * licensed benchmarks with precise meanings that this app has not bought and cannot verify.
+     * Borrowing their authority for a different number is the exact species of lie C6 exists to stop.
+     */
+    goldProvenance: "indicative spot reference · GoldAPI",
+    nprLabel: "USD → NPR",
+    /** The pair, never one side: picking a side silently answers a question the reader never asked. */
+    nprPair: "{buy} buy · {sell} sell",
+    /**
+     * Mandatory. We quote no remittance app — none exposes a legitimate rate API — so rather than
+     * inventing one, the cell says plainly that the number it shows is not the number you will get.
+     */
+    nprQualifier: "Remittance apps may differ.",
+    nprSourceNrb: "NRB reference",
+    nprSourceMid: "mid-market reference",
+    nprWeekendNote: "weekends carry Friday's fix",
+    /** A licence condition of the fallback source, rendered as a link whenever it is the one showing. */
+    erApiAttribution: "Rates By Exchange Rate API",
+
+    moodLabel: "Mood gauge",
+    /**
+     * Ruling C8's sentence. The gauge is ours because no legitimate external one exists to license,
+     * and a home-built sentiment number that does not say it is home-built is just a rumour with a
+     * decimal point.
+     */
+    moodOwnership:
+      "Computed by this app from breadth, volatility, momentum, range position, and credit spreads — not CNN's index.",
+    /** It is not a signal, and nothing in this app has ever measured what a 42 is followed by. */
+    moodContext: "Context, not a signal — no tendency evidence attaches to this number.",
+    /** Under three components there is no gauge — and the reader is told which instruments are down. */
+    moodInsufficient: "Insufficient inputs tonight — missing: {names}.",
+
+    /** C7 rung 4: no history at all. Information, not an apology. */
+    notYetReported: "not yet reported",
+    /** C7 rung 3: the value stands, and its age is stated rather than quietly worn. */
+    sourceUnreachable: "source unreachable tonight",
+    /** C7 rung 5: old enough that the number now misleads more than it informs. The amber cell. */
+    staleCell: "stale — last {asOf}",
+  },
+
+  /**
+   * The Mood gauge's word bands. Deliberately FLAT — there is no "extreme" band here.
+   *
+   * "Extreme greed" is a phrase that manufactures urgency, and urgency is the one thing this
+   * product refuses to sell. The words describe; they do not exhort.
+   */
+  moodBands: {
+    f0: "fearful",
+    f25: "leaning fearful",
+    mid: "mixed",
+    g56: "leaning greedy",
+    g76: "greedy",
   },
 
   desk: {
@@ -326,6 +405,22 @@ export const copy = {
   pulse: {
     /** M8, for the shelf: the reader is told what is off-screen and how to reach it. */
     swipe: "5 figures — swipe",
+    /**
+     * The module's TWO labelled shelves on a phone, and the split between them is the point.
+     *
+     * The first is the market's tape. The second is the reader's own life — what a mortgage costs,
+     * what their money buys, what the rupee is doing — plus the one number that is ours. They are
+     * different kinds of fact and they get different shelves, so that neither has to pretend to be
+     * the other.
+     *
+     * WHY THESE CARRY A COUNT WHEN THE PLAN'S OWN STRINGS DID NOT. Appendix B specified "Markets —
+     * swipe" and "Money & mood — swipe", and shipping those verbatim broke ruling M8: a shelf that
+     * hides an unstated number of things is a shelf that can hide anything. The honesty rule outranks
+     * the plan's copy (the authority order says so explicitly), so the count stays and the plan's
+     * naming is kept around it. The existing M8 test caught this within a minute of the change.
+     */
+    marketsShelf: "Markets — {n} figures, swipe",
+    moneyShelf: "Money & mood — {n} figures, swipe",
   },
 
   journal: {

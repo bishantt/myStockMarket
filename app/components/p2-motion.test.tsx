@@ -7,6 +7,8 @@ import type { SetupCardView } from "@/components/desk/SetupCards";
 import type { BaseRateData } from "@/lib/baserate";
 import { DataTable } from "@/components/DataTable";
 import { Disclosure } from "@/components/Disclosure";
+import { MoodGauge } from "@/components/desk/MoodGauge";
+import type { MoodComponent } from "@/lib/macro-board";
 import type { Column } from "@/lib/table";
 
 /**
@@ -223,5 +225,46 @@ describe("the kit does not move the numbers it carries", () => {
     );
     const offenders = movingAncestorsOf(container.querySelector("[data-p2]")!);
     expect(offenders, "a fade over a data-p2 subtree must be caught").not.toHaveLength(0);
+  });
+});
+
+/**
+ * The Mood gauge (N3) joins the walk.
+ *
+ * The gauge is not a probability and it is not money, so it did not have to carry `data-p2` — and
+ * that is exactly why it does. A sentiment reading that eased into place, or slid in behind a
+ * shelf's transform, would be a sentiment reading that ARRIVES: it would imply that something is
+ * happening right now, that the market's mood has just moved, and that a reader might be late for
+ * it. That feeling is the single thing this entire product is built not to manufacture — and the
+ * gauge, of all the numbers on the Desk, is the one most likely to be misread as a signal despite
+ * the two lines under it saying it is not.
+ *
+ * So it opts IN to the strictest rule the app has, and the ancestor walk now protects it too.
+ */
+describe("the Mood gauge never moves either (P2, extended in N3)", () => {
+  const COMPONENTS: [MoodComponent, ...MoodComponent[]] = [
+    { key: "breadth", label: "Breadth", value: "0.61", window: "% above the 50-day average", percentile: "55%", contributes: "greedy" },
+    { key: "volatility", label: "Volatility (VIX)", value: "15.84", window: "last close", percentile: "38%", contributes: "fearful" },
+    { key: "credit", label: "Credit spreads", value: "3.12", window: "HY OAS, last close", percentile: "34%", contributes: "fearful" },
+  ];
+
+  it("renders the score inside a data-p2 subtree with nothing moving above it", () => {
+    const { container } = render(
+      <MoodGauge score={42} band="leaning fearful" components={COMPONENTS} />,
+    );
+
+    const gauge = container.querySelector("[data-p2]");
+    expect(gauge, "the gauge's figure must be a P2 node").not.toBeNull();
+    expect(movingAncestorsOf(gauge!)).toHaveLength(0);
+  });
+
+  it("throws rather than render a score without its breakdown (C8, the runtime half)", () => {
+    // The TYPE already forbids this — `components` is a non-empty tuple, so a bare gauge does not
+    // compile. The throw is for the boundary the type cannot see: a row arriving from the database,
+    // an `any` out of a JSON parse, a future caller in plain JavaScript. C8 is a promise to the
+    // reader, not to the compiler, so it is kept in both places.
+    const empty = [] as unknown as [MoodComponent, ...MoodComponent[]];
+
+    expect(() => render(<MoodGauge score={42} band="mixed" components={empty} />)).toThrow(/C8/);
   });
 });

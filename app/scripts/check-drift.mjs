@@ -48,6 +48,14 @@ const ALERT_ALLOWED = [
   // which is precisely what the reserved amber is reserved FOR. It is a sanctioned addition to
   // P11's consumer list, not a loophole: the list stays short and every entry is argued.
   "components/desk/PipelineStrip.tsx",
+  // Added in N3 (Part 6.4 rung 5, logged as a structural amendment). The macro board's STALE cell:
+  // a household number three full cadences past its last publication has stopped being information
+  // and started being furniture, and the reader is entitled to be told so in the app's alert voice.
+  //
+  // Note what does NOT earn amber here, and the line is deliberate: "not yet reported" (an
+  // unprovisioned key) and "source unreachable tonight" (one failed fetch) both render quiet. An app
+  // that shouts about a missing API key has nothing left to say on the night its numbers are wrong.
+  "components/desk/MacroBoard.tsx",
   "app/styleguide/page.tsx",
 ];
 

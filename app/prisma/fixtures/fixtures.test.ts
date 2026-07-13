@@ -416,4 +416,33 @@ describe("the seeded macro board", () => {
     expect(meta.score).toBe(42);
     expect(meta.band).toBe("leaning fearful"); // 25–44
   });
+
+  /**
+   * THE GUARD THAT WOULD HAVE CAUGHT N0's DRIFT ON THE DAY IT WAS WRITTEN.
+   *
+   * Each component shows an arrow: which way it is pulling the score. Neutral is a component sitting
+   * at its OWN median, so above the 50th percentile it pulls toward greed and below it toward fear.
+   *
+   * This fixture shipped in N0 with momentum at the 48th percentile — below its own median — carrying
+   * the arrow "greedy". Nothing broke. Nothing was checking. It is exactly the shape of failure this
+   * build keeps finding: a label that is free to disagree with the data beneath it, and eventually
+   * does.
+   *
+   * Both the pipeline and the app now DERIVE the arrow from the percentile, so the two can never
+   * disagree at runtime. This test holds the seed to the same rule, so the stored data cannot quietly
+   * carry a contradiction that the renderers are silently correcting.
+   */
+  it("every component's arrow agrees with its own percentile (the N0 drift, now guarded)", () => {
+    const mood = stats.find((s) => s.seriesKey === "mood")!;
+    const meta = mood.meta as {
+      components: { key: string; percentile: number; contributes: string }[];
+    };
+
+    for (const c of meta.components) {
+      const expected = c.percentile >= 0.5 ? "greedy" : "fearful";
+      expect(c.contributes, `${c.key} sits at the ${Math.round(c.percentile * 100)}th percentile`).toBe(
+        expected,
+      );
+    }
+  });
 });

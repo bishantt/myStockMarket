@@ -4,7 +4,9 @@ import { StatFigure } from "@/components/StatFigure";
 import { Shelf, ShelfItem } from "@/components/Shelf";
 import { Surface } from "@/components/Surface";
 import { Tag } from "@/components/Tag";
-import { copy } from "@/lib/copy";
+import { MacroBoard } from "@/components/desk/MacroBoard";
+import { copy, fill } from "@/lib/copy";
+import type { MacroBoard as MacroBoardData } from "@/lib/macro-board";
 import type { IndexQuote } from "@/lib/morning";
 
 /**
@@ -37,6 +39,13 @@ type MacroPulseProps = {
   tenYear: string;
   /** The provenance line, composed by buildMacro from the rows actually rendered (ruling C6). */
   provenance: string;
+  /**
+   * The macro board (N3): the five household stats.
+   *
+   * Null only when the database has no macro_stat rows at all — a brand-new install, before the
+   * first nightly. Once any stat exists the board renders, and any cell without one says so itself.
+   */
+  board?: MacroBoardData | null;
 };
 
 /**
@@ -81,7 +90,16 @@ function IndexSlot({ quote, scale }: { quote: IndexQuote; scale: "hero" | "body"
   );
 }
 
-export function MacroPulse({ asOf, spx, indices, breadth, vix, tenYear, provenance }: MacroPulseProps) {
+export function MacroPulse({
+  asOf,
+  spx,
+  indices,
+  breadth,
+  vix,
+  tenYear,
+  provenance,
+  board = null,
+}: MacroPulseProps) {
   return (
     <section aria-label="Macro pulse">
       <SectionMasthead index={1} title="Macro pulse" asOf={asOf} />
@@ -105,7 +123,11 @@ export function MacroPulse({ asOf, spx, indices, breadth, vix, tenYear, provenan
          * redundant with the number above them.
          */}
         <div className="md:hidden">
-          <Shelf label="Macro figures" countLine={copy.pulse.swipe}>
+          {/* M8: the count is not decoration. A shelf that hides an unstated number can hide anything. */}
+          <Shelf
+            label="Macro figures"
+            countLine={fill(copy.pulse.marketsShelf, { n: indices.length + 2 })}
+          >
             <ShelfItem className="w-[150px]">
               <Surface className="h-full p-3">
                 <StatFigure label="VIX" value={vix} scale="body" />
@@ -185,6 +207,16 @@ export function MacroPulse({ asOf, spx, indices, breadth, vix, tenYear, provenan
             <span className="pl-1 text-muted"> · {breadth.asOf}</span>
           </span>
         </div>
+
+        {/*
+         * THE MACRO BOARD (N3) — and it sits LAST on purpose.
+         *
+         * Everything above it is the market's own tape: the index levels, the risk gauges, the one
+         * line that generalises over the whole market. This board is a different subject — what the
+         * reader's own money is doing, and how the tape FEELS — and putting it after breadth means
+         * the module reads as two thoughts in order rather than one long list of unrelated numbers.
+         */}
+        {board ? <MacroBoard board={board} /> : null}
       </div>
     </section>
   );

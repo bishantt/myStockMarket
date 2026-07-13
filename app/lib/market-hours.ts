@@ -184,3 +184,27 @@ export function nextTradingDay(date: TradingDate): TradingDate {
   for (let i = 0; i < 10 && !isTradingDay(cursor); i += 1) cursor = shiftDate(cursor, 1);
   return cursor;
 }
+
+/**
+ * How many SESSIONS fall strictly after `from`, up to and including `to`.
+ *
+ * This is the app's one answer to "how old is this?", and counting in sessions rather than days is
+ * the whole reason it exists. A weekend is not staleness. A holiday is not staleness. A gold price
+ * from Friday, read on Monday, is three calendar days old and ZERO sessions old — the market simply
+ * was not open, and there is no newer price to have. A lamp that goes amber every Monday morning is
+ * a lamp nobody reads by Tuesday, and then it is not there on the night it actually matters.
+ *
+ * It lived privately inside freshness.ts until N3, when the macro board's stale-cell rule needed the
+ * identical judgement. Two copies of "what counts as old" is one copy too many.
+ */
+export function sessionsBetween(from: TradingDate, to: TradingDate): number {
+  let count = 0;
+  let cursor = nextTradingDay(from);
+  // Bounded so a corrupt date can never hang a page render. Anything past this is emphatically old
+  // already, and every surface says the same thing at 60 missed sessions as it does at 600.
+  while (cursor <= to && count < 500) {
+    count += 1;
+    cursor = nextTradingDay(cursor);
+  }
+  return count;
+}

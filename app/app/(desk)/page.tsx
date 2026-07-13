@@ -160,7 +160,7 @@ export default async function DeskPage() {
         {/* 01 — Macro pulse. The hero, and the only module that spans the spread. */}
         {asOf && morning.macro ? (
           <Surface className="p-5 lg:col-span-2 desk:p-6">
-            <MacroPulse asOf={asOf} {...morning.macro} />
+            <MacroPulse asOf={asOf} {...morning.macro} board={morning.macroBoard} />
           </Surface>
         ) : (
           <Placeholder

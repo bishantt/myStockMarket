@@ -258,6 +258,10 @@ describe("C2 — the window vocabulary", () => {
         "monthOf",
         "rsi14",
         "vsPriorClose",
+        // N3. The macro board's mortgage cell states its change against last week's SURVEY, and no
+        // existing token said that truthfully — "5D" would have implied five trading days of quotes
+        // where Freddie Mac publishes one weekly number.
+        "vsPriorWeek",
         "weekOf",
         "y1",
         "y5",

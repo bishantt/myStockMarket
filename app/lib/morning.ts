@@ -5,6 +5,11 @@ import { directionOf, multiple, percent, price, signedPercent } from "@/lib/form
 import { formatUtcDate } from "@/lib/time";
 import { buildBrief, parseBriefDraft, type BriefView } from "@/lib/briefing";
 import { isKnownLesson } from "@/lib/academy";
+import {
+  buildMacroBoard,
+  type MacroBoard as MacroBoardData,
+  type MacroStatRow,
+} from "@/lib/macro-board";
 import { patternCause, patternLabel, patternLessonSlug } from "@/lib/patterns";
 import { weakenersFor } from "@/lib/weakeners";
 import type { SetupCardView } from "@/components/desk/SetupCards";
@@ -520,6 +525,12 @@ export function buildWatchlist(sources: WatchSource[]): WatchRow[] {
 export type Morning = {
   asOf: string | null;
   macro: MacroView | null;
+  /**
+   * The macro board — the five household stats (N3). Null when no stat has ever been stored, which
+   * is a brand-new database rather than a broken one. Once ANY stat exists the board renders, and
+   * every cell without a row of its own says "not yet reported" in its own words.
+   */
+  macroBoard: MacroBoardData | null;
   /** The evening briefing view-model, or null when no briefing is recorded yet (the Desk shows the
    * placeholder). A "held" brief is a non-null view with status "held" — the module shows the
    * "briefing unavailable" line, not the placeholder. */
@@ -604,20 +615,23 @@ function closesBy(rows: Array<{ symbol: string; close: number }>): Record<string
  */
 export async function getMorning(): Promise<Morning> {
   const asOf = await latestAsOf();
-  const [macro, brief, setupCards, movers, watch, calendar, sources, scans, journalSavedToday] = await Promise.all([
-    loadMacro(),
-    loadBrief(),
-    loadSetupCards(),
-    loadMovers(),
-    loadWatchlist(),
-    loadCalendar(),
-    loadSourceStatus(),
-    loadScanCount(),
-    loadJournalCount(),
-  ]);
+  const [macro, macroBoard, brief, setupCards, movers, watch, calendar, sources, scans, journalSavedToday] =
+    await Promise.all([
+      loadMacro(),
+      loadMacroBoard(),
+      loadBrief(),
+      loadSetupCards(),
+      loadMovers(),
+      loadWatchlist(),
+      loadCalendar(),
+      loadSourceStatus(),
+      loadScanCount(),
+      loadJournalCount(),
+    ]);
   return {
     asOf: asOf ? asOf.toISOString() : null,
     macro,
+    macroBoard,
     brief,
     setupCards,
     movers,
@@ -781,6 +795,55 @@ async function latestAsOf(): Promise<Date | null> {
     return run ? (run.finishedAt ?? run.runDate) : null;
   } catch (error) {
     console.error("getMorning: could not read the latest run", error);
+    return null;
+  }
+}
+
+/**
+ * Load the macro board: the five household stats, plus the run's own source health (N3, Part 6).
+ *
+ * The source status is read alongside the rows because the two answer different questions and the
+ * board needs both. The ROWS say what the newest observation is and when it is for. The STATUS says
+ * whether the source could be reached tonight at all. A cell can be perfectly current and still have
+ * failed to refresh, and it can have refreshed cleanly and still be far too old to trust — so a cell
+ * that only knew one of these two facts would be guessing about the other.
+ *
+ * A read failure degrades the whole board to null (the module simply omits it) rather than the Desk.
+ */
+async function loadMacroBoard(): Promise<MacroBoardData | null> {
+  try {
+    const [rows, run, latest] = await Promise.all([
+      db.macroStat.findMany({
+        orderBy: [{ seriesKey: "asc" }, { asOfDate: "desc" }],
+        select: {
+          seriesKey: true,
+          asOfDate: true,
+          value: true,
+          prior: true,
+          asOfLabel: true,
+          sourceKey: true,
+          meta: true,
+        },
+      }),
+      db.pipelineRun.findFirst({ orderBy: { runDate: "desc" }, select: { sourceStatus: true } }),
+      db.marketContext.findFirst({ orderBy: { runDate: "desc" }, select: { runDate: true } }),
+    ]);
+
+    if (rows.length === 0) return null;
+
+    // Age is judged against the RUN's date, not against the reader's clock. The board is part of a
+    // cached render, and a cell that graded itself against "now" would drift from the rest of the
+    // page it is printed on. (The pipeline strip is the deliberate exception, and for the opposite
+    // reason: catching a pipeline that died since the render is its entire job.)
+    const runDate = latest?.runDate ?? new Date();
+
+    return buildMacroBoard(
+      rows as MacroStatRow[],
+      (run?.sourceStatus ?? null) as Record<string, unknown> | null,
+      runDate,
+    );
+  } catch (error) {
+    console.error("getMorning: could not load the macro board", error);
     return null;
   }
 }

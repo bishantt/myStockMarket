@@ -1,7 +1,7 @@
 import { render, screen, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { MacroPulse } from "./MacroPulse";
-import { copy } from "@/lib/copy";
+import { copy, fill } from "@/lib/copy";
 
 /**
  * MacroPulse tests — the module renders its data and keeps two rules:
@@ -96,7 +96,17 @@ describe("MacroPulse", () => {
 
   it("states what is off the edge of the shelf (M8) — a shelf that hides an unstated number lies", () => {
     render(<MacroPulse {...PROPS} />);
-    expect(screen.getByText(copy.pulse.swipe)).toBeInTheDocument();
+
+    // N3 renamed this shelf ("Markets") to distinguish it from the new money-and-mood shelf below.
+    // The plan's own string for it was "Markets — swipe", with no count — and shipping that verbatim
+    // broke M8, which this test caught immediately. The count stays; the honesty rule outranks the
+    // plan's copy, and the authority order says so in as many words.
+    // And the count is COUNTED, not typed. These props carry two index slots, so the shelf holds
+    // four figures (the two risk gauges plus them) and says four — where the real Desk, with three
+    // index slots, says five. A hardcoded "5 figures" would pass a test written against the Desk and
+    // lie on every other shelf it was ever reused on.
+    expect(screen.getByText(fill(copy.pulse.marketsShelf, { n: 4 }))).toBeInTheDocument();
+    expect(screen.getByText(/4 figures/)).toBeInTheDocument();
   });
 
   it("keeps BREADTH off the shelf — the claim about the whole market may not be swiped away", () => {

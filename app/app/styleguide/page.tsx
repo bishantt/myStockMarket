@@ -1,5 +1,7 @@
 import { AppWash } from "@/components/AppWash";
+import { MacroBoard } from "@/components/desk/MacroBoard";
 import { PipelineStrip } from "@/components/desk/PipelineStrip";
+import { buildMacroBoard, type MacroStatRow } from "@/lib/macro-board";
 import { MacroPulse } from "@/components/desk/MacroPulse";
 import { BaseRate } from "@/components/BaseRate";
 import { SectionMasthead } from "@/components/SectionMasthead";
@@ -58,6 +60,8 @@ export default function StyleguidePage() {
           <Kit />
           <FreshnessLadder />
           <DegradedMacro />
+          <DegradedBoard />
+          <SuppressedGauge />
         </div>
       </div>
     </>
@@ -763,6 +767,113 @@ function DegradedMacro() {
           tenYear="4.54%"
           provenance={copy.macro.indexesUnavailable}
         />
+      </Surface>
+    </Section>
+  );
+}
+
+/**
+ * The macro board's degradation ladder (C7) — every rung, side by side.
+ *
+ * It is a STYLEGUIDE specimen and not an e2e for the reason N1 learned the hard way: driving a
+ * degraded board through the seeded database means one spec mutating macro_stat and every later spec
+ * — the pixel oracle included — reading whatever it left behind. Props are deterministic. A component
+ * test proves the state machine changes with its rows; this page proves what the reader actually sees.
+ *
+ * Read the four cells left to right and the whole ruling is visible at once: a number that is current
+ * for its own cadence is quiet, a number too old to trust is amber and SAYS so, a source that failed
+ * tonight keeps its value and explains the silence, and a stat that has never reported shows an
+ * em-dash rather than a zero.
+ */
+function DegradedBoard() {
+  const runDate = new Date("2026-07-13T00:00:00.000Z");
+
+  const rows: MacroStatRow[] = [
+    // Rung 2 — mid-cycle, and perfectly healthy. A Thursday rate on a Monday is not stale.
+    {
+      seriesKey: "mortgage30us",
+      asOfDate: new Date("2026-07-09T00:00:00.000Z"),
+      value: 6.49,
+      prior: 6.43,
+      asOfLabel: "wk of Jul 9",
+      sourceKey: "fred",
+      meta: null,
+    },
+    // Rung 3 — the source could not be reached tonight. The number stands; the silence is explained.
+    {
+      seriesKey: "usd_npr",
+      asOfDate: new Date("2026-07-12T00:00:00.000Z"),
+      value: 152.23,
+      prior: null,
+      asOfLabel: "Jul 12",
+      sourceKey: "nrb",
+      meta: { buy: 152.23, sell: 152.83 },
+    },
+    // Rung 5 — a week old on a daily cadence. This is the ONE cell allowed to be loud.
+    {
+      seriesKey: "gold_usd",
+      asOfDate: new Date("2026-07-02T00:00:00.000Z"),
+      value: 4085.2,
+      prior: 4071.9,
+      asOfLabel: "Jul 2",
+      sourceKey: "goldapi",
+      meta: null,
+    },
+    // Rung 4 is the ABSENCE of a cpi_yoy row — nothing stored, so the cell says "not yet reported".
+  ];
+
+  return (
+    <Section
+      id="macro-board"
+      index={12}
+      title="Macro board — the degradation ladder (C7)"
+      intro="Five household stats, five ways to fail. A cell that is current for its OWN cadence renders quietly and lets its window label do the work — a Thursday mortgage rate read on a Monday is not stale, it is the newest rate that exists, and a board that went amber over it would be crying wolf four days in five. A cell whose number has aged past three full cadences has stopped being information and started being furniture, so it goes amber and says the word “stale” out loud — never the colour alone, because a screen-reader user would otherwise get this app's calmest voice on one of its worse nights. A source that simply could not be reached tonight keeps its value and explains the silence. And a stat that has never reported at all shows an em-dash and says so: that is gold's honest state in production today, because its API key has not been provisioned, and the board would rather say that than print a number nobody checked."
+    >
+      <Surface className="p-5">
+        <MacroBoard board={buildMacroBoard(rows, { "macro-usd_npr": "degraded" }, runDate)} />
+      </Surface>
+    </Section>
+  );
+}
+
+/**
+ * The Mood gauge, suppressed — the state ruling C8 exists to make possible.
+ *
+ * When fewer than three of its five inputs survived the night, there is no score. Not a greyed-out
+ * number, not a stale one, not an average of whatever happened to answer: no score, and the names of
+ * the instruments that went missing. A "market mood" computed from two inputs is not a mood — it is
+ * those two inputs wearing a costume, and it would look exactly as authoritative as the real thing.
+ */
+function SuppressedGauge() {
+  const runDate = new Date("2026-07-13T00:00:00.000Z");
+  const thin: MacroStatRow[] = [
+    {
+      seriesKey: "mood",
+      asOfDate: runDate,
+      value: 50,
+      prior: null,
+      asOfLabel: "Jul 13",
+      sourceKey: "computed",
+      meta: {
+        score: 50,
+        band: "mixed",
+        components: [
+          { key: "breadth", label: "Breadth", value: 0.61, window: "% above the 50-day average", percentile: 0.55 },
+          { key: "range", label: "Range position", value: 0.18, window: "near highs minus near lows", percentile: 0.35 },
+        ],
+      },
+    },
+  ];
+
+  return (
+    <Section
+      id="mood-suppressed"
+      index={13}
+      title="Mood gauge — suppressed"
+      intro="The gauge needs three of its five inputs. With two, it does not render a number at all — it names what is missing. This is the same instinct the base rates run on: below the sample size at which a figure means something, the figure is suppressed rather than shrunk or hedged. And it is the whole argument for building this gauge instead of borrowing CNN's: a number you cannot take apart is a number you have to trust, so when it cannot show its work, it does not show."
+    >
+      <Surface className="p-5">
+        <MacroBoard board={buildMacroBoard(thin, null, runDate)} />
       </Surface>
     </Section>
   );

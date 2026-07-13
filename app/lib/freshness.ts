@@ -4,6 +4,7 @@ import {
   isTradingDay,
   nextTradingDay,
   previousTradingDay,
+  sessionsBetween,
   type TradingDate,
 } from "@/lib/market-hours";
 
@@ -108,19 +109,6 @@ function fireTimeOn(day: TradingDate): Date {
   const at = new Date(`${day}T00:00:00Z`);
   at.setUTCHours(NIGHTLY_RUN_UTC_HOUR, NIGHTLY_RUN_UTC_MINUTE, 0, 0);
   return at;
-}
-
-/** How many sessions fall strictly after `from` and up to and including `to`. */
-function sessionsBetween(from: TradingDate, to: TradingDate): number {
-  let count = 0;
-  let cursor = nextTradingDay(from);
-  // Bounded so a corrupt date can never hang a page render. Anything past this is emphatically
-  // dead already, and the strip says the same thing at 60 missed sessions as it does at 600.
-  while (cursor <= to && count < 500) {
-    count += 1;
-    cursor = nextTradingDay(cursor);
-  }
-  return count;
 }
 
 /**
