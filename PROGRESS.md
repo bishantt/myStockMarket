@@ -1,8 +1,87 @@
 # PROGRESS.md — resumable state
 
-# THE NEWS & CONTROL BUILD IS DONE (2026-07-13) — tagged `nc-final`, CI green on the tag.
+# THE GATE-EFFICIENCY BUILD IS RUNNING — G0 is done (2026-07-13), tagged `gate-0`, CI green.
 
-All eight phases, N0 through N7. Nothing is blocked. Nothing is in flight.
+**Checkpoint: G0 complete. G1 is next. Nothing is blocked. Nothing is in flight.**
+
+## What this build is (read this first if you have no memory of it)
+
+`GATE-EFFICIENCY-PLAN.md` at the repo root — five phases, **G0 → G4, one phase per session**. Its
+evidence base is `GATE-EFFICIENCY-ANALYSIS.md`, also at the root. Read both in full before working.
+
+It reforms **the phase-exit machinery**, not the product. The analysis measured why exits grind:
+62% of recent commits are gate work, endgames ran 60–90 minutes, 52% of tag CI runs failed, and 43%
+of all CI minutes re-verified commits that were already green. Not because the guards are wrong —
+because of *placement and duplication*: the browser oracle only runs after the tag exists, so the
+tag must be deleted and re-pushed once per failure.
+
+**No guard gets weaker.** That is the plan's binding constraint (its Part 1.3 lists the
+untouchables). Every verification that happened before still happens — earlier, faster, or exactly
+once instead of twice.
+
+**This build runs BEFORE Polish & Depth.** `POLISH-AND-DEPTH-PLAN.md` has NOT started and must not
+be started: it waits for `gate-final` to be green **and** for Bishan to say go. Do not run PD1's
+Saturday-row SQL. It is theirs.
+
+## Where G0 left the machinery (all of this is live on `main` now)
+
+- **A tag now runs ONE job: the browser oracle.** `app` and `pipeline` sit out tag runs and dispatch
+  runs (`if: github.event_name == 'push' && !startsWith(github.ref, 'refs/tags/')`). The tagged SHA
+  already passed them on main; re-running them there was ~43% of the CI bill. **Proven on the
+  `gate-0` tag run: app and pipeline show as `skipped`, only e2e ran.**
+- **One live run per ref.** A superseded push or a re-pushed tag now auto-cancels its predecessor.
+  **Proven:** a superseded run died in **40 seconds**; the equivalent at `nc-final` ran 785 seconds.
+- **`check:drift` runs in CI**, in the `app` job. Until G0 it ran in **no CI workflow at all** — it
+  was local discipline only, and a forgotten gate step 5 was noticed by nothing. All 20 rules pass.
+- **`gate-*` and `pd-*` are wired** into `on.push.tags` **and** the oracle's `if:`. This retires the
+  first work item of PD0 (annotated there, dated). `pipeline/tests/test_ci_tag_families.py` now
+  fails the build if those two lists ever drift apart — see LESSONS, it caught a real bug on its
+  first run.
+- **Playwright's Chromium and uv's wheels are cached.**
+- **`ci.yml`'s header no longer lies.** It claimed Lighthouse runs "on the phase-exit tags"; no
+  Lighthouse job has ever existed in any workflow in this repo's history (it runs locally, via
+  `check:lighthouse`).
+- **CLAUDE.md**: the Autonomy section's "roll straight into the next phase" is annotated as REPEALED
+  by the one-phase-per-session rule. The Commands block now carries the CI shape.
+
+Evidence: `docs/gate-evidence/g0-dedup.md`, with the before/after numbers measured from this repo's
+own Actions runs.
+
+## What is NEXT — G1 (read GATE-EFFICIENCY-PLAN.md §G1 in full)
+
+**G1 — Move the oracle before the tag → tag `gate-1`.** This is the phase that kills the
+tag→red→fix→re-tag loop. Three separately-proven commits:
+
+1. **The rehearsal switch.** Add `e2e` to `ci.yml`'s `workflow_dispatch` options so the full browser
+   oracle can be dispatched on a candidate SHA *before* tagging it. **Sequencing trap: GitHub
+   validates dispatch inputs against the workflow file ON THE TARGET REF — push to main FIRST, then
+   dispatch, or you get a 422.**
+2. **Shard the oracle** into a 3-leg matrix (desktop / phone / wide), each leg with its own
+   throwaway Postgres. The `workers: 1` constraint exists because seeded writes share one database;
+   three databases dissolve it. Expect ~15.8 m → ~7–9 m. `playwright.config.ts` is NOT edited.
+   Fallback if a leg flakes on seeding twice: revert the matrix, keep the rehearsal.
+3. **Auto-mint on pixel failure** — on a failing run, if `test-results/**/*-actual.png` exists,
+   re-run vrt with `--update-snapshots=all` and upload the fresh baselines as an artifact of *that
+   same run*. **The artifact is a CANDIDATE. It is never auto-committed.** You open every image and
+   look, and you commit only an explained diff with the reason in the body. Nine real bugs in this
+   build were found by opening the picture.
+
+## The exit ritual as it now stands (GATE-EFFICIENCY-PLAN Part 3)
+
+Local gate (typecheck/lint/test · pytest · build + routes/bundles/fonts · e2e:local · drift) → push,
+confirm the branch run green → **rehearse** (`gh workflow run ci.yml -f job=e2e` — exists from G1) →
+green → `check:migrations` (local; CI structurally cannot answer it) → tag → confirm the tag run →
+**THE TAG STAYS PUT** (a suspected flake gets `gh run rerun <id> --failed`, never a re-point) → the
+intelligence files land as **ONE** docs commit *after* the tag → report to Bishan and **STOP**.
+
+Every evidence file ends with the **gate-size line** so growth of the gate is a booked number, never
+an accident. At `gate-0`: **20 drift rules · 76 VRT baselines · 22 e2e specs.**
+
+---
+
+# Previously — THE NEWS & CONTROL BUILD (DONE, 2026-07-13) — tagged `nc-final`, CI green on the tag.
+
+All eight phases, N0 through N7.
 
 **If you read only one thing:** N7's job was to harden the guards, and **the repaired guards then
 caught a real bug and two rotting gates on the tag run itself** — which is the best evidence there is

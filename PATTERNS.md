@@ -435,3 +435,36 @@ nor explains itself.*
 
 **Smell test.** Grep your fixtures for absolute dates, then grep the code for `now -`. Every place
 those two meet is a fuse with a length you have not measured.
+
+## If it cannot go red, it is documentation (G0, 2026-07-13)
+
+**The shape.** A rule is real, correct, prominently written — and enforced by prose. A comment at the
+top of a config file. A checklist line in a plan. A sentence in a skill. It is obeyed exactly as
+often as someone happens to read it at the moment they need it, which at a phase exit, tired, is
+close to never.
+
+**Where this build has now found it.**
+
+| The prose | What it could not stop |
+|---|---|
+| `ci.yml`'s header: "the tag list and the `if:` must be kept in step" | `gate-*` in the trigger, absent from the oracle — a tag that runs CI, goes green, and never opens a browser |
+| Gate step 5: "run `check:drift`" | The rules ran in no CI workflow at all; a forgotten step was noticed by nothing |
+| "Add the new route to the sweeps" | `/news` shipped in N5 and was measured by nothing until N7 |
+
+**The tell.** Ask of any rule: *what turns red when I break it?* If the honest answer is "a person
+notices," it is documentation. Documentation is useful — but it is not a gate, and it must not be
+counted as one when you are deciding whether a phase is safe to exit.
+
+**The repair is always the same.** Move the sentence into something that executes. The comment stays
+(it explains *why*, which a test cannot), but a test now reads the same file and fails on the same
+condition. `pipeline/tests/test_ci_tag_families.py` is the pattern: it parses the artefact the prose
+was describing, asserts the invariant the prose asserted, and carries a negative control proving it
+can fail.
+
+**And when the guard gets confused, it goes red — it does not guess.** The tag-family test found
+three jobs mentioning `refs/tags/` where it expected one (the new de-duplication conditions use the
+same string to mean the opposite thing) and it stopped the build rather than picking a line to read.
+A guard reading the wrong line is a guard that cannot fail, just better dressed.
+
+**Smell test.** Grep your config files and plans for the word "must". For each hit, name the thing
+that turns red. The ones with no answer are your next tests.

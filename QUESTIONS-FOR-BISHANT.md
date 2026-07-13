@@ -8,6 +8,33 @@ Format: newest first. I mark each as [FYI], [VETO?], or [NEED] so you can scan.
 
 ---
 
+## 2026-07-13 — G0 (the gate-efficiency build begins)
+
+**[FYI] One behaviour change you will notice with your own hands: a second push now kills the first
+push's CI run.** That is the new concurrency group, and it is what the plan asked for — it is why a
+superseded run at `nc-final` burned 785 seconds and this one died in 40. The consequence to be aware
+of: if you push a code commit and then push a docs commit a minute later, the **code** run is
+cancelled and only the docs run survives. During a phase exit that is exactly what you want (the last
+push is the one that ships). Outside one, if you ever want a specific commit's run to finish, let it.
+**G2 removes this interaction entirely** by making docs commits trigger no CI at all.
+
+**[FYI] Nothing in G0 touched the app.** No product code, no styling, no pipeline logic. The only
+files that changed are `ci.yml`, one new pytest, `CLAUDE.md` (two annotations), and
+`POLISH-AND-DEPTH-PLAN.md` (one dated note saying PD0's `pd-*` wiring is already done). The `gate-0`
+tag run is therefore expected to be green on an unchanged suite — and it was, first try, which is
+also the proof that the ci.yml surgery broke nothing.
+
+**[FYI] `/settings` still answers in ~481ms warm against a 150ms budget, every sample a cache miss.**
+This is **not** a G0 regression — it is the app's one *writer* room, deliberately excluded from the
+cache allowlist with a defended reason in `check-routes.mjs` (a page may be cached, or written to and
+read back in the same click, never both), and `check:nav` keeps it in report mode for exactly that
+reason. N7 measured 455ms in the same state. I mention it only so that seeing the number in this
+phase's evidence does not read as something new breaking.
+
+**No open questions from G0.** Nothing was assumed that needs your veto.
+
+---
+
 ## 2026-07-13 — N7 (hardening, evidence, docs) — **the News & Control build is closed**
 
 **[FYI] Your guards were passing on a page that does not exist.** The touch-target, sideways-scroll

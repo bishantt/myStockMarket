@@ -121,6 +121,60 @@ That is the price of the stronger gate, and it is paid on branch pushes — neve
 ### 4.2 The cancellation proof
 
 This evidence file was pushed in two commits, the second landing inside the first's CI run — the
-exact "superseded push" case that used to leave a 13-minute zombie running.
+exact "superseded push" case that used to leave a zombie running.
 
+```
+29290386804 | in_progress |    -    | docs(g0): evidence — the branch run, green, with dri…
+29290367271 | completed   | cancelled | docs(g0): evidence — the before picture, measured
+29290147772 | completed   | success | ci(g0): a tag runs only the oracle, drift joins CI,…
+```
+
+Run `29290367271` was killed the instant its successor started. **It lived 40 seconds.** The
+equivalent superseded run at `nc-final` — same situation, no concurrency group — ran for **785
+seconds** before anyone noticed, and a 13-minute one had to be cancelled by hand.
+
+### 4.3 The `gate-0` tag run — run `29290643430`, green on the first try
+
+| Job | Result | Duration |
+|---|---|---|
+| **e2e + VRT + PWA + axe (the browser oracle)** | **success** | **14.82 min** |
+| app — typecheck, lint, drift, unit, build | **skipped** | — |
+| pipeline — pytest | **skipped** | — |
+| VRT — generate baselines | skipped | — |
+| **run wall-clock** | | **14.88 min** |
+
+That job list is the phase. A tag now runs the oracle and nothing else.
+
+---
+
+## 5. What this actually bought, stated honestly
+
+| | before (`nc-final`) | after (`gate-0`) |
+|---|---|---|
+| Jobs on a tag run | app + pipeline + e2e | **e2e only** |
+| Billed job-minutes per tag run | 18.67 | **14.82** (−3.85, −21%) |
+| Tag-run **wall-clock** | 15.8 min | 14.88 min |
+| A superseded run | ran on (785 s observed) | **cancelled in 40 s** |
+| `check:drift` in CI | never ran | **runs on every branch push** |
+| Tag-family drift | a comment | **a failing test** |
+| Tag pushes for this exit | up to 6 | **1** |
+
+**The wall-clock barely moved, and that is expected.** The `app` and `pipeline` jobs ran in
+*parallel* with the oracle, so deleting them removes billed minutes and heat, not waiting. **The
+15-minute wait is one serial job, and killing it is G1's work, not G0's** (shard the oracle into
+three legs → ~7–9 min). G0's job was to stop paying twice, to make a superseded run die, and to close
+the two holes where a gate could pass without running. It did those three things.
+
+The honest headline: **one tag push, one green run, first try, and the tag has not moved.** The
+endgame that produced `nc-final` needed six.
+
+---
+
+## 6. Gate at exit
+
+**20 drift rules · 76 VRT baselines · 22 e2e specs · tag run 14 m 53 s.**
+
+No growth this phase: G0 added no drift rule, no baseline, and no spec. It added **one pytest**
+(`test_ci_tag_families.py`, 2 cases — 464 local / 490 in CI) and moved an existing 1-second check
+(`check:drift`) into CI where it can finally fail a build.
 

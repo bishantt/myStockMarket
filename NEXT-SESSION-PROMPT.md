@@ -1,91 +1,102 @@
-# NEXT-SESSION-PROMPT.md
-
-## The News & Control build is CLOSED (2026-07-13)
-
-All eight phases, N0 → N7, are done and tagged: `nc-0` … `nc-6`, and **`nc-final`** with green CI.
-There is no unfinished work in it, nothing in flight, and no half-landed change in the tree.
-
-**Read `PROGRESS.md` first.** Then `docs/nc-evidence/n7-hardening.md`, which carries the closing
-table for all seven evidence chapters and the two things N7 found — both of them guards that were
-not guarding anything.
+# NEXT-SESSION-PROMPT.md — paste this into a fresh session
 
 ---
 
-## THE NEXT BUILD IS THE POLISH & DEPTH PLAN — and it is already commissioned
+Continue the gate-efficiency build. **G0 is done and tagged `gate-0` (CI green on the tag). Your
+session is G1, and G1 only.**
 
-While N7 was running, a **parallel planning session shared this same checkout** and committed its own
-work onto `main`, interleaved with mine (`512e24d`, `1e24f75`):
+Read `GATE-EFFICIENCY-PLAN.md` at the repo root IN FULL before touching anything — it is the plan
+you are executing. Its evidence base is `GATE-EFFICIENCY-ANALYSIS.md` (also repo root); read it too,
+at least Parts 0–2 and §6. Do **not** start `POLISH-AND-DEPTH-PLAN.md`; it waits until this plan's
+`gate-final` tag is green and Bishan says go. Do not run PD1's Saturday-row SQL — it is theirs.
 
-```
-POLISH-AND-DEPTH-PLAN.md            ("The Second Edition")
-docs/src/polish-and-depth-plan.html · docs/Polish-And-Depth-Plan.pdf
-```
+**Part 1.3 of the plan lists the untouchables.** If any instruction ever seems to conflict with one,
+the untouchable wins and the conflict goes to `QUESTIONS-FOR-BISHANT.md`.
 
-I did not write those files and they are not N7's work, but they **are** committed and they **are**
-inside `nc-final` (they are ancestors of the tag). Its header says where it and the tree disagree on
-a detail, **the tree wins on the detail and the plan wins on the intent** — and N7 changed the tree,
-so re-verify against the working tree before relying on any file it names.
+## State of the tree
 
-**Start there: read POLISH-AND-DEPTH-PLAN.md in full**, run the CLAUDE.md session ritual, and follow
-its own phase structure and Autonomy Contract — one phase per session.
+- `main` is clean, `gate-0` is tagged and green, everything is pushed.
+- App unit tests: **577 passing**. Pipeline: **464 passing** locally / **490 in CI** (the extra 26
+  are Postgres-backed and skip on this Mac).
+- Nothing is blocked. Nothing is in flight.
 
-### The one thing that carries over into it
+## What G0 already built (so you do not redo or distrust it)
 
-**Q-N6-1 is ANSWERED: the user said delete the Saturday rows** (option A, 2026-07-13, recorded in the
-Polish & Depth plan's Part 0.1 — a **user decision, rank 2.5**, not an assumption). Its **PD1** phase
-executes the SQL *after Monday's edition is verified*. **I deliberately did not run it in N7:** the
-sequencing is theirs, and running it early would break it. The rows (`pipeline_run`,
-`market_context`, `scan_result`, all stamped `2026-07-11`) are still in production — invisible to
-every display, present in any series that walks those tables by date. **PD1 must also close Q-N6-1 in
-QUESTIONS-FOR-BISHANT.md and log the deletion in DECISIONS.md as user-authored.**
+- **A tag runs exactly ONE job — the browser oracle.** `app` and `pipeline` now sit out tag runs and
+  dispatch runs. Verified on the `gate-0` tag run: both show as `skipped`.
+- **One live run per ref** (`concurrency` + `cancel-in-progress`). A superseded run now dies in ~40
+  seconds instead of running to completion (785 s at `nc-final`).
+- **`check:drift` runs in CI** (the `app` job). It had run in no CI workflow at all before G0.
+- **`gate-*` and `pd-*` are wired** into `on.push.tags` AND the e2e job's `if:`, and
+  `pipeline/tests/test_ci_tag_families.py` fails the build if those two ever drift apart.
+- **Playwright's Chromium and uv's wheels are cached.**
+- `ci.yml`'s header now describes reality (it used to claim a Lighthouse job that has never existed).
+- `CLAUDE.md`: "roll straight into the next phase" is annotated as repealed by one-phase-per-session.
 
----
+Evidence with the measured before/after: `docs/gate-evidence/g0-dedup.md`.
 
-## What is waiting for Bishan, in priority order (none of it blocks a build)
+## Your phase: G1 — move the oracle before the tag → tag `gate-1`
 
-1. **P-2 — the GitHub token.** Two minutes, and it turns the entire control room on. Every button is
-   dark in production without it. A **fine-grained PAT**, *this repository only*, **Actions: read and
-   write**, added to **Vercel** as `GH_DISPATCH_TOKEN`. The whole path is proven working against real
-   GitHub (`docs/nc-evidence/n6-control.md` §6) — it is a secret and nothing else.
-2. **Q-N6-1 is answered — nothing left to ask.** See above: PD1 runs the deletion.
-3. **P-1 — the R2 media bucket.** Absent. The Front Page renders its designed generated cards; every
-   article in the recorded feed carried a publisher image, so real photographs appear the moment a
-   bucket exists.
-4. **The iOS device pass.** There is no iPhone here. Everything a machine can check runs on every
-   push; the checklist for the ten minutes only a real device can do is in QUESTIONS.
+Read the plan's G1 section in full. It is the phase that kills the tag→red→fix→re-tag loop. Land it
+as **three separately proven commits**:
 
----
+1. **The rehearsal switch.** Add `e2e` to `ci.yml`'s `workflow_dispatch` input options and extend the
+   e2e job's `if:` with `|| (github.event_name == 'workflow_dispatch' && inputs.job == 'e2e')`.
+   **THE TRAP: GitHub validates dispatch inputs against the workflow file ON THE TARGET REF.** The
+   commit must be pushed to `main` BEFORE `gh workflow run ci.yml -f job=e2e` will accept the new
+   value — otherwise you get a 422. Push first, then dispatch, then prove the full oracle runs green
+   on main's HEAD with app/pipeline correctly sitting it out.
 
-## The hazards, if you build anything on top of this
+2. **Shard the oracle.** Convert the e2e job to a matrix
+   (`strategy: { fail-fast: false, matrix: { project: [desktop, phone, wide] } }`), each leg with its
+   own Postgres service, migrate+seed, and `npm run e2e -- --project=${{ matrix.project }}`. The
+   `workers: 1` rule exists because seeded writes share one database; three databases dissolve that
+   without touching the serial-within-a-leg guarantee. **`playwright.config.ts` is NOT edited.** Name
+   failure artifacts per leg. Expect ~15.8 m → ~7–9 m. **Fallback:** if a leg flakes on seeding twice
+   in a row, revert this commit, keep commit 1 (the rehearsal alone is most of the win), log it.
 
-Earned, not theoretical. Every one cost a real bug.
+3. **Auto-mint on pixel failure.** After the test step, a step `if: failure()` that first checks
+   whether a snapshot comparison actually failed (`test-results/**/*-actual.png` exists — that file
+   is the precise witness of a pixel diff); only then re-runs
+   `npx playwright test vrt.spec.ts --project=<leg> --update-snapshots=all` and uploads the leg's
+   snapshots as `vrt-baselines-candidate-<leg>`. A red *assertion* must not spend four minutes
+   photographing. **THE ARTIFACT IS A CANDIDATE AND IS NEVER AUTO-COMMITTED.** You download it, you
+   open every image, and you commit only an explained diff with the reason in the body. An
+   unexplained diff is a bug — go look at the triptych. Nine real bugs in this build were found by
+   opening the picture. Update `.claude/skills/vrt-update/SKILL.md` with the new flow; verify the
+   `gh run download` flags against `gh` help before writing them into the skill.
+   Prove it can fail honestly: on a **scratch branch**, make a deliberate one-line visual change,
+   `gh workflow run ci.yml -f job=e2e --ref <branch>`, confirm the leg reds on pixels and the
+   candidate artifact shows exactly that nudge. Then delete the branch. Nothing merges.
 
-- **OPEN THE PICTURE AND LOOK AT IT.** Nine real bugs in this build were found that way and by no
-  other means. A green suite is evidence about the tests, not about the system.
-- **A SWEEP THAT SWEPT NOTHING IS A PASS.** N7's finding. A guard that walks routes measures whatever
-  is on the screen — a 404 page, a login form, an unhydrated island — and reports all three as clean.
-  Make every guard prove it measured something. **And the status code is not the witness:** a
-  `notFound()` raised inside a statically-generated route answers **HTTP 200** with the 404 page in
-  the body. Only an unmatched path gets a real 404.
-- **THE VENDOR'S OWN DOCUMENTATION IS NOT A RECORDING.** GitHub's docs were wrong about GitHub's API.
-  One `curl` before you design costs two minutes and can invert the design.
-- **A FAKE MUST BE NO KINDER THAN THE THING IT STANDS FOR.** And a function with no real caller has no
-  real test, whatever coverage says.
-- **AN `as` CAST ON A PARSED PAYLOAD IS A PROMISE, NOT A CHECK.** JSON has no Date type.
-- **NEVER HAND-WRITE A FIXTURE THAT LOOKS RECORDED.** It is not a weak test — it is an inverted one.
-- **TWO SOURCES OF TRUTH FOR ONE DOCUMENT IS A SLOW-MOTION LIE.** N7's other finding. `DEVELOPMENT-PLAN.md`
-  **and** the PDF are both generated from `docs/src/dp-*.html` now — edit the parts, then run
-  `build-plan-md.py` **and** `build-plan-pdf.py`. Never edit a generated file; it says so in its own
-  first line, and I still did it once this phase.
-- **CI's database is DISPOSABLE and can tell you NOTHING about production's.** `npm run
-  check:migrations` is the instrument that can, and it is in the standing gate. A Vercel deploy
-  applies migrations.
-- **There is no local Postgres on this Mac.** ~26 pipeline tests and every seeded e2e journey skip
-  locally — **CI is the only oracle for anything seeded** (it sets `MSM_SEEDED=1`).
-- **VRT baselines are BORN IN CI:** `gh workflow run ci.yml -f job=vrt-baselines`, download the
-  artifact, commit it. Never shoot a baseline on macOS. The e2e+VRT job is TAG-GATED.
-- **The `run-name:` line in `nightly-a.yml` / `nightly-b.yml` is LOAD-BEARING.** The dispatch API
-  returns no run id, so the app recovers it by matching that name. Delete the line and nothing fails,
-  every test but one passes, and the control room goes permanently blind.
-- Prepend `export PATH="$HOME/.nvm/versions/node/v24.18.0/bin:$PATH"` to node commands.
-  `npm test` runs from `app/`; `uv run pytest` runs from `pipeline/`.
+## The exit ritual (GATE-EFFICIENCY-PLAN Part 3 — G1 is its first real outing)
+
+Local gate: `typecheck && lint && test` · `uv run pytest` · `build` + `check:routes` +
+`check:bundles` + `check:fonts` · `e2e:local` · `check:drift`. Then push and confirm the branch run
+green. Then **REHEARSE** — `gh workflow run ci.yml -f job=e2e` — the full oracle on the candidate
+SHA, which from this phase onward is the machinery you just built. In parallel: wait for the Vercel
+deploy, then `check:nav` and `check:lighthouse` (needs `export CHROME_PATH="/Applications/Google
+Chrome.app/Contents/MacOS/Google Chrome"` and the root `.env` sourced for `AUTH_COOKIE_SECRET`).
+Once per phase: `npm run check:migrations` (local — CI structurally cannot answer it).
+
+Rehearsal green → `git tag gate-1` → push → confirm the tag run green. **THE TAG STAYS PUT.** A
+suspected flake gets `gh run rerun <id> --failed`, never a re-point. Intelligence files + evidence
+(`docs/gate-evidence/g1-oracle.md`) + this prompt land as **ONE** docs commit *after* the tag.
+
+Every evidence file ends with the **gate-size line**. At `gate-0` it was: **20 drift rules · 76 VRT
+baselines · 22 e2e specs · tag run 15.9 m.** Book any growth of the gate with a reason.
+
+Note for G1's evidence: `gate-1` is the first tag expected to go **green on the first try**, because
+the rehearsal will have already run the identical suite on the identical SHA. If it does, say so. If
+it does not, say why — that is the more interesting result and it belongs in the record.
+
+## The rhythm — non-negotiable
+
+**ONE PHASE PER SESSION.** Finish G1, tag it, bring every intelligence file current as ONE commit,
+rewrite this file for G2, **report to Bishan in plain English, and STOP.** Do not roll into G2. Do
+not start "just the first commit" of it. Within the phase the Autonomy Contract holds in full: never
+ask, never wait — anything that needs Bishan goes to `QUESTIONS-FOR-BISHANT.md` with the most
+reasonable assumption made and marked.
+
+Run the CLAUDE.md session ritual first (git pull, read the constitution + PROGRESS.md tail + LESSONS,
+`npm test` from `app/` and `uv run pytest` from `pipeline/`, announce the checkpoint), then begin G1.
