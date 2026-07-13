@@ -631,3 +631,99 @@ def _upsert_market_context(cur, run_date, market_context: Mapping[str, Any] | No
             "pct": market_context["pct_above_50dma"],
         },
     )
+
+
+def publish_news(
+    conn: psycopg.Connection,
+    *,
+    run_date: date,
+    clusters: Iterable[Any],
+    images: Iterable[Any] = (),
+) -> int:
+    """
+    Write tonight's front page — images, clusters, and the ticker links — in ONE transaction.
+
+    ATOMIC BY NECESSITY, NOT BY TIDINESS. A cluster row whose image row did not land renders a card
+    with a hole in it; a cluster whose catalyst_link rows did not land renders a story that affects
+    nobody. Half a front page is not a degraded front page, it is a wrong one, so the night either
+    publishes a coherent page or publishes nothing and says so.
+
+    The catalyst links carry SNAPSHOTTED numbers (ret1, rvol20) rather than joins, and that is
+    deliberate: if the story page recomputed a move from live tables, the feed's number and the
+    story's number could drift apart within a single night — the same fact, two values, which is the
+    species of lie this whole app is built against.
+
+    Insert-only in spirit: a cluster that already exists is UPDATED in place (it keeps its id as more
+    articles join it over the following evenings), and nothing is ever deleted.
+    """
+    written = 0
+    with conn.transaction():
+        with conn.cursor() as cur:
+            for image in images:
+                cur.execute(
+                    """
+                    INSERT INTO news_image (
+                        id, source_kind, url_full, url_card, url_thumb, width, height,
+                        blur_data_url, dominant_color, attribution_source, attribution_url, fetched_at
+                    ) VALUES (
+                        %(id)s, %(source_kind)s, %(url_full)s, %(url_card)s, %(url_thumb)s,
+                        %(width)s, %(height)s, %(blur_data_url)s, %(dominant_color)s,
+                        %(attribution_source)s, %(attribution_url)s, %(fetched_at)s
+                    )
+                    ON CONFLICT (id) DO UPDATE SET
+                        url_full = EXCLUDED.url_full,
+                        url_card = EXCLUDED.url_card,
+                        url_thumb = EXCLUDED.url_thumb,
+                        fetched_at = EXCLUDED.fetched_at
+                    """,
+                    image,
+                )
+
+            for cluster in clusters:
+                cur.execute(
+                    """
+                    INSERT INTO news_cluster (
+                        id, run_date, first_seen, headline, event_type, sectors, themes, tickers,
+                        significance, sources, why_it_matters, affected_note, extract, verification,
+                        image_id
+                    ) VALUES (
+                        %(id)s, %(run_date)s, %(first_seen)s, %(headline)s, %(event_type)s,
+                        %(sectors)s, %(themes)s, %(tickers)s, %(significance)s, %(sources)s,
+                        %(why_it_matters)s, %(affected_note)s, %(extract)s, %(verification)s,
+                        %(image_id)s
+                    )
+                    ON CONFLICT (id) DO UPDATE SET
+                        run_date = EXCLUDED.run_date,
+                        headline = EXCLUDED.headline,
+                        event_type = EXCLUDED.event_type,
+                        sectors = EXCLUDED.sectors,
+                        themes = EXCLUDED.themes,
+                        tickers = EXCLUDED.tickers,
+                        significance = EXCLUDED.significance,
+                        sources = EXCLUDED.sources,
+                        why_it_matters = EXCLUDED.why_it_matters,
+                        affected_note = EXCLUDED.affected_note,
+                        extract = EXCLUDED.extract,
+                        verification = EXCLUDED.verification,
+                        image_id = EXCLUDED.image_id
+                    """,
+                    {**cluster, "extract": Json(_json_safe(cluster.get("extract") or {})),
+                     "verification": Json(_json_safe(cluster.get("verification") or {}))},
+                )
+                written += 1
+
+                for link in cluster.get("links") or []:
+                    cur.execute(
+                        """
+                        INSERT INTO catalyst_link (id, cluster_id, symbol, ret1, rvol20, has_setup_card)
+                        VALUES (gen_random_uuid()::text, %(cluster_id)s, %(symbol)s, %(ret1)s,
+                                %(rvol20)s, %(has_setup_card)s)
+                        ON CONFLICT (cluster_id, symbol) DO UPDATE SET
+                            ret1 = EXCLUDED.ret1,
+                            rvol20 = EXCLUDED.rvol20,
+                            has_setup_card = EXCLUDED.has_setup_card
+                        """,
+                        link,
+                    )
+
+    return written

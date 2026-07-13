@@ -44,7 +44,9 @@ def test_an_unknown_mode_fails_loudly_rather_than_falling_back_to_full():
 
 
 def test_full_mode_runs_the_whole_night():
-    assert MODE_STAGES["full"] == ("ingest", "compute", "scan", "catalysts", "publish", "revalidate")
+    assert MODE_STAGES["full"] == (
+        "ingest", "compute", "scan", "catalysts", "news", "publish", "revalidate",
+    )
 
 
 def test_macro_mode_touches_the_macro_read_and_nothing_else():
@@ -64,3 +66,41 @@ def test_every_mode_publishes_and_revalidates():
     for mode, stages in MODE_STAGES.items():
         assert "publish" in stages, f"{mode} must publish"
         assert "revalidate" in stages, f"{mode} must revalidate"
+
+
+def test_news_mode_rebuilds_the_front_page_and_touches_no_market_data():
+    """
+    THE PROMISE, N4's half. "Refresh the news" re-reads the providers and rebuilds the front page. It
+    does not ingest a bar, recompute an indicator, rebuild a scan or touch a base rate.
+
+    That promise is what makes the button safe to hand the user at ANY hour — including while the
+    market is open — because nothing news mode writes depends on a session having closed. A
+    "refresh the news" button that quietly re-ingested the market would be a button that lies about
+    what it does, and the user would have no way to know.
+    """
+    assert MODE_STAGES["news"] == ("news", "publish", "revalidate")
+
+    forbidden = {"ingest", "compute", "scan", "macro"}
+    assert forbidden.isdisjoint(MODE_STAGES["news"])
+
+
+def test_every_declared_mode_has_a_handler_and_no_mode_can_fall_through_to_a_full_night():
+    """
+    THE DANGEROUS FAILURE, MADE IMPOSSIBLE.
+
+    Every mode main() does not explicitly recognise falls through to the full nightly run. So a mode
+    DECLARED in this table without a handler is not a broken button — it is a button that silently
+    re-ingests the entire market. Pressed at noon, it would write half a day of unformed bars over
+    the last good close.
+
+    That is why "compute" is deliberately not in this table yet: N6 builds it, along with the panel
+    it belongs to. Until then the set is exactly what the job can actually do, and main() refuses
+    anything else rather than guessing.
+    """
+    assert set(MODE_STAGES) == {"full", "macro", "news"}
+
+    from jobs.job_a import main  # noqa: F401 — imported to prove the handler guard exists
+    import inspect
+
+    source = inspect.getsource(main)
+    assert "has no handler" in source, "main() must refuse a mode it cannot run, not fall through"

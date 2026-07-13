@@ -8,6 +8,7 @@ dependencies = [
     "duckdb>=1.5.4",
     "exchange-calendars>=4.13.2",
     "httpx>=0.28.1",
+    "pillow>=12.3.0",
     "polars-lts-cpu>=1.33.1",
     "psycopg[binary]>=3.3.4",
     "pydantic-settings>=2.14.2",

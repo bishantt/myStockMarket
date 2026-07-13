@@ -16,6 +16,7 @@ from __future__ import annotations
 import os
 import sys
 from datetime import UTC, date, datetime, timedelta
+from typing import Callable
 from zoneinfo import ZoneInfo
 
 import httpx
@@ -26,14 +27,20 @@ import publish as pub
 from adapters.alpaca import AlpacaAdapter
 from adapters.base import TokenBucket
 from adapters.erapi import ErApiAdapter
+from adapters.finnhub import FinnhubAdapter
 from adapters.fred import FredAdapter
 from adapters.goldapi import GoldApiAdapter
+from adapters.marketaux import MarketauxAdapter
 from adapters.nrb import NrbAdapter
 from briefing.extract import submit_batch
 from catalyst_ingest import build_catalyst_fetcher
 from config import Settings, load_settings
 from macro_stats import MacroStatRow
-from nightly import MacroRead, MacroStatsRead, MoodHistory, NightlyDeps, run_nightly
+from newsdesk.ingest import FINNHUB_MARKET_CATEGORIES, MARKETAUX_PAGES, build_night
+from newsdesk.rank import TickerMove
+from newsdesk.resolve import Instrument as NewsInstrument
+from newsdesk.resolve import TickerResolver
+from nightly import FrontPageRead, MacroRead, MacroStatsRead, MoodHistory, NightlyDeps, run_nightly
 from parquet_store import ParquetStore
 from storage import R2Store
 from trading_calendar import previous_session
@@ -407,9 +414,28 @@ def _read_served_symbols(conn: psycopg.Connection):
 #
 # N4 adds `news` and `compute` here; N6 wires the panel to them.
 MODE_STAGES: dict[str, tuple[str, ...]] = {
-    "full": ("ingest", "compute", "scan", "catalysts", "publish", "revalidate"),
+    "full": ("ingest", "compute", "scan", "catalysts", "news", "publish", "revalidate"),
     "macro": ("macro", "publish", "revalidate"),
+    # N4 adds two. A mode is a PROMISE ABOUT WHAT A RUN WILL NOT TOUCH, which is why this table is a
+    # pinned constant with a test rather than a comment: the control room (N6) will let the user fire
+    # these by hand, and a "refresh the news" button that quietly re-ingested the market would be a
+    # button that lies about what it does.
+    #
+    # `news` re-reads the providers and rebuilds the front page. It touches no price, no scan, no
+    # base rate — so it is safe to run at any hour, including while the market is open, because
+    # nothing it writes depends on a session having closed.
+    "news": ("news", "publish", "revalidate"),
 }
+
+# `compute` (recompute indicators and scans over stored data, fetching nothing) is DELIBERATELY ABSENT
+# until N6 builds it, and its absence is the honest state rather than an oversight.
+#
+# A mode is a promise about what a run will not touch. Declaring "compute" here without a handler in
+# main() would not have produced a broken button — it would have produced a button that silently ran
+# the ENTIRE NIGHTLY, because every mode that main() does not recognise falls through to the full
+# run. A user pressing "recompute scans" at noon would have re-ingested the market mid-session and
+# written half a day of unformed bars over the last good close. The guard in main() now refuses any
+# mode it has no handler for, so that failure is impossible rather than merely unlikely.
 
 
 def parse_mode(argv: list[str]) -> str:
@@ -487,6 +513,17 @@ def main() -> None:
     if mode == "macro":
         run_macro_mode(settings)
         return
+    if mode == "news":
+        run_news_mode(settings)
+        return
+    if mode != "full":
+        # Belt and braces. parse_mode already rejects a mode that is not in MODE_STAGES; this
+        # refuses a mode that IS in the table but has no handler here, which is the more dangerous
+        # of the two — it would otherwise fall through and run the whole night.
+        raise ValueError(
+            f"job_a: mode {mode!r} is declared in MODE_STAGES but has no handler. Refusing to fall "
+            f"through to a full nightly run, which would re-ingest the market."
+        )
 
     run_date = datetime.now(_MARKET_TZ).date()
 
@@ -515,6 +552,8 @@ def main() -> None:
             read_macro_stats=_read_macro_stats(settings, fred, run_date),
             read_mood_history=_read_mood_history(fred),
             publish_macro_stats=pub.publish_macro_stats,
+            build_front_page=_build_front_page(settings, conn, run_date),
+            publish_news=pub.publish_news,
         )
         result = run_nightly(deps)
 
@@ -551,3 +590,263 @@ def _revalidate_desk(settings: Settings) -> None:
 
 if __name__ == "__main__":
     main()
+
+
+# ---------------------------------------------------------------------------------------------
+# The Front Page (N4)
+# ---------------------------------------------------------------------------------------------
+
+
+def _read_instruments(conn) -> list[NewsInstrument]:
+    """
+    The universe the resolver matches article text against.
+
+    Name AND symbol, because most of the front page arrives with neither — Finnhub's market feed
+    tags no tickers at all, so the only way to know a story is about Nvidia is to recognise the word.
+    """
+    with conn.cursor() as cur:
+        cur.execute("SELECT symbol, name FROM instrument WHERE is_active = true")
+        return [NewsInstrument(symbol=row[0], name=row[1]) for row in cur.fetchall()]
+
+
+def _read_sectors(conn) -> dict[str, str]:
+    """Each instrument's sector — the strongest evidence there is for what a story is about."""
+    with conn.cursor() as cur:
+        cur.execute("SELECT symbol, sector FROM instrument WHERE sector IS NOT NULL")
+        return {row[0]: row[1] for row in cur.fetchall()}
+
+
+def _read_moves(conn, run_date: date) -> dict[str, TickerMove]:
+    """
+    Tonight's price evidence, per symbol — the only input to the significance formula's magnitude
+    term, and the numbers snapshotted onto each catalyst link.
+
+    Read from the scan metrics the night has ALREADY computed rather than recomputed here: two
+    independent calculations of "today's move" is exactly how the feed's number and the story page's
+    number come to disagree by a basis point and make a liar of both.
+    """
+    with conn.cursor() as cur:
+        cur.execute(
+            """
+            SELECT symbol,
+                   (metrics ->> 'ret_1')::float8,
+                   (metrics ->> 'rvol20')::float8,
+                   (metrics ->> 'atr14')::float8,
+                   (metrics ->> 'close')::float8
+            FROM scan_result
+            WHERE run_date = %s
+            """,
+            (run_date,),
+        )
+        moves: dict[str, TickerMove] = {}
+        for symbol, ret1, rvol20, atr14, close in cur.fetchall():
+            # ATR is an absolute price range; the formula wants it as a fraction of price, so that a
+            # $4 move on a $40 stock and a $40 move on a $400 stock read the same.
+            atr_pct = (atr14 / close) if (atr14 and close) else None
+            moves[symbol] = TickerMove(symbol=symbol, ret1=ret1, atr14_pct=atr_pct)
+        return moves
+
+
+def _read_rvol(conn, run_date: date) -> dict[str, float | None]:
+    """RVOL per symbol, snapshotted onto the catalyst links beside the move."""
+    with conn.cursor() as cur:
+        cur.execute(
+            "SELECT symbol, (metrics ->> 'rvol20')::float8 FROM scan_result WHERE run_date = %s",
+            (run_date,),
+        )
+        return {row[0]: row[1] for row in cur.fetchall()}
+
+
+def _read_setup_card_symbols(conn) -> set[str]:
+    """Which symbols have evidence behind them — the gate on the story page's "Setup card" doorway.
+
+    A doorway to nothing is worse than no doorway, so the link renders only where a card exists."""
+    with conn.cursor() as cur:
+        cur.execute("SELECT DISTINCT symbol FROM setup_card")
+        return {row[0] for row in cur.fetchall()}
+
+
+def _fetch_news_articles(settings: Settings) -> tuple[list[dict], dict[str, str]]:
+    """
+    Tonight's market-wide news, from both providers, each degrading on its own.
+
+    One dead provider costs its own articles and nothing else — the per-source status key is what
+    lets the night say "Finnhub answered and Marketaux did not" rather than "news: degraded", which
+    is a sentence that describes two different outages identically.
+    """
+    articles: list[dict] = []
+    status: dict[str, str] = {}
+
+    client = httpx.Client(timeout=30)
+    limiter = TokenBucket(rate_per_sec=1.0, capacity=5.0)
+
+    if settings.finnhub_key:
+        try:
+            finnhub = FinnhubAdapter(client, limiter, settings.finnhub_key)
+            for category in FINNHUB_MARKET_CATEGORIES:
+                for item in finnhub.market_news(category):
+                    articles.append(
+                        {
+                            "id": item.article_id,
+                            "url": item.url,
+                            "headline": item.headline,
+                            "summary": item.summary,
+                            "source": item.source,
+                            "category": item.category,
+                            "image": item.image,
+                            "published": item.published,
+                            "tickers": item.tickers,
+                        }
+                    )
+            status["news-finnhub"] = "ok"
+        except Exception as error:  # noqa: BLE001 — one provider's outage is not the night's
+            status["news-finnhub"] = "degraded"
+            print(f"job_a: Finnhub market news failed ({error}); the front page loses its main feed.")
+    else:
+        status["news-finnhub"] = "not_configured"
+
+    if settings.marketaux_key:
+        try:
+            marketaux = MarketauxAdapter(client, limiter, settings.marketaux_key)
+            for page in range(1, MARKETAUX_PAGES + 1):
+                batch = marketaux.market_news(page=page)
+                if not batch:
+                    break
+                for article in batch:
+                    articles.append(
+                        {
+                            "id": article.uuid,
+                            "uuid": article.uuid,
+                            "url": article.url,
+                            "headline": article.title,
+                            "summary": article.description or article.snippet,
+                            "source": article.source,
+                            "image": article.image_url,
+                            "published": article.published,
+                            "tickers": tuple(e.symbol for e in article.entities),
+                            "industries": [e.industry for e in article.entities],
+                            "similar": article.similar,
+                        }
+                    )
+            status["news-marketaux"] = "ok"
+        except Exception as error:  # noqa: BLE001
+            status["news-marketaux"] = "degraded"
+            print(f"job_a: Marketaux failed ({error}); the front page loses its entity tags.")
+    else:
+        status["news-marketaux"] = "not_configured"
+
+    return articles, status
+
+
+def _build_front_page(settings: Settings, conn, run_date: date) -> Callable[[], FrontPageRead]:
+    """
+    The newsdesk, wired to the real world (plan 7.3-7.6, 7.9).
+
+    Images are fetched only when the media bucket exists (provisioning row P-1). When it does not —
+    which is today — every card falls to the DESIGNED L3/L4 rungs, which are first-class outcomes
+    rather than empty states, and the night records that it did so. The feed ships either way; that
+    is the whole point of building the ladder before the bucket.
+    """
+
+    def read() -> FrontPageRead:
+        articles, status = _fetch_news_articles(settings)
+
+        resolver = TickerResolver(_read_instruments(conn))
+        moves = _read_moves(conn, run_date)
+        rvol = _read_rvol(conn, run_date)
+        carded = _read_setup_card_symbols(conn)
+
+        night = build_night(
+            articles=articles,
+            resolver=resolver,
+            moves=moves,
+            session_date=run_date,
+            sectors_by_symbol=_read_sectors(conn),
+        )
+
+        media_base = os.environ.get("NEXT_PUBLIC_MEDIA_BASE", "")
+        if not media_base:
+            status["news-images"] = "not_configured"
+
+        cluster_rows = [
+            {
+                "id": cluster.id,
+                "run_date": run_date,
+                "first_seen": cluster.first_seen,
+                "headline": cluster.headline,
+                "event_type": cluster.event_type,
+                "sectors": cluster.sectors,
+                "themes": cluster.themes,
+                "tickers": list(cluster.tickers),
+                "significance": cluster.significance,
+                "sources": cluster.sources,
+                # Prose is added by the LLM stages; until they run, an honest null. A null here
+                # prints NOTHING on the card — never a placeholder (P9).
+                "why_it_matters": None,
+                "affected_note": None,
+                "extract": {},
+                "verification": {"narrated": False, "reason": "stage B not run for this cluster"},
+                "image_id": None,
+                "links": [
+                    {
+                        "cluster_id": cluster.id,
+                        "symbol": symbol,
+                        "ret1": moves[symbol].ret1 if symbol in moves else None,
+                        "rvol20": rvol.get(symbol),
+                        "has_setup_card": symbol in carded,
+                    }
+                    for symbol in cluster.tickers
+                ],
+            }
+            for cluster in night.clusters
+        ]
+
+        return FrontPageRead(
+            clusters=cluster_rows,
+            images=[],
+            source_status=status,
+            articles_in=night.articles_in,
+            boilerplate_dropped=night.boilerplate_dropped,
+            stage_a_capped=night.stage_a_capped,
+        )
+
+    return read
+
+
+def run_news_mode(settings: Settings) -> None:
+    """
+    Rebuild the front page, and touch nothing else (MODE_STAGES["news"]).
+
+    THE PROMISE THIS FUNCTION KEEPS. It re-reads the news providers, resolves, clusters, ranks and
+    publishes — and it does not ingest a single bar, recompute a single indicator, rebuild a single
+    scan or spend a cent of LLM budget. That is what makes it safe to run at ANY hour, including
+    while the market is open, because nothing it writes depends on a session having closed.
+
+    It is also why `main` dispatches here EXPLICITLY rather than falling through to the full night.
+    Before this branch existed, any mode that was not "macro" ran the whole nightly — so a user
+    pressing "refresh the news" at noon would have re-ingested the entire market mid-session and
+    written a day of half-formed bars over the last good close. A mode is a promise about what a run
+    will NOT touch, and a promise the code does not keep is worse than no promise at all.
+
+    It reads the SESSION date, not today: the price evidence it snapshots onto each catalyst link
+    belongs to the last close that actually happened, and at noon on a Tuesday that is Monday's.
+    """
+    run_date = previous_session(datetime.now(_MARKET_TZ).date())
+
+    with psycopg.connect(settings.database_url_psycopg) as conn:
+        front_page = _build_front_page(settings, conn, run_date)()
+        written = pub.publish_news(
+            conn,
+            run_date=run_date,
+            clusters=front_page.clusters,
+            images=front_page.images,
+        )
+
+    _revalidate_desk(settings)
+
+    print(
+        f"job_a (news): {run_date.isoformat()} — {front_page.articles_in} articles in, "
+        f"{front_page.boilerplate_dropped} regulatory filings dropped, {written} stories published, "
+        f"{front_page.stage_a_capped} past the extraction cap. "
+        f"Sources: {front_page.source_status}."
+    )

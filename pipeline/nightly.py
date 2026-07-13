@@ -161,6 +161,24 @@ class MoodHistory:
 
 
 @dataclass(frozen=True)
+class FrontPageRead:
+    """What the newsdesk produced tonight, and how each provider behaved while it did (N4).
+
+    The counts travel with the rows because a cut that does not state its own size is a cut nobody
+    can audit (C6): `articles_in` and `boilerplate_dropped` say what arrived and what was refused,
+    and `stage_a_capped` says how many stories were ingested and ranked but never read by the
+    extraction batch — a visible absence rather than a silent one.
+    """
+
+    clusters: list[dict]
+    images: list[dict]
+    source_status: dict[str, str]
+    articles_in: int = 0
+    boilerplate_dropped: int = 0
+    stage_a_capped: int = 0
+
+
+@dataclass(frozen=True)
 class NightlyDeps:
     """Everything run_nightly needs from the outside world — injected so the flow is fully fakeable."""
 
@@ -191,6 +209,11 @@ class NightlyDeps:
     read_macro_stats: Callable[[], MacroStatsRead] | None = None
     read_mood_history: Callable[[], MoodHistory] | None = None
     publish_macro_stats: Callable[..., None] | None = None
+    # The Front Page (N4). `build_front_page` fetches the market-wide news, resolves its tickers,
+    # clusters it, ranks it and fetches its images; `publish_news` writes the result in one
+    # transaction. Both optional, so the fake-driven tests can skip the newsdesk entirely.
+    build_front_page: Callable[[], FrontPageRead] | None = None
+    publish_news: Callable[..., int] | None = None
 
 
 @dataclass(frozen=True)
@@ -303,6 +326,19 @@ def run_nightly(deps: NightlyDeps) -> NightlyResult:
     if gauge_row is not None:
         macro_stat_rows.append(gauge_row)
 
+    # The Front Page (N4). Fetched BEFORE the publish for the same reason the macro board is — each
+    # provider's health becomes a source-status key on the run row — and written AFTER it, in its own
+    # transaction, so a slow publisher's image fetch can never delay or endanger the transaction that
+    # carries the morning itself. A dead news provider costs the front page and nothing else.
+    front_page: FrontPageRead | None = None
+    if deps.build_front_page is not None:
+        try:
+            front_page = deps.build_front_page()
+            source_status = {**source_status, **front_page.source_status}
+        except Exception as error:  # noqa: BLE001 — a dead newsdesk degrades the front page, not the night
+            source_status = {**source_status, "news": "degraded"}
+            print(f"nightly: the newsdesk failed ({error}); the front page degrades.")
+
     deps.publish(
         deps.conn,
         run_date=deps.run_date,
@@ -317,6 +353,20 @@ def run_nightly(deps: NightlyDeps) -> NightlyResult:
         calendar_events=calendar_events,
         batch_id=batch_id,
     )
+
+    # The front page lands in its own transaction, after the morning is safely stored.
+    if front_page is not None and deps.publish_news is not None:
+        written = deps.publish_news(
+            deps.conn,
+            run_date=deps.run_date,
+            clusters=front_page.clusters,
+            images=front_page.images,
+        )
+        print(
+            f"nightly: front page — {front_page.articles_in} articles in, "
+            f"{front_page.boilerplate_dropped} regulatory filings dropped, {written} stories "
+            f"published, {front_page.stage_a_capped} past the extraction cap."
+        )
 
     # The board's rows go in after the morning is safely published. The cadence rule (which of these
     # are genuinely new) lives inside publish_macro_stats, where the stored rows can be seen.

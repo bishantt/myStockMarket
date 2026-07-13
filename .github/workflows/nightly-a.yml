@@ -31,7 +31,24 @@ on:
     - cron: "37 22 * * 1-5"
     # The dawn macro refresh — see the note above. Tue–Sat catches Friday's close on Saturday.
     - cron: "0 10 * * 2-6"
-  workflow_dispatch: {} # lets a run be triggered by hand from the Actions tab
+  # A hand-dispatched run picks its own mode. N6's control room dispatches this workflow with one of
+  # these values, and the panel's copy promises what each will and will not touch — MODE_STAGES in
+  # jobs/job_a.py is the pinned constant those promises are made of, with a test holding it.
+  #
+  # The default stays `full`, so the Actions-tab "Run workflow" button behaves as it always has.
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "What this run should do"
+        type: choice
+        default: full
+        options:
+          - full      # the whole night: ingest, compute, scan, catalysts, news, publish
+          - news      # rebuild the front page only — touches no price, no scan, no base rate
+          - macro     # re-read the rates, gold, FX and the gauge inputs
+          # `compute` lands with N6, which builds the panel these buttons belong to. It is left OUT
+          # rather than listed-and-broken: job_a refuses a mode it has no handler for, and a dropdown
+          # option that always errors is worse than an option that is not there yet.
 
 # One nightly run at a time. Job A and Job B share this group so they never overlap.
 concurrency:
@@ -66,7 +83,10 @@ jobs:
       - name: Pick the run mode
         id: mode
         run: |
-          if [ "${{ github.event.schedule }}" = "0 10 * * 2-6" ]; then
+          if [ -n "${{ inputs.mode }}" ]; then
+            # A hand dispatch (the Actions tab, or N6's control room) said what it wanted.
+            echo "value=${{ inputs.mode }}" >> "$GITHUB_OUTPUT"
+          elif [ "${{ github.event.schedule }}" = "0 10 * * 2-6" ]; then
             echo "value=macro" >> "$GITHUB_OUTPUT"
           else
             echo "value=full" >> "$GITHUB_OUTPUT"
