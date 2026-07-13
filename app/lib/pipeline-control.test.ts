@@ -74,18 +74,35 @@ describe("the panel always offers every action", () => {
 });
 
 describe("the missing GitHub token (P-2)", () => {
-  it("puts every row in not_configured and says exactly what is missing", () => {
+  it("puts the dispatchable rows in not_configured", () => {
     const rows = panel({ tokenConfigured: false });
 
-    expect(rows.every((r) => r.state.kind === "not_configured")).toBe(true);
-    // It names the thing to go and do. A panel that just greys out teaches nothing.
-    expect(row(rows, "macro").state).toMatchObject({ kind: "not_configured" });
+    for (const action of ["news", "macro", "compute", "briefing"]) {
+      expect(row(rows, action).state.kind).toBe("not_configured");
+    }
   });
 
   it("does not pretend a run could be dispatched", () => {
-    // No row may be `available` without a token — that button would 500 on press.
+    // No row may be `available` without a token — that button would fail on press.
     const rows = panel({ tokenConfigured: false });
     expect(rows.some((r) => r.state.kind === "available")).toBe(false);
+  });
+
+  it("STILL tells the reader why `full` could not run anyway — the world outranks the config", () => {
+    // A FACT ABOUT THE WORLD OUTRANKS A FACT ABOUT OUR CONFIGURATION.
+    //
+    // not_configured used to be checked first and it swallowed everything: with P-2 unprovisioned,
+    // every row read "not configured" and the four C5 sentences — the best writing on this panel,
+    // and the entire point of plan 8.1 — never rendered AT ALL. The reader could not even discover
+    // that the product had thought about this.
+    //
+    // "Markets are open, so today's closing data does not exist yet" is true whether or not we hold
+    // a GitHub token. The token is our problem, it is temporary, and the panel states it once at the
+    // top rather than on every row.
+    const state = row(panel({ tokenConfigured: false, now: TUE_10AM, lastRun: null }), "full").state;
+
+    expect(state.kind).toBe("not_applicable");
+    expect(state.kind === "not_applicable" && state.reason).toContain("today's closing data doesn't exist");
   });
 });
 
@@ -321,9 +338,18 @@ describe("THE SILENT FAILURE: a run that was dispatched and never appeared", () 
 });
 
 describe("precedence — the order the reasons are applied", () => {
-  it("puts not_configured above everything: no token, no state worth computing", () => {
-    const rows = panel({ tokenConfigured: false, now: TUE_10AM, runs: [requested({ status: "running" })] });
-    expect(rows.every((r) => r.state.kind === "not_configured")).toBe(true);
+  it("shows a LIVE run above everything — a lie about the present is the worst lie here", () => {
+    // A `full` run writes its pipeline_run row at PUBLISH, near the end of its work. So for the last
+    // stretch of a recovery run, "tonight's run already succeeded" is technically true while the run
+    // the reader started is visibly still going. Printing that over a live run — or printing "daily
+    // limit reached" over it — is the most confusing thing this panel could do.
+    const rows = panel({
+      now: TUE_8PM,
+      lastRun: TUESDAY_RAN, // tonight's edition HAS landed — full would otherwise be not_applicable
+      runs: [requested({ action: "full", status: "running", ghRunId: "42" })],
+    });
+
+    expect(row(rows, "full").state.kind).toBe("running");
   });
 
   it("puts a live run above a cap — the reader must always be able to see what is running", () => {

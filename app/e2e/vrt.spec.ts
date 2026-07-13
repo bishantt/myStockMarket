@@ -225,6 +225,24 @@ test.describe("visual regression — the design system", () => {
     { path: "/academy", name: "academy" },
     { path: "/academy/glossary", name: "academy-glossary" },
     { path: "/academy/review", name: "academy-review" },
+    /*
+     * THE CONTROL ROOM (N6). Worth locking for one reason above all the others: on this page, the
+     * most important thing the product says is a SENTENCE, not a control.
+     *
+     * Plan 8.1 found that on a normal weeknight the pipeline has already run and a manual re-run
+     * would recompute identical data — so the honest control for that case is the EXPLANATION. The
+     * pinned VRT clock (SEEDED_EVENING, 11pm on the seeded session) lands `full` in exactly that
+     * state, so the baseline photographs the flagship C5 line:
+     *
+     *     "Tonight's run already succeeded at 18:41 ET — there is nothing newer to fetch."
+     *
+     * A row whose whole job is to be READ is a row whose failure mode is typographic, and no DOM
+     * assertion can see that. This is the oracle's question, not a test's.
+     *
+     * (/settings had NO baseline at all before this — the one room in the app that is a writer, and
+     * the pixel oracle had never looked at it.)
+     */
+    { path: "/settings", name: "settings" },
   ];
 
   for (const room of SEEDED_ROOMS) {

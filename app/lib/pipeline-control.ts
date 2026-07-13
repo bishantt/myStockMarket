@@ -280,10 +280,17 @@ function stateFor(ctx: {
 }): RunState {
   const { action, runs, live, lastRun, now, tokenConfigured, spent, cap } = ctx;
 
-  // 1. P-2 is absent. Every row says so, and none pretends it could dispatch.
-  if (!tokenConfigured) return { kind: "not_configured" };
-
-  // 2. This action's own run is in flight — show it, whatever else is true.
+  /*
+   * 1. NOTHING OUTRANKS A RUN THAT IS HAPPENING RIGHT NOW.
+   *
+   * The reader must always be able to see what is executing. Printing "tonight's run already
+   * succeeded" — or "daily limit reached" — OVER a run that is on the machine at this moment is a
+   * lie about the present, and it is the single most confusing thing this panel could do.
+   *
+   * (This is not hypothetical. A `full` run writes its pipeline_run row at publish, near the END of
+   * its work — so for the last stretch of a recovery run, "tonight's run already succeeded" is
+   * technically true while the run the reader started is visibly still going.)
+   */
   const mine = live.find((r) => r.action === action);
   if (mine) {
     if (mine.status === "running") {
@@ -293,7 +300,31 @@ function stateFor(ctx: {
     return { kind: "requested" };
   }
 
-  // The newest finished run of this action, so a failure is reported rather than silently forgotten.
+  /*
+   * 2. A FACT ABOUT THE WORLD OUTRANKS A FACT ABOUT OUR CONFIGURATION.
+   *
+   * `not_configured` used to be checked before this, and it swallowed everything: with P-2
+   * unprovisioned, every row read "not configured" and the four C5 sentences — the best and most
+   * important writing on this panel, and the entire point of plan 8.1 — never rendered AT ALL. The
+   * reader could not even discover that the product had thought about the question.
+   *
+   * But "markets are open, so today's closing data does not exist yet" is true whether or not we
+   * hold a GitHub token. It is a fact about the market. The missing token is a fact about our own
+   * setup, it is temporary, and the panel already states it ONCE above the rows rather than on every
+   * one of them. So the row tells the reader the deeper truth, and offers no button either way.
+   *
+   * It also outranks a cooldown, which would otherwise state a FALSE reason: "available again at
+   * 10:31am" is a promise the market being open will not keep.
+   */
+  if (action === "full") {
+    const reason = whyFullCannotRun(lastRun, now);
+    if (reason) return { kind: "not_applicable", reason };
+  }
+
+  // 3. P-2 is absent. No button could work, and the panel says so once, above the rows.
+  if (!tokenConfigured) return { kind: "not_configured" };
+
+  // 4. The newest run's outcome, so a failure is reported rather than silently forgotten.
   const newest = newestRun(runs, action);
   if (newest && isLost(newest, now)) return { kind: "lost" };
   if (newest?.status === "failed") return { kind: "failed", runUrl: runUrl(newest.ghRunId) };
@@ -301,12 +332,6 @@ function stateFor(ctx: {
   // 3. Somebody else's run is in flight. Runs share a concurrency group and GitHub keeps only the
   //    latest queued run in a group — a second dispatch now might simply evaporate.
   if (live.length > 0) return { kind: "blocked" };
-
-  // 4. The true reason it cannot run, which outranks a cooldown that would state a false one.
-  if (action === "full") {
-    const reason = whyFullCannotRun(lastRun, now);
-    if (reason) return { kind: "not_applicable", reason };
-  }
 
   // 5. Today's allowance is spent.
   if (spent >= cap.perDay) return { kind: "capped" };
