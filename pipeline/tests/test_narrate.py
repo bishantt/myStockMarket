@@ -483,3 +483,17 @@ def test_a_budget_that_is_never_exhausted_reads_everything() -> None:
 
     assert result.extracted == 2
     assert result.extract_timed_out is False
+
+
+def test_a_narrator_that_throws_publishes_the_facts_without_prose() -> None:
+    """The rule Stage A learned the hard way, held for Stage B too: a provider outage is a page
+    without prose, never a night without a front page."""
+
+    class _Throwing:
+        def __init__(self) -> None:
+            self.messages = self
+
+        def create(self, **_kwargs):
+            raise TimeoutError("Request timed out or interrupted.")
+
+    assert narrate(_Throwing(), [_cluster()], _stats(), model="claude-sonnet-5") is None

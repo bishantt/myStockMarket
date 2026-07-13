@@ -60,9 +60,14 @@ _MAX_TOKENS = 4096
 # damage of a bad one.
 EXTRACT_BUDGET_SECONDS = 360.0
 
-# The per-call bound on the model client. The SDK's default is TEN MINUTES with retries on top,
-# which is how 60 sequential calls became a twenty-minute stage on the first live run.
-CALL_TIMEOUT_SECONDS = 30.0
+# The per-call bound on the model client. The SDK's default is TEN MINUTES with retries on top, which
+# is how 60 sequential calls became a twenty-minute stage on the first live run.
+#
+# 30 SECONDS WAS TOO TIGHT, and production said so on the very next run: an extraction call timed out
+# and — because a failed call used to take the whole stage down with it — the night reported "0 of 0
+# extracted". A bound that trips on a healthy night is not a safety rail, it is an outage. 90 seconds
+# is far above what a 1024-token Haiku extract takes and far below anything that could hold the page.
+CALL_TIMEOUT_SECONDS = 90.0
 CALL_MAX_RETRIES = 2
 
 # The Stage B-mini system prompt, verbatim from Appendix D.
@@ -183,7 +188,14 @@ def narrate(
     messages: list[dict] = [{"role": "user", "content": user}]
 
     for _attempt in range(2):
-        text = _message_text(_create(client, model, system, messages))
+        try:
+            text = _message_text(_create(client, model, system, messages))
+        except Exception as error:  # noqa: BLE001 — the narrator's outage is not the page's
+            # Same rule as Stage A: a failed call is a page without prose, never a night without a
+            # front page. The facts are already computed and ordered by the time this runs.
+            print(f"narrate: the notes call failed ({error}); the page publishes without prose.")
+            return None
+
         notes = _parse_notes(text)
         if notes is not None:
             return notes

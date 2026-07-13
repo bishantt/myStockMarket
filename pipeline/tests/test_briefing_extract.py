@@ -166,3 +166,43 @@ def test_sync_extract_handles_the_remainder():
 
 def _fixed_clock(value):
     return lambda: value
+
+
+# ----- one bad call is a dropped article, not a dead stage (N5, found in production) -----
+#
+# The docstring said "A failed article is skipped" and the code only skipped articles whose PARSE
+# failed. An API exception — a timeout, a 529, a dropped connection — propagated straight out of the
+# loop and killed the whole stage.
+#
+# In production that is exactly what happened: ONE extraction call timed out, the exception unwound
+# through the entire newsdesk narration, and the night reported "0/0 extracted". Sixty articles were
+# waiting to be read and not one of them was, because the first one was slow.
+#
+# The rule this restores is the one the whole pipeline is built on: a source degrades ALONE.
+
+class _RaisingClient:
+    """Raises on the first call, then behaves. The shape of a real transient provider failure."""
+
+    def __init__(self) -> None:
+        self.calls = 0
+        self.messages = self
+
+    def create(self, **_kwargs):
+        self.calls += 1
+        if self.calls == 1:
+            raise TimeoutError("Request timed out or interrupted.")
+        return _message(_valid_extract_json("ignored"))
+
+
+def test_one_failed_call_does_not_take_the_other_articles_down():
+    client = _RaisingClient()
+
+    extracts = sync_extract(
+        client,
+        [_news("a1"), _news("a2"), _news("a3")],
+        model=MODEL,
+    )
+
+    assert client.calls == 3, "it must keep going, not stop at the first failure"
+    assert len(extracts) == 2, "the two that answered are extracted; the one that failed is dropped"
+    assert "a1" not in extracts

@@ -114,13 +114,23 @@ def sync_extract(
         if out_of_time is not None and out_of_time():
             break
         doc_id = str(item["id"])
-        message = client.messages.create(
-            model=model,
-            max_tokens=_MAX_TOKENS,
-            system=_SYSTEM,
-            messages=[{"role": "user", "content": _article_prompt(item)}],
-            output_config={"format": {"type": "json_schema", "schema": extract_json_schema()}},
-        )
+        try:
+            message = client.messages.create(
+                model=model,
+                max_tokens=_MAX_TOKENS,
+                system=_SYSTEM,
+                messages=[{"role": "user", "content": _article_prompt(item)}],
+                output_config={"format": {"type": "json_schema", "schema": extract_json_schema()}},
+            )
+        except Exception as error:  # noqa: BLE001 — one article's outage is not the stage's
+            # A SOURCE DEGRADES ALONE, and this loop did not honour that. It skipped an article whose
+            # response failed to PARSE, and let an API exception — a timeout, a 529, a dropped
+            # connection — unwind straight out of the stage. In production one slow call took down
+            # the whole newsdesk narration and the night reported "0 of 0 extracted": sixty articles
+            # were waiting to be read and not one of them was, because the first was slow.
+            print(f"extract: article {doc_id} failed ({error}); dropping it and carrying on.")
+            continue
+
         parsed = parse_extract(doc_id, _message_text(message))
         if parsed is not None:
             extracts[doc_id] = parsed
