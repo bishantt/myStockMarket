@@ -23,12 +23,26 @@ const ROUTES = [
   "/ticker/SPY",
   "/paper",
   "/track-record",
+  // /settings carries the control room (N6): five action rows of real buttons.
   "/settings",
+  // The Front Page (N5), added at N7 — and it is the single densest room in the app for this rule:
+  // two horizontally-scrolling chip rows, a pagination control and a card grid of links. It shipped
+  // in N5 and this sweep never looked at it, which is the gap the plan warned this list would grow.
+  "/news",
   "/academy",
   "/academy/glossary",
   "/academy/review",
   "/styleguide",
 ];
+
+/**
+ * Rooms that only EXIST when the database is seeded (N7).
+ *
+ * Ask for a story by a cluster id that is not there and the route calls `notFound()`, so an unseeded
+ * sweep measures the 404 page — and passes. See `open()` for the recording, and for why the status
+ * code cannot tell you this.
+ */
+const SEEDED_ROUTES = ["/news/nc-fed-hold"];
 
 async function signIn(page: Page) {
   await page.goto("/login");
@@ -38,6 +52,36 @@ async function signIn(page: Page) {
   await expect(page).toHaveURL("/");
 }
 
+/**
+ * Open a room, and PROVE it is the room — not an error page, and not the login wall (N7).
+ *
+ * These sweeps measure whatever is on the screen. A route that 404s puts the error page under the
+ * ruler: it has no controls under 44px, it does not scroll sideways, and it passes every rule here
+ * while the room it stands for is never looked at.
+ *
+ * THE STATUS CODE IS NOT THE WITNESS. The first version of this guard asserted `status === 200` and
+ * still passed on a missing page. Recorded on this tree: `/news/nc-fed-hold` and
+ * `/ticker/NOTAREALTICKER` both answer **HTTP 200 with "404 — This page could not be found" in the
+ * body**, because a `notFound()` raised inside a statically-generated route is served as a 200; only
+ * a path the router cannot match at all gets a real 404. The body is the only honest witness, so the
+ * body is what this reads.
+ */
+async function open(page: Page, route: string) {
+  await page.goto(route);
+
+  const missing = await page.getByText("This page could not be found").count();
+  expect(
+    missing,
+    `${route} rendered the 404 PAGE — this sweep would have measured an error page and passed. ` +
+      `(Note: it answers HTTP 200, so no status check can see this.)`,
+  ).toBe(0);
+
+  expect(
+    new URL(page.url()).pathname,
+    `${route} redirected — this sweep would have measured a DIFFERENT ROOM and passed`,
+  ).toBe(route);
+}
+
 test.describe("touch targets (phone)", () => {
   test.skip(({ isMobile }) => !isMobile, "phone project only");
 
@@ -45,9 +89,13 @@ test.describe("touch targets (phone)", () => {
     await signIn(page);
   });
 
-  for (const route of ROUTES) {
-    test(`every control on ${route} is at least 44px`, async ({ page }) => {
-      await page.goto(route);
+  /**
+   * Measure every control in one room. Returns the offenders AND the number of controls it actually
+   * looked at, because a sweep that measured nothing must not be allowed to report success — the
+   * lesson the 16px rule below learned the hard way, applied here before it can happen again.
+   */
+  async function measureTargets(page: Page, route: string) {
+      await open(page, route);
 
       // Wait for the LAYOUT to settle, which is the only thing this sweep actually depends on — it
       // measures the size of every control, and a control's size is not final until its text is in
@@ -67,9 +115,10 @@ test.describe("touch targets (phone)", () => {
         await document.fonts.ready;
       });
 
-      const small = await page.evaluate(() => {
+      return await page.evaluate(() => {
         const MIN = 44;
         const offenders: string[] = [];
+        let swept = 0;
 
         const controls = document.querySelectorAll<HTMLElement>(
           "a, button, [role=button], summary, input:not([type=hidden]), select, textarea",
@@ -78,6 +127,8 @@ test.describe("touch targets (phone)", () => {
         for (const el of controls) {
           const box = el.getBoundingClientRect();
           if (box.width === 0 || box.height === 0) continue; // not rendered at this breakpoint
+
+          swept += 1;
 
           /*
            * THE INLINE EXCEPTION, and it is a real one — not a way of dodging the rule.
@@ -138,10 +189,34 @@ test.describe("touch targets (phone)", () => {
             );
           }
         }
-        return offenders;
+        return { offenders, swept };
       });
+  }
 
-      expect(small, `controls below 44px tall on ${route}`).toEqual([]);
+  /** Assert the room's controls, having first proved there WERE controls. */
+  async function checkTargets(page: Page, route: string) {
+    const { offenders, swept } = await measureTargets(page, route);
+
+    expect(
+      swept,
+      `the sweep measured NO controls at all on ${route} — every room in this app has at least a ` +
+        `tab bar, so finding none means the page did not render, and the rule passed over an empty ` +
+        `screen. A sweep that swept nothing is a failure, not a pass.`,
+    ).toBeGreaterThan(0);
+
+    expect(offenders, `controls below 44px tall on ${route}`).toEqual([]);
+  }
+
+  for (const route of ROUTES) {
+    test(`every control on ${route} is at least 44px`, async ({ page }) => {
+      await checkTargets(page, route);
+    });
+  }
+
+  for (const route of SEEDED_ROUTES) {
+    test(`every control on ${route} is at least 44px (seeded)`, async ({ page }) => {
+      test.skip(process.env.MSM_SEEDED !== "1", "needs a seeded test database (MSM_SEEDED=1)");
+      await checkTargets(page, route);
     });
   }
 
@@ -240,13 +315,24 @@ test.describe("no page scrolls sideways, anywhere", () => {
     await signIn(page);
   });
 
+  async function checkOnAxis(page: Page, route: string) {
+    await open(page, route);
+    const overflow = await page.evaluate(
+      () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+    );
+    expect(overflow, `horizontal overflow on ${route}`).toBeLessThanOrEqual(1);
+  }
+
   for (const route of ROUTES) {
     test(`${route} stays on-axis`, async ({ page }) => {
-      await page.goto(route);
-      const overflow = await page.evaluate(
-        () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
-      );
-      expect(overflow, `horizontal overflow on ${route}`).toBeLessThanOrEqual(1);
+      await checkOnAxis(page, route);
+    });
+  }
+
+  for (const route of SEEDED_ROUTES) {
+    test(`${route} stays on-axis (seeded)`, async ({ page }) => {
+      test.skip(process.env.MSM_SEEDED !== "1", "needs a seeded test database (MSM_SEEDED=1)");
+      await checkOnAxis(page, route);
     });
   }
 });
