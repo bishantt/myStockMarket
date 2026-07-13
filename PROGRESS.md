@@ -60,9 +60,13 @@ also carries the closing table for all seven chapters.
   else: a fine-grained PAT, this repo only, Actions read+write, added to **Vercel** as
   `GH_DISPATCH_TOKEN`. Two minutes.
 - **P-1 — the R2 media bucket.** Absent. The Front Page renders its designed generated cards.
-- **Q-N6-1 — the Saturday row.** Production holds one `pipeline_run` stamped 2026-07-11, a day the
-  market never opened. I fixed the cause; I did not delete production data on my own judgment. The SQL
-  is in QUESTIONS.
+- **Q-N6-1 — the Saturday rows: ANSWERED by the user (2026-07-13) — delete them.** I fixed the cause
+  (`job_a` skips a non-session day) and declined to delete production data on my own judgment; the
+  user has now made that call. **The deletion is not N7's to run:** POLISH-AND-DEPTH-PLAN's **PD1**
+  executes the SQL *after Monday's edition is verified*, and running it early would break that
+  sequencing. Until then the rows (`pipeline_run`, `market_context`, `scan_result`, all stamped
+  2026-07-11) remain in production — invisible to every display, but present in any series that walks
+  those tables by date.
 - **The iOS device pass is yours.** There is no iPhone here. Everything a machine can check is checked
   on every push; the checklist for the ten minutes only a real device can do is in QUESTIONS.
 

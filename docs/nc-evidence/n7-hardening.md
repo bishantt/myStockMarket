@@ -166,5 +166,9 @@ measured anything at all.
   production. The panel says so, once, and renders every other state honestly. The whole path is
   proven working against real GitHub (`n6-control.md` §6). It is a secret and nothing else.
 - **P-1 — the R2 media bucket** is still absent. The Front Page renders its designed generated cards.
-- **Q-N6-1** — production holds one `pipeline_run` stamped Saturday 2026-07-11, a day the market never
-  opened. The cause is fixed; the row is still there, with its SQL, for the user to decide.
+- **Q-N6-1 — ANSWERED by the user (2026-07-13): delete the Saturday rows.** The cause is fixed
+  (`job_a` skips a non-session day). The deletion itself is **not N7's to run**: POLISH-AND-DEPTH-PLAN's
+  **PD1** executes the SQL *after Monday's edition is verified*, and running it early would break that
+  sequencing. Until then the rows (`pipeline_run`, `market_context`, `scan_result`, stamped
+  2026-07-11) remain in production — invisible to every display, present in any series that walks
+  those tables by date.

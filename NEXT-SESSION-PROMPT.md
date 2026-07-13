@@ -11,27 +11,33 @@ not guarding anything.
 
 ---
 
-## There is a NEW PLAN in the tree, and it is not mine
+## THE NEXT BUILD IS THE POLISH & DEPTH PLAN — and it is already commissioned
 
-While N7 was running, a **parallel planning session** wrote two files that are **untracked and
-uncommitted**:
+While N7 was running, a **parallel planning session shared this same checkout** and committed its own
+work onto `main`, interleaved with mine (`512e24d`, `1e24f75`):
 
 ```
 POLISH-AND-DEPTH-PLAN.md            ("The Second Edition")
-docs/src/polish-and-depth-plan.html
+docs/src/polish-and-depth-plan.html · docs/Polish-And-Depth-Plan.pdf
 ```
 
-I did not write them and I did not commit them — they are not part of `nc-final`, and I do not commit
-or overwrite work I did not create. The file's own header says it was authored *"while the News &
-Control build's last phase (N7) was still pending in a parallel session"*, and that where it and the
-tree disagree on a detail, **the tree wins on the detail and the plan wins on the intent.**
+I did not write those files and they are not N7's work, but they **are** committed and they **are**
+inside `nc-final` (they are ancestors of the tag). Its header says where it and the tree disagree on
+a detail, **the tree wins on the detail and the plan wins on the intent** — and N7 changed the tree,
+so re-verify against the working tree before relying on any file it names.
 
-**If Bishan wants that plan executed, that is the next build.** Read it in full, run the CLAUDE.md
-session ritual, and follow its own phase structure and Autonomy Contract — one phase per session.
-Commit those two files first (they are the contract), or confirm with Bishan that they should be.
+**Start there: read POLISH-AND-DEPTH-PLAN.md in full**, run the CLAUDE.md session ritual, and follow
+its own phase structure and Autonomy Contract — one phase per session.
 
-**If not**, there is no queued work. The app is complete against DEVELOPMENT-PLAN, UI-REDESIGN-PLAN,
-APP-FEEL-PLAN and NEWS-AND-CONTROL-PLAN.
+### The one thing that carries over into it
+
+**Q-N6-1 is ANSWERED: the user said delete the Saturday rows** (option A, 2026-07-13, recorded in the
+Polish & Depth plan's Part 0.1 — a **user decision, rank 2.5**, not an assumption). Its **PD1** phase
+executes the SQL *after Monday's edition is verified*. **I deliberately did not run it in N7:** the
+sequencing is theirs, and running it early would break it. The rows (`pipeline_run`,
+`market_context`, `scan_result`, all stamped `2026-07-11`) are still in production — invisible to
+every display, present in any series that walks those tables by date. **PD1 must also close Q-N6-1 in
+QUESTIONS-FOR-BISHANT.md and log the deletion in DECISIONS.md as user-authored.**
 
 ---
 
@@ -41,9 +47,7 @@ APP-FEEL-PLAN and NEWS-AND-CONTROL-PLAN.
    dark in production without it. A **fine-grained PAT**, *this repository only*, **Actions: read and
    write**, added to **Vercel** as `GH_DISPATCH_TOKEN`. The whole path is proven working against real
    GitHub (`docs/nc-evidence/n6-control.md` §6) — it is a secret and nothing else.
-2. **Q-N6-1 — the Saturday row.** Production holds one `pipeline_run` stamped 2026-07-11, a day the
-   market never opened. The **cause** is fixed (`job_a` now skips a non-session day); I did not delete
-   production data on my own judgment. The SQL is in `QUESTIONS-FOR-BISHANT.md`.
+2. **Q-N6-1 is answered — nothing left to ask.** See above: PD1 runs the deletion.
 3. **P-1 — the R2 media bucket.** Absent. The Front Page renders its designed generated cards; every
    article in the recorded feed carried a publisher image, so real photographs appear the moment a
    bucket exists.
