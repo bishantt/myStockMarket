@@ -98,6 +98,17 @@ test.describe("the pipeline strip — the escalation, on the real page", () => {
   test("FRESH — the seeded night: one quiet line, no alarm, and a doorway", async ({ page }) => {
     await signIn(page);
     await page.goto("/");
+    const session = await seededSession(page);
+
+    /*
+     * Read on the night of the seeded session itself — which is the ONLY moment this data is fresh.
+     *
+     * Without pinning the clock, this test would depend on how long ago the seed's trading day was,
+     * which is to say it would pass today and fail next week for no reason anybody could reconstruct.
+     * The seeded run is a fixed point; "now" is not. So we say when we are reading.
+     */
+    await readAt(page, session, 0);
+    await page.reload();
 
     const strip = page.getByRole("status").filter({ hasText: "Data through" });
     await expect(strip).toBeVisible();

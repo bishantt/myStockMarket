@@ -150,9 +150,32 @@ async function resetMutableStateThePixelsWouldOtherwiseCatch(request: APIRequest
   await request.post(`/api/revalidate?secret=${VRT_RESET_SECRET}`);
 }
 
+/**
+ * THE CLOCK IS PINNED, AND THE FIRST BASELINE RUN IS WHY.
+ *
+ * The pipeline strip grades freshness in the BROWSER, against the reader's clock — deliberately, so
+ * that a cached render can never photograph a dead pipeline as a healthy one. Which means the Desk
+ * now renders something that depends on WHEN IT IS.
+ *
+ * The seeded database has one completed run, for a fixed trading day. Real time keeps moving. So the
+ * first baseline run photographed the strip in its AGING state ("no run for Friday's session"),
+ * which was correct — and would have escalated to DEAD a day later, and the baseline would have
+ * started failing on its own, with nobody having changed a line of code. A picture that rots with
+ * the calendar is not an oracle; it is a chore with a countdown on it.
+ *
+ * So the browser's clock is fixed to the evening of the seeded session: the run has landed, no
+ * further session is owed, and the strip is FRESH — permanently, on every run, forever. The desk
+ * shots assert that state before photographing it, so if the seed's date ever moves, this fails
+ * loudly instead of quietly photographing the wrong rung of the ladder.
+ */
+const SEEDED_SESSION = "2026-07-09"; // the trading day prisma/seed.mjs publishes
+const SEEDED_EVENING = new Date(`${SEEDED_SESSION}T23:00:00-04:00`); // 11pm ET that night
+
 test.describe("visual regression — the design system", () => {
   test.beforeEach(async ({ page, request }) => {
     await resetMutableStateThePixelsWouldOtherwiseCatch(request);
+    // Before anything navigates: the strip reads this on mount.
+    await page.clock.setFixedTime(SEEDED_EVENING);
     await signIn(page);
   });
 
@@ -212,6 +235,25 @@ test.describe("visual regression — the design system", () => {
         test.skip(testInfo.project.name === "wide" && theme === "dark", "wide locks layout, not palette");
 
         await useTheme(page, theme);
+
+        /*
+         * The Desk carries the pipeline strip, and the strip is the one thing on this page whose
+         * appearance depends on WHEN IT IS. The clock is pinned to the seeded session's evening (see
+         * SEEDED_EVENING), which puts the strip in its FRESH state.
+         *
+         * This asserts that before shooting. If the seed's trading day ever moves and the pin is not
+         * moved with it, the strip escalates to amber or to the red banner and the baseline becomes
+         * a photograph of a state nobody chose — which is precisely how a pixel oracle stops being
+         * one. Better to fail here, saying what happened, than to hand back a picture of a bug.
+         */
+        if (room.path === "/") {
+          await page.goto("/");
+          await expect(
+            page.getByRole("status").filter({ hasText: "Data through" }),
+            "the strip is not FRESH — the pinned clock and the seed's session have drifted apart",
+          ).toBeVisible();
+        }
+
         await shoot(page, room.path, `${room.name}-${theme}`);
       });
     }
