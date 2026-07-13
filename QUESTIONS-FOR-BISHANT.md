@@ -10,42 +10,45 @@ Format: newest first. I mark each as [FYI], [VETO?], or [NEED] so you can scan.
 
 ## 2026-07-12 — the app-feel build (F0–F7)
 
-### The one thing I need you to decide
+### RESOLVED — you approved this, and it turned out I had the diagnosis half wrong
 
-- **[NEED] Grey text on glass cards fails the accessibility contrast floor, and fixing it means
-  changing a colour you signed off on.** The axe sweep at F7 found this and I did not fix it, because
-  the palette is yours, not the plan's.
+- **[DONE, was NEED] Grey text on glass.** You approved darkening `--color-muted`. Doing it properly
+  meant measuring it properly, and the measurement changed the story — so here is what was actually
+  true, because part of what I told you was not.
 
-  The detail: `--color-muted` was checked against the PAPER colour and clears it (4.83:1, where the
-  standard wants 4.5:1). But a card is translucent — so what you actually see that grey against is the
-  card composited over the lavender wash, not the paper. Measured on screen, it does not clear the
-  floor. Every glass card in the app is affected, in both themes.
+  **What I told you:** 58 nodes failing, every glass card, both themes, a broken palette.
 
-  **The fix is small and contained:** darken `--color-muted` until it clears 4.5:1 against the
-  composited glass, in both themes, and re-shoot the baselines. One token, two values, about seventy
-  screenshots. It will make the muted grey a shade darker everywhere — provenance lines, timestamps,
-  column labels.
+  **What was true:** the 58 was an artifact of my own test. Every page in this app fades in, and axe
+  composites a text colour through any ancestor's transparency — so it was measuring the page *while
+  it was still fading in* and reporting the colours of a half-transparent screen. Those are not
+  colours anybody ever reads. Wait for the fade to finish and the 58 collapse to **one** real
+  finding.
 
-  **What I did instead:** I fixed everything that was unambiguously a mistake rather than a choice —
-  a link nested inside a button (you could not tab to a mover's source link), a shelf a keyboard could
-  not scroll, and 58 nodes of real information rendered in `faint`, a colour the design system has
-  always reserved for placeholders ("never body text", it says, and we used it for disclosure counts
-  and unknown values). Accessibility went 93 → 100 on Lighthouse. The contrast finding is excluded
-  from the gate with a comment pointing at docs/feel-evidence/accessibility.md, and the gate still
-  holds the line on everything else, so a new violation cannot hide behind this one.
+  **The one real finding is exactly the one you approved, and it was a genuine bug:** `--color-muted`
+  was verified at 4.83:1 against the PAPER — but muted text almost never sits on the paper, it sits
+  on a translucent card, which composites to `#f0effe`. Against what you actually look at, it
+  measured **4.48:1**. It missed the readability floor by two hundredths, on the only background that
+  counts. It is **`#676577`** now — **4.99:1** on the glass. A shade darker, nothing else moved.
 
-  **Say the word and it is a ten-minute change.** I left it because a design system does not survive
-  an executor repainting it at 2am on the last night of a build.
+  **Midnight did not need it.** Its grey already measures 5.00:1 on its own cards and axe finds zero
+  contrast failures in dark, so I left it alone and said so in the token sheet. A colour that passes
+  is not a colour to change — you asked for a floor, not a repaint.
 
-- **[FYI] The iOS device checklist could not be run.** The plan's F7 calls for a manual pass on a real
+  **The gate holds the full line now.** Colour contrast is back in, nothing is excluded, and the sweep
+  runs in **both** themes (42 checks, green) — a two-theme app whose gate only checked one theme was
+  checking half its colours. Numbers and the full story: `docs/feel-evidence/accessibility.md`.
+
+### Still yours to close
+
+- **[PENDING YOUR VERIFICATION] The iOS device checklist — you said you would run this one.** The plan's F7 calls for a manual pass on a real
   iPhone — shelf momentum, the combobox under the keyboard, double-tap on a sort header, the rail
   sheet's home-indicator band — in both mobile Safari and the installed app. I have no device. Every
   item is covered by the automated matrix as far as Chromium/Pixel-7 can cover it, and the specific
   iOS hazards are handled in code with the reasons written down (the mask lives on the shelf's
   non-scrolling wrapper; the combobox dismisses on `pointerdown` because iOS sends no click; the
   listbox caps at five rows because the keyboard leaves ~330px; `touch-action: manipulation` on every
-  double-tappable control; the rail sheet has its safe-area inset). **This is the one gate that is
-  genuinely pending, and it needs your phone.**
+  double-tappable control; the rail sheet has its safe-area inset). **This gate stays open, pending
+  your verification — not mine.** I am not closing it on your behalf and I have not marked it passed.
 
 
 Nothing here blocks me. I have made the most reasonable call on each item, marked in the code and

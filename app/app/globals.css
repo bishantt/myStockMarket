@@ -55,7 +55,17 @@
   --color-surface-solid: #ffffff;                  /* fallbacks + decision moments + Academy */
   --color-ink: #0f0d1a;
   --color-ink-2: #3d3a4f;
-  --color-muted: #6e6c80;            /* provenance — must clear 4.5:1 on paper */
+  /*
+   * Provenance text. Must clear 4.5:1 against the COMPOSITED GLASS — not against the paper.
+   *
+   * It used to be #6e6c80, chosen because it measures 4.83:1 on `--color-paper`. But almost no
+   * muted text in this app sits on the paper: it sits on a Surface, and a Surface is white at 72%
+   * over the lavender wash, which composites to #f0effe. Against what a reader actually looks at,
+   * #6e6c80 measures 4.48:1 — it missed the floor by two hundredths, and the token was verified
+   * against a background it is hardly ever shown on. #676577 measures 4.99:1 on the glass, 5.37:1
+   * on paper, 5.67:1 on a solid card. Approved by the user 2026-07-12 as a readability floor.
+   */
+  --color-muted: #676577;
   --color-faint: #a9a7b8;            /* placeholders/disabled; never body text */
   --color-hairline: rgb(99 88 143 / 0.13);
   --color-hairline-strong: rgb(99 88 143 / 0.24);
@@ -87,7 +97,9 @@
   /* Tier chips (§3.3) — word always inside the chip; moderate is TEAL, not amber */
   --color-tier-strong: #047857;   --color-tier-strong-wash: rgb(5 150 105 / 0.10);
   --color-tier-moderate: #0f766e; --color-tier-moderate-wash: rgb(13 148 136 / 0.10);
-  --color-tier-weak: #6e6c80;     --color-tier-weak-wash: rgb(124 122 142 / 0.10);
+  /* Weak tier IS the provenance grey — same value as --color-muted, on purpose. It moved with it
+   * (2026-07-12): letting them drift apart would leave two greys differing by a hair for no reason. */
+  --color-tier-weak: #676577;     --color-tier-weak-wash: rgb(124 122 142 / 0.10);
 
   /* Evidence grades — inside Tag only, never without their word; mixed is teal */
   --color-grade-supported: #047857;
@@ -168,6 +180,8 @@
   --color-surface-solid: #1e1b30;
   --color-ink: #ece9f8;
   --color-ink-2: #c3c0d6;
+  /* Verified on Midnight's composited card (#231f38): 5.00:1. Unchanged — it already clears
+   * the floor, and a colour that passes is not a colour to change. */
   --color-muted: #918ea6;
   --color-faint: #6b6880;
   --color-hairline: rgb(167 157 210 / 0.16);
@@ -216,7 +230,7 @@
     --color-surface-solid: #1e1b30;
     --color-ink: #ece9f8;
     --color-ink-2: #c3c0d6;
-    --color-muted: #918ea6;
+    --color-muted: #918ea6;  /* 5.00:1 on Midnight's glass — see the data-theme block above */
     --color-faint: #6b6880;
     --color-hairline: rgb(167 157 210 / 0.16);
     --color-hairline-strong: rgb(167 157 210 / 0.28);
