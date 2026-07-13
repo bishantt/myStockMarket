@@ -100,9 +100,31 @@ ranked by size of move is a leaderboard; this is the test that stops it becoming
 
 ---
 
+## ⚠ THE ONE OPEN ITEM — do this first
+
+**`nc-1` is tagged at `3a9c47a` and its CI needs to be confirmed green.** Everything is committed and
+green locally (409 app tests, 240 pipeline tests, 18 drift rules, build + budgets). The only thing
+unverified is the tag's own CI run, and specifically the VRT job.
+
+The story, so you do not have to re-derive it: tightening the pixel gate (below) exposed that the
+Academy VRT shot was photographing a checkmark left behind by `academy.spec.ts` (opening a lesson
+marks it read). Two fixes landed, in this order:
+
+1. `vrt.spec.ts` now clears `lesson_progress` before shooting. **This alone was not enough** —
+   `/academy` is an ISR route, and the action that marked the lesson read had already revalidated it,
+   so the CACHE still held the checkmark.
+2. So the reset now also calls `/api/revalidate` to bust the cache. The test server gets a known
+   `CRON_SECRET` (`VRT_RESET_SECRET` in `playwright.config.ts`) for exactly this.
+
+**Check it:** `gh run list --limit 5` → find the `nc-1` run → it must be green. If the Academy shots
+still differ, the remaining suspect is another spec mutating state the VRT photographs (paper trades
+and the watchlist are the other app-writable tables; they passed, but they passed under the OLD loose
+tolerance too, so do not assume). Do NOT loosen the tolerance to make it green — that is the guard
+that found this.
+
 ## Resumable state — start here
 
-- **Done:** N0 (`nc-0`), N1 (`nc-1`).
+- **Done:** N0 (`nc-0`), N1 (`nc-1` — tagged, CI confirmation pending, see above).
 - **Next: N2 — windows, density, the grid** (plan Parts 4 + 5). The pipeline strip replacing module
   00, `lib/freshness.ts`, the module-07 and sources-footer shrink, the desktop grid contract (every
   room's column map + the new `wide` 1536 breakpoint + VRT viewports), the Part 5.1 window-label
