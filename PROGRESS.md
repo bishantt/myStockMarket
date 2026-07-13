@@ -13,7 +13,7 @@ bugs that 572 green tests could not see.
 
 ---
 
-## The six things worth knowing from N6
+## The eight things worth knowing from N6
 
 ### 1. The dispatch API tells you NOTHING, and the plan (and GitHub's docs) said it told you everything
 
@@ -97,6 +97,22 @@ DEAD alert**, the one a reader follows when the pipeline is broken and they most
 element with that id existed. **A fragment that matches nothing is not an error; it is a link that
 quietly does half of what it says.**
 
+### 7. The panel was reading the WRONG CLOCK — and the pixel oracle caught it
+
+The first VRT baseline photographed the panel saying **"Markets are open"** directly underneath a nav
+bar reading **"MARKET CLOSED"**. One page, two clocks, two answers. The nav grades in the browser; the
+panel was grading on the **server**; CI happened to run at 3pm ET.
+
+**N4's bug in a new surface** — and with a second head: the baseline would have **rotted on its own**,
+changing with the hour CI happened to run and failing with nobody touching a line of code. The states
+are derived in the browser now. The server action still grades server-side, and must — a client clock
+is an input the caller controls.
+
+### 8. The most important sentence on the panel was unreadable
+
+The P-2 notice rendered as light text on `#6d648c`. I had used `band` — a **data-visualisation**
+colour, for breadth bars — as a *surface*. Found by opening the PNG.
+
 ---
 
 ## What N6 landed (tag `nc-6`)
@@ -125,7 +141,7 @@ job_a (compute): recomputed 2026-07-10 from stored bars — 11017 symbols, 1315 
 
 `recomputed 2026-07-10` — Friday, on a Monday. The run date came from the data, exactly as designed.
 
-**Counts at nc-6:** **576 app tests** · **462 pytest local, 26 skipped** · 20 drift rules · 4 modes.
+**Counts at nc-6:** **577 app tests** · **462 pytest local, 26 skipped** · 20 drift rules · **76 VRT baselines** (was 71) · 4 modes.
 **Evidence:** `docs/nc-evidence/n6-control.md`.
 
 ---

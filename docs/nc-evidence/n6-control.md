@@ -1,4 +1,4 @@
-# N6 — the control room: what it does, and the six things it found
+# N6 — the control room: what it does, and the eight things it found
 
 *Written 2026-07-13. Every claim below has a test, a measurement, or a live production run behind it.
 Where the plan and the world disagreed, the world won and the disagreement is recorded.*
@@ -67,7 +67,7 @@ weekend, named holiday, already-ran. "Not available" without a "next" is a dead 
 
 ---
 
-## 3. The six findings
+## 3. The eight findings
 
 ### 3.1 The panel crashed on its FIRST poll, and the button looked completely inert
 
@@ -164,7 +164,36 @@ watchlist.
 It never 404'd and nothing ever failed, which is exactly why it survived: **a fragment that matches
 nothing is not an error. It is a link that quietly does half of what it says.**
 
-### 3.6 The same sentence, five times
+### 3.6 The panel was reading the WRONG CLOCK, and the pixel oracle caught it
+
+The first VRT baseline photographed the panel saying **"Markets are open — today's closing data
+doesn't exist until 4:00pm ET"** directly underneath a nav bar reading **"MARKET CLOSED"**. One page,
+two clocks, two answers. The nav grades in the browser; the panel was grading on the **server**; CI
+happened to run at 3pm ET.
+
+That is **N4's bug wearing a new surface** — a Desk built at 3:55pm told readers "markets open" long
+past the close — and here it had a second head: **the baseline would have rotted on its own.** Every
+state on this panel turns on what time it is, so the picture would change with the hour CI happened
+to run and start failing with nobody having touched a line of code. That is *precisely* what the
+`SEEDED_EVENING` clock pin was introduced to prevent, and the panel walked straight around it.
+
+`controlPanel` is a pure function, so the fix is to run it where the reader's clock is: the server
+sends the FACTS (the ledger, the last completed run, whether the token exists) and the browser
+derives the states. **The server action still grades against the server's clock, and must** — a client
+clock is an input the caller controls, and "the market is closed, honest" is not something a form
+body gets to assert.
+
+**The Desk's freshness strip settled this argument in N4 and says so in its own comment.** There is
+one clock in this app that matters, and it is the reader's.
+
+### 3.7 The most important sentence on the panel was unreadable
+
+The P-2 notice rendered as light text on `#6d648c`. I had used `band` — a **data-visualisation**
+colour, for bars and breadth segments — as a *surface*. It is a tinted wash now, and legible. Found
+by looking at the picture; no contrast gate caught it, because the page was not in the axe sweep's
+route list for that element.
+
+### 3.8 The same sentence, five times
 
 The first build printed `copy.control.notConfigured` on every row — which is what the state machine
 honestly reports, since all five rows *are* `not_configured`. Every test passed. Then I photographed
@@ -185,7 +214,8 @@ honest, it is just louder — and a wall of repetition is how a reader learns to
 | 4 | `not_configured` is one of eight row states | A row shows `not_applicable` **above** `not_configured`, and the missing token is stated **once**, above the rows | A fact about the world outranks a fact about our configuration. Checked the other way, P-2's absence swallowed every C5 sentence and the reader could not discover the feature existed. |
 | 5 | (unstated) | **Nothing outranks a live run** | A `full` run writes its `pipeline_run` row at publish, near the END of its work — so "tonight's run already succeeded" is briefly true *while the run the reader started is still going*. Printing it over a live run is a lie about the present. |
 | 6 | `manual_run` rows: `requested \| queued \| running \| succeeded \| failed` | Adds a UI state **`lost`** (never stored) | The dispatch returns no run id, so the app must hunt for the run. When the hunt never resolves, "requested…" forever is the silent failure. After 90s the panel says the run never appeared, and stops blocking the other buttons — one bad dispatch must not freeze the panel until midnight. |
-| 7 | A dispatch writes a `manual_run` row | The row is written **only after GitHub accepts (204)** | A dispatch GitHub refuses requested nothing and ran nothing. Writing the row first would let a bad token **burn the day's single `full` run** — the recovery button — for a run that never happened. Plan 8.3's own principle, applied one case further. |
+| 7 | (unstated) — the panel is a server component | The row STATES are derived **in the browser**, against the reader's clock | The first VRT baseline caught the panel saying "Markets are open" under a nav reading "MARKET CLOSED". The nav grades in the browser; the panel was grading on the server. It is N4's bug in a new surface, and it would also have made the baseline ROT — the picture would change with the hour CI ran. The server action still grades server-side, and must: a client clock is an input the caller controls. |
+| 8 | A dispatch writes a `manual_run` row | The row is written **only after GitHub accepts (204)** | A dispatch GitHub refuses requested nothing and ran nothing. Writing the row first would let a bad token **burn the day's single `full` run** — the recovery button — for a run that never happened. Plan 8.3's own principle, applied one case further. |
 
 ---
 
@@ -286,12 +316,17 @@ AFTER : Re-run the evening briefing | requested | Dispatched — finding the run
 
 | | |
 |---|---|
-| App unit tests | **576** (was 541) |
+| App unit tests | **577** (was 541) |
 | Pipeline tests | **462 local, 26 skipped** (was 446/22) |
 | Anti-drift rules | 20 |
-| VRT baselines | **+4** (`/settings`, both themes, desktop + phone + wide) |
+| VRT baselines | **76** (was 71) — `/settings` had none at all |
 | Modes | **4** — `full`, `news`, `macro`, `compute` |
 
-**Four of the six findings were found by running the thing and looking at it, or by firing a real run
-at a real API. Two were found by a test.** That is eight bugs this build has found by opening the
-picture, and it has not missed yet.
+**Six of the eight findings were found by running the thing and looking at it, or by firing a real run
+at a real API. Two were found by a test** — and one of those two was the pixel oracle, which is a
+camera rather than an assertion. That is ten bugs this build has found by opening the picture, and it
+has not missed yet.
+
+**And a note on the ones the tests DID catch.** Every bug above had a unit test that *could* have
+caught it and did not — because the test was built from the same misunderstanding as the code. A green
+suite is evidence about the tests, not about the system.
