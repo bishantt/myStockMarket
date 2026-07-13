@@ -53,11 +53,11 @@ name: ci
 # grouped on the ref alone, which was correct until the rehearsal existed and fatal the moment it
 # did: a rehearsal dispatched on main carries `github.ref == refs/heads/main`, the very same ref as
 # main's own push run. On 2026-07-13 the first rehearsal ever dispatched cancelled the push run of
-# the very commit it was rehearsing (run 29291818293, killed by run 29291878002) — and the reverse
-# is worse: pushing a docs commit during a 9-minute rehearsal would have killed the rehearsal, and
-# an exit would have gone to its tag with no oracle behind it and nothing saying so. The exit ritual
-# runs the branch push and the rehearsal deliberately IN PARALLEL, so these two must be able to
-# coexist. Splitting the group by event keeps every supersede-cancel G0 bought and lets them.
+# the commit it was rehearsing (run 29291818293, cancelled by run 29291878002) — and the reverse is
+# worse: pushing a docs commit during a 9-minute rehearsal would have killed the rehearsal, leaving
+# an exit with no oracle at all and nothing saying so. The exit ritual runs the branch push and the
+# rehearsal deliberately in PARALLEL, so these two must be able to coexist. Splitting the group by
+# event keeps every supersede-cancel that G0 bought and lets the two live side by side.
 concurrency:
   group: ci-${{ github.ref }}-${{ github.event_name }}
   cancel-in-progress: true
@@ -190,7 +190,7 @@ jobs:
         run: uv run pytest -q
 
   e2e:
-    name: e2e + VRT + PWA + axe (the browser oracle — phase-exit tags, and the G1 rehearsal)
+    name: oracle (${{ matrix.project }}) — e2e + VRT + PWA + axe
     # TWO ways in, and they run the identical suite:
     #
     #   1. A phase-exit tag. Keep the families here in step with `on.push.tags` above —
@@ -206,9 +206,33 @@ jobs:
     # dispatch; a 422 here means the ref does not know about the input yet.
     if: startsWith(github.ref, 'refs/tags/phase-') || startsWith(github.ref, 'refs/tags/redesign-') || startsWith(github.ref, 'refs/tags/feel-') || startsWith(github.ref, 'refs/tags/nc-') || startsWith(github.ref, 'refs/tags/gate-') || startsWith(github.ref, 'refs/tags/pd-') || (github.event_name == 'workflow_dispatch' && inputs.job == 'e2e')
     runs-on: ubuntu-latest
+
+    # THREE LEGS, ONE PER PLAYWRIGHT PROJECT (G1). The suite used to run all three projects inside a
+    # single job, one worker, strictly serial: 852–868 seconds of the tag run's 950, and it was 90% of
+    # every exit's wall-clock.
+    #
+    # `workers: 1` in playwright.config.ts is NOT the enemy and is NOT touched. It exists for a real
+    # reason: the seeded journeys write to the database (watchlist adds), so two specs running at once
+    # would let one spec's write change what another spec reads. That reason is about sharing ONE
+    # database — and each matrix leg is a separate runner with its own Postgres service container, so
+    # three legs are three throwaway databases that cannot see each other. The serial-within-a-leg
+    # guarantee survives byte for byte; only the legs run at the same time.
+    #
+    # `fail-fast: false` because a red desktop leg must not cancel the phone leg. At a phase exit you
+    # want the WHOLE truth in one run — all the failures, not the first one. Cancelling the other legs
+    # would just buy another 9-minute round trip to learn what this run already knew.
+    #
+    # `wide` is the short leg by construction: playwright.config.ts scopes it to vrt+hardening
+    # (testMatch), so it shoots the wide grid and sweeps for sideways scroll and stops.
+    strategy:
+      fail-fast: false
+      matrix:
+        project: [desktop, phone, wide]
+
     # A throwaway Postgres, seeded with the deterministic synthetic morning (prisma/seed.mjs), so
     # the Desk data journey (desk.spec.ts) asserts real rendered values end to end. This is a TEST
     # database only — the seed refuses to touch a Supabase host, so production is never involved.
+    # One of these per leg: three legs, three databases, no shared state between them.
     services:
       postgres:
         image: postgres:16-alpine
@@ -264,7 +288,12 @@ jobs:
 
       # The webServer in playwright.config.ts builds and starts the app with fixture auth
       # credentials; the database URLs above come from the job env, so this needs no secrets.
-      - run: npm run e2e
+      #
+      # `--project` is the ONLY thing the matrix changes about the run. playwright.config.ts is not
+      # edited and does not know it is being sharded: the projects it already declares (desktop,
+      # phone, wide) are the shards, and each leg simply runs one of them.
+      - name: The oracle (${{ matrix.project }})
+        run: npm run e2e -- --project=${{ matrix.project }}
 
       # A failed visual-regression check is only useful if you can SEE what changed — and for six
       # phases this uploaded a directory that does not exist. CI runs the `github` reporter, not the
@@ -272,11 +301,14 @@ jobs:
       # time, which meant the one thing a VRT failure owes you (the picture) was the one thing you
       # could not get. `test-results/` is where Playwright actually writes the expected/actual/diff
       # triptych, and it has been there all along.
+      #
+      # Named per leg: artifact names are unique within a run, so three legs uploading
+      # `playwright-failures` would collide.
       - name: Upload the failure artifacts (the expected/actual/diff images live here)
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: playwright-failures
+          name: playwright-failures-${{ matrix.project }}
           path: |
             app/test-results/
             app/playwright-report/
