@@ -120,8 +120,14 @@ export async function toggleFocus(_prev: ActionResult, formData: FormData): Prom
  * its palette index, and nothing else is touched. The list is short because the app is small, and it
  * lives beside the write that needs it rather than inside a framework flag whose blast radius is the
  * whole route tree.
+ *
+ * "/settings" IS NOT IN THIS LIST, AND MUST NOT BE. These actions are invoked FROM /settings, and a
+ * page that revalidates itself from inside its own action is racing its own reply — the re-render
+ * the reader gets back can be the copy from before their click. That is why /settings renders on
+ * request now (see its page.tsx). Revalidating it here would be, at best, a no-op; at worst it is
+ * the bug coming back wearing a different hat.
  */
-const ROOMS_WITH_A_PALETTE = ["/", "/scans", "/paper", "/track-record", "/settings"];
+const ROOMS_WITH_A_PALETTE = ["/", "/scans", "/paper", "/track-record"];
 
 function revalidateWatchlist(): void {
   for (const room of ROOMS_WITH_A_PALETTE) revalidatePath(room);

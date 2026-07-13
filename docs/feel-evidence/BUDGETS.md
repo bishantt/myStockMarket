@@ -6,7 +6,7 @@ adjective.
 
 | # | Budget | Instrument | Before (F0) | After (feel-final) | Verdict |
 |---|---|---|---|---|---|
-| **B1** | Every product route served from a cache | `check-routes.mjs` (reads the build's own prerender manifest) | **2 of 10** cached | **10 of 10**, allowlist empty | ✅ |
+| **B1** | Every product route served from a cache | `check-routes.mjs` (reads the build's own prerender manifest) | **2 of 10** cached | **10 of 11** cached · `/settings` allowlisted, with its reason | ✅ |
 | **B2** | Authenticated production TTFB, warm median | `check-nav.mjs` (5 samples/route against the live deployment) | 382–1237 ms | **48–133 ms** (budget 150) | ✅ |
 | **B3** | Soft-nav: tab tap → destination visible | `e2e/nav-timing.spec.ts` (phone, seeded, 8 samples/destination) | Scans **1342 ms**, Paper 824, Track 825, Academy 827 | Scans **280 ms**, Paper 202, Track ~130, Academy ~140 | ✅ |
 | **B4** | Per-route first-load JS | `check-bundles.mjs` | `/ticker` **193 KB** | `/ticker` **145 KB** (the chart, code-split) | ✅ |
@@ -28,6 +28,29 @@ budget. LCP was already ruled a synthetic-4G artifact by the user (DECISIONS, 20
 
 Full numbers and the reversal cost: `lighthouse-tradeoff.md`. Flagged [FYI] in
 QUESTIONS-FOR-BISHANT.md — it is one line to reverse, and the cost of reversing it is written there.
+
+## The one room that is deliberately NOT cached, and the rule behind it
+
+`/settings` renders on request. It is the only route in the allowlist, and it is there because of a
+requirement for a cached page that nobody had written down until it bit us twice:
+
+> **A page may be CACHED, or it may be written to and read back in the SAME CLICK. Not both.
+> Never revalidate the path you were invoked from.**
+
+Every other room is a *reader*: you arrive, you look, and anything you change lives somewhere else.
+Settings is a *writer* — its entire content is the thing you just changed by clicking on it. Each
+click runs a server action that re-renders that page as its reply, and if the reply can come from a
+cache entry written before your click, you get back the page as it was *before you touched it*. We
+watched exactly that: a watchlist row added by a test vanished on the next click, intermittently,
+because a race is a race and sometimes you win it. It is the same shape as the Desk's deadlock (a
+page revalidating itself from inside its own action), which is why it is now a rule rather than a
+fix.
+
+The cost is small and it is the right one to pay: settings is the one room nobody taps for speed, it
+is visited rarely, and it has a `loading.tsx`, so the reader is never looking at nothing. The
+exception is enforced in three places that must agree — the page, the `check-routes` allowlist, and
+drift rule 13 — and rule 13 still fails the build for any other route that reaches for the flag
+(verified with a negative control).
 
 ## The one that got better without being asked
 

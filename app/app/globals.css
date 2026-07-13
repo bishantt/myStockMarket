@@ -180,9 +180,17 @@
   --color-surface-solid: #1e1b30;
   --color-ink: #ece9f8;
   --color-ink-2: #c3c0d6;
-  /* Verified on Midnight's composited card (#231f38): 5.00:1. Unchanged — it already clears
-   * the floor, and a colour that passes is not a colour to change. */
-  --color-muted: #918ea6;
+  /*
+   * Midnight's provenance grey. Same floor as Morning's, measured against the LIGHTEST card it
+   * ever sits on — which is the raised surface (#2c293d composited), not the standard one.
+   *
+   * It was #918ea6, and against the standard card (#231f38) that measures 5.00:1, so a first
+   * sweep called Midnight clean and left it alone. It is not clean: on a RAISED card it measures
+   * 4.44:1, and the phone Desk's shelf cards are raised. The sweep missed it because it had been
+   * run on the desktop project only, and the shelf is phone-only — half the app, measured, and
+   * called all of it. #9c99b1 measures 5.10:1 on the raised card and 5.74:1 on the standard one.
+   */
+  --color-muted: #9c99b1;
   --color-faint: #6b6880;
   --color-hairline: rgb(167 157 210 / 0.16);
   --color-hairline-strong: rgb(167 157 210 / 0.28);
@@ -201,7 +209,7 @@
   --color-alert: #e0a83e; --color-alert-wash: #3a2f14;
   --color-tier-strong: #4cbf7e;   --color-tier-strong-wash: rgb(76 191 126 / 0.14);
   --color-tier-moderate: #45c7b8; --color-tier-moderate-wash: rgb(69 199 184 / 0.14);
-  --color-tier-weak: #918ea6;     --color-tier-weak-wash: rgb(145 142 166 / 0.14);
+  --color-tier-weak: #9c99b1;     --color-tier-weak-wash: rgb(145 142 166 / 0.14);
   --color-grade-supported: #4cbf7e;
   --color-grade-mixed: #45c7b8;
   --color-grade-weak: #d07b5b;
@@ -230,7 +238,7 @@
     --color-surface-solid: #1e1b30;
     --color-ink: #ece9f8;
     --color-ink-2: #c3c0d6;
-    --color-muted: #918ea6;  /* 5.00:1 on Midnight's glass — see the data-theme block above */
+    --color-muted: #9c99b1;  /* 5.10:1 on Midnight's raised card — see the data-theme block above */
     --color-faint: #6b6880;
     --color-hairline: rgb(167 157 210 / 0.16);
     --color-hairline-strong: rgb(167 157 210 / 0.28);
@@ -249,7 +257,7 @@
     --color-alert: #e0a83e; --color-alert-wash: #3a2f14;
     --color-tier-strong: #4cbf7e;   --color-tier-strong-wash: rgb(76 191 126 / 0.14);
     --color-tier-moderate: #45c7b8; --color-tier-moderate-wash: rgb(69 199 184 / 0.14);
-    --color-tier-weak: #918ea6;     --color-tier-weak-wash: rgb(145 142 166 / 0.14);
+    --color-tier-weak: #9c99b1;     --color-tier-weak-wash: rgb(145 142 166 / 0.14);
     --color-grade-supported: #4cbf7e;
     --color-grade-mixed: #45c7b8;
     --color-grade-weak: #d07b5b;

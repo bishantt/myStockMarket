@@ -180,8 +180,16 @@ const RULES = [
     // real gate. This grep is the cheap half: it catches the one-line edit that would undo F1 —
     // someone reaching for `force-dynamic` to make a page "always fresh", not realising that every
     // write already busts its own cache and that the cost is a frozen screen on every tap.
+    //
     // /api routes are exempt: a route handler is not a page and has nothing to prerender.
-    skip: [],
+    //
+    // /settings is exempt, ONCE, and the exemption is spelled out in three places that must agree:
+    // its page.tsx, the ALLOWLIST in check-routes.mjs, and here. The reason is a rule this codebase
+    // learned twice: A PAGE MAY BE CACHED, OR IT MAY BE WRITTEN TO AND READ BACK IN THE SAME CLICK —
+    // NOT BOTH. Settings is the only room in the app that is a writer rather than a reader. If you
+    // are about to add a second entry to this list, the question to answer first is whether the page
+    // you are exempting is really a writer, or whether you are just reaching for the flag.
+    skip: ["app/(desk)/settings/page.tsx"],
     match: (line, file) =>
       /export\s+const\s+dynamic\s*=\s*["']force-dynamic["']/.test(line) && !file.startsWith("app/api/"),
   },

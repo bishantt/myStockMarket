@@ -15,15 +15,32 @@ import { WatchlistManager, type ManagedItem } from "./WatchlistManager";
  */
 
 /**
- * Served from the cache (§5.3 P-1), busted by the settings actions on every write.
+ * THE ONE ROOM THAT IS NOT CACHED, AND THE RULE THAT PUT IT HERE.
  *
- * This route's ONLY reason for re-rendering on every visit was a server-side cookie read, used to
- * find out which of three theme buttons should look pressed. That one line cost the reader 517ms per
- * tap. The theme control now reads the same value from `<html data-theme>` in the browser (§4.7) —
- * the pre-paint script puts it there before the first paint — and the page is free. No request-time
- * input is read here any more, which is precisely what makes the route cacheable.
+ * F1 made this route ISR (`revalidate = 600`), and on paper it qualified: after the theme control
+ * stopped reading a cookie on the server, nothing here depended on the request. But a cached page
+ * has one more requirement nobody wrote down, and this page is the only one in the app that breaks
+ * it:
+ *
+ *     A page may be CACHED, or it may be written to and read back in the SAME CLICK.
+ *     It cannot be both. Never revalidate the path you were invoked from.
+ *
+ * Every other room is a reader: you arrive, you look, and anything you change is somewhere else. The
+ * settings page is a writer — its entire content is the thing you just changed by clicking on it.
+ * Add a name, focus it, remove it: each click runs a server action which re-renders THIS page as its
+ * reply, and if that reply can come from a cache entry written before your click, then the page you
+ * get back is the page as it was before you touched it. That is what happened: the row a test had
+ * just added vanished on the next click, intermittently, because the race is a race and sometimes
+ * you win it. (It is the same family as the Desk's deadlock — a page revalidating itself from inside
+ * its own action — and it is the second time this shape has cost us. Hence the rule, stated once,
+ * above.)
+ *
+ * So this room renders on request. The cost is real and it is small: this is the one room nobody
+ * taps for speed, it is visited rarely, and it has a loading.tsx so the reader is never looking at
+ * nothing. B1 is 9 of 10 rooms cached with this one declared in the allowlist and the reason
+ * written down — which is what the allowlist is for.
  */
-export const revalidate = 600;
+export const dynamic = "force-dynamic";
 
 /**
  * The managed watchlist, or an empty list if the database is unreachable — this route prerenders

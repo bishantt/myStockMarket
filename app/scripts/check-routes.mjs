@@ -67,7 +67,17 @@ const MAX_REVALIDATE_SECONDS = 600;
  * Every entry here also needs a sibling loading.tsx (enforced below).
  * @type {{ route: string, reason: string }[]}
  */
-const ALLOWLIST = [];
+const ALLOWLIST = [
+  {
+    route: "/settings",
+    reason:
+      "A page may be CACHED, or it may be written to and read back in the SAME CLICK — not both. " +
+      "Every other room is a reader; settings is a writer, and its whole content is the thing you " +
+      "just changed by clicking on it. Each click runs a server action that re-renders this page as " +
+      "its reply, and a cached reply can be the page as it was BEFORE your click (we watched a row " +
+      "vanish on the next click, intermittently). It renders on request, and it ships a loading.tsx.",
+  },
+];
 
 /** Routes that are not product rooms: infrastructure, the login wall, the living spec. */
 const NOT_PRODUCT = /^\/(login|offline|styleguide|_not-found|_global-error|api\/|manifest\.webmanifest)/;
