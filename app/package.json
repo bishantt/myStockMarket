@@ -18,6 +18,7 @@
     "db:studio": "prisma studio",
     "icons": "node scripts/icons.mjs",
     "check:lighthouse": "node scripts/lighthouse-check.mjs",
+    "check:migrations": "node scripts/check-migrations.mjs",
     "check:drift": "node scripts/check-drift.mjs",
     "check:routes": "node scripts/check-routes.mjs",
     "check:nav": "node scripts/check-nav.mjs",
