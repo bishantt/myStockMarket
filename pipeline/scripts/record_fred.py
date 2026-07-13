@@ -40,10 +40,18 @@ _BASE = "https://api.stlouisfed.org/fred/series/observations"
 # The most recent observations — enough to capture the shape, a value, and the value before it.
 _LATEST_LIMIT = 10
 
-# The trailing window the Mood gauge scores against. 252 sessions is one trading year, and the
-# gauge's percentiles are defined against exactly that. A little over 400 leaves room for the "."
-# rows FRED writes on holidays — they are skipped, so a limit of exactly 252 would come up short.
-_HISTORY_LIMIT = 420
+# The trailing window the Mood gauge scores against, plus real headroom.
+#
+# 252 sessions is one trading year, and the gauge's percentiles are defined against exactly that.
+# But one component needs considerably more than 252 rows to produce 252 SCORES: momentum is the
+# S&P's distance from its own 125-session mean, so the first 125 rows buy no momentum value at all,
+# and a percentile over 252 of them needs 377 sessions before it can even be computed. Add the "."
+# rows FRED writes on holidays (skipped, so they cost rows without paying any) and a limit of 420
+# lands at ~276 usable momentum values — enough, with 24 to spare.
+#
+# 24 spare is not a margin, it is a coincidence waiting to become a bug on a quiet holiday week. So
+# the window is 600, which leaves the tightest component ~445 values against the 252 it needs.
+_HISTORY_LIMIT = 600
 
 
 def _record(
