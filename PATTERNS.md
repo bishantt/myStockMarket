@@ -176,3 +176,45 @@ anything rendered it.
 This is ruling C6 (a provenance line must be composed from what actually rendered) applied inside a
 data structure. Same disease, one level down. Derive at both ends, and a stored contradiction cannot
 reach the screen.
+
+## Derive the guard from the code, never from a checklist (N4)
+
+Two production bugs in this build had the same shape: a secret existed in GitHub, the code read it, and
+the workflow never passed it to the job. `ANTHROPIC_API_KEY` (four phases of silently-skipped LLM
+stages) and `GOLDAPI_KEY` (a macro cell that would have said "not yet reported" forever). Both were
+found by hand.
+
+The pattern that makes them invisible: **good error handling hides them.** The pipeline degrades quietly
+when a key is missing — correctly, since one dead provider must not take the night down — so the job
+prints a calm line, carries on, and every gate goes green.
+
+A checklist would have been a third thing to forget. So the guard reads the truth out of the code:
+walk the import graph from each job's module, collect every `Settings` field it actually reads, and
+fail if the workflow that runs that job does not pass one. `pipeline/tests/test_workflow_env.py`.
+
+**The general rule: when a bug is found by hand twice, do not resolve to look harder. Derive the check
+from the source of truth, and negative-control it so you know it can fail.**
+
+## Measure the threshold against the real data; pin it from BOTH sides (N4)
+
+The clustering bar was set to 0.55 in the plan. Against 134 real articles it merged nothing at all — an
+inert clusterer, silently making the Front Page's central promise ("one story, one card, several
+sources") impossible, with every test green.
+
+Measured: **0.45 finds every true merge and no false one. 0.40 fabricates** — three unrelated takeover
+stories collapse into one card because their headlines share a phrase. The correct value sits 0.05 from
+catastrophe.
+
+So the tests pin it in both directions: one asserts the true merges are found, another asserts the
+specific fabrication that lives just below the line is refused. **A threshold with a test only on the
+permissive side is a threshold that can drift into invention without failing anything.**
+
+## Print the output and read it (N4 — the sixth time)
+
+The clusterer, the classifier and the formula all passed their tests. Printing the actual front page
+showed the biggest market story of the day — "Iran's IRGC navy says Strait of Hormuz closed until
+further notice" — sitting **dead last at 0.165**, classified `other`, while a story about India's
+negotiating posture led the page because it contained the words "trade talks".
+
+Six real bugs in this build have been found this way and by no other means. The tests check that the
+machine does what it was told. Reading the output checks whether what it was told was right.

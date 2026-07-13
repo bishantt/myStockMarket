@@ -1,6 +1,141 @@
 # PROGRESS.md — resumable state
 
-# NOW: the News & Control build (N0–N7). **N0–N3 are done and tagged.** Next: N4.
+# NOW: the News & Control build (N0–N7). **N0–N4 are done and tagged.** Next: N5.
+
+**Where I am.** N0–N4 are complete and tagged `nc-0` … `nc-4`. Nothing is blocked. The next phase is
+**N5 — the Front Page UI** (plan Part 7.7, 7.8, 7.10's UI half, Desk module 08, the nav wiring).
+
+**If you read only one thing:** the news data layer is live in production — 186 stories, ranked, in the
+database — and **four of the plan's assumptions about the providers were wrong**, each one caught by
+recording the real response before writing the parser. The plan's clustering threshold would have
+clustered *nothing at all*. Details below.
+
+**P-5 is closed.** The gold cell is filled in production (`gold_usd 2026-07-13 · 4034.215 · goldapi`).
+
+---
+
+## The five things worth knowing from N4
+
+### 1. A secret in GitHub is not a secret in the job — and this build has now shipped that bug TWICE
+
+You added `GOLDAPI_KEY`. The gold cell would **still** have printed "not yet reported" every night,
+because `nightly-a`'s env block never passed the key to the job. That is exactly the
+`ANTHROPIC_API_KEY` bug N0 found, which silently skipped every LLM stage in production for four phases.
+
+Why the class is so dangerous: **good error handling hides it.** The pipeline degrades quietly when a
+key is missing — correctly, because one dead provider must not take the night down — so the job prints
+a calm line, carries on, and every gate stays green.
+
+Both were found by hand. A thing found by hand twice will be missed the third time, so the check is now
+derived from the code: `pipeline/tests/test_workflow_env.py` walks the import graph from each job
+module, reads what it actually takes off the settings object, and fails if the workflow that runs it
+does not pass a required secret. Negative-controlled.
+
+### 2. Finnhub's market news carries NO tickers, and that reshaped the whole phase
+
+`related` is empty on **all 100 general and all 60 merger items**. Company news carries it on **20 of
+20**. Same provider, different endpoint — and the market feed is the Front Page's main source.
+
+The plan's clustering rule required *"overlapping ticker sets"* and its significance formula measured
+magnitude *"over the linked tickers"*. Applied literally: two empty sets never overlap, so **nothing
+would ever cluster**, and every story would score the magnitude floor.
+
+So `newsdesk/resolve.py` does entity resolution deterministically, against the instrument table, with
+no model near it — a wrong ticker link is a card telling the reader a story is about a company it never
+mentions, beside a real price move. **Zero false positives across the whole recorded night** with every
+trap name loaded (Target, Gap, Visa, Key, Match, and C3.ai — whose ticker is literally `AI`).
+
+**Why it was missed:** the repo already had a Finnhub fixture, so the endpoint *felt* known. It was a
+different endpoint. A fixture for a neighbouring endpoint is not evidence about this one.
+
+### 3. The plan's clustering threshold clusters NOTHING, and the right one sits 0.05 from fabrication
+
+At the plan's Jaccard ≥ 0.55: **zero merges out of 134 real articles.** "VitalHub acquires Buddy
+Healthcare" and "VitalHub Announces Acquisition of Buddy Healthcare" score 0.50 — `acquires` and
+`acquisition` are different tokens. **A bar that high is not strict, it is inert**, and the Front Page
+would have printed every story once per outlet while its "3 sources" line never once appeared, with
+every test green.
+
+Measured: **0.45 finds every true merge and no false one. 0.40 fabricates** — Qiagen, Conmed and Tiny
+Ltd collapse into ONE card because all three headlines say "jumps after report of takeover interest".
+Three companies, three deals, one headline standing for all of them. Pinned by tests from **both** sides.
+
+The tickers' honest role turned out to be a **veto**, not a requirement: "Apple beats on revenue" and
+"Microsoft beats on revenue" are near-identical strings (Jaccard 0.67) about different companies.
+
+### 4. The sixth bug found by printing the output and reading it
+
+Everything passed. Printing the actual front page showed **"Iran's IRGC navy says Strait of Hormuz
+closed until further notice"** — arguably the biggest market story of the day — classified `other` and
+sitting **dead last at 0.165**, while *"An emboldened India holds out for better terms in US trade
+talks"* **led the page** because it contained the words "trade talks". The macro keyword vocabulary now
+covers what actually moves markets. **Six real bugs, this way, and by no other means.**
+
+### 5. The ranking signal is thinner than the plan assumed — read Q-N4-1 before N5
+
+corroboration = 1 for **131 of 134** clusters; magnitude = 0 for **~130**. That is **45% of the
+formula's weight sitting nearly constant**, so the order collapses onto scope + class prior, and
+**ten-plus stories tie at exactly 0.600**. It is honest (a macro day *is* a wall of macro stories) and I
+did not invent a discriminator to break the ties, because that would be the app forming an editorial
+opinion. But N5's header copy must not overclaim a fine ranking the data cannot support. Full write-up
+and the three options in QUESTIONS-FOR-BISHANT.md.
+
+---
+
+## What N4 landed (tag `nc-4`)
+
+- **Both market endpoints RECORDED before a parser was written** — `/news?category=general`, `=merger`,
+  the `minId` probe, and Marketaux with N4's exact parameters. Neither Finnhub market endpoint had ever
+  been called by this repo.
+- **The deterministic newsdesk**, with no model anywhere in it: `resolve.py` (tickers), `taxonomy.py`
+  (the closed sector set + AI/Defense themes, word-boundary matched so "aid" is not "AI"), `noise.py`
+  (43% of the merger feed is UK Takeover-Panel Form 8.x paperwork), `outlets.py` (three press wires
+  carrying one announcement are ONE source, not three), `cluster.py`, `rank.py`, `ingest.py`.
+- **`rank.py` holds ruling C1 structurally.** A test enumerates `significance()`'s signature: six
+  inputs, every one a property of the EVENT. No behavioral signal could be added quietly, because the
+  test would have to be edited to let one in — and none is ingested anywhere in the system.
+- **The image pipeline** (Pillow): L1–L4 ladder, 1200/640/240 variants, blur placeholder, EXIF
+  stripped, and a crop rule that refuses to decapitate a portrait photo. **No bucket yet (P-1)** — it
+  records `news-images: not_configured` and the cards fall to the designed L3/L4 rungs.
+- **`news` mode**, and the guard that matters more than the mode: every mode `main()` did not recognise
+  **fell through to the full nightly**. A "refresh the news" button pressed at noon would have
+  re-ingested the entire market mid-session. `main()` now refuses any mode it has no handler for.
+- **Verified in production**: `gh workflow run nightly-a.yml -f mode=news` → *218 articles in, 26
+  regulatory filings dropped, 186 stories published, 126 past the extraction cap.* Live DB: **186
+  `news_cluster` rows, 141 `catalyst_link` rows.**
+
+**Counts at nc-4:** 506 app tests · **406 pytest local, 22 skipped** (was 296) · 110 new pipeline tests · 318 e2e · 19 drift rules · 55 VRT
+baselines. **Evidence:** `docs/nc-evidence/n4-newsdesk.md`.
+
+---
+
+## What N4 did NOT do — N5 inherits these, and they are deliberate
+
+1. **The LLM narration is not built.** Stage-A write-back and Stage-B-mini (the `why_it_matters` line)
+   are the one part of N4's scope I did not reach. Every cluster publishes with `why_it_matters = null`,
+   which the schema and the card design **already treat as a first-class state** ("a null here prints
+   NOTHING — never a placeholder"). The facts, the ranking, the sectors, the themes and the ticker links
+   are all real and all published. The prose layer is absent, and the room renders correctly without it.
+   Do this first in N5, or fold it into N5 — it is additive, and nothing depends on it.
+2. **`compute` mode is not declared.** It lands with N6, which builds the panel its button belongs to,
+   so the promise and the code arrive in the same commit.
+3. **The image bucket (P-1) does not exist**, so no image is fetched or stored. The ladder is built and
+   tested; the L3/L4 rungs are what N5 must render anyway.
+
+---
+
+## Resumable state — start here
+
+- **Done:** N0 (`nc-0`), N1 (`nc-1`), N2 (`nc-2`), N3 (`nc-3`), N4 (`nc-4`).
+- **Next: N5 — the Front Page UI** (plan Part 7.7, 7.8, 7.10's UI half, Desk module 08, nav per Part
+  0.1). **The seed already contains a full news night** (`app/prisma/fixtures/news.mjs`) — check what is
+  there before inventing shapes.
+- **Provisioning:** P-1 (R2 media bucket) still absent, does not block. P-2 (GitHub PAT) is N6's.
+  **P-3 and P-5 are CLOSED.**
+- **Open for the user:** Part 0.1 — where the News room lives. N5 builds the plan's default (a sixth
+  tab) unless a DECISIONS line says otherwise; it stays a one-file flip. Plus **Q-N4-1**, the ranking
+  finding, which is an FYI rather than a blocker.
+
 
 **Where I am.** N0 (ground truth, wiring, seeds), N1 (the macro truth fix), N2 (windows, density, the
 grid) and N3 (the macro board) are complete and tagged `nc-0` … `nc-3`. Nothing is blocked. The next

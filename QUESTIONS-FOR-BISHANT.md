@@ -477,3 +477,78 @@ and only its own sections change.
   Academy's reading serif) — and I do not think that trade is worth it, because the Academy being a
   genuine reading room is a large part of what makes the two-room split work. Tell me if you disagree
   and I will do it.
+
+
+---
+
+## P-5 — GoldAPI key · **CLOSED 2026-07-13** ✅
+
+You added `GOLDAPI_KEY` to the repo secrets. It took one more thing than that, and it is worth knowing
+what: **the secret existed and the job still could not see it.** `nightly-a`'s env block never passed
+the key through, so the gold cell would have gone on printing "not yet reported" every night — the same
+shape as the `ANTHROPIC_API_KEY` bug that silently skipped every LLM stage in production for four
+phases. Fixed, and now guarded by a test that derives each job's real secret requirements from the code
+(`pipeline/tests/test_workflow_env.py`), so this cannot happen a third time.
+
+The fabricated fixture is gone: the recorder ran with your key, GoldAPI answered, and the real recording
+replaced `xau_usd_UNVERIFIED.json`. **Verified live in production:**
+
+```
+gold_usd   2026-07-13   value=4034.215   prior=4120.515   Jul 13   (goldapi)
+```
+
+Nothing needed from you.
+
+---
+
+## Q-N4-1 — [FYI, and the one thing in N4 I want you to actually read]
+
+**The Front Page works, and its ranking signal is thinner than the plan assumed. You should know this
+before you look at the room in N5.**
+
+The significance formula (Appendix E) weights five things: scope 30%, corroboration 25%, magnitude 20%,
+class prior 15%, recency 10%. On the real feed:
+
+- **corroboration is 1 for 131 of 134 clusters.** The market feed has three outlets (Reuters, Bloomberg,
+  CNBC) and few genuine duplicate stories, so almost nothing is corroborated by a second newsroom.
+- **magnitude is 0 for ~130 of them.** Most stories name no listed company, so there is no move to
+  measure.
+
+That is **45% of the formula's weight sitting nearly constant**, and the page's order collapses onto
+scope + class prior — both derived from a keyword classifier. The visible result: on the recorded night,
+**ten-plus stories tied at exactly 0.600**, with the lead slot decided by a publication-time tiebreak. In
+production the lead came out as *"ONGC approves project to expand strategic crude reserve"* (an Indian
+oil company) ahead of *"Tech stocks skid as Gulf conflict sends oil surging"*.
+
+**This is not broken, and I have not "fixed" it by inventing a discriminator** — a term for
+"US-market relevance" would be the app forming an editorial opinion, which is the one thing ruling C1
+forbids. On a day when the Gulf is on fire, a front page full of Gulf stories is the honest front page.
+
+**My assumption, marked and vetoable:** the room ships in N5 with the ordering exactly as measured, and
+the C1 header sentence is worded so it does not overclaim — it will say the page is ordered by
+significance and that many stories can tie, rather than implying a fine ranking the data cannot support.
+
+**What would genuinely strengthen it, if you want it later** (each is a real cost, none is a bug fix):
+1. **A third news provider.** Corroboration is the term with the most missing information; a fourth and
+   fifth outlet would make it discriminate. Finnhub + Marketaux is what the free tiers give.
+2. **A paid Marketaux tier.** The free tier returns THREE articles per request (its own meta says so),
+   which is why entity-tagged items are ~60 of ~220. Entity tags are the only thing that gives most
+   stories a ticker, and a ticker is what gives them a magnitude.
+3. **Leave it.** A tied page on a macro day is a true description of a macro day.
+
+---
+
+## Q-N4-2 — [FYI] the news images are built but have no bucket
+
+The whole image pipeline is built and tested — the L1–L4 ladder, the 1200/640/240 variants, the blur
+placeholder, EXIF stripping, the crop rule that refuses to decapitate a portrait photo. It writes
+nothing, because **P-1 (the R2 media bucket) does not exist**. Every run records
+`news-images: not_configured`, and the cards will render the designed L3/L4 fallback rungs, which are
+first-class outcomes by design rather than empty states.
+
+Two facts that make this less urgent than it sounds: **every item in the recorded feed carried a
+publisher image** (160 of 160 — Appendix A.6 expected them to be "often empty"), so L1 will answer for
+nearly every card the moment a bucket exists. And flipping it live is a secret plus one env var, not a
+code change.
+
+**Nothing is blocked.** N5 builds the room against the L3/L4 rungs, which it must do properly anyway.
