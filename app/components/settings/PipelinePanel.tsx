@@ -1,11 +1,12 @@
 "use client";
 
-import { useActionState, useCallback, useEffect, useRef, useState } from "react";
+import { useActionState, useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { runPipeline, type RunResult } from "@/app/(desk)/settings/pipeline-actions";
 import { cx } from "@/lib/cx";
 import { copy, fill } from "@/lib/copy";
-import type { ActionRow, ManualRunRow, RunState } from "@/lib/pipeline-control";
+import { controlPanel, type ActionRow, type ManualRunRow, type RunState } from "@/lib/pipeline-control";
+import type { CompletedRun } from "@/lib/freshness";
 import { formatEtClock, formatEtDate } from "@/lib/time";
 
 /**
@@ -36,8 +37,10 @@ import { formatEtClock, formatEtDate } from "@/lib/time";
  */
 
 type Props = {
-  rows: ActionRow[];
-  history: ManualRunRow[];
+  /** The ledger, reconciled with GitHub. The STATES are derived here, in the browser — see below. */
+  runs: ManualRunRow[];
+  /** The newest completed pipeline run — what the reader is actually looking at. */
+  lastRunSession: { runDate: string; finishedAt: Date } | null;
   /** Is the GitHub token provisioned (P-2)? When it is not, the panel says so ONCE — see below. */
   configured: boolean;
   /** The pipeline's own last word: what ran, and how each provider behaved while it did. */
@@ -85,29 +88,70 @@ const LIVE: ReadonlySet<RunState["kind"]> = new Set(["requested", "queued", "run
  * So the boundary converts instead of asserting. `new Date(x)` accepts a Date or an ISO string, so
  * this is idempotent and safe against both shapes.
  */
-export function revive(payload: unknown): { rows: ActionRow[]; history: ManualRunRow[] } {
-  const raw = payload as { rows: ActionRow[]; history: ManualRunRow[] };
+export function revive(payload: unknown): { runs: ManualRunRow[]; lastRun: CompletedRun | null } {
+  const raw = payload as { runs: ManualRunRow[]; lastRun: CompletedRun | null };
 
   return {
-    rows: raw.rows.map((row) => ({ ...row, state: reviveState(row.state) })),
-    history: raw.history.map((run) => ({
+    runs: raw.runs.map((run) => ({
       ...run,
       requestedAt: new Date(run.requestedAt),
       finishedAt: run.finishedAt === null ? null : new Date(run.finishedAt),
     })),
+    lastRun: raw.lastRun && { ...raw.lastRun, finishedAt: new Date(raw.lastRun.finishedAt) },
   };
 }
 
-/** The two states that carry an instant. Miss either one and the panel throws where it renders it. */
-function reviveState(state: RunState): RunState {
-  if (state.kind === "cooldown") return { ...state, availableAt: new Date(state.availableAt) };
-  if (state.kind === "running") return { ...state, since: new Date(state.since) };
-  return state;
-}
+export function PipelinePanel({
+  runs: initialRuns,
+  lastRunSession,
+  configured,
+  lastRun,
+}: Props) {
+  const [runs, setRuns] = useState(initialRuns);
 
-export function PipelinePanel({ rows: initialRows, history: initialHistory, lastRun, configured }: Props) {
-  const [rows, setRows] = useState(initialRows);
-  const [history, setHistory] = useState(initialHistory);
+  /*
+   * ────────────────────────────────────────────────────────────────────────────────────────────
+   * THE STATES ARE DECIDED HERE, IN THE BROWSER, AGAINST THE READER'S OWN CLOCK.
+   * ────────────────────────────────────────────────────────────────────────────────────────────
+   *
+   * They used to be decided on the server, and the PIXEL ORACLE caught it. The first VRT baseline
+   * photographed this panel saying **"Markets are open — today's closing data doesn't exist until
+   * 4:00pm ET"** directly underneath a nav bar reading **"MARKET CLOSED"**. One page, two clocks,
+   * two answers. The nav grades in the browser; the panel was grading on the server; CI happened to
+   * run at 3pm ET.
+   *
+   * That is N4's bug in a new surface — a Desk built at 3:55pm told readers "markets open" long past
+   * the close — and here it had a second head: **the baseline would have rotted on its own.** Every
+   * state on this panel turns on what time it is, so the picture would change with the hour CI
+   * happened to run, and start failing with nobody having touched a line of code.
+   *
+   * The Desk's freshness strip already settled this and says so in its own comment: it reads the
+   * browser's clock, deliberately. There is one clock in this app that matters, and it is the
+   * reader's. `controlPanel` is a pure function, so running it here costs nothing.
+   *
+   * The clock is read ONCE, on mount, exactly as the strip does it: reading it during render would
+   * produce client HTML that disagrees with the server's and blow up hydration, and caching it in a
+   * module variable would freeze a tab left open overnight against yesterday's clock.
+   */
+  const [now, setNow] = useState<string | null>(null);
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- hydration-safe clock; see above
+    setNow(new Date().toISOString());
+  }, []);
+
+  const rows = useMemo(
+    () =>
+      controlPanel({
+        runs,
+        lastRun: lastRunSession,
+        // Before the clock lands (the very first paint), grade against the newest thing we know —
+        // the last completed run. It is one frame, and it never renders a state we would not stand
+        // behind: the alternative is a flash of an empty panel.
+        now: now ? new Date(now) : (lastRunSession?.finishedAt ?? new Date(0)),
+        tokenConfigured: configured,
+      }),
+    [runs, lastRunSession, now, configured],
+  );
 
   const anyLive = rows.some((r) => LIVE.has(r.state.kind));
 
@@ -118,9 +162,7 @@ export function PipelinePanel({ rows: initialRows, history: initialHistory, last
         console.error(`PipelinePanel: the status route answered ${response.status}`);
         return; // a blip must not blank the panel; the next tick tries again
       }
-      const next = revive(await response.json());
-      setRows(next.rows);
-      setHistory(next.history);
+      setRuns(revive(await response.json()).runs);
     } catch (error) {
       // Offline, or the route is down. The panel keeps showing what it last knew, which is true — it
       // simply stops being current. Logged, never swallowed in silence: a poll that has quietly
@@ -164,7 +206,7 @@ export function PipelinePanel({ rows: initialRows, history: initialHistory, last
        * surface, which is the last thing this one can afford.
        */}
       {!configured ? (
-        <p className="mt-4 rounded-panel border border-hairline bg-band px-3 py-2 font-ui text-sm text-ink-2">
+        <p className="mt-4 rounded-panel border border-hairline bg-band-outer px-3 py-2 font-ui text-sm text-ink-2">
           {copy.control.notConfigured}
         </p>
       ) : null}
@@ -177,7 +219,7 @@ export function PipelinePanel({ rows: initialRows, history: initialHistory, last
         ))}
       </ul>
 
-      <History history={history} />
+      <History history={runs} />
     </div>
   );
 }
@@ -324,7 +366,7 @@ function StateChip({ state }: { state: RunState }) {
     "inline-flex items-center rounded-pill px-2 py-0.5 font-mono text-2xs uppercase tracking-[0.08em]";
 
   if (state.kind === "running" || state.kind === "queued" || state.kind === "requested") {
-    return <span className={cx(SHELL, "bg-band text-ink-2")}>{state.kind}</span>;
+    return <span className={cx(SHELL, "bg-band-outer text-ink-2")}>{state.kind}</span>;
   }
   if (state.kind === "failed") {
     return <span className={cx(SHELL, "bg-down-wash text-down-text")}>failed</span>;
@@ -491,7 +533,7 @@ function RunOutcomeChip({ status }: { status: ManualRunRow["status"] }) {
     <span
       className={cx(
         "inline-flex items-center rounded-pill px-2 py-0.5 font-mono text-2xs uppercase tracking-[0.08em]",
-        styles[status] ?? "bg-band text-ink-2",
+        styles[status] ?? "bg-band-outer text-ink-2",
       )}
     >
       {status}

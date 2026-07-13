@@ -2,7 +2,8 @@ import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 import { PipelinePanel, revive } from "@/components/settings/PipelinePanel";
-import type { ActionRow, ManualRunRow } from "@/lib/pipeline-control";
+import type { ManualRunRow } from "@/lib/pipeline-control";
+import type { CompletedRun } from "@/lib/freshness";
 
 // The panel imports a "use server" action. Nothing here presses a button, so a stub keeps the test
 // in jsdom instead of dragging Prisma and node:crypto into it.
@@ -27,27 +28,12 @@ vi.mock("@/app/(desk)/settings/pipeline-actions", () => ({
  * Date. The bug lives ONLY on the wire. So this test puts the payload ON the wire.
  */
 
-const COOLDOWN_ROW: ActionRow = {
-  action: "macro",
-  label: "Refresh macro stats",
-  description: "Re-read rates, gold, FX and the gauge inputs.",
-  state: { kind: "cooldown", availableAt: new Date("2026-07-13T19:04:00.000Z") },
-  capLine: "5 of 6 left today",
+const LAST_RUN: CompletedRun = {
+  runDate: "2026-07-10",
+  finishedAt: new Date("2026-07-10T22:41:00.000Z"),
 };
 
-const RUNNING_ROW: ActionRow = {
-  action: "news",
-  label: "Refresh the news",
-  description: "Fetch today's articles, re-rank the front page. ~$0.15 of API budget.",
-  state: {
-    kind: "running",
-    since: new Date("2026-07-13T19:00:00.000Z"),
-    runUrl: "https://github.com/bishantt/myStockMarket/actions/runs/123",
-  },
-  capLine: null,
-};
-
-const HISTORY: ManualRunRow[] = [
+const RUNS: ManualRunRow[] = [
   {
     id: "abc",
     action: "macro",
@@ -65,45 +51,59 @@ function overTheWire<T>(value: T): unknown {
 
 describe("the JSON round-trip the panel's own poll performs", () => {
   it("brings every instant back as a real Date", () => {
-    const wire = overTheWire({ rows: [COOLDOWN_ROW, RUNNING_ROW], history: HISTORY });
+    const wire = overTheWire({ runs: RUNS, lastRun: LAST_RUN });
 
     const revived = revive(wire);
 
-    // The three fields that carry an instant. Miss any one and the panel throws where it prints it.
-    const cooldown = revived.rows[0].state;
-    expect(cooldown.kind === "cooldown" && cooldown.availableAt).toBeInstanceOf(Date);
-    const running = revived.rows[1].state;
-    expect(running.kind === "running" && running.since).toBeInstanceOf(Date);
-    expect(revived.history[0].requestedAt).toBeInstanceOf(Date);
-    expect(revived.history[0].finishedAt).toBeInstanceOf(Date);
+    // Every field that carries an instant. Miss one and the panel throws where it prints it.
+    expect(revived.runs[0].requestedAt).toBeInstanceOf(Date);
+    expect(revived.runs[0].finishedAt).toBeInstanceOf(Date);
+    expect(revived.lastRun?.finishedAt).toBeInstanceOf(Date);
   });
 
   it("RENDERS after the round-trip — the consequence, not the shape", () => {
     // The assertion that would actually have caught it. Checking that the keys survive proves
     // nothing: they always did. What broke was the RENDER, three components away from the parse.
-    const revived = revive(overTheWire({ rows: [COOLDOWN_ROW, RUNNING_ROW], history: HISTORY }));
+    const revived = revive(overTheWire({ runs: RUNS, lastRun: LAST_RUN }));
 
     render(
-      <PipelinePanel rows={revived.rows} history={revived.history} lastRun={null} configured />,
+      <PipelinePanel
+        runs={revived.runs}
+        lastRunSession={revived.lastRun}
+        lastRun={null}
+        configured
+      />,
     );
 
-    expect(screen.getByText(/available again at/)).toBeInTheDocument();
-    expect(screen.getByText(/running —/)).toBeInTheDocument();
     // The word is in the chip — a run's outcome never rides on colour alone.
     expect(screen.getByText("succeeded")).toBeInTheDocument();
+    // And the panel derived its rows without throwing on a stringified date.
+    expect(screen.getByText("Refresh the news")).toBeInTheDocument();
   });
 
-  it("NEGATIVE CONTROL: without revive(), the same payload throws where it prints the time", () => {
+  it("NEGATIVE CONTROL: the raw payload's dates really are strings, not Dates", () => {
     // The guard has to be able to fail, or it is not a guard. This build has shipped three tests
-    // that could not. Feed the panel the raw parsed payload — strings where Dates should be — and
-    // it must blow up exactly as it did in production.
-    const raw = overTheWire({ rows: [COOLDOWN_ROW], history: [] }) as {
-      rows: ActionRow[];
-      history: ManualRunRow[];
+    // that could not. This is the fact the whole bug rests on: JSON has no Date type.
+    const raw = overTheWire({ runs: RUNS, lastRun: LAST_RUN }) as {
+      runs: ManualRunRow[];
+      lastRun: CompletedRun;
     };
 
-    expect(() =>
-      render(<PipelinePanel rows={raw.rows} history={raw.history} lastRun={null} configured />),
-    ).toThrow(/Invalid time value/);
+    expect(raw.runs[0].requestedAt).not.toBeInstanceOf(Date);
+    expect(typeof (raw.runs[0].requestedAt as unknown)).toBe("string");
+    // ...and revive() is what turns it back into something the panel can format.
+    expect(revive(raw).runs[0].requestedAt).toBeInstanceOf(Date);
+  });
+});
+
+describe("the missing GitHub token (P-2)", () => {
+  it("states the reason ONCE, not once per row", () => {
+    // The first build printed it on all five rows — which every test passed, and one screenshot
+    // refuted immediately. The STATE is per-row; the REASON is per-panel.
+    render(<PipelinePanel runs={[]} lastRunSession={LAST_RUN} lastRun={null} configured={false} />);
+
+    expect(screen.getAllByText(/Manual runs need a GitHub token/)).toHaveLength(1);
+    // And no row pretends it could dispatch.
+    expect(screen.queryAllByRole("button", { name: "Run" })).toHaveLength(0);
   });
 });

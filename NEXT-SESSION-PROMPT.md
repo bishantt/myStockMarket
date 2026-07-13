@@ -1,119 +1,128 @@
 You are Claude Opus 4.8, sole builder of myStockMarket. Continue executing NEWS-AND-CONTROL-PLAN.md
-(phases N0–N7) under its Autonomy Contract. **N0, N1, N2, N3, N4 and N5 are DONE and tagged (nc-0 … nc-5).**
+under its Autonomy Contract. **N0–N6 are DONE and tagged (nc-0 … nc-6).** One phase remains: **N7**.
 
 ## SESSION RHYTHM — ONE PHASE PER SESSION
-Do NOT run multiple phases in one session. Long single-session runs bloat the context window and
-degrade the quality of the later work. Work ONE phase, then stop. (Standing rule in CLAUDE.md.)
-
-At the end of the phase:
-1. Finish it properly — tests green, the plan's standing gate passed, tagged `nc-6`, everything
-   committed and pushed. Never stop mid-task or with a red build.
-2. Bring EVERY intelligence file fully current: PROGRESS.md, DECISIONS.md, LESSONS.md, PATTERNS.md,
-   QUESTIONS-FOR-BISHANT.md, plus the evidence table for the phase (`docs/nc-evidence/`). Write them
-   as if the next session has NO memory of this one — because it won't.
-3. Rewrite NEXT-SESSION-PROMPT.md at the repo root: complete, paste-ready, self-contained.
-4. Report back in plain English: what you built, what passed, anything new in QUESTIONS-FOR-BISHANT.md,
-   and confirm NEXT-SESSION-PROMPT.md is ready.
-
-Then STOP and wait. Do not roll into the next phase.
+Work N7, finish it properly, and stop. (Standing rule in CLAUDE.md.) At the end:
+1. Tests green, the plan's standing gate passed, tagged `nc-final`, everything committed and pushed.
+   Never stop mid-task or with a red build.
+2. Bring EVERY intelligence file current: PROGRESS.md, DECISIONS.md, LESSONS.md, PATTERNS.md,
+   QUESTIONS-FOR-BISHANT.md, plus the evidence table (`docs/nc-evidence/`). Write them as if the next
+   session has NO memory of this one — because it won't.
+3. Rewrite NEXT-SESSION-PROMPT.md (or retire it, if the build is genuinely done).
+4. Report back in plain English. Then STOP.
 
 Within a phase the Autonomy Contract holds in full: never ask, never wait, never end a phase with a
 question. Anything that would be a question goes to QUESTIONS-FOR-BISHANT.md with the most reasonable
 assumption made and clearly marked.
 
 ## START HERE, IN THIS ORDER
-1. Run the CLAUDE.md session ritual: git pull → read CLAUDE.md + PROGRESS.md + LESSONS.md → diff
-   DECISIONS.md for any non-[claude] line (a user veto, rank 2.5 — honor it FIRST) → run both test
+1. Run the CLAUDE.md session ritual: `git pull` → read CLAUDE.md + PROGRESS.md + LESSONS.md → diff
+   DECISIONS.md for any non-`[claude]` line (a user veto, rank 2.5 — honor it FIRST) → run both test
    suites → announce your checkpoint.
-2. **nc-5's CI is green — do not re-verify it.** Read `docs/nc-evidence/n5-frontpage.md` once: it is
-   the ground truth about what the Front Page actually does, and the seven places the plan was amended.
-3. Execute **N6 — the control room** (plan Part 8): the manual-run panel, `compute` mode, the
-   `manual_run` table (already in the schema), the GitHub `workflow_dispatch` bridge, the caps and
-   cooldowns, and the honest "not available" states.
-4. Finish N6, checkpoint it per the rhythm above, hand over NEXT-SESSION-PROMPT.md, and stop.
+2. **`nc-6`'s CI is green — do not re-verify it.** Read `docs/nc-evidence/n6-control.md` once. It is
+   the ground truth about what the control room actually does, and the seven places the plan was
+   amended.
+3. Execute **N7 — hardening, evidence, docs sync** (plan Part 9, N7).
+4. Checkpoint per the rhythm above, and stop.
 
-## WHAT N6 IS, AND THE ONE THING IT MUST NOT BECOME
-Plan Part 8. The commission asked for user-triggered pipeline runs, and **Part 8.1 already did the
-honest evaluation and narrowed it**: on a normal weeknight the pipeline has already run and a manual
-re-run would recompute identical data — **the honest control for that case is the EXPLANATION, not the
-button.** Four cases earn real buttons: a failed/missed nightly (recovery), a news re-fetch, a macro
-refresh, and a scan recompute. Read 8.1 before you build a single control.
+## WHAT N7 IS
+Plan Part 9, N7. The last phase. Read it — but the substance is:
+- **The docs sync.** DEVELOPMENT-PLAN.md, CLAUDE.md and the skills must agree with the code. N6 added
+  a fourth pipeline mode (`compute`), a new `/settings` section, two new server surfaces
+  (`/api/pipeline/status`, the dispatch action) and a new provisioning row — none of that is in
+  CLAUDE.md's Commands block or the plan's route map yet.
+- **The evidence tables.** All six exist (`n0-audit`, `n2-footprint`, `n3-board`, `n4-newsdesk`,
+  `n5-frontpage`, `n6-control`). N7 owes the closing summary and any gaps.
+- **Hardening.** The standing gate, end to end, on the tag: drift (20 rules), fonts, routes, nav,
+  bundles, migrations, lighthouse, e2e + VRT + PWA.
+- **`nc-final` tagged with green CI**, and a closing PROGRESS.md entry written for the user to read.
 
-- **`compute` mode is deliberately NOT declared in the pipeline yet.** N4 left it out on purpose so
-  the promise and the code would land in the same commit — N6's. `MODE_STAGES` in
-  `pipeline/jobs/job_a.py` is where it goes, and `main()` REFUSES any mode it has no handler for.
-  That guard exists because every unrecognised mode used to fall through to the FULL nightly: a
-  "refresh the news" button pressed at noon would have re-ingested the entire market mid-session and
-  written half a day of unformed bars over the last good close.
-- **`news` mode DOES spend LLM budget now** (N5 amended its promise). It runs the narrator — up to 60
-  Haiku extracts and one Sonnet call — because the honest scope of a "refresh the news" button is the
-  WHOLE page, facts and context lines together. `copy.control.runNewsDesc` has a `{cost}` placeholder;
-  fill it with a real, measured number.
-- **`copy.control` is already written** in Appendix B, including every "not available" sentence
-  (markets open, weekend, holiday, already ran). Those sentences are the feature.
-- **The `manual_run` table already exists** in the schema (`app/prisma/schema.prisma`), with its index.
+## THE ONE THING TO KNOW ABOUT N6, IF YOU READ NOTHING ELSE
+**The plan's most confident technical claim was false, and I only found it because I made one real
+API call before designing around it.** Plan 8.2 said the workflow-dispatch endpoint returns
+`workflow_run_id`. GitHub's own REST docs say so too. **It returns 204 with an EMPTY BODY.** There is
+no run id, and no `return_run_details` parameter.
 
-## PROVISIONING — P-2 IS N6's, AND IT IS THE ONE THING THAT COULD BLOCK YOU
-- **P-2 (a GitHub PAT with `workflow` scope)** is what lets the app dispatch a run. It is **NOT
-  provisioned.** Per the Autonomy Contract: **build the whole panel against the missing secret**, use
-  `copy.control.notConfigured` ("Manual runs need a GitHub token — see QUESTIONS-FOR-BISHANT (P-2)"),
-  make the panel render its real states, and **do not block**. It flips live with a secret.
-- **P-1 (R2 media bucket) is still ABSENT.** Not N6's problem. The Front Page renders its designed L4
-  generated cards today — see Q-N5-2.
+So the app RECOVERS the run id: it stamps a `request_id` into each dispatch, the workflow prints it
+into `run-name:`, and the app matches it in the runs list. **That `run-name:` line in
+`.github/workflows/nightly-a.yml` and `nightly-b.yml` is load-bearing.** Delete it and nothing fails —
+the workflow still runs, every test but one still passes — and the control room goes permanently
+blind. `pipeline/tests/test_workflow_dispatch.py` guards it.
+
+## PROVISIONING — THE ONE OPEN ITEM
+- **P-2 (a GitHub PAT with `workflow` scope) is STILL NOT PROVISIONED.** Every button in the control
+  room is dark in production; the panel says so, once, at the top, and renders every other state
+  honestly. **The whole path is proven working** — I ran the app locally with a real token and fired
+  real `macro` and `compute` runs at real GitHub; both dispatched, were found, were followed to
+  "succeeded", decremented their caps and engaged their cooldowns (evidence §6). It is a secret and
+  nothing else: a fine-grained PAT, this repo only, Actions read+write, added to **Vercel** as
+  `GH_DISPATCH_TOKEN`. It is a [NEED] in QUESTIONS-FOR-BISHANT.
+- **P-1 (R2 media bucket) is still ABSENT.** Not blocking. The Front Page renders its designed L4
+  generated cards.
 - **P-3 (ANTHROPIC_API_KEY) and P-5 (GOLDAPI_KEY) are CLOSED and verified live.**
+
+## OPEN FOR THE USER (both in QUESTIONS-FOR-BISHANT, neither blocking)
+- **Q-N6-1 [VETO?]** — production has a `pipeline_run` stamped **Saturday 2026-07-11**, a day the
+  market never opened. A full run stamped Friday's bars with Saturday's date. I fixed the CAUSE
+  (`job_a` now skips a non-session day — it was firing on every market holiday, ~9 times a year) but
+  I did **not** delete production rows on my own judgment. The SQL is in QUESTIONS.
+- **Q-N6-2 [FYI]** — a Friday nightly that fails cannot be recovered until Monday. Cost is bounded
+  (Monday's run backfills five years of bars; what is lost is Friday's scan/signal rows). The honest
+  fix — derive a run's date from the last CLOSED session rather than from `today` — is a change to the
+  core nightly and I did not want to make it in the phase that first noticed the problem.
 
 ## BINDING CONTEXT — DO NOT RE-DERIVE
 - **Intent binds; where the plan and the tree disagree on a detail, the tree wins on the detail.** N4
-  amended the plan five times and N5 amended it seven more, every one in an honesty rule's favour, all
-  logged in DECISIONS.md. Expect to do the same.
+  amended the plan 5 times, N5 8 times, N6 7 times — every one in an honesty rule's favour, all logged
+  in DECISIONS.md.
 - **`docs/nc-evidence/` is the ground truth**: `n0-audit.md`, `n2-footprint.md`, `n3-board.md`,
-  `n4-newsdesk.md`, **`n5-frontpage.md`**.
-- **The Front Page is live**: `/news`, `/news/[cluster]`, Desk module 08, and News is the sixth tab.
-  The pipeline narrates it, and the briefing's own verification gate deletes any note whose numbers do
-  not trace back to a source.
+  `n4-newsdesk.md`, `n5-frontpage.md`, **`n6-control.md`**.
+- The pipeline has **four modes**: `full`, `news`, `macro`, `compute`. `MODE_STAGES` in
+  `pipeline/jobs/job_a.py` is the pinned constant, `main()` REFUSES any mode it has no handler for,
+  and a test walks the table and asserts every declared mode is dispatched.
 
 ## HARD-WON HAZARDS — read these before you trust a green gate
-- **OPEN THE PNG AND LOOK AT IT.** **Seven** real bugs in this build have been found that way and by
-  no other means — most recently N5's, where **every photograph on the Front Page rendered as a
-  broken-image icon** while every DOM assertion passed. The `<img>` was present, visible, correctly
-  sized and carrying the right `src`; the login wall was redirecting `/fixtures/`, and the image
-  optimizer makes its OWN server-side fetch with no session cookie. **`naturalWidth` is the only thing
-  in a browser that knows an image from a broken one.**
-- **ASSERT THE CONSEQUENCE, NOT THE SHAPE.** Three of this build's worst bugs shared one shape: the
-  observable the test looked at was correct, and the broken thing was not observable from it. Did the
-  textarea CLEAR (not: does a "Saved" marker exist). Did the image DECODE (not: is there an `<img>`).
-  Does the payload ACTUALLY SERIALIZE (not: does it have the right keys — `_json_safe` returned a dict
-  that looked perfect and killed a production run four and a half minutes in, after every model call
-  had already been paid for).
-- **A SILENT FAILURE MODE NEEDS A COUNT.** A dropped narrative note prints nothing by design, so a
-  too-strict gate and a narrator with nothing to say produce an identical page. Every outcome is
-  counted and the night prints them. **N6's buttons have exactly this property**: a run that did
-  nothing and a run that was never dispatched look the same from the couch.
-- **NEVER hand-write a fixture that looks recorded.** N3 found three fabricated FRED fixtures. An
-  invented fixture is not merely an inverted test — it is a SMOOTHED one. Humans write tidy data; real
-  data is untidy, and the untidiness is the information.
-- **The test suite never runs a job module as a script.** `run_news_mode` was appended below
-  `if __name__ == "__main__"`, every unit test passed, and production died with a NameError in eleven
-  seconds. There is a structural guard now, but the general lesson stands.
+- **OPEN THE PNG AND LOOK AT IT.** **Eight** real bugs in this build have been found that way and by
+  no other means. N6 added three: the panel crashed on its first poll while 572 tests stayed green (a
+  real dispatched run left the screen looking exactly as if the button had done nothing); `compute`
+  mode died in production on its first execution; and the Desk had been claiming its data ran "through
+  a Saturday".
+- **THE VENDOR'S OWN DOCUMENTATION IS NOT A RECORDING.** N4's rule was "record the provider's real
+  response before writing the parser". N6 extends it: GitHub's docs were wrong about GitHub's API. One
+  `curl` before you design costs two minutes and can invert the design.
+- **A FAKE MUST BE NO KINDER THAN THE THING IT STANDS FOR.** `FakeS3.download_file` created the parent
+  directory; real boto3 refuses to. So `sync_down` passed for six phases and died on its first true
+  caller. **A mock more forgiving than reality certifies that the code works in a world that does not
+  exist.** N3's lie was in the VALUES, N5's in the SHAPE, N6's in the FAKE'S BEHAVIOUR. And: **a
+  function with no real caller has no real test**, whatever coverage says.
+- **AN `as` CAST ON A PARSED PAYLOAD IS A PROMISE, NOT A CHECK.** JSON has no Date type. Convert at
+  the boundary; never assert across it.
+- **ASSERT THE CONSEQUENCE, NOT THE SHAPE.** Did the textarea CLEAR (not: does a "Saved" marker
+  exist). Did the image DECODE (not: is there an `<img>`). Does the payload ACTUALLY SERIALIZE — and
+  does it DESERIALIZE into what the type claims.
+- **A SILENT FAILURE MODE NEEDS A COUNT.** A dropped narrative note prints nothing by design; a run
+  that did nothing and a run that was never dispatched look the same from the couch.
+- **NEVER hand-write a fixture that looks recorded.** An invented fixture is not merely an inverted
+  test — it is a SMOOTHED one. Humans write tidy data; real data is untidy, and the untidiness is the
+  information.
 - **CI's database is DISPOSABLE and can tell you NOTHING about production's.** `npm run
   check:migrations` is the instrument that can, and it is in the standing gate. **A Vercel deploy
-  applies migrations** — N5's migration landed within a minute of the push.
-- **A `revalidate` on a dynamic route caches NOTHING without `generateStaticParams`** (even an empty
-  array). `/news/[cluster]` shipped that way and was caught by the B1 budget, not by eye — the page
-  worked perfectly, it was just rebuilt for every reader.
-- **There is no local Postgres on this Mac**, and there will not be. ~22 pipeline tests SKIP locally,
+  applies migrations.**
+- **There is no local Postgres on this Mac**, and there will not be. ~26 pipeline tests SKIP locally
   and every seeded e2e journey skips too — **CI is the only oracle for anything seeded.**
 - **VRT baselines are BORN IN CI**: `gh workflow run ci.yml -f job=vrt-baselines`, download the
   artifact, commit it. Never shoot a baseline on macOS. The e2e+VRT job is TAG-GATED.
-- **`npm run e2e:local` runs against PRODUCTION data**, unseeded — seeded journeys skip. Run it anyway;
-  never read its green as coverage of a seeded surface.
-- **Every sweep must assert that it swept something.** Seven guards in this build have passed because
-  the thing they measured was absent rather than correct.
+- **GitHub validates `workflow_dispatch` inputs against the workflow file ON THE TARGET REF.** A new
+  input that exists only in your working tree gets a 422. The workflow must land on `main` before the
+  app can dispatch with it.
+- **Every sweep must assert that it swept something.** Guards in this build have passed because the
+  thing they measured was absent rather than correct.
 - Prepend `export PATH="$HOME/.nvm/versions/node/v24.18.0/bin:$PATH"` to node commands.
+- `npm test` runs from `app/`; `uv run pytest` runs from `pipeline/`.
 
-## DONE MEANS (across all sessions)
+## DONE MEANS
 `nc-final` tagged with green CI, every evidence table in `docs/nc-evidence/`, the N7 docs sync
 executed, every [VETO?] carrying its assumption marker, and a closing PROGRESS.md entry written for
 the user to read.
 
-Begin: run the session ritual, then execute N6 and stop.
+Begin: run the session ritual, then execute N7 and stop.

@@ -258,3 +258,92 @@ stories of the night (which would have left the top of the page narrated from he
 written, dropped by the gate, and left blank by the narrator. "0 notes" and "0 notes out of 20
 attempted" are different nights, and only one of them is healthy. A count is the only instrument that
 can see an absence.
+
+---
+
+## The vendor's documentation is not a recording (N6, 2026-07-13)
+
+**The rule:** before you design around an API's response, make ONE real call and look at what comes
+back. Not the docs. Not the plan. The wire.
+
+N4 established "record the provider's real response before writing the parser", after four of the
+plan's assumptions about Finnhub and Marketaux turned out to be wrong. N6 extends it in the direction
+that hurts most: **the vendor's own official documentation can be wrong about the vendor's own API.**
+
+GitHub's REST docs describe `POST .../dispatches` as returning **200 with a `workflow_run_id`**. The
+plan repeated it. The live API returns **204 No Content, with an empty body**. There is no run id in
+it, and there is no parameter to ask for one.
+
+That is not a detail — it inverted the entire design. The run id has to be RECOVERED (stamp a request
+id into the dispatch, print it into the workflow's `run-name:`, match it in the runs list) rather than
+received. A two-minute `curl` produced a completely different architecture from the one the plan
+imagined, and it produced it *before* any code was written rather than after a phase of it.
+
+```bash
+# The whole discipline, and it costs two minutes.
+gh api -i -X POST repos/OWNER/REPO/actions/workflows/FILE/dispatches -f ref=main -f 'inputs[x]=y'
+```
+
+**The corollary, which is the expensive half:** an API that returns nothing gives you no way to know
+what you just did. Any design built on it needs a way to answer "did that actually happen?" — and if
+it does not have one, then *a thing that worked and a thing that never ran look identical*.
+
+---
+
+## A fake must be no kinder than the thing it stands for (N6, 2026-07-13)
+
+**The rule:** when you write a test double, make it fail everywhere the real thing fails. Every
+convenience you build into a fake is a bug you have agreed in advance not to find.
+
+`FakeS3.download_file` began with `target.parent.mkdir(parents=True, exist_ok=True)`. Real boto3 does
+not do that — it writes to a temp file beside the destination and raises `FileNotFoundError` if the
+directory is not there. So `R2Store.sync_down`, which never made its directories, passed every test
+for six phases and died in production on its first real execution.
+
+This is the third form of the same disease:
+
+| Phase | The lie was in the… | What it certified |
+|---|---|---|
+| N3 | **values** — hand-written FRED fixtures | that the parser agreed with my imagination |
+| N5 | **shape** — a seed modelling JSON the pipeline never emits | that the app agreed with a fiction |
+| N6 | **behaviour** — a mock kinder than boto3 | that the code works in a world that does not exist |
+
+**A fabricated fixture is not a weak test — it is an INVERTED one.** So is a forgiving mock. It does
+not fail to check the code; it actively hands you a green tick for being wrong.
+
+**The tell:** ask what your double does that the real thing refuses to do. If the answer is anything
+at all, that is exactly where the bug is. And: **a function with no real caller has no real test**,
+whatever the coverage says — `sync_down`'s only true caller arrived in N6, six phases after the test
+that "covered" it.
+
+---
+
+## Assert that it DESERIALIZES, not that it has the right keys (N6, 2026-07-13)
+
+**The rule:** a payload crossing a JSON boundary must be tested by *round-tripping it through real
+JSON and using the result*, never by inspecting the object you built in memory.
+
+JSON has no `Date`. A server component hands a client real `Date` objects, so the first render is
+perfect; the first `fetch` poll hands back **strings**, and the component throws where it formats one.
+The control-room panel crashed on its very first poll, React kept the old DOM, and a real dispatched
+run — accepted, executed, completed — left the screen looking exactly as though the button had done
+nothing.
+
+**And `as` is why TypeScript said nothing:**
+
+```ts
+const next = (await response.json()) as { rows: ActionRow[] };   // an ASSERTION, and it was false
+```
+
+`.json()` returns `any`. Every `as` on a parsed payload is a place where the type system has been
+switched off and nobody wrote it down. **Convert at the boundary; never assert across it.**
+
+This is the mirror of N5's `_json_safe` lesson — there, *does the payload actually SERIALIZE?*; here,
+*does it actually DESERIALIZE into what the type claims?* Same boundary, opposite direction.
+
+```ts
+// The guard that catches it. It asserts the CONSEQUENCE (the thing still renders), because
+// asserting the keys survived proves nothing — the keys always survive.
+const revived = revive(JSON.parse(JSON.stringify(payload)));
+render(<Panel {...revived} />);          // throws "Invalid time value" without revive()
+```

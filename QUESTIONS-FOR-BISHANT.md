@@ -8,6 +8,81 @@ Format: newest first. I mark each as [FYI], [VETO?], or [NEED] so you can scan.
 
 ---
 
+## 2026-07-13 — N6 (the control room)
+
+**[NEED, two minutes, and it turns the whole panel on] P-2: a GitHub token with `workflow` scope.**
+The control room is built, tested and live — but every button is dark, because the app has no
+credential to fire a run with. The panel says so plainly, once, at the top: *"Manual runs need a
+GitHub token — see QUESTIONS-FOR-BISHANT (P-2)."*
+
+The job: make a **fine-grained personal access token** scoped to **this repository only**, with
+**Actions: read and write** (nothing else — it does not need code, issues, or anything more). Then
+add it to the **Vercel** project's environment variables as `GH_DISPATCH_TOKEN`. That is the entire
+task. No code change, no deploy needed beyond the next one.
+
+**I have already proven the whole path works end to end**, by running the app locally with a real
+token and firing real runs at real GitHub: a `macro` run and a `compute` run both dispatched, were
+found, were followed to "succeeded", decremented their caps and engaged their cooldowns. The evidence
+is in `docs/nc-evidence/n6-control.md` §6. So this is genuinely a secret and nothing else.
+
+---
+
+**[VETO?, and I want your eyes on it] Q-N6-1 — production has been claiming its data runs "through"
+a Saturday, and the fix I shipped only stops it happening AGAIN.**
+
+The control room's first screenshot opened with the line **"Data through 2026-07-11"**. July 11 2026
+is a **Saturday**. There is no session on a Saturday, no close, and no bars — Alpaca returns Friday's.
+A full run had stamped Friday's data with Saturday's date, and the Desk has been telling you its data
+runs through a day the market never opened.
+
+**It was not a one-off, and that is the part that matters.** The nightly cron is `37 22 * * 1-5`, so
+it never fires at a weekend — but it **does fire on every market holiday**, which is a weekday.
+Roughly nine times a year this job wakes on a closed market, ingests nothing new, and publishes a run
+dated to a session that did not happen. Nothing fails, so every gate stays green.
+
+**What I did:** `job_a` now skips a non-session day, says so, and exits cleanly. (A skipped run on a
+closed market is the correct outcome, not an error — failing the workflow would send you a red e-mail
+every Thanksgiving, and an alert that cries wolf is not there on the night it is finally right.)
+
+**What I did NOT do, and want you to decide:** the bad row is still in the database, and so is the
+`market_context` row behind it. Tonight's nightly writes `2026-07-13` and supersedes it for every
+display purpose, so nothing is visibly wrong from tonight onwards. But the Saturday row stays in the
+history, and it will sit in any breadth or base-rate series that walks `market_context` by date.
+
+I did not delete production rows on my own judgment. If you want them gone:
+
+```sql
+DELETE FROM market_context WHERE run_date = '2026-07-11';
+DELETE FROM scan_result    WHERE run_date = '2026-07-11';
+DELETE FROM pipeline_run   WHERE run_date = '2026-07-11';
+```
+
+(`signal_log` is deliberately NOT in that list. It has a trigger blocking DELETE, and that is the
+point: signals that fired are a historical fact about what the app told you, and the ledger is the one
+thing in this product that may never be rewritten. Those rows will resolve on their own schedule.)
+
+---
+
+**[FYI] Q-N6-2 — a Friday nightly that fails cannot be recovered until Monday.**
+
+`full` is `not_applicable` on a weekend, because a full run stamps itself with today's date and a
+Saturday is not a session — that is the bug above, and offering a button that reproduces it would be
+absurd. So if Friday's nightly dies and you notice on Saturday, there is no button for it.
+
+**The practical cost is small and I want to be precise about it.** Monday's nightly pulls FIVE YEARS
+of bars every single time, so Friday's price data is backfilled automatically and nothing is lost from
+the lake or from any chart. What genuinely never exists is Friday's `scan_result` and `signal_log`
+rows — the signals that would have fired on Friday never fire, and the track record simply has no
+entry for that day.
+
+The honest fix is to make a run's date come from *the last session that has actually closed* rather
+than from `today`. That is a change to the core nightly, with real blast radius, and I did not want to
+make it in the same phase that first noticed the problem. Say the word and it is a small, well-tested
+change; leave it and the cost is a missing scan day after a failed Friday, which has happened zero
+times so far.
+
+---
+
 ## 2026-07-13 — N3 (the macro board)
 
 **[NEED, cheap and it unblocks a whole cell] The gold price needs a free API key, and until it

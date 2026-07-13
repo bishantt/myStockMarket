@@ -2,7 +2,7 @@ import { RUN_ACTIONS, type RunAction } from "@/lib/constants";
 import { db } from "@/lib/db";
 import { freshness, type CompletedRun } from "@/lib/freshness";
 import { findRun, getRun, isDispatchConfigured, ledgerStatus } from "@/lib/github";
-import { controlPanel, type ActionRow, type ManualRunRow } from "@/lib/pipeline-control";
+import type { ManualRunRow } from "@/lib/pipeline-control";
 import { toTradingDate } from "@/lib/pipeline";
 
 /**
@@ -18,9 +18,30 @@ import { toTradingDate } from "@/lib/pipeline";
 /** The history list the panel shows (plan 8.5: "the panel's history list — last 10"). */
 const HISTORY_LIMIT = 10;
 
+/**
+ * What the panel needs — RAW, not decided.
+ *
+ * THE STATE IS COMPUTED IN THE BROWSER, AGAINST THE READER'S CLOCK, and this shape is what makes
+ * that possible. It sends the facts (the ledger, the last completed run, whether the token exists)
+ * and lets the client run `controlPanel()` — the pure function — over them.
+ *
+ * IT USED TO DECIDE HERE, ON THE SERVER, AND THE PIXEL ORACLE CAUGHT IT. The first VRT baseline
+ * photographed the panel saying **"Markets are open — today's closing data doesn't exist until
+ * 4:00pm ET"** directly underneath a nav bar reading **"MARKET CLOSED"**. The nav grades in the
+ * browser; the panel was grading on the server; CI happened to run at 3pm ET. One page, two clocks,
+ * two answers.
+ *
+ * That is N4's bug wearing a new surface — a Desk built at 3:55pm told readers "markets open" long
+ * past the close — and it had a second head here: **the baseline would have rotted on its own.** The
+ * panel's states turn on what time it is, so the picture would change with the hour CI happened to
+ * run and start failing with nobody having touched a line of code.
+ *
+ * The Desk's freshness strip already solved this and says so in its own comment: it reads the
+ * browser's clock deliberately. There is one clock in this app that matters, and it is the reader's.
+ */
 export type PanelData = {
-  rows: ActionRow[];
-  history: ManualRunRow[];
+  runs: ManualRunRow[];
+  lastRun: CompletedRun | null;
   configured: boolean;
 };
 
@@ -113,14 +134,13 @@ async function lastCompletedRun(): Promise<CompletedRun | null> {
 }
 
 /**
- * Everything the panel needs to render, in one read.
+ * Everything the panel needs to render — the FACTS, reconciled with GitHub. It decides nothing.
  *
- * `now` is injected so a test (and the seeded e2e build) can pin the clock. The panel's whole
- * behaviour turns on what time it is — whether the market is open, whether tonight's run has
- * landed, whether a cooldown has expired — so a hardcoded `new Date()` in here would make most of
- * this untestable.
+ * The deciding happens in the browser (see PanelData above): the pure `controlPanel()` runs there,
+ * against the reader's own clock, so the panel and the nav can never disagree about whether the
+ * market is open.
  */
-export async function readPanel(now: Date = new Date()): Promise<PanelData> {
+export async function readPanel(): Promise<PanelData> {
   const configured = isDispatchConfigured();
 
   const [ledger, lastRun] = await Promise.all([
@@ -133,13 +153,8 @@ export async function readPanel(now: Date = new Date()): Promise<PanelData> {
   ]);
 
   const rows = ledger.map(toManualRunRow).filter((r): r is ManualRunRow => r !== null);
-  const reconciled = await reconcile(rows);
 
-  return {
-    rows: controlPanel({ runs: reconciled, lastRun, now, tokenConfigured: configured }),
-    history: reconciled,
-    configured,
-  };
+  return { runs: await reconcile(rows), lastRun, configured };
 }
 
 /**

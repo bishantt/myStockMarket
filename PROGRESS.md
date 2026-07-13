@@ -1,16 +1,148 @@
 # PROGRESS.md — resumable state
 
-# NOW: the News & Control build (N0–N7). **N0–N5 are done and tagged.** Next: N6.
+# NOW: the News & Control build (N0–N7). **N0–N6 are done and tagged.** Next: N7 (the last one).
 
-**Where I am.** N0–N5 are complete and tagged `nc-0` … `nc-5`. Nothing is blocked. The next phase is
-**N6 — the control room** (plan Part 8: the manual-run panel, `compute` mode, the caps and cooldowns).
+**Where I am.** N0–N6 are complete and tagged `nc-0` … `nc-6`. Nothing is blocked. The last phase is
+**N7 — hardening, evidence, docs sync** (plan Part 9, N7).
 
-**If you read only one thing:** the Front Page is live — `/news`, a story page, a Desk module, and
-News is now the sixth tab. And **N5 found five bugs, three of them only because I ran the thing for
-real and looked at the picture.** Every photograph on the room was a broken-image icon while every
-test passed. Details below.
+**If you read only one thing:** the control room is built, and **the plan was wrong about the one API
+it was built on.** GitHub's dispatch endpoint returns **204 with an empty body** — no run id — and
+GitHub's own documentation says otherwise. I recorded the real response before writing a line of the
+bridge, and it inverted the whole design. Then firing one real run at the real GitHub found three more
+bugs that 572 green tests could not see.
 
 ---
+
+## The six things worth knowing from N6
+
+### 1. The dispatch API tells you NOTHING, and the plan (and GitHub's docs) said it told you everything
+
+Plan 8.2 said to dispatch with `return_run_details: true` and read `workflow_run_id` off the response.
+GitHub's own REST docs describe exactly that. **Both are wrong:**
+
+```
+POST .../actions/workflows/nightly-a.yml/dispatches  ->  HTTP 204 No Content, EMPTY BODY.
+```
+
+No run id. No `return_run_details` parameter. Had I trusted either source, **every button would have
+dispatched a real run and then reported "requested…" forever** — a run that fired and a run that never
+fired, identical from the couch, which is precisely the hazard I was warned about.
+
+So the run id is **recovered, not received**: each dispatch stamps a `request_id`, the workflow prints
+it into `run-name:`, and the app matches it in the runs list. That makes the `run-name:` line
+load-bearing — delete it and nothing fails, every test but one passes, and the control room goes blind.
+
+**N4's rule was "record the provider's response before writing the parser". N6 extends it: the
+vendor's own documentation is not a recording.**
+
+### 2. The panel's real subject is the ABSENCE of a button
+
+Plan 8.1 did the honest evaluation: on a normal weeknight the pipeline has already run, and a manual
+re-run would recompute identical data — so **the honest control for that case is the explanation.**
+Photographed in production at 2pm on a Monday:
+
+> **Run tonight's full pipeline**
+> Ingest the close, recompute everything, publish.
+> *Markets are open — today's closing data doesn't exist until 4:00pm ET. The nightly run lands
+> ~6:37pm ET.*   **← no button**
+
+`full` is the only action with real reasons to refuse, because it is the only one that ingests the
+market. The other four (news, macro, compute, briefing) touch no price and depend on no session having
+closed — which is exactly why 8.1 found they earn real buttons.
+
+### 3. The panel crashed on its first poll, and the button looked completely inert
+
+**JSON has no Date type.** The first render comes from a server component and carries real `Date`
+objects, so the panel mounted perfectly. Then it polled, `JSON.parse` returned **strings**, and
+`formatEtClock` threw `RangeError: Invalid time value`. React kept the old DOM.
+
+So a **real run** — dispatched, accepted by GitHub, executed, completed, written to the ledger — left
+the screen showing a Run button and "2 of 2 left today", exactly as if the press had done nothing.
+
+TypeScript could not see it **because I told it not to**: `(await response.json()) as {...}` is an
+assertion, not a check, and it was false. This is N5's `_json_safe` lesson mirrored — there, *does the
+payload SERIALIZE?*; here, *does it DESERIALIZE into what the type claims?*
+
+Found by firing one real run and watching the screen. **572 unit tests were green.**
+
+### 4. `compute` mode died in production on its first run, and the FAKE is why
+
+`R2Store.sync_down` never created its parent directories. Real boto3 raises `FileNotFoundError`; it
+will not `mkdir` for you. It survived six phases because **the fake was kinder than reality** —
+`FakeS3.download_file` began with `target.parent.mkdir(...)`, doing the one thing boto3 refuses to do.
+
+And nothing had ever really used `sync_down`: the full nightly *writes* the lake and syncs **up**.
+N6's `compute` mode is its first true caller. **A function with no real caller has no real test.**
+
+**A mock more forgiving than the thing it stands for does not fail to test the code — it certifies
+that the code works in a world that does not exist.** N3's lie was in the VALUES, N5's in the SHAPE,
+N6's in the FAKE'S BEHAVIOUR.
+
+### 5. Production has been claiming its data runs "through" a SATURDAY
+
+The panel opened with **"Data through 2026-07-11"** — a Saturday. No session, no close, no bars. A
+full run had stamped Friday's bars with Saturday's date.
+
+**Not a one-off:** the cron is `37 22 * * 1-5`, so it never fires at a weekend — but it **fires on
+every market holiday**, which is a weekday. ~9 times a year it wakes on a closed market, ingests
+nothing, and publishes a run dated to a session that did not happen, with every gate green.
+
+`job_a` now skips a non-session day and exits cleanly. **The bad row is still in production — it is
+Q-N6-1, with the SQL, for you to decide.**
+
+### 6. The Desk's doorway has led nowhere since N2
+
+The freshness strip has linked to `/settings#pipeline` from all three states — **including the red
+DEAD alert**, the one a reader follows when the pipeline is broken and they most need to get here. No
+element with that id existed. **A fragment that matches nothing is not an error; it is a link that
+quietly does half of what it says.**
+
+---
+
+## What N6 landed (tag `nc-6`)
+
+- **The control room** (`/settings#pipeline`): five actions, each in exactly one of ten states, with
+  the caps, the cooldowns, and the four C5 "not available" sentences that are the actual feature.
+- **`compute` mode** — the last of the four. Its promise (*touches no provider*) is held by the TYPE:
+  `ComputeDeps` carries no fetcher at all, and a test enumerates its five fields. It takes its run
+  date from **the data**, not the clock.
+- **`publish_compute`** — because `publish()` REPLACES `source_status` wholesale, and a recompute
+  going through it would have **erased the night's record of a degraded provider** (ruling M2, by the
+  back door).
+- **A dispatch GitHub refuses writes no ledger row and burns no cap.** A bad token must not eat the
+  day's single `full` run — the recovery button — for a run that never happened.
+- **A `lost` state**: an unfindable run is reported after 90s, and stops blocking the other buttons.
+- **VRT**: `/settings` had **no baseline at all** — the one room in the app that is a writer, and the
+  pixel oracle had never looked at it.
+
+**The live drill (plan 8.7's gate), fired at real GitHub from a real browser:**
+
+```
+nightly-a · macro · c55011e8-…   -> success. Panel followed it. Cap 6->5. Cooldown engaged.
+job_a (compute): recomputed 2026-07-10 from stored bars — 11017 symbols, 1315 scan matches.
+                 No provider was called; the night's own source health is untouched.
+```
+
+`recomputed 2026-07-10` — Friday, on a Monday. The run date came from the data, exactly as designed.
+
+**Counts at nc-6:** **576 app tests** · **462 pytest local, 26 skipped** · 20 drift rules · 4 modes.
+**Evidence:** `docs/nc-evidence/n6-control.md`.
+
+---
+
+## What N6 did NOT do
+
+1. **P-2 is still unprovisioned**, so every button is dark in production. The panel says so, once, and
+   renders every other state honestly. **I proved the whole path works** by running it locally with a
+   real token and firing real runs — see the evidence, §6. It is a secret and nothing else.
+2. **The bad Saturday row is still in production** (Q-N6-1 has the SQL). Tonight's nightly supersedes
+   it for display; the row remains.
+3. **Weekend recovery is not offered** (Q-N6-2). A failed Friday nightly waits for Monday, which
+   backfills the bars anyway — what is genuinely lost is Friday's scan/signal rows.
+
+---
+
+# Previously — N5 (the Front Page)
 
 ## The six things worth knowing from N5
 

@@ -5,6 +5,7 @@ import { randomUUID } from "node:crypto";
 import { RUN_ACTIONS, RUN_WORKFLOW, type RunAction } from "@/lib/constants";
 import { db } from "@/lib/db";
 import { dispatchRun, isDispatchConfigured } from "@/lib/github";
+import { controlPanel } from "@/lib/pipeline-control";
 import { readPanel } from "@/lib/pipeline-runs";
 
 /**
@@ -50,11 +51,21 @@ export async function runPipeline(_prev: RunResult, formData: FormData): Promise
     return { ok: false, error: "Manual runs need a GitHub token — see QUESTIONS-FOR-BISHANT (P-2)." };
   }
 
-  // Re-check the guardrails ON THE SERVER, against the ledger, rather than trusting the panel that
-  // rendered the button. A cap enforced only in the UI is a cap enforced only for readers who did
-  // not open the developer console — and these caps exist to protect a real provider budget.
-  const panel = await readPanel();
-  const row = panel.rows.find((r) => r.action === runAction);
+  /*
+   * Re-check the guardrails ON THE SERVER, against the ledger, rather than trusting the panel that
+   * rendered the button. A cap enforced only in the UI is a cap enforced only for readers who did
+   * not open the developer console — and these caps exist to protect a real provider budget.
+   *
+   * The PANEL derives its states in the browser, against the reader's clock (so it can never
+   * disagree with the nav about whether the market is open). This does not, and must not: a client
+   * clock is an input the caller controls, and "the market is closed, honest" is not something a
+   * form body gets to assert. The same pure function, run against the server's own clock — which is
+   * the only clock with any authority over whether a run may fire.
+   */
+  const { runs, lastRun, configured } = await readPanel();
+  const rows = controlPanel({ runs, lastRun, now: new Date(), tokenConfigured: configured });
+
+  const row = rows.find((r) => r.action === runAction);
   if (!row || row.state.kind !== "available") {
     return { ok: false, error: "That run isn't available right now — reload the panel." };
   }

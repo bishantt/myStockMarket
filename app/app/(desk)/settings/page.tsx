@@ -81,7 +81,10 @@ async function pipelinePanel() {
 
     return {
       ...panel,
-      lastRun: run?.finishedAt
+      // The provenance block: what the last run did, and how each provider behaved while it did.
+      // Formatted here because it never changes — unlike the row STATES, which are derived in the
+      // browser against the reader's clock (see PipelinePanel).
+      lastRunDisplay: run?.finishedAt
         ? {
             session: toTradingDate(run.runDate),
             finishedAt: `${formatEtDate(run.finishedAt)} ${formatEtClock(run.finishedAt)}`,
@@ -179,9 +182,9 @@ export default async function SettingsPage() {
             className="scroll-mt-24 p-5 desk:col-span-2 desk:p-6 lg:col-span-2"
           >
             <PipelinePanel
-              rows={panel.rows}
-              history={panel.history}
-              lastRun={panel.lastRun}
+              runs={panel.runs}
+              lastRunSession={panel.lastRun}
+              lastRun={panel.lastRunDisplay}
               configured={panel.configured}
             />
           </Surface>
