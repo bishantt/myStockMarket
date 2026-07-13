@@ -91,12 +91,25 @@ test.describe("service worker", () => {
     await page.getByRole("button", { name: "Sign in" }).click();
     await expect(page).toHaveURL("/");
 
-    // A reload lets the already-activated worker take control of the page. Claiming the client
-    // is asynchronous, and on a slow CI runner it can lag a beat behind the reload — so we WAIT
-    // for the controller rather than sampling it once (the earlier one-shot check flaked in CI).
+    // Wait for the worker to be ACTIVE before reloading, not just registered.
+    //
+    // This test used to reload immediately and then wait 10s for a controller, and it started
+    // timing out at F7. The reason is not a broken service worker — it is that installing one
+    // means downloading its whole precache, and this release gave it more to download (every room
+    // is a cached route now) while the Desk simultaneously prefetches five more. On a cold CI
+    // runner the install can still be in flight when the sign-in lands, and a worker that has not
+    // finished installing cannot control anything, so the reload was racing it.
+    //
+    // `serviceWorker.ready` resolves when there is an active worker for this scope — a real state
+    // the app reaches, not a sleep. Once it is active, the reload puts it in control.
+    await page.waitForFunction(
+      async () => (await navigator.serviceWorker.ready).active?.state === "activated",
+      null,
+      { timeout: 30_000 },
+    );
     await page.reload();
     await page.waitForFunction(() => navigator.serviceWorker.controller !== null, null, {
-      timeout: 10_000,
+      timeout: 15_000,
     });
     const controlled = await page.evaluate(
       () => navigator.serviceWorker.controller !== null,

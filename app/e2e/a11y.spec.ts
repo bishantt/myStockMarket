@@ -86,8 +86,15 @@ test.describe("accessibility", () => {
         .analyze();
 
       const serious = results.violations.filter((v) => v.impact === "serious" || v.impact === "critical");
+
+      // Name the offending node, not just the rule. The first version of this gate printed
+      // "nested-interactive (1 nodes)" and nothing else, which tells the reader that something,
+      // somewhere on a page of a hundred elements, is wrong — and leaves them to find it. A gate
+      // that fires without saying where is only half a gate.
       expect(
-        serious.map((v) => `${v.id} (${v.nodes.length} nodes): ${v.help}`),
+        serious.map(
+          (v) => `${v.id} (${v.nodes.length} nodes): ${v.help}\n${v.nodes.map((n) => `      at ${n.target.join(" ")}\n      ${n.html}`).join("\n")}`,
+        ),
         `serious/critical accessibility violations on ${route}`,
       ).toEqual([]);
     });

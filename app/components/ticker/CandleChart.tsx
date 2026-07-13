@@ -22,7 +22,16 @@ import type { Candle, VolumeBar } from "@/lib/ticker";
  *     would add colour that competes with the candles for no gain (§3.3 scarce colour).
  *   - Colours are read from the live CSS tokens at runtime (globals.css §3.7 note), so the chart
  *     never hard-codes a hex and can never drift from the design system.
- *   - The TradingView attribution logo is kept on — it is the library's licence condition (§Stack).
+ *
+ * ATTRIBUTION, AND WHY IT IS NOT THE LIBRARY'S OWN LOGO (F7 accessibility sweep).
+ * Lightweight Charts is Apache-2.0 and its licence asks for the attribution notice and a link to
+ * tradingview.com "on the page of your website that is available to your users". Its
+ * `attributionLogo` option is offered as ONE way to satisfy that, and we used it — but the option
+ * injects an anchor INSIDE the chart container, and this container is `role="img"`, which tells a
+ * screen reader that everything inside it is one picture. A link inside a picture is a link nobody
+ * can reach: axe flags it (`nested-interactive`) and a keyboard reader simply cannot tab to it. So
+ * the logo is off, and the attribution is a real link in the caption below — on the page, visible,
+ * and reachable. That satisfies the licence more honestly than the version that hid it.
  *
  * No animation: the chart is a money visual, and money visuals do not move (§1.5 rule 12). The hook
  * builds the chart once, sets the data, fits the content, and tears down on unmount.
@@ -58,7 +67,9 @@ export function CandleChart({ candles, volumes }: { candles: Candle[]; volumes: 
         background: { type: ColorType.Solid, color: surface },
         textColor: ink2,
         fontFamily: mono,
-        attributionLogo: true,
+        // Off on purpose — the attribution is rendered as a real link below the chart instead.
+        // See the header: the injected one lands inside a role="img" and no keyboard can reach it.
+        attributionLogo: false,
       },
       grid: {
         vertLines: { color: hairline },
@@ -98,5 +109,20 @@ export function CandleChart({ candles, volumes }: { candles: Candle[]; volumes: 
     return () => chart.remove();
   }, [candles, volumes]);
 
-  return <div ref={containerRef} className="h-[420px] w-full" aria-label="Price chart" role="img" />;
+  return (
+    <figure className="flex flex-col gap-2">
+      <div ref={containerRef} className="h-[420px] w-full" aria-label="Price chart" role="img" />
+      <figcaption className="font-mono text-2xs uppercase tracking-[0.08em] text-muted">
+        Chart by{" "}
+        <a
+          href="https://www.tradingview.com/"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="underline underline-offset-2 hover:text-accent-deep"
+        >
+          TradingView
+        </a>
+      </figcaption>
+    </figure>
+  );
 }
