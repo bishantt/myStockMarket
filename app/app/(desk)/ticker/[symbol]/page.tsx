@@ -1,12 +1,12 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
-import { CandleChartLoader } from "@/components/ticker/CandleChartLoader";
+import { TickerChart } from "@/components/ticker/TickerChart";
 import { RangeBands } from "@/components/ticker/RangeBands";
 import { StatFigure } from "@/components/StatFigure";
 import { Surface } from "@/components/Surface";
 import { getLatestVolBands, getTicker } from "@/lib/ticker";
-import { copy, fill } from "@/lib/copy";
+import { copy } from "@/lib/copy";
 import { formatUtcDate, formatUtcWeekday } from "@/lib/time";
 
 /**
@@ -127,17 +127,18 @@ export default async function TickerPage({ params }: { params: Promise<{ symbol:
         ) : null}
       </header>
 
+      {/*
+       * The chart, its range control, and its caption — one client component, because they are one
+       * thing (Part 5.4). The whole history is already in this page's cached payload, so switching
+       * range is a slice, not a fetch.
+       *
+       * What the caption is FOR (C2): a price chart with no caption is three unstated choices —
+       * daily or intraday, adjusted or raw, and through when — and every one of them changes what
+       * the picture means. The reader should not have to assume any of them.
+       */}
       {ticker.candles.length > 0 ? (
         <Surface as="section" aria-label="Price and volume" className="p-5">
-          <CandleChartLoader candles={ticker.candles} volumes={ticker.volumes} />
-          {/*
-           * What the chart IS, under the chart (C2). A price chart with no caption is three
-           * unstated choices — daily or intraday, adjusted or raw, and through when — and each one
-           * changes what the picture means. The reader should not have to assume any of them.
-           */}
-          <p className="pt-3 font-mono text-2xs text-muted">
-            {fill(copy.ticker.rangeCaption, { date: chartThrough })}
-          </p>
+          <TickerChart candles={ticker.candles} volumes={ticker.volumes} through={chartThrough} />
         </Surface>
       ) : null}
 

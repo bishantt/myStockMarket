@@ -272,11 +272,19 @@ const RULES = [
      * palette, and the fix is to honour the contract the token itself declares rather than to repaint
      * the design system.
      *
-     * `disabled:text-faint` is allowed: WCAG explicitly exempts disabled controls, and a disabled
-     * control that looked enabled would be the worse lie.
+     * A DISABLED state is allowed: WCAG explicitly exempts disabled controls, and a disabled control
+     * that looked enabled would be the worse lie.
+     *
+     * Both spellings of "disabled" count, and the second was added in N2 when the RangeControl
+     * needed it. Tailwind can express the state two ways — `disabled:text-faint` on the control
+     * itself, and `has-[:disabled]:text-faint` on a LABEL that wraps a disabled input, which is the
+     * only form available when the thing being greyed is the label rather than the input. The rule
+     * previously knew only the first, so it fired on a use that was not merely allowed but exactly
+     * what the token exists for. A guard that rejects the correct code teaches people to work around
+     * the guard.
      */
     skip: TOKEN_FILES,
-    match: (line) => /\btext-faint\b/.test(line) && !/disabled:text-faint/.test(line),
+    match: (line) => /\btext-faint\b/.test(line) && !/disabled\]?:text-faint/.test(line),
   },
   {
     id: 17,

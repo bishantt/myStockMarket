@@ -1,5 +1,8 @@
 "use client";
 
+import { useState } from "react";
+import { RangeControl } from "@/components/RangeControl";
+
 import { DataTable } from "@/components/DataTable";
 import { Disclosure } from "@/components/Disclosure";
 import { Shelf, ShelfItem } from "@/components/Shelf";
@@ -149,6 +152,48 @@ export function KitSpecimens() {
           </div>
         </div>
       </Surface>
+
+      {/*
+       * RANGE CONTROL — and the honesty rule it exists to enforce (C3).
+       *
+       * This is the only time-range control in the application, and it may appear on exactly two
+       * surfaces: the ticker chart and the news feed. Both are VIEWS onto a record. Everywhere else,
+       * a "range" would change the DEFINITION of the number rather than the view of it — an RVOL is
+       * 20-day by definition, a base rate's horizon is a property of the evidence — and a reader who
+       * can slide a base rate's horizon until it flatters a pattern is a reader the app has taught
+       * to p-hack. The allowlist is a closed type union, so a forbidden surface does not compile.
+       *
+       * The 5Y option below is DISABLED, not hidden, and that distinction is the ruling: an option
+       * that can never exist for the surface is omitted; an option that exists but not for THIS item
+       * is shown, disabled, with its reason. A reader who knows 5Y exists and cannot find it thinks
+       * the app is broken; a reader told "less than 4 years of history for this symbol" has learned
+       * something true.
+       */}
+      <Surface className="flex flex-col gap-4 p-5 desk:p-6">
+        <h3 className="font-mono text-2xs uppercase tracking-[0.08em] text-muted">
+          RangeControl · ticker-chart (5Y unavailable for this symbol)
+        </h3>
+        <RangeControlSpecimen />
+      </Surface>
     </div>
+  );
+}
+
+/** The control, with a short history so the disabled-and-explained state is the one on show. */
+function RangeControlSpecimen() {
+  const [range, setRange] = useState("6m");
+  return (
+    <RangeControl
+      surface="ticker-chart"
+      options={[
+        { label: "1M", value: "1m", available: true },
+        { label: "3M", value: "3m", available: true },
+        { label: "6M", value: "6m", available: true },
+        { label: "1Y", value: "1y", available: true },
+        { label: "5Y", value: "5y", available: false, reason: "Less than 4 years of history for this symbol" },
+      ]}
+      value={range}
+      onChange={setRange}
+    />
   );
 }
