@@ -45,9 +45,27 @@ export default defineConfig({
    * Visual regression (UI-REDESIGN-PLAN Part 9). Styling at this scale without pixel locks drifts
    * within a week, so the redesign is exactly when the VRT becomes real.
    *
-   * `maxDiffPixelRatio` allows 1% of pixels to differ — enough to absorb antialiasing noise across
-   * runs, far too little to hide a colour, a radius, or a shifted card. Animations are disabled and
-   * the caret is hidden, because a blinking cursor is a flaky test with extra steps.
+   * THE TOLERANCE IS AN ABSOLUTE PIXEL COUNT, NOT A RATIO, AND THAT IS A BUG FIX (2026-07-12, N1).
+   *
+   * It used to be `maxDiffPixelRatio: 0.01` — "1% of pixels may differ", which sounds strict and is
+   * not. These are FULL-PAGE screenshots of long pages: the desktop Desk is 1366×2763, which is 3.77
+   * MILLION pixels, so one percent of it is a budget of **37,742 pixels**. That is enough to hide a
+   * great deal.
+   *
+   * It did. N1 rewrote the macro row — reordered it, relabelled "Russell 2000 · IWM (ETF proxy)" to
+   * "Small caps", deleted a chip, and replaced the provenance sentence — and the desktop baseline
+   * PASSED unchanged, because all that text came to fewer than 37,742 differing pixels on a page
+   * that tall. The phone shot (412×4366 = 1.8M pixels, so a 17,988-pixel budget) caught the very
+   * same change. One viewport reported the truth and the other quietly did not, and the baseline
+   * that stayed behind was a picture of a bug.
+   *
+   * A ratio makes the gate WEAKER the longer the page gets, which is exactly backwards: a longer
+   * page has more to hide. An absolute count does not care how tall the page is. 600 pixels is
+   * roughly a few dozen antialiased glyph edges — enough to absorb rasterisation noise between
+   * otherwise identical runs, nowhere near enough to hide a word.
+   *
+   * Animations are disabled and the caret is hidden, because a blinking cursor is a flaky test with
+   * extra steps.
    *
    * The pixel oracle is CI (Linux). Font rasterisation differs from macOS, so a baseline generated
    * on a developer's Mac would fail in CI and vice versa; maintaining two sets for one developer is
@@ -55,7 +73,7 @@ export default defineConfig({
    */
   expect: {
     toHaveScreenshot: {
-      maxDiffPixelRatio: 0.01,
+      maxDiffPixels: 600,
       animations: "disabled",
       caret: "hide",
       scale: "css",

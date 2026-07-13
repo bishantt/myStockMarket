@@ -243,8 +243,14 @@ jobs:
       - name: Install Playwright browser
         run: npx playwright install --with-deps chromium
 
+      # `=all` matters. Plain `--update-snapshots` defaults to "changed": it only rewrites a baseline
+      # whose comparison FAILED, so any real change that happens to fall inside the tolerance is
+      # neither reported nor re-baselined — the old picture survives, and it is now a picture of the
+      # previous behaviour. That is how N1's rewritten macro row ended up passing on the desktop shot
+      # while the phone shot caught it. "all" rewrites every baseline from what the page actually
+      # renders, which is the only thing a baseline is supposed to be.
       - name: Generate the baselines
-        run: npx playwright test vrt.spec.ts --update-snapshots
+        run: npx playwright test vrt.spec.ts --update-snapshots=all
 
       - name: Upload them for the developer to commit
         uses: actions/upload-artifact@v4
