@@ -119,12 +119,20 @@ export function StatFigure({
             ) : null}
             {delta.value}
             {/*
-             * The window, inside the chip. It is set quieter than the number — it is the number's
-             * unit, not a second number — but it is in the same chip, because a window that lives
-             * anywhere else is a window the reader has to go and find (C2).
+             * The window, inside the chip. It is quieter than the number — it is the number's UNIT,
+             * not a second number — but it is in the same chip, because a window that lives anywhere
+             * else is a window the reader has to go and find (C2).
+             *
+             * QUIETER BY SIZE AND WEIGHT, NEVER BY OPACITY, and that is not a style preference.
+             * This span carried `opacity-80` until N2, which composites the text toward its
+             * background and dropped it under AA at this size — nine failing nodes on the Desk, all
+             * of them window tokens. Drift rule 18 already says it: `faint` is for placeholders and
+             * disabled states, never for information. And C2's whole claim is that the window IS
+             * information — half the fact, not an annotation on it. A number's unit is not
+             * decoration you may fade.
              */}
             {delta.window ? (
-              <span className="pl-1 text-2xs font-normal opacity-80">· {delta.window}</span>
+              <span className="pl-1 text-2xs font-normal">· {delta.window}</span>
             ) : null}
           </span>
         ) : null}

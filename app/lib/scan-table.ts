@@ -63,30 +63,30 @@ function commonColumns(): Column<ScanRow>[] {
 const TRIGGERS: Record<string, Column<ScanRow>[]> = {
   "unusual-volume": [
     { key: "ret_1", header: "1-day move", kind: "signedPercent", priority: 1, value: metric("ret_1") },
-    { key: "rvol20", header: "RVOL", kind: "multiple", priority: 1, value: metric("rvol20") },
-    { key: "dollar_volume", header: "$ volume", kind: "compact", priority: 3, value: metric("dollar_volume") },
+    { key: "rvol20", header: "RVOL · 20d", kind: "multiple", priority: 1, value: metric("rvol20") },
+    { key: "dollar_volume", header: "$ volume · 1D", kind: "compact", priority: 3, value: metric("dollar_volume") },
   ],
   "near-52w-high": [
     { key: "dist_52w_high", header: "From 52w high", kind: "signedPercent", priority: 1, value: metric("dist_52w_high") },
     { key: "ret_1", header: "1-day move", kind: "signedPercent", priority: 2, value: metric("ret_1") },
-    { key: "rvol20", header: "RVOL", kind: "multiple", priority: 3, value: metric("rvol20") },
+    { key: "rvol20", header: "RVOL · 20d", kind: "multiple", priority: 3, value: metric("rvol20") },
   ],
   "gap-3plus": [
-    { key: "gap_pct", header: "Gap", kind: "signedPercent", priority: 1, value: metric("gap_pct") },
+    { key: "gap_pct", header: "Gap · open vs prior close", kind: "signedPercent", priority: 1, value: metric("gap_pct") },
     { key: "ret_1", header: "1-day move", kind: "signedPercent", priority: 2, value: metric("ret_1") },
-    { key: "rvol20", header: "RVOL", kind: "multiple", priority: 3, value: metric("rvol20") },
+    { key: "rvol20", header: "RVOL · 20d", kind: "multiple", priority: 3, value: metric("rvol20") },
   ],
   "golden-cross-fresh": [
     // Both averages are printed exactly as the pipeline computed them. The app derives nothing here:
     // numbers are computed pipeline-side, and a UI that recomputed a moving average would be a
     // second implementation of it, free to disagree with the first.
-    { key: "sma50", header: "50-day", kind: "price", priority: 1, value: metric("sma50") },
-    { key: "sma200", header: "200-day", kind: "price", priority: 1, value: metric("sma200") },
+    { key: "sma50", header: "50-day avg", kind: "price", priority: 1, value: metric("sma50") },
+    { key: "sma200", header: "200-day avg", kind: "price", priority: 1, value: metric("sma200") },
     { key: "ret_20", header: "20-day move", kind: "signedPercent", priority: 3, value: metric("ret_20") },
   ],
   "rsi-extreme": [
-    { key: "rsi14", header: "RSI", kind: "mono", priority: 1, value: metric("rsi14") },
-    { key: "rsi14_prev", header: "RSI prior", kind: "mono", priority: 2, value: metric("rsi14_prev") },
+    { key: "rsi14", header: "RSI · 14d", kind: "mono", priority: 1, value: metric("rsi14") },
+    { key: "rsi14_prev", header: "RSI prior · 14d", kind: "mono", priority: 2, value: metric("rsi14_prev") },
     { key: "ret_5", header: "5-day move", kind: "signedPercent", priority: 3, value: metric("ret_5") },
   ],
 };

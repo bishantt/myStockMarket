@@ -6,6 +6,8 @@ import { RangeBands } from "@/components/ticker/RangeBands";
 import { StatFigure } from "@/components/StatFigure";
 import { Surface } from "@/components/Surface";
 import { getLatestVolBands, getTicker } from "@/lib/ticker";
+import { copy, fill } from "@/lib/copy";
+import { formatUtcDate, formatUtcWeekday } from "@/lib/time";
 
 /**
  * /ticker/[symbol] — drill level 3, the full page (§5.5).
@@ -65,6 +67,24 @@ export default async function TickerPage({ params }: { params: Promise<{ symbol:
     .filter((b) => b.n !== null && b.windowDays !== null)
     .map((b) => ({ ...b, n: b.n as number, windowDays: b.windowDays as number }));
 
+  /*
+   * The last session the chart actually shows — read from the last bar, never from "today".
+   *
+   * A caption that says "through Fri Jul 11" because the SERVER thinks it is Friday, while the bars
+   * stop on Wednesday, is a provenance line that disagrees with its own picture. That is ruling C6
+   * (a provenance line is computed from what is rendered) applied to a chart: the only honest source
+   * for "through when" is the data.
+   *
+   * `candle.time` is already a bare trading date ("2026-07-10"), so it formats from its UTC
+   * components — reading it in Eastern time would print the day before.
+   */
+  const lastBar = ticker.candles.at(-1);
+  const chartThrough = lastBar
+    ? formatUtcWeekday(new Date(`${lastBar.time}T00:00:00Z`)) +
+      " " +
+      formatUtcDate(new Date(`${lastBar.time}T00:00:00Z`))
+    : "—";
+
   return (
     <div className="flex flex-col gap-6 py-6">
       {/*
@@ -88,11 +108,21 @@ export default async function TickerPage({ params }: { params: Promise<{ symbol:
           <h1 className="font-display text-display font-bold text-ink">{ticker.name}</h1>
         </div>
         {ticker.lastClose ? (
+          // The delta says what it is a delta FROM (C2). "Last close −0.42%" leaves a beginner to
+          // guess the comparison; naming it costs four words and removes the guess.
           <StatFigure
             label="Last close"
             value={ticker.lastClose}
             scale="figure"
-            delta={ticker.dayChange ? { value: ticker.dayChange.value, direction: ticker.dayChange.direction } : undefined}
+            delta={
+              ticker.dayChange
+                ? {
+                    value: ticker.dayChange.value,
+                    direction: ticker.dayChange.direction,
+                    window: copy.ticker.lastCloseWindow,
+                  }
+                : undefined
+            }
           />
         ) : null}
       </header>
@@ -100,6 +130,14 @@ export default async function TickerPage({ params }: { params: Promise<{ symbol:
       {ticker.candles.length > 0 ? (
         <Surface as="section" aria-label="Price and volume" className="p-5">
           <CandleChartLoader candles={ticker.candles} volumes={ticker.volumes} />
+          {/*
+           * What the chart IS, under the chart (C2). A price chart with no caption is three
+           * unstated choices — daily or intraday, adjusted or raw, and through when — and each one
+           * changes what the picture means. The reader should not have to assume any of them.
+           */}
+          <p className="pt-3 font-mono text-2xs text-muted">
+            {fill(copy.ticker.rangeCaption, { date: chartThrough })}
+          </p>
         </Surface>
       ) : null}
 

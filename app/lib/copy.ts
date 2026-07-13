@@ -261,6 +261,25 @@ export const copy = {
    * The app-feel additions (APP-FEEL-PLAN Appendix B). Same rule as everything above: these are
    * not labels, they are the honesty rules in their final human form.
    */
+  /**
+   * The watchlist's own window statements (ruling C2, NEWS-AND-CONTROL-PLAN Part 5.1).
+   *
+   * The sparkline was the least honest thing on the Desk: a line with no axis, no scale, and no
+   * period. A shape that says "up" over an unstated stretch of time is not information — a month and
+   * a year produce the same picture and mean opposite things.
+   */
+  watchlist: {
+    sparkCaption: "Sparklines: 30 sessions, close only",
+  },
+
+  /** The ticker's chart captions — what the bars ARE, and through when (C2). */
+  ticker: {
+    rangeCaption: "Daily bars · adjusted · through {date}",
+    rangeCoverage: "Showing full history: {years}",
+    rangeUnavailable: "Less than {min} of history for this symbol",
+    lastCloseWindow: "1D vs prior close",
+  },
+
   scans: {
     /**
      * Ruling M1, spoken. It is the sentence that separates a scan table from a leaderboard, and it

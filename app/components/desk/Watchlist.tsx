@@ -159,6 +159,21 @@ export function Watchlist({ asOf, rows }: { asOf: Date; rows: WatchRow[] }) {
             </ul>
           </Disclosure>
         ) : null}
+
+        {/*
+         * THE SPARKLINE'S WINDOW, STATED ONCE (ruling C2, and the plan's own exception to it).
+         *
+         * Until now the sparkline was the least honest thing on the Desk: a line with no axis, no
+         * scale and no period — a shape that says "up" or "down" over some unstated stretch of time.
+         * A reader could not tell if they were looking at a month or a year, and the shape means
+         * completely different things depending on which.
+         *
+         * It gets a caption rather than a per-row token, and that is deliberate: every row's spark
+         * covers the SAME window, so repeating "30 sessions" thirty times would stutter without
+         * adding a single fact. C2 asks for the window in the same visual unit as the number, and
+         * where all the rows share one window, the unit is the module.
+         */}
+        <p className="pt-3 font-mono text-2xs text-muted">{copy.watchlist.sparkCaption}</p>
         </>
       )}
     </section>
@@ -196,6 +211,7 @@ function WatchRowBody({ row: r }: { row: WatchRow }) {
 
                 <span className="flex shrink-0 flex-col items-end gap-0.5">
                   <span className="font-mono text-sm text-ink">{r.price}</span>
+                  {/* The window rides inside the chip (C2) — see the same rule in Movers. */}
                   <span
                     className={cx(
                       "rounded-chip px-1.5 py-0.5 font-mono text-2xs",
@@ -203,6 +219,7 @@ function WatchRowBody({ row: r }: { row: WatchRow }) {
                     )}
                   >
                     {r.changePct}
+                    <span className="pl-1 font-normal">· {copy.window.d1}</span>
                   </span>
                 </span>
               </RailTrigger>

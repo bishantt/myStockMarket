@@ -39,13 +39,13 @@ test.describe("offline", () => {
 
     // Visit the Desk once more under worker control so the navigation is cached.
     await page.goto("/");
-    await expect(page.getByRole("heading", { name: /00 — Pipeline/i })).toBeVisible();
+    await expect(page.getByRole("heading", { name: /01 — Macro pulse/i })).toBeVisible();
 
     await context.setOffline(true);
     await page.reload();
 
     // Served from cache: the Desk shell renders, and the ribbon names the synced vintage.
-    await expect(page.getByRole("heading", { name: /00 — Pipeline/i })).toBeVisible();
+    await expect(page.getByRole("heading", { name: /01 — Macro pulse/i })).toBeVisible();
     await expect(page.getByText(/Offline — showing the last synced briefing/)).toBeVisible();
 
     await context.setOffline(false);
@@ -55,7 +55,7 @@ test.describe("offline", () => {
     await signIn(page);
     await waitForControl(page);
     await page.goto("/");
-    await expect(page.getByRole("heading", { name: /00 — Pipeline/i })).toBeVisible();
+    await expect(page.getByRole("heading", { name: /01 — Macro pulse/i })).toBeVisible();
 
     // The cookie expires. Online, the app correctly bounces to /login — and the guard refuses to
     // cache that redirect over the good Desk.
@@ -73,7 +73,7 @@ test.describe("offline", () => {
     await page.reload();
 
     // The Desk renders from cache — NOT a cached login page.
-    await expect(page.getByRole("heading", { name: /00 — Pipeline/i })).toBeVisible();
+    await expect(page.getByRole("heading", { name: /01 — Macro pulse/i })).toBeVisible();
     await expect(page.getByLabel("Password")).toHaveCount(0);
 
     await context.setOffline(false);

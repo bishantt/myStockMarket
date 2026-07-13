@@ -98,7 +98,22 @@ test.describe("touch targets (phone)", () => {
            */
           const display = getComputedStyle(el).display;
           const inLineBox = display.startsWith("inline");
-          const inRunningText = el.closest("p, h1, h2, h3, h4, li, dd, blockquote, span") !== null;
+          /*
+           * `figcaption` joined this list in N2, and it is a real omission being corrected, not a
+           * loophole being opened.
+           *
+           * The chart's attribution reads "Chart by TradingView", with TradingView as the link. That
+           * is a link inside a sentence — precisely the case WCAG 2.5.8's inline exception exists
+           * for — and padding it to 44px would break the caption for no accessibility gain, because
+           * a reader taps the word where the word is. The list simply never named the element that
+           * caption lives in.
+           *
+           * (It surfaced now because it had been passing VACUOUSLY: the chart is code-split, so on a
+           * slower run the figcaption did not exist yet and the sweep found no link to measure. A
+           * guard that only fails when the page happens to be fast is not a guard.)
+           */
+          const inRunningText =
+            el.closest("p, h1, h2, h3, h4, li, dd, blockquote, span, figcaption") !== null;
           if (inLineBox && inRunningText) continue;
 
           /*
@@ -130,27 +145,92 @@ test.describe("touch targets (phone)", () => {
     });
   }
 
-  test("every form control renders at 16px or more, so iOS never zooms in", async ({ page }) => {
-    // The iOS rule (§7.1): a focused input under 16px makes Safari zoom the viewport in — and it
-    // does NOT zoom back out afterwards. The reader is left stranded at 1.3x on a page they now
-    // have to pan around. The fix is the font size, never a maximum-scale lock: pinch-zoom is an
-    // accessibility right, not an annoyance to design away.
+  /**
+   * The iOS zoom rule (§7.1) — REPAIRED IN N2, and it was broken in both directions at once.
+   *
+   * The rule itself is real: focusing a TEXT-ENTRY field under 16px makes Safari zoom the viewport
+   * in, and it does NOT zoom back out. The reader is stranded at 1.3x on a page they now have to pan
+   * around. The fix is the font size, never a maximum-scale lock — pinch-zoom is an accessibility
+   * right, not an annoyance to design away.
+   *
+   * WHAT THIS TEST GOT WRONG, TWICE.
+   *
+   * 1. IT COULD PASS WITHOUT LOOKING AT ANYTHING. /paper's ticket lives behind a Suspense boundary
+   *    (it reads useSearchParams, so it cannot prerender). `page.goto()` resolves before that island
+   *    hydrates, so the sweep would query the DOM, find ZERO fields, iterate over nothing, and
+   *    report success. It has been "passing" on the page whose form is the entire reason the rule
+   *    exists. Perturbing the timing by a few milliseconds — any unrelated change — flips it. That
+   *    is not a flake to retry; it is a guard that never ran.
+   *
+   *    So it now WAITS for the form and asserts it actually found fields. A sweep that swept nothing
+   *    is a failure, not a pass.
+   *
+   * 2. IT CRIED WOLF ON CONTROLS iOS DOES NOT ZOOM FOR. It measured every `input`, including the
+   *    segmented control's radios — which are 13.5px, the browser's default, and have been since F2.
+   *    But iOS zooms on focusing a field that summons a KEYBOARD. A radio summons no keyboard; it
+   *    cannot trigger the behaviour. Failing the build for it would have driven someone to "fix" a
+   *    control that was never broken, in a way that made the design worse.
+   *
+   *    So the selector now names the fields iOS actually zooms for, and says why.
+   */
+  test("every text-entry field renders at 16px or more, so iOS never zooms in", async ({ page }) => {
+    // The field types that summon a keyboard, and therefore zoom. Radios, checkboxes, buttons,
+    // ranges, colours and file pickers do not — they have no caret and no keyboard.
+    const ZOOMS = [
+      "text",
+      "email",
+      "password",
+      "number",
+      "search",
+      "tel",
+      "url",
+      "date",
+      "datetime-local",
+      "month",
+      "week",
+      "time",
+    ];
+
     for (const route of ["/paper", "/settings", "/login"]) {
       await page.goto(route);
 
-      const tooSmall = await page.evaluate(() => {
-        const offenders: string[] = [];
-        const fields = document.querySelectorAll<HTMLElement>(
-          "input:not([type=hidden]), textarea, select",
-        );
-        for (const field of fields) {
-          const size = parseFloat(getComputedStyle(field).fontSize);
-          if (size < 16) offenders.push(`${field.getAttribute("name") ?? field.tagName} at ${size}px`);
-        }
-        return offenders;
-      });
+      // The form must actually BE here before we can claim anything about it. This is what stops the
+      // sweep from passing over an empty page. /paper's ticket hydrates behind a Suspense boundary,
+      // so "the document loaded" is not the same thing as "the form exists" — we wait for a real
+      // text-entry field to be attached, which is the thing this test is about.
+      await page.waitForLoadState("load");
+      await page
+        .locator('input[type="text"], input[type="password"], input[type="number"], textarea, select')
+        .first()
+        .waitFor({ state: "attached", timeout: 15_000 });
 
-      expect(tooSmall, `inputs under 16px on ${route} — iOS will zoom and stay zoomed`).toEqual([]);
+      const { offenders, swept } = await page.evaluate((zooms) => {
+        const offenders: string[] = [];
+        let swept = 0;
+
+        const fields = document.querySelectorAll<HTMLElement>("input, textarea, select");
+        for (const field of fields) {
+          const type = (field.getAttribute("type") ?? "text").toLowerCase();
+          const isTextEntry =
+            field.tagName === "TEXTAREA" || field.tagName === "SELECT" || zooms.includes(type);
+          if (!isTextEntry) continue;
+
+          swept += 1;
+          const size = parseFloat(getComputedStyle(field).fontSize);
+          if (size < 16) {
+            offenders.push(`${field.getAttribute("name") ?? field.tagName} at ${size}px`);
+          }
+        }
+        return { offenders, swept };
+      }, ZOOMS);
+
+      expect(
+        swept,
+        `the sweep found NO text-entry fields on ${route} — it measured nothing and would have ` +
+          `reported success. That is how this guard silently stopped working.`,
+      ).toBeGreaterThan(0);
+
+      expect(offenders, `text-entry fields under 16px on ${route} — iOS will zoom and stay zoomed`).toEqual([]);
     }
   });
 });

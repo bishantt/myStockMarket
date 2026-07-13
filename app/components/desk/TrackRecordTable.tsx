@@ -67,7 +67,7 @@ export function TrackRecordTable({ rows }: { rows: ResolvedRow[] }) {
         render: (r) => <OutcomeChip outcome={r.outcome} />,
       },
       { key: "patternLabel", header: "Pattern", kind: "text", priority: 2, value: (r) => r.patternLabel },
-      { key: "horizonDays", header: "Horizon", kind: "int", priority: 2, value: (r) => r.horizonDays },
+      { key: "horizonDays", header: "Horizon (trading days)", kind: "int", priority: 2, value: (r) => r.horizonDays },
       { key: "resolvedAt", header: "Resolved", kind: "text", priority: 2, value: (r) => r.resolvedAt },
       { key: "firedDate", header: "Fired", kind: "text", priority: 3, value: (r) => r.firedDate },
     ],

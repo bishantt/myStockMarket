@@ -149,17 +149,31 @@ function MoverRow({ mover: m }: { mover: Mover }) {
               >
                 <span className="w-14 shrink-0 font-mono text-sm font-semibold text-ink">{m.symbol}</span>
                 <span className="hidden min-w-0 flex-1 truncate font-ui text-sm text-muted sm:block">{m.name}</span>
+                {/*
+                 * The window rides INSIDE the chip (ruling C2). "+8.2%" is not a fact; "+8.2% · 1D"
+                 * is — a percentage with no period attached is a number the reader has to guess the
+                 * meaning of, and a beginner will guess wrong. It is set quieter than the figure
+                 * because it is the figure's UNIT, not a second number.
+                 */}
                 <span className={cx("flex shrink-0 items-baseline gap-0.5 rounded-chip px-1.5 py-0.5 font-mono text-sm", DELTA_CHIP[m.direction])}>
                   {m.direction !== "flat" ? <span aria-hidden="true">{GLYPH[m.direction]}</span> : null}
                   {m.changePct}
+                  <span className="pl-1 text-2xs font-normal">· {copy.window.d1}</span>
                 </span>
+
+                {/*
+                 * And RVOL states what it is relative TO, on the cell. It used to depend on a
+                 * footnote at the bottom of the module — which the footnote still carries, for the
+                 * definition — but a reader who meets "3.1×" first meets a number with no unit.
+                 */}
                 <span
                   className={cx(
-                    "w-14 shrink-0 text-right font-mono text-sm",
+                    "shrink-0 text-right font-mono text-sm",
                     parseFloat(m.rvol) >= RVOL_EMPHASIS_THRESHOLD ? "font-semibold text-accent-deep" : "text-ink-2",
                   )}
                 >
                   {m.rvol}
+                  <span className="pl-1 font-normal text-2xs text-muted">· {copy.window.avg20d}</span>
                 </span>
               </RailTrigger>
                 {/* The catalyst — chip, headline, source link — or the noise line. Full-width on a

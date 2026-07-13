@@ -76,8 +76,16 @@ test("the correct credential opens the Desk and issues an httpOnly session cooki
   await signIn(page);
 
   await expect(page).toHaveURL("/");
-  // The Desk shell, and its first section masthead.
-  await expect(page.getByRole("heading", { name: /00 — Pipeline/i })).toBeVisible();
+  /*
+   * The Desk shell, and its first section masthead — which is 01 now, not 00.
+   *
+   * Module 00 (Pipeline) was retired into the header's status strip in N2, so the ritual starts at
+   * 01. This anchor was only ever standing in for "the Desk actually rendered", and the macro pulse
+   * is the better proof of that anyway: it renders its masthead whether the module has data or is
+   * showing its placeholder, so the assertion means the same thing on a fresh database as on a
+   * seeded one.
+   */
+  await expect(page.getByRole("heading", { name: /01 — Macro pulse/i })).toBeVisible();
 
   const session = (await page.context().cookies()).find(
     (c) => c.name === SESSION_COOKIE_NAME,

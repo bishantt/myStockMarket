@@ -270,3 +270,56 @@ test.describe("The Desk, chunked", () => {
     await expect(sources.getByText(/all reporting/)).toHaveCount(0);
   });
 });
+
+/**
+ * RULING C2 ON THE DESK — every number states its window, on the surface, where the number is.
+ *
+ * The plan's Part 5.1 audit table is not documentation. Each of its rows is an acceptance criterion,
+ * and these are the rows that live on the Desk. They are asserted against the RENDERED page rather
+ * than against the copy deck, because a token that exists in copy.ts and never reaches the screen is
+ * a rule that was written down and not obeyed.
+ *
+ * Why this matters more than it sounds: "+8.2%" is not a fact. Over what? A day? A week? Since the
+ * position was opened? A beginner cannot tell, and will guess — and every one of those guesses
+ * changes what the number means. The window is not decoration on the figure. It is half the figure.
+ */
+test.describe("C2 — every number on the Desk carries its window", () => {
+  test.skip(process.env.MSM_SEEDED !== "1", "needs a seeded test database (MSM_SEEDED=1)");
+
+  test.beforeEach(async ({ page }) => {
+    await page.goto("/login");
+    await page.getByLabel("Username").fill(USER);
+    await page.getByLabel("Password").fill(PASSWORD);
+    await page.getByRole("button", { name: "Sign in" }).click();
+    await expect(page).toHaveURL("/");
+    await page.goto("/");
+  });
+
+  test("a mover's delta says it is a ONE-DAY move, and its RVOL says what it is relative to", async ({
+    page,
+  }) => {
+    const movers = page.getByRole("region", { name: "Movers" });
+
+    // The window rides inside the chip, beside the number — not in a footnote, not in the module
+    // footer. Both are in the same visual unit as the figure they qualify.
+    await expect(movers.getByText(/· 1D/).first()).toBeVisible();
+    await expect(movers.getByText(/· 20d avg/).first()).toBeVisible();
+  });
+
+  test("a watchlist delta says 1D, and the sparklines state their window ONCE", async ({ page }) => {
+    const watch = page.getByRole("region", { name: "Watchlist" });
+    await expect(watch.getByText(/· 1D/).first()).toBeVisible();
+
+    // One caption for the module, because every row's spark covers the same 30 sessions. Repeating
+    // it per row would stutter without adding a fact — but a line with no period at all is a shape
+    // that means nothing, and that is what it was.
+    await expect(watch.getByText("Sparklines: 30 sessions, close only")).toBeVisible();
+  });
+
+  test("breadth says WHEN it was measured, not just what it measures", async ({ page }) => {
+    // It named its indicator's lookback (the 50-day average) and never said as of when — the one
+    // figure on the macro module making a claim about the entire market with no as-of on it.
+    const pulse = page.getByRole("region", { name: "Macro pulse" });
+    await expect(pulse.getByText(/above the 50-day average/)).toBeVisible();
+  });
+});

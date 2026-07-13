@@ -229,3 +229,63 @@ describe("module 07 reads as a glance", () => {
     expect(fill(copy.desk.scanCount, { n: 214, k: 5 })).toBe("214 matches across 5 scans");
   });
 });
+
+/**
+ * THE WINDOW VOCABULARY IS A CLOSED SET (ruling C2, NEWS-AND-CONTROL-PLAN Part 5.2, mechanism 1).
+ *
+ * C2 says every number states the period it covers. The failure mode of a rule like that is not
+ * that people ignore it — it is that they obey it in six different dialects. One surface says "20d
+ * avg", another "20-day average", a third "vs 20d", and the reader, who is learning what these words
+ * MEAN, has to work out that all three are the same thing before they can learn anything else.
+ *
+ * So the vocabulary is closed, it lives in one place, and this test is the lock. Adding a window
+ * phrase means adding it HERE — which is a decision someone makes on purpose, in a diff, rather than
+ * a phrase that appears in a component because it read well that afternoon.
+ */
+describe("C2 — the window vocabulary", () => {
+  it("is exactly the closed set the plan specifies, and nothing has crept in", () => {
+    expect(Object.keys(copy.window).sort()).toEqual(
+      [
+        "asOf",
+        "atClose",
+        "avg20d",
+        "avg50d",
+        "d1",
+        "d5",
+        "m1",
+        "m3",
+        "m6",
+        "monthOf",
+        "rsi14",
+        "vsPriorClose",
+        "weekOf",
+        "y1",
+        "y5",
+      ].sort(),
+    );
+  });
+
+  it("the strings themselves are the contract — a surface renders these, verbatim", () => {
+    // P12: copy is contractual. These are the exact tokens the movers' chips, the watchlist's chips
+    // and the scan tables' headers render, so changing one changes every surface at once — which is
+    // the point of them living here.
+    expect(copy.window.d1).toBe("1D");
+    expect(copy.window.avg20d).toBe("20d avg");
+    expect(copy.window.avg50d).toBe("50d avg");
+  });
+
+  it("every surface caption that promises a window actually names one", () => {
+    // The captions that stand in for a per-row token, where all the rows share one window. Each one
+    // must state a real period — a caption reading "Sparklines: recent closes" would satisfy the eye
+    // and tell the reader nothing.
+    const STATES_A_PERIOD = /\d+\s*((session|day|month|year)s?|[dw])\b/i;
+
+    expect(copy.watchlist.sparkCaption).toMatch(STATES_A_PERIOD);
+    expect(copy.watchlist.sparkCaption).toContain("30 sessions");
+
+    // The ticker's chart caption states what the bars are AND through when.
+    expect(copy.ticker.rangeCaption).toContain("Daily bars");
+    expect(copy.ticker.rangeCaption).toContain("{date}");
+    expect(copy.ticker.lastCloseWindow).toContain("prior close");
+  });
+});

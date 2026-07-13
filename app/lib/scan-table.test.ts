@@ -90,3 +90,54 @@ describe("columnsFor", () => {
     }
   });
 });
+
+/**
+ * RULING C2, ENFORCED AT THE COLUMN MAP (NEWS-AND-CONTROL-PLAN Part 5.2, mechanism 2).
+ *
+ * "3.1×" is not a fact. "3.1× · 20d avg" is. A relative-volume figure means nothing at all until
+ * you know what it is relative TO, and until this phase the definition lived in a footnote on ONE
+ * surface and nowhere else — so a reader who met RVOL first in a scan table met a number with no
+ * unit and no way to acquire one.
+ *
+ * A grep cannot see a missing window on an arbitrary JSX number, but it CAN see one here, because
+ * every metric in every scan table comes through this one map. So this is where the rule gets
+ * teeth: add a metric column without a window token and the build fails.
+ *
+ * This is the guard, not the honour system. The next person adding a column does not have to have
+ * read the plan.
+ */
+describe("C2 — every metric column states its window", () => {
+  /**
+   * The columns that are NOT metrics, and why each is exempt.
+   *
+   * `close` is the interesting one, and it is exempt BY RULE rather than by convenience: C2 says a
+   * number whose window is genuinely the whole surface's as-of — a price at last close — carries the
+   * shared as-of stamp the masthead already prints, and needs nothing repeated. Every scan table
+   * prints "as of <date>" above it. The other three are identifiers, not measurements.
+   */
+  const NOT_A_METRIC = new Set(["rank", "symbol", "name", "close"]);
+
+  /** The closed window vocabulary, as it appears in a header: "20d", "14d", "1-day", "52w", "1D". */
+  const STATES_A_WINDOW = /\d+\s*-?\s*(day|d|w)\b|prior close|1D/i;
+
+  it.each(SCAN_PRESETS.map((p) => p.key))("%s — no metric column is missing its window", (key) => {
+    const naked = columnsFor(key)
+      .filter((c) => !NOT_A_METRIC.has(c.key))
+      .filter((c) => !STATES_A_WINDOW.test(c.header))
+      .map((c) => `${c.key} → "${c.header}"`);
+
+    expect(
+      naked,
+      "a metric without its window is a number the reader cannot interpret — give it a token from copy.window",
+    ).toEqual([]);
+  });
+
+  it("the guard can fail — a naked header is actually caught", () => {
+    // The negative control. Every gate in this codebase that turned out to be worthless was one
+    // nobody had ever watched fail, so this one gets watched.
+    expect(STATES_A_WINDOW.test("RVOL")).toBe(false);
+    expect(STATES_A_WINDOW.test("RVOL · 20d")).toBe(true);
+    expect(STATES_A_WINDOW.test("Gap")).toBe(false);
+    expect(STATES_A_WINDOW.test("Gap · open vs prior close")).toBe(true);
+  });
+});
