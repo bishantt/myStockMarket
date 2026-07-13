@@ -12,12 +12,17 @@ and NEVER as an "LBMA price" or a "COMEX settlement". Those are licensed benchma
 meanings that this app has not bought and cannot verify, and borrowing their authority for a
 different number is exactly the species of lie ruling C6 exists to stop.
 
-WHAT IS NOT VERIFIED HERE, STATED PLAINLY. The key (P-5) does not exist yet. The only REAL recording
-in this repo is the unkeyed 403 — which does pin two facts worth having: the route is live, and the
-key travels in an `x-access-token` header rather than a query parameter. The success shape below is
-read from GoldAPI's documentation, and its fixture is named `xau_usd_UNVERIFIED.json` so that its
-own filename says so. Until the key lands, the gold cell renders "not yet reported" (rung 4) — an
-honest absence rather than a number nobody checked.
+THE FIXTURES ARE REAL NOW (N4, 2026-07-13). The key (P-5) landed, the recorder ran, and GoldAPI
+answered: `xau_usd.json` is that answer and `error_403.json` is what an unkeyed caller still gets.
+The documentation-derived fixture this adapter was first written against — `xau_usd_UNVERIFIED.json`,
+named so its own filename confessed — has been deleted.
+
+IT WAS WRONG ABOUT SOMETHING REAL, AND THE PARSER BELOW DEPENDS ON THE DIFFERENCE. The invented
+fixture stamped the quote at exactly midnight UTC, which is what a settled daily observation looks
+like — CPI, the mortgage rate, every other cell on this board. GoldAPI does not publish settled
+observations. It stamps the LIVE QUOTE INSTANT, the moment it answers the call. So this cell's
+"as of" date is the date we ASKED on, not the date a session closed, and that is precisely why it is
+labeled an indicative spot reference rather than a close.
 """
 
 from __future__ import annotations

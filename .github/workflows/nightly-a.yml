@@ -85,6 +85,12 @@ jobs:
           FINNHUB_KEY: ${{ secrets.FINNHUB_KEY }}
           MARKETAUX_KEY: ${{ secrets.MARKETAUX_KEY }}
           FMP_KEY: ${{ secrets.FMP_KEY }}
+          # The macro board's gold cell. The secret landed on 2026-07-13 (provisioning row P-5) and
+          # the gold cell STILL would not have filled, because a secret that exists in GitHub and is
+          # never passed to the job does not exist as far as the job is concerned. That is the exact
+          # shape of the ANTHROPIC_API_KEY bug two rows down, which hid for four phases. The guard
+          # that now makes this class of mistake fail loudly is tests/test_workflow_env.py.
+          GOLDAPI_KEY: ${{ secrets.GOLDAPI_KEY }}
           # The Parquet history lake on Cloudflare R2.
           R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
           R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
