@@ -2,8 +2,140 @@
 
 # NOW: the News & Control build (N0–N7). **N0–N5 are done and tagged.** Next: N6.
 
-**Where I am.** N0–N4 are complete and tagged `nc-0` … `nc-4`. Nothing is blocked. The next phase is
-**N5 — the Front Page UI** (plan Part 7.7, 7.8, 7.10's UI half, Desk module 08, the nav wiring).
+**Where I am.** N0–N5 are complete and tagged `nc-0` … `nc-5`. Nothing is blocked. The next phase is
+**N6 — the control room** (plan Part 8: the manual-run panel, `compute` mode, the caps and cooldowns).
+
+**If you read only one thing:** the Front Page is live — `/news`, a story page, a Desk module, and
+News is now the sixth tab. And **N5 found five bugs, three of them only because I ran the thing for
+real and looked at the picture.** Every photograph on the room was a broken-image icon while every
+test passed. Details below.
+
+---
+
+## The five things worth knowing from N5
+
+### 1. Every photograph on the Front Page was broken, and only the PNG showed it
+
+The image optimizer does not proxy your request — it makes its **own server-side fetch** of the
+source image, and that fetch carries no session cookie. `/fixtures/` was behind the login wall, so
+the optimizer followed a 307 to the login page, decided the source was not an image, and served a
+400. **Every photo rendered as a broken-image icon.** The generated fallback cards — which need no
+optimizer — rendered perfectly, so the page still looked plausible.
+
+Every DOM assertion passed throughout. The `<img>` was present, visible, correctly sized (the width
+and height come from the database row, which is exactly what makes the layout shift zero) and
+carrying the right `src`. **`naturalWidth` is the only thing in a browser that knows an image from a
+broken one**, and nothing was asking it. It does now.
+
+**Had I committed the baselines I had in hand, every visual-regression gate from here on would have
+been locking in a picture of that bug.** That is seven real bugs this build has found by opening a
+PNG and looking at it.
+
+### 2. The lead story's headline was below the fold
+
+Same photograph, second finding. A 1.91:1 image is a comfortable 204px on a 390px phone. The same
+ratio across a 1366px desktop column is **715 pixels** — so above the fold there was the masthead,
+the filter rows, and a photograph, and nothing else. **A front page whose lead headline you have to
+scroll to find is not a front page; it is a poster.** The ratio governs where it is right (the
+phone); the height is capped where it is not.
+
+### 3. The corroboration count could not be OPENED
+
+The card whispers "5 sources" — and **nothing anywhere named them.** `news_cluster.sources` is a bare
+integer. So the card could not print its outlet, and the story page's source list (the *first line* of
+its spec) had no data at all. The number doing **25% of the work of ranking the whole front page** was
+one you simply had to believe.
+
+The plan said the articles lived in `news_item`. They cannot: Job B reads every `news_item` row in its
+window and synchronously extracts every id that was not in the nightly batch, so putting the market
+feed there would fire ~200 extra model calls a night and feed the entire feed into the evening
+briefing. New column, snapshotted at publish. **And the seed now refuses to load** if a cluster's
+`sources` count disagrees with the number of articles behind it — without that check the card prints
+"5 sources" over a list of two and every test still passes, because no test compared those two numbers.
+
+### 4. The narrator could hold the night open for hours
+
+The first live news run sat in the extraction stage for **over twenty minutes** and had to be
+cancelled. The Anthropic SDK's default per-call timeout is **ten minutes** with retries on top, and
+Stage A makes up to 60 sequential calls.
+
+That is backwards. The narrator runs LAST precisely so everything before it can publish without it —
+**a context line does not get to make the front page late.** The client is bounded per call now (30s),
+the extraction stage takes a six-minute wall-clock budget, and when the budget is gone it stops
+reading, the rest go to the narrator with their headlines, and the page ships. The night says how many
+it gave up on.
+
+### 5. The room would have shipped uncached, with a `revalidate` that did nothing
+
+`/news/[cluster]` re-rendered on **every single request** despite carrying `export const revalidate =
+600`. A dynamic route needs `generateStaticParams` — even an empty array — or the framework silently
+ignores the revalidate. `/ticker/[symbol]` carries a comment documenting this exact trap. The story
+page fell into it anyway, because the failing code *looks* right.
+
+Caught by the routes budget — not by eye, and not by any test, because the page never misbehaved. It
+was simply correct and expensive. **A performance budget is the only instrument that can see that.**
+
+---
+
+## What N5 landed (tag `nc-5`)
+
+- **`/news`** — the feed. A lead card, uniform rows, catalyst + sector filter chips, Today/This week,
+  pagination, "Moved without a story", and the press-time and cadence lines. **The lead is a POSITION,
+  not a prize**: the seeded night puts the largest move on the tape (SMCI, +18.4%) at rank three,
+  behind a Fed statement that moved nothing at all, and an e2e goes red if that ever changes.
+- **`/news/[cluster]`** — one story in full: the named and linked sources, the image, what happened,
+  why it matters, the numbers, the affected-ticker table, and the Academy doorway (which renders only
+  where a lesson actually exists).
+- **Desk module 08** — a glance and a doorway. It states its own cut ("First 3 of 14 by significance")
+  and reads the pipeline's order rather than re-deriving it.
+- **News is the sixth tab** (Part 0.1, option A — the plan's default, and no DECISIONS line overrode
+  it). The Desk gave up the newspaper icon to the room actually titled "Front page" and took a sunrise.
+- **N4's narration carry-over is CLOSED.** Stage A (Haiku, ≤60 clusters) and Stage B-mini (Sonnet, one
+  call), with the briefing's own verification gate reused on every note — one definition of "what
+  counts as verified" in the whole system, not two.
+- **The gate turned "2.1x" into the phantom number "2" and flagged it** — so every honest note about
+  relative volume would have been silently deleted, and a deleted note prints nothing. Fixed for both
+  the Front Page and the evening briefing.
+- **Drift rule 20** (negative-controlled): news imagery has ONE door.
+
+**Counts at nc-5:** 537 app tests · **441 pytest local, 22 skipped** · 20 drift rules · B1 12 of 13
+routes cached · B4 worst 194.8KB under the 200KB ceiling. **Evidence:** `docs/nc-evidence/n5-frontpage.md`.
+
+---
+
+## What N5 did NOT do
+
+1. **There are still no photographs in production** (P-1, the media bucket, does not exist). Every card
+   renders the designed L4 generated catalyst card. Every article in the recorded feed carried a
+   publisher image (160 of 160), so L1 answers for nearly every card the moment a bucket exists — a
+   secret and one environment variable, not a code change. **Q-N5-2 asks you to look at the four rungs
+   in the styleguide and tell me whether the claim holds.**
+2. **`compute` mode is still not declared.** It lands with N6, which builds the panel its button belongs
+   to, so the promise and the code arrive in the same commit.
+
+---
+
+## The seven amendments to the plan, all logged, all in an honesty rule's favour
+
+1. **`copy.news.ordering`** now says the page **ties** (Q-N4-1). Two of the three signals it named are
+   near-constant on the real feed. Change the words, not the ranking — inventing a tiebreaker would be
+   the app forming an editorial opinion, which is what ruling C1 forbids.
+2. **The extract lands on `news_cluster.extract` only**, not `news_item` (see #3 above).
+3. **Stage A runs synchronously**, inside the news stage, so the whole page — facts and prose — lands in
+   ONE transaction. Split across two jobs, the publish upsert would null out the prose every time news
+   mode ran. Cost of the difference: ~$18/year.
+4. **The Stage-A cap ranks by significance**, reversing N4's own rule. Measured: **8 of the 20 narrated
+   clusters were never read by the extractor**, and they were the eight biggest stories of the night.
+5. **The filter chips are derived from the feed** and include "Other" — the plan's fixed list could not
+   reach every story on the page.
+6. **Card timestamps are absolute**, never "3h ago" — a relative time on a cached page is computed at
+   build time, which this build has shipped twice.
+7. **The generated cards use one restrained ground**, not twelve sector tints. Colour is scarce.
+
+---
+
+
+**Where I was.** N0–N4 are complete and tagged `nc-0` … `nc-4`.
 
 **If you read only one thing:** the news data layer is live in production — 186 stories, ranked, in the
 database — and **four of the plan's assumptions about the providers were wrong**, each one caught by

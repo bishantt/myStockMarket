@@ -88,7 +88,17 @@ test.describe("The phone's bottom tab bar (D2)", () => {
 
   test("every tab is a real touch target (≥44px)", async ({ page }) => {
     const links = page.getByTestId("tab-bar").getByRole("link");
-    await expect(links).toHaveCount(5);
+
+    /*
+     * SIX rooms since N5, and the count is asserted rather than inferred BECAUSE the bar is now at
+     * its limit. iOS convention tops out at five tabs; this spends the comfortable maximum plus one
+     * (Part 0.1, option A). At 390px that is ~65px a tab — past the 44px floor, but not by much, and
+     * a SEVENTH would quietly push the targets under it while still looking fine in a screenshot.
+     *
+     * So the count is a tripwire, not a formality: adding a room means coming here and deciding, on
+     * purpose, that the bar can still take it.
+     */
+    await expect(links).toHaveCount(6);
 
     const count = await links.count();
     for (let i = 0; i < count; i++) {

@@ -83,19 +83,26 @@ const SIZES: Record<Slot, string> = {
 /**
  * The frame every rung shares. The 1.91:1 ratio is the one the publishers themselves shoot for.
  *
- * THE HEIGHT CAP IS NOT A STYLE PREFERENCE — it is the lead story's headline. A 1.91:1 image at a
- * phone's 390px is a comfortable 204px tall. The same ratio across a 1366px desktop column is **715
- * pixels**, and the first VRT shot of this room showed exactly what that costs: above the fold there
- * was the masthead, the filters, and a photograph — and nothing else. **The lead story's own
- * headline was below the fold.** A front page whose lead headline you have to scroll to find is not
- * a front page; it is a poster.
+ * WHAT THE FIRST VRT SHOT OF THIS ROOM SHOWED, and no test could: a 1.91:1 photograph across a
+ * 1366px desktop column is **715 pixels tall**, so above the fold there was the masthead, the two
+ * filter rows, and a picture — and nothing else. **The lead story's own headline was below the
+ * fold.** A front page whose lead headline you have to scroll to find is not a front page; it is a
+ * poster.
  *
- * So the ratio governs where it is right (the phone) and the height is capped where it is not.
- * `object-cover` crops the overflow, and the generated rungs centre their text, so both survive it.
+ * The ratio is not the problem — the COLUMN is. It is right at 390px, where the same image is a
+ * comfortable 204px and there is no fold to lose. So the lead card turns sideways above `lg` (see
+ * NewsCard) and the picture takes 55% of it, which is how a broadsheet has always set a lead: the
+ * headline BESIDE the photograph, not under it.
  */
 const FRAME: Record<Slot, string> = {
-  lead: "aspect-[1.91/1] w-full lg:max-h-[380px]",
+  // The lead keeps its ratio at every width. What changes is the COLUMN it sits in: the card turns
+  // sideways above `lg` (see NewsCard), so the photo occupies 55% of the card rather than all of it,
+  // and its height falls out of that instead of swallowing the fold.
+  lead: "aspect-[1.91/1] w-full",
   thumb: "aspect-[4/3] w-28 shrink-0",
+  // The story page has no filter rows above it and only one thing to say, so its picture may be the
+  // full width — but not at any height. A reader who opened one story should see its first paragraph
+  // without scrolling.
   story: "aspect-[1.91/1] w-full lg:max-h-[420px]",
 };
 

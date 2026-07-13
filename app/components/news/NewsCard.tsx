@@ -63,16 +63,29 @@ export function NewsCard({ card, tier }: NewsCardProps) {
         // Instant background feedback. No transition class: the P2 ancestor walk forbids one over
         // a subtree that contains a price, and it is right to.
         "hover:bg-surface-raised focus-visible:outline-2 focus-visible:outline-accent",
-        isLead ? "flex flex-col gap-3" : "flex flex-row-reverse items-start gap-3",
+        isLead
+          ? // THE LEAD TURNS SIDEWAYS ON A DESKTOP, and it is the fold that decides it. Stacked, a
+            // 1.91:1 photograph across a 1366px column is ~715px tall, and with the masthead and the
+            // two filter rows above it the lead story's OWN HEADLINE lands below the fold. A front
+            // page whose lead headline you have to scroll to find is not a front page.
+            //
+            // So above `lg` the lead sets the way a broadsheet sets one: the picture on the left, the
+            // headline beside it. The photo keeps its ratio, the headline is the first thing read,
+            // and the card costs ~420px instead of ~1000. On a phone it stacks, which is right there:
+            // at 390px the same ratio is a comfortable 204px and there is no fold to lose.
+            "flex flex-col gap-3 lg:flex-row lg:items-start lg:gap-5"
+          : "flex flex-row-reverse items-start gap-3",
       )}
     >
-      <NewsImage
-        image={card.image}
-        eventType={card.eventType}
-        tickers={card.tickers.map((t) => t.symbol)}
-        slot={isLead ? "lead" : "thumb"}
-        eager={isLead}
-      />
+      <div className={isLead ? "lg:w-[55%] lg:shrink-0" : "contents"}>
+        <NewsImage
+          image={card.image}
+          eventType={card.eventType}
+          tickers={card.tickers.map((t) => t.symbol)}
+          slot={isLead ? "lead" : "thumb"}
+          eager={isLead}
+        />
+      </div>
 
       <div className="flex min-w-0 flex-1 flex-col gap-2">
         <div className="flex flex-wrap items-center gap-1.5">
