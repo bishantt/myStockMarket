@@ -99,4 +99,28 @@ confused is worth more than one that quietly picks a side.
 
 ## 4. The after picture, measured
 
-*(Filled in below — the branch run, the cancellation proof, and the `gate-0` tag run.)*
+### 4.1 The branch run — run `29290147772`, green
+
+| Job | Result | Duration |
+|---|---|---|
+| app — typecheck, lint, **drift**, unit, build | success | 2.45 min |
+| pipeline — pytest | success | 0.80 min |
+| e2e (the browser oracle) | **skipped** | — |
+| VRT — generate baselines | skipped | — |
+
+Two proofs pulled from that run's own logs:
+
+- `Anti-drift rules (gate step 5 — was local-only until G0)` → **`All 20 anti-drift rules pass.`**
+  The first time in this build's history that the drift rules have run in CI.
+- `pipeline — pytest` → **`490 passed`** (464 locally + the 26 Postgres-backed tests that skip on
+  this Mac), so the two new tag-family tests ran in CI as well as locally.
+
+The app job cost ~0.3 min more than before, which is `check:drift` plus a cold Playwright/uv cache.
+That is the price of the stronger gate, and it is paid on branch pushes — never on the tag.
+
+### 4.2 The cancellation proof
+
+This evidence file was pushed in two commits, the second landing inside the first's CI run — the
+exact "superseded push" case that used to leave a 13-minute zombie running.
+
+
