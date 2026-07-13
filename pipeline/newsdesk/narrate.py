@@ -49,7 +49,13 @@ WHY_MAX_CHARS = 160
 AFFECTED_MAX_CHARS = 120
 
 # One note per story for the whole page; the page is capped at 20 stories upstream.
-_MAX_TOKENS = 4096
+#
+# 4096 was too tight and it failed SILENTLY, which is the worst way for a token cap to fail. Twenty
+# notes, each with a 40-character cluster id, a 160-character sentence, a 120-character note and its
+# citations, is comfortably over 2,500 tokens of JSON before any slack. Run out mid-object and the
+# response is a TRUNCATED JSON document — which the tolerant parser cannot balance, so it reports
+# "malformed" and the page loses all its prose, with nothing anywhere saying "you ran out of room".
+_MAX_TOKENS = 8192
 
 # How long Stage A may spend reading articles before it gives up on the tail.
 #
@@ -207,6 +213,15 @@ def narrate(
         notes = _parse_notes(text)
         if notes is not None:
             return notes
+
+        # SAY WHAT CAME BACK. A parse failure that prints nothing is a night that cannot be debugged
+        # without re-running it against the live provider, which is exactly the position this stage
+        # put us in: "failed its schema twice" is a symptom, and the response is the evidence.
+        print(
+            f"narrate: the notes response did not parse ({len(text)} chars). "
+            f"First 200: {text[:200]!r}"
+        )
+
         # Append the failed attempt and a correction turn, then retry once (Appendix D).
         messages.append({"role": "assistant", "content": text})
         messages.append(
