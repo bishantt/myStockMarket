@@ -192,6 +192,10 @@ const MARKET_CONTEXT = {
   nasdaqCompositePrior: 22280.15,
   djia: 44210.55,
   djiaPrior: 44320.8,
+  // The levels ARE this session's, so no per-slot date renders. A date under every figure every
+  // night would be chrome; a date under the one figure that is behind is information (ruling C7).
+  // The stale variant is exercised in the unit tests, which can vary this freely.
+  indexLevelsAsOf: RUN_DATE,
   advancers: 3210,
   decliners: 1780,
   pctAbove50dma: 0.61,

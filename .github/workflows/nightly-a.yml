@@ -8,12 +8,29 @@
 # and publishes the served slice to Postgres (the flow lives in nightly.py). It does NOT touch
 # healthchecks.io; its failures surface as GitHub's own failure e-mails via a non-zero exit. The
 # dead-man check belongs to Job B (nightly-b.yml), whose cron matches it.
+#
+# THE SECOND CRON, AND WHY IT EXISTS (NEWS-AND-CONTROL-PLAN §3.1).
+#
+# FRED publishes the index closes AFTER this job has already run. Verified against FRED's own update
+# stamps: the Dow lands ~6:03pm ET, the S&P ~8:01pm, and the Nasdaq Composite ~11:38pm — against
+# this job at 6:37pm and Job B at 8:25pm. So the index levels stored by the night are STRUCTURALLY
+# one session behind by the time the user reads the Desk over coffee. Retrying cannot fix it; the
+# data does not exist yet.
+#
+# So there is a second run at dawn (`0 10 * * 2-6` UTC = 6:00am EDT / 5:00am EST, Tue–Sat so that
+# Saturday catches Friday's close). It runs in `macro` mode: it re-reads FRED, updates the previous
+# session's three index levels and two context cells, revalidates, and touches NOTHING else — no
+# bars, no scans, no news, no LLM spend. By the pre-open read, every index level is the real prior
+# close.
 
 name: nightly-a
 
 on:
   schedule:
+    # The full nightly, after the US close.
     - cron: "37 22 * * 1-5"
+    # The dawn macro refresh — see the note above. Tue–Sat catches Friday's close on Saturday.
+    - cron: "0 10 * * 2-6"
   workflow_dispatch: {} # lets a run be triggered by hand from the Actions tab
 
 # One nightly run at a time. Job A and Job B share this group so they never overlap.
@@ -39,7 +56,23 @@ jobs:
       - name: Sync dependencies
         run: uv sync --frozen
 
-      - name: Run Job A
+      # Which mode this run is. The dawn cron runs `macro` (three numbers, nothing else); every
+      # other trigger — the after-close cron, or a hand-dispatch from the Actions tab — runs the
+      # full night. GitHub tells us which schedule fired via `github.event.schedule`.
+      #
+      # The job itself refuses an unrecognised mode rather than falling back to "full" (see
+      # parse_mode), so a typo here cannot silently turn a 6am three-number refresh into a whole
+      # market ingest at dawn.
+      - name: Pick the run mode
+        id: mode
+        run: |
+          if [ "${{ github.event.schedule }}" = "0 10 * * 2-6" ]; then
+            echo "value=macro" >> "$GITHUB_OUTPUT"
+          else
+            echo "value=full" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Run Job A (${{ steps.mode.outputs.value }})
         env:
           # The serving database (Supabase transaction pooler).
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
@@ -57,14 +90,26 @@ jobs:
           R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
           R2_SECRET: ${{ secrets.R2_SECRET }}
           R2_BUCKET: ${{ secrets.R2_BUCKET }}
+          # THE EXTRACTION BATCH. This key existed in GitHub since 2026-07-10 and was passed to
+          # NEITHER nightly job — and the pipeline is written to degrade quietly without it, so it
+          # printed "skipping the extraction batch" and carried on. Every LLM stage had therefore
+          # been silently skipping in production since P3, and the evening brief was assembling
+          # without the stage that reads the articles. Found by the N0 audit; this is the fix.
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          MODEL_EXTRACT: ${{ secrets.MODEL_EXTRACT }}
+          MODEL_SYNTH: ${{ secrets.MODEL_SYNTH }}
           # After publishing, ask the app to revalidate its cached Desk payload.
           APP_BASE_URL: ${{ secrets.APP_BASE_URL }}
           CRON_SECRET: ${{ secrets.CRON_SECRET }}
-        run: uv run python -m jobs.job_a
+        run: uv run python -m jobs.job_a --mode ${{ steps.mode.outputs.value }}
 
       # A private repo's scheduled workflows are disabled by GitHub after 60 days without repo
       # activity. An empty heartbeat commit each night keeps the schedule alive.
+      #
+      # Only the full nightly heartbeats. The dawn macro run would otherwise double the commit rate
+      # for no added liveness — one commit a night is what the 60-day timer needs.
       - name: Heartbeat
+        if: steps.mode.outputs.value == 'full'
         working-directory: .
         run: |
           git config user.name "github-actions[bot]"

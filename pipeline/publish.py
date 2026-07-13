@@ -29,6 +29,8 @@ import polars as pl
 import psycopg
 from psycopg.types.json import Json
 
+from macro_levels import StoredLevels, resolve_index_levels
+
 
 def _json_safe(value: Any) -> Any:
     """
@@ -83,6 +85,62 @@ def publish(
     except Exception:
         conn.rollback()
         raise
+
+
+def publish_macro(
+    conn: psycopg.Connection,
+    *,
+    run_date: date,
+    macro: Mapping[str, Any],
+) -> bool:
+    """
+    Update ONLY the FRED cells of an existing market_context row. Returns True if a row was updated.
+
+    This is what the 6:00am macro run publishes, and the reason it is a separate function rather than
+    a call to publish() with most arguments omitted: a macro-only run has no snapshot, so it has no
+    breadth — and breadth is NOT NULL on that table, because a night that ingested the market always
+    knows how many names advanced. The dawn run is not ingesting the market; it is going back to fix
+    three numbers that FRED had not published yet when the night ran.
+
+    So it updates in place and touches nothing else. If the row does not exist — a dawn run before
+    any nightly has ever written that session — there is nothing to fix and it says so by returning
+    False. It will NOT create a breadth-less row: a market_context with no breadth would be a macro
+    module with a hole in it, and the honest thing is to have no row at all until the night runs.
+
+    The index levels go through the same carry-forward as the nightly (macro_levels), so a dawn run
+    whose FRED call fails cannot undo a level the night before had already stored.
+    """
+    with conn.cursor() as cur:
+        levels = resolve_index_levels(
+            macro,
+            stored=_read_stored_levels(cur, run_date),
+            run_date=run_date,
+        )
+        cur.execute(
+            """
+            UPDATE market_context SET
+                vix = %(vix)s,
+                ten_year = %(ten_year)s,
+                sp500 = %(sp500)s, sp500_prior = %(sp500_prior)s,
+                nasdaq_composite = %(nasdaq_composite)s,
+                nasdaq_composite_prior = %(nasdaq_composite_prior)s,
+                djia = %(djia)s, djia_prior = %(djia_prior)s,
+                index_levels_as_of = %(index_levels_as_of)s
+            WHERE run_date = %(run_date)s
+            """,
+            {
+                "run_date": run_date,
+                "vix": macro.get("vix"),
+                "ten_year": macro.get("ten_year"),
+                **levels,
+            },
+        )
+        updated = cur.rowcount
+    if updated:
+        conn.commit()
+    else:
+        conn.rollback()
+    return bool(updated)
 
 
 def publish_analytics(
@@ -411,6 +469,38 @@ def _replace_calendar(cur, run_date, calendar_events) -> None:
     )
 
 
+def _read_stored_levels(cur, run_date) -> StoredLevels | None:
+    """The most recent index levels the database already holds, and the session they are for.
+
+    Looked up on or before tonight — including tonight's own row, so a re-run whose FRED call fails
+    keeps the levels an earlier run of the same night succeeded in fetching.
+    """
+    cur.execute(
+        """
+        SELECT sp500, sp500_prior, nasdaq_composite, nasdaq_composite_prior,
+               djia, djia_prior, index_levels_as_of
+        FROM market_context
+        WHERE run_date <= %(run_date)s
+          AND (sp500 IS NOT NULL OR nasdaq_composite IS NOT NULL OR djia IS NOT NULL)
+        ORDER BY run_date DESC
+        LIMIT 1
+        """,
+        {"run_date": run_date},
+    )
+    row = cur.fetchone()
+    if row is None:
+        return None
+    return StoredLevels(
+        sp500=row[0],
+        sp500_prior=row[1],
+        nasdaq_composite=row[2],
+        nasdaq_composite_prior=row[3],
+        djia=row[4],
+        djia_prior=row[5],
+        as_of=row[6],
+    )
+
+
 def _upsert_market_context(cur, run_date, market_context: Mapping[str, Any] | None) -> None:
     # The macro strip's one row per run — upsert by run date so a re-run updates in place. Every FRED
     # column is nullable because every FRED series can fail on its own: the VIX, the 10-year yield,
@@ -420,19 +510,37 @@ def _upsert_market_context(cur, run_date, market_context: Mapping[str, Any] | No
     # The priors are persisted alongside the levels because the app computes the day's change by
     # subtracting them. It has no access to the pipeline's observations — if the prior is not in the
     # row, the change is not knowable, and the Desk prints "—" instead of inventing one.
+    #
+    # THE INDEX LEVELS ARE NOT WRITTEN BLINDLY. This used to say `sp500 = EXCLUDED.sp500`, which
+    # wrote whatever the night fetched — including None. So one flaky FRED call did not merely fail
+    # to update the level; it OVERWROTE the good one already stored, and the Desk silently collapsed
+    # to an ETF price. A successful run destroyed data.
+    #
+    # macro_levels.resolve_index_levels() decides instead: tonight's read wins if it produced
+    # anything, an empty read keeps what is stored (up to five sessions), and the row records the
+    # session those levels are actually for so the app can age them honestly (ruling C7).
     if market_context is None:
         return
+
+    levels = resolve_index_levels(
+        market_context,
+        stored=_read_stored_levels(cur, run_date),
+        run_date=run_date,
+    )
+
     cur.execute(
         """
         INSERT INTO market_context (
             run_date, vix, ten_year,
             sp500, sp500_prior, nasdaq_composite, nasdaq_composite_prior, djia, djia_prior,
+            index_levels_as_of,
             advancers, decliners, pct_above_50dma
         )
         VALUES (
             %(run_date)s, %(vix)s, %(ten_year)s,
             %(sp500)s, %(sp500_prior)s, %(nasdaq_composite)s, %(nasdaq_composite_prior)s,
             %(djia)s, %(djia_prior)s,
+            %(index_levels_as_of)s,
             %(advancers)s, %(decliners)s, %(pct)s
         )
         ON CONFLICT (run_date) DO UPDATE SET
@@ -441,6 +549,7 @@ def _upsert_market_context(cur, run_date, market_context: Mapping[str, Any] | No
             nasdaq_composite = EXCLUDED.nasdaq_composite,
             nasdaq_composite_prior = EXCLUDED.nasdaq_composite_prior,
             djia = EXCLUDED.djia, djia_prior = EXCLUDED.djia_prior,
+            index_levels_as_of = EXCLUDED.index_levels_as_of,
             advancers = EXCLUDED.advancers,
             decliners = EXCLUDED.decliners, pct_above_50dma = EXCLUDED.pct_above_50dma
         """,
@@ -448,12 +557,7 @@ def _upsert_market_context(cur, run_date, market_context: Mapping[str, Any] | No
             "run_date": run_date,
             "vix": market_context.get("vix"),
             "ten_year": market_context.get("ten_year"),
-            "sp500": market_context.get("sp500"),
-            "sp500_prior": market_context.get("sp500_prior"),
-            "nasdaq_composite": market_context.get("nasdaq_composite"),
-            "nasdaq_composite_prior": market_context.get("nasdaq_composite_prior"),
-            "djia": market_context.get("djia"),
-            "djia_prior": market_context.get("djia_prior"),
+            **levels,
             "advancers": market_context["advancers"],
             "decliners": market_context["decliners"],
             "pct": market_context["pct_above_50dma"],

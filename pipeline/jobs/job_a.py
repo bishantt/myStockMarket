@@ -14,6 +14,7 @@ non-zero exit); the dead-man check belongs to Job B, whose cron matches it (Appe
 from __future__ import annotations
 
 import os
+import sys
 from datetime import date, datetime, timedelta
 from zoneinfo import ZoneInfo
 
@@ -30,6 +31,7 @@ from config import Settings, load_settings
 from nightly import MacroRead, NightlyDeps, run_nightly
 from parquet_store import ParquetStore
 from storage import R2Store
+from trading_calendar import previous_session
 from universe import CORE_SERVED
 
 # The market's clock: run_date is the US trading day, computed in Eastern time. Proper trading-day
@@ -188,9 +190,77 @@ def _read_served_symbols(conn: psycopg.Connection):
     return read
 
 
+# ── run modes ────────────────────────────────────────────────────────────────────────────────
+#
+# What each mode is allowed to touch. These are CONSTANTS on purpose: a mode is a promise about what
+# a run will and will not do — "macro mode does not ingest bars" is the whole reason it is safe to
+# run at dawn, and later (N6) safe to hand the user a button for. A mode that could silently grow a
+# stage would quietly break that promise with nobody the wiser, so the lists are pinned and a unit
+# test guards them.
+#
+# N4 adds `news` and `compute` here; N6 wires the panel to them.
+MODE_STAGES: dict[str, tuple[str, ...]] = {
+    "full": ("ingest", "compute", "scan", "catalysts", "publish", "revalidate"),
+    "macro": ("macro", "publish", "revalidate"),
+}
+
+
+def parse_mode(argv: list[str]) -> str:
+    """Read `--mode X` out of argv, defaulting to the full nightly.
+
+    An unknown mode raises rather than falling back to "full": a typo in a workflow file must not
+    silently turn a 6am three-number refresh into a whole market ingest.
+    """
+    if "--mode" not in argv:
+        return "full"
+    mode = argv[argv.index("--mode") + 1]
+    if mode not in MODE_STAGES:
+        raise ValueError(f"job_a: unknown mode {mode!r} — expected one of {sorted(MODE_STAGES)}")
+    return mode
+
+
+def run_macro_mode(settings: Settings) -> None:
+    """The dawn run: re-read FRED and update the last session's index levels. Nothing else.
+
+    FRED posts the index closes after both nightly jobs have run (the Nasdaq Composite lands around
+    11:38pm ET, against Job A at 6:37pm), so the levels the night stored are structurally one session
+    behind by the time the user reads the Desk. This run goes back and fixes them, and it is the
+    reason the morning Desk shows a real prior close instead of a dated one.
+
+    It updates the PREVIOUS session, not today: at 6am the market has not opened, so the close being
+    fetched belongs to the session before this one.
+    """
+    fred = _fred(settings)
+    session = previous_session(datetime.now(_MARKET_TZ).date())
+    macro = _read_macro(fred)()
+
+    with psycopg.connect(settings.database_url_psycopg) as conn:
+        updated = pub.publish_macro(conn, run_date=session, macro=macro.as_columns())
+
+    if not updated:
+        # No nightly has written this session yet. There is nothing to correct, and we will NOT
+        # create a row: market_context's breadth is NOT NULL because a night that ingested the market
+        # always knows how many names advanced, and a macro-only run does not.
+        print(f"job_a[macro]: no market_context row for {session.isoformat()} yet — nothing to update.")
+        return
+
+    _revalidate_desk(settings)
+    levels = "complete" if macro.has_every_index_level() else "PARTIAL — some index series did not answer"
+    print(
+        f"job_a[macro]: {session.isoformat()} index levels refreshed ({levels}); "
+        f"vix={macro.vix} ten_year={macro.ten_year} sp500={macro.sp500}."
+    )
+
+
 def main() -> None:
     """Build the real collaborators and run one night. Raises on any failure, so the workflow goes red."""
     settings = load_settings()
+
+    mode = parse_mode(sys.argv[1:])
+    if mode == "macro":
+        run_macro_mode(settings)
+        return
+
     run_date = datetime.now(_MARKET_TZ).date()
 
     alpaca = _alpaca(settings)

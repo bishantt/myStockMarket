@@ -42,22 +42,38 @@ test.describe("Desk — the seeded morning", () => {
     // prior level (6,789.10 → 6,812.34 = +0.34%), never borrowed from the ETF.
     await expect(macro.getByText("6,812.34").filter({ visible: true })).toBeVisible();
     await expect(macro.getByText("+0.34%").filter({ visible: true })).toBeVisible();
-    await expect(macro.getByText("Index levels · FRED · prior close")).toBeVisible();
+    // Every delta states the window it covers (ruling C2). "+0.34%" is not a fact on its own.
+    await expect(macro.getByText("· 1D").filter({ visible: true }).first()).toBeVisible();
+
+    // THE PROVENANCE LINE IS COMPOSED FROM THESE VERY ROWS (ruling C6). It used to be a fixed
+    // string — "Index levels · FRED · prior close" — printed no matter what the rows showed, and on
+    // the night FRED's index series failed it sat under four ETF prices declaring them FRED index
+    // levels. Here the seeded night has all three levels, so the line names all three.
+    await expect(
+      macro.getByText(/S&P 500, Nasdaq Composite, Dow: FRED, prior close/),
+    ).toBeVisible();
+    await expect(macro.getByText(/Small caps: IWM ETF close/)).toBeVisible();
 
     // The other true levels.
     await expect(macro.getByText("22,345.67").filter({ visible: true })).toBeVisible(); // Nasdaq Composite
     await expect(macro.getByText("44,210.55").filter({ visible: true })).toBeVisible(); // Dow
 
-    // The Russell has no free FRED series, so its slot is an ETF — and says so, on the surface.
-    await expect(macro.getByText("Russell 2000 · IWM (ETF proxy)").filter({ visible: true })).toBeVisible();
-    // The chip itself, exactly — the label above also contains the words "ETF proxy", and it should.
-    await expect(macro.getByText("ETF proxy", { exact: true }).filter({ visible: true })).toBeVisible();
+    // The small-caps slot is an ETF by design — FRED deleted every free Russell series in 2019 — so
+    // it never claims that index's name, and it carries exactly ONE mark saying what it is.
+    await expect(macro.getByText("Small caps").filter({ visible: true }).first()).toBeVisible();
+    await expect(macro.getByText("IWM · ETF price").filter({ visible: true }).first()).toBeVisible();
+    // The old double belt is gone: the label suffix "(ETF proxy)" AND a second chip reading "ETF
+    // proxy" both said the same words, and on screen that read as noise.
+    await expect(macro.getByText("Russell 2000")).toHaveCount(0);
+    await expect(macro.getByText("ETF proxy", { exact: true })).toHaveCount(0);
 
     // The two FRED context cells.
     await expect(macro.getByText("15.84").filter({ visible: true })).toBeVisible();
     await expect(macro.getByText("4.54%").filter({ visible: true })).toBeVisible();
     // Breadth — the seed's advancers/decliners and the % above the 50-day average.
     await expect(macro.getByText("3210 advancing · 1780 declining")).toBeVisible();
+    // Breadth's window (C2) — the one claim about the WHOLE market, and until N1 it carried none.
+    await expect(macro.getByText(/at Thu's close/)).toBeVisible();
     await expect(macro.getByText("61% above the 50-day average")).toBeVisible();
   });
 

@@ -28,38 +28,60 @@ type MacroPulseProps = {
   asOf: Date;
   /** The S&P 500 — the hero. */
   spx: IndexQuote;
-  /** The other index slots (Nasdaq, Dow, Russell — the last of which is always an ETF proxy). */
+  /** The other index slots (Nasdaq, Dow, and small caps — the last of which is always an ETF). */
   indices: IndexQuote[];
-  /** Breadth of the ingested universe. */
-  breadth: { advancers: number; decliners: number; pctAbove50dma: string };
+  /** Breadth of the ingested universe, with the window it covers. */
+  breadth: { advancers: number; decliners: number; pctAbove50dma: string; asOf: string };
   /** Context cells pulled from FRED. */
   vix: string;
   tenYear: string;
+  /** The provenance line, composed by buildMacro from the rows actually rendered (ruling C6). */
+  provenance: string;
 };
 
 /**
- * One index slot, with the proxy chip beside it when the number is an ETF's rather than an index's.
+ * One index slot: the figure, its window, and — when the number is an ETF's rather than an index's —
+ * the ONE chip that says so.
  *
- * The chip is the whole honesty mechanism made visible: a reader glancing at "Russell 2000 · IWM
- * (ETF proxy) — 220.00" cannot mistake 220 for the level of an index that trades near 2,300.
+ * The old grammar said "ETF proxy" twice on every proxy row: once as a label suffix ("S&P 500 · SPY
+ * (ETF proxy)") and once again as a freestanding chip reading "ETF proxy". On screen that reads as
+ * noise, and noise is where a beginner stops reading. There is now exactly one mark, and it says
+ * what the number IS — "IWM · ETF price" — rather than merely flagging that something is off.
  */
 function IndexSlot({ quote, scale }: { quote: IndexQuote; scale: "hero" | "body" }) {
   const delta =
-    quote.deltaPct === "—" ? undefined : { value: quote.deltaPct, direction: quote.direction };
+    quote.deltaPct === "—"
+      ? undefined
+      : { value: quote.deltaPct, direction: quote.direction, window: copy.window.d1 };
 
   return (
     <div className="flex flex-col gap-1">
       <StatFigure label={quote.label} value={quote.value} scale={scale} delta={delta} />
-      {quote.source === "etf-proxy" ? (
-        <span title={quote.proxySymbol ? copy.macro.proxyNote.replace("{symbol}", quote.proxySymbol) : undefined}>
-          <Tag variant="catalyst">{copy.macro.proxyChip}</Tag>
+
+      {quote.proxyChip ? (
+        <span
+          title={
+            quote.proxySymbol ? copy.macro.proxyNote.replace("{symbol}", quote.proxySymbol) : undefined
+          }
+        >
+          <Tag variant="catalyst">{quote.proxyChip}</Tag>
         </span>
+      ) : null}
+
+      {/*
+       * The age note, on the ONE row that is behind — never on the rows that are current.
+       *
+       * The masthead's as-of already covers the normal case, so a date under every figure every
+       * night would be chrome. A date under the one figure that is not tonight's is information.
+       */}
+      {quote.staleAsOf ? (
+        <span className="font-mono text-2xs text-muted">{quote.staleAsOf}</span>
       ) : null}
     </div>
   );
 }
 
-export function MacroPulse({ asOf, spx, indices, breadth, vix, tenYear }: MacroPulseProps) {
+export function MacroPulse({ asOf, spx, indices, breadth, vix, tenYear, provenance }: MacroPulseProps) {
   return (
     <section aria-label="Macro pulse">
       <SectionMasthead index={1} title="Macro pulse" asOf={asOf} />
@@ -104,17 +126,36 @@ export function MacroPulse({ asOf, spx, indices, breadth, vix, tenYear }: MacroP
           </Shelf>
         </div>
 
-        {/* ≥md the grid returns. Desktop has the width; a horizontal scroller there is a toy. */}
+        {/*
+         * ≥md the grid returns. Desktop has the width; a horizontal scroller there is a toy.
+         *
+         * THE ORDER IS THE SAME REASONING AS THE SHELF ABOVE, AND NOW IT IS THE SAME ORDER.
+         *
+         * Until now the desktop grid ran indices-first and the phone shelf ran risk-first, so the
+         * two widths disagreed about what mattered. The phone was right. The beginner's questions
+         * come in a fixed order — (1) what did the market do? (2) should I be worried? (3) what does
+         * money cost? (4) what about the rest of the market? — and the hero directly above ALREADY
+         * answers (1). So the two figures carrying information the hero does NOT have, the risk
+         * pair, come next; the tape echoes that merely restate it follow.
+         */}
         <div className="hidden flex-wrap gap-x-10 gap-y-4 md:flex">
+          <StatFigure label="VIX" value={vix} scale="body" />
+          <StatFigure label="10-year" value={tenYear} scale="body" />
           {indices.map((idx) => (
             <IndexSlot key={idx.label} quote={idx} scale="body" />
           ))}
-          <StatFigure label="VIX" value={vix} scale="body" />
-          <StatFigure label="10-year" value={tenYear} scale="body" />
         </div>
 
-        {/* Where the levels came from. Timestamps and provenance are not optional furniture. */}
-        <p className="font-mono text-2xs text-muted">{copy.macro.provenance}</p>
+        {/*
+         * WHERE THESE NUMBERS CAME FROM — composed, never recited (ruling C6).
+         *
+         * This line used to be a fixed string: "Index levels · FRED · prior close". It rendered under
+         * whatever the rows happened to show, so on the night FRED's index series failed it sat
+         * beneath four ETF prices and declared them FRED index levels. A provenance line that can
+         * disagree with its own surface is worse than none at all — it turns a visible gap into an
+         * invisible lie. It is now assembled from the sources of the rows that actually rendered.
+         */}
+        <p className="font-mono text-2xs text-muted">{provenance}</p>
 
         {/*
          * BREADTH STAYS FIXED AND FULL-WIDTH, BELOW THE SHELF — it never rides it.
@@ -136,6 +177,12 @@ export function MacroPulse({ asOf, spx, indices, breadth, vix, tenYear }: MacroP
           <span className="font-mono text-sm text-ink-2">
             {breadth.pctAbove50dma} above the{" "}
             <GlossaryTerm term="50-day-average">50-day average</GlossaryTerm>
+            {/*
+             * Breadth's window. This line makes a claim about the WHOLE market, and it was the one
+             * figure on the module carrying no window at all — it named its indicator's lookback
+             * (50 days) but never said when it was measured (C2).
+             */}
+            <span className="pl-1 text-muted"> · {breadth.asOf}</span>
           </span>
         </div>
       </div>

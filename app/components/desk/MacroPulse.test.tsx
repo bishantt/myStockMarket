@@ -31,17 +31,20 @@ const PROPS = {
       source: "index" as const,
     },
     {
-      label: "Russell 2000 · IWM (ETF proxy)",
+      // The small-caps slot: an ETF by design, and it never claims an index it cannot quote.
+      label: "Small caps",
       value: "220.00",
       deltaPct: "+0.10%",
       direction: "up" as const,
       source: "etf-proxy" as const,
       proxySymbol: "IWM",
+      proxyChip: "IWM · ETF price",
     },
   ],
-  breadth: { advancers: 2100, decliners: 1400, pctAbove50dma: "58%" },
+  breadth: { advancers: 2100, decliners: 1400, pctAbove50dma: "58%", asOf: "at Thu's close" },
   vix: "13.84",
   tenYear: "4.21%",
+  provenance: "S&P 500, Nasdaq Composite: FRED, prior close · Small caps: IWM ETF close · VIX: Cboe via FRED · 10-yr: US Treasury via FRED",
 };
 
 describe("MacroPulse", () => {
@@ -85,7 +88,7 @@ describe("MacroPulse", () => {
     // order would bury exactly the two figures that are not redundant with the number above them.
     const shelf = screen.getByRole("group", { name: "Macro figures" });
     const labels = within(shelf)
-      .getAllByText(/VIX|10-year|Nasdaq Composite|Dow Jones|Russell/)
+      .getAllByText(/VIX|10-year|Nasdaq Composite|Dow|Small caps/)
       .map((el) => el.textContent);
     expect(labels[0]).toBe("VIX");
     expect(labels[1]).toBe("10-year");
@@ -103,11 +106,25 @@ describe("MacroPulse", () => {
     expect(screen.getByText(/advancing/)).toBeInTheDocument();
   });
 
-  it("marks an ETF-proxy slot with the proxy chip, so the fallback is never silent", () => {
+  it("marks an ETF slot with ONE chip — never the old double belt", () => {
     render(<MacroPulse {...PROPS} />);
-    // Two renderings, so two chips — and the point is that NEITHER of them is silent.
-    expect(screen.getAllByText("Russell 2000 · IWM (ETF proxy)")).toHaveLength(2);
-    expect(screen.getAllByText(copy.macro.proxyChip)).toHaveLength(2);
+    // Two renderings (shelf + grid), so two chips — and the point is that NEITHER is silent.
+    expect(screen.getAllByText("IWM · ETF price")).toHaveLength(2);
+
+    // The old grammar said "ETF proxy" twice on every proxy row: once as a label suffix
+    // ("Russell 2000 · IWM (ETF proxy)") and again as a freestanding chip. On screen that read as
+    // noise, and noise is where a beginner stops reading. Both belts are gone.
+    expect(screen.queryByText(/\(ETF proxy\)/)).toBeNull();
+    expect(screen.queryByText(/^ETF proxy$/)).toBeNull();
+  });
+
+  it("never puts an index's name on the small-caps row — we cannot quote that index", () => {
+    render(<MacroPulse {...PROPS} />);
+    // FRED deleted every free Russell series in 2019 and no licensable substitute exists, so this
+    // slot can NEVER carry the Russell 2000's level. Naming it would be a promise the row cannot
+    // keep, so the row names the GROUP the number describes instead.
+    expect(screen.queryByText(/Russell/)).toBeNull();
+    expect(screen.getAllByText("Small caps")).toHaveLength(2);
   });
 
   it("shows no proxy chip on a slot carrying a true index level", () => {
@@ -116,12 +133,57 @@ describe("MacroPulse", () => {
       indices: [PROPS.indices[0]], // the Nasdaq Composite — a real index level
     };
     render(<MacroPulse {...allIndex} />);
-    expect(screen.queryByText(copy.macro.proxyChip)).not.toBeInTheDocument();
+    expect(screen.queryByText(/ETF price/)).not.toBeInTheDocument();
   });
 
-  it("states where the levels came from", () => {
+  it("renders the provenance line it was GIVEN, not one it made up (C6)", () => {
+    // The component no longer owns this sentence. It used to print a fixed string — "Index levels ·
+    // FRED · prior close" — regardless of what the rows above it showed, so on the night FRED's
+    // index series failed it sat under four ETF prices and declared them FRED index levels. The
+    // builder composes it now, from the rows that actually rendered.
     render(<MacroPulse {...PROPS} />);
-    expect(screen.getByText(copy.macro.provenance)).toBeInTheDocument();
+    expect(screen.getByText(PROPS.provenance)).toBeInTheDocument();
+  });
+
+  it("renders a DIFFERENT provenance line when the rows are different — the proof it is not static", () => {
+    const degraded = {
+      ...PROPS,
+      provenance: copy.macro.indexesUnavailable + " · Small caps: IWM ETF close",
+    };
+    render(<MacroPulse {...degraded} />);
+    expect(screen.getByText(degraded.provenance)).toBeInTheDocument();
+    expect(screen.queryByText(PROPS.provenance)).toBeNull();
+  });
+
+  it("states the window on every delta chip (C2)", () => {
+    render(<MacroPulse {...PROPS} />);
+    // "+0.42%" is not a fact on its own — over what? — and "+0.42% · 1D" is. The token rides INSIDE
+    // the chip, in the same visual unit as the number, never in a footnote.
+    expect(screen.getAllByText("· 1D").length).toBeGreaterThan(0);
+  });
+
+  it("dates a carried-forward level, and only that one", () => {
+    // A level can now be REAL and OLD at the same time: the pipeline keeps what it has rather than
+    // letting a flaky FRED night overwrite it with null. When that happens the row says so.
+    const stale = {
+      ...PROPS,
+      spx: { ...PROPS.spx, staleAsOf: "as of Jul 9" },
+    };
+    render(<MacroPulse {...stale} />);
+    expect(screen.getByText("as of Jul 9")).toBeInTheDocument();
+  });
+
+  it("puts no date on a row that is current — a date on every row every night is chrome", () => {
+    render(<MacroPulse {...PROPS} />);
+    // Scoped to a SLOT date ("as of Jul 9"), not any "as of" — the masthead's own timestamp
+    // ("as of 16:05 ET") is the module's as-of and is always there by design. The point of the
+    // per-slot date is that it appears only on the row that is actually behind.
+    expect(screen.queryByText(/^as of [A-Z][a-z]{2} \d{1,2}$/)).toBeNull();
+  });
+
+  it("gives breadth its window — the one claim about the WHOLE market had none (C2)", () => {
+    render(<MacroPulse {...PROPS} />);
+    expect(screen.getByText(/at Thu's close/)).toBeInTheDocument();
   });
 
   it("omits the delta entirely when the change is not knowable", () => {

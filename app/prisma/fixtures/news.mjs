@@ -61,7 +61,7 @@ export const NEWS_IMAGES = [
     dominantColor: "#8f6a44",
     attributionSource: "Reuters",
     attributionUrl: "https://reuters.com/fed-holds-july",
-    fetchedAt: t("22"),
+    fetchedAt: t("22:00"),
   },
   {
     id: "img-fda-approval",
@@ -76,7 +76,7 @@ export const NEWS_IMAGES = [
     dominantColor: "#4f8f74",
     attributionSource: "Associated Press",
     attributionUrl: "https://apnews.com/fda-nonopioid-approval",
-    fetchedAt: t("22"),
+    fetchedAt: t("22:00"),
   },
   {
     id: "img-chip-merger",
@@ -91,7 +91,7 @@ export const NEWS_IMAGES = [
     dominantColor: "#4a5aa8",
     attributionSource: "Bloomberg",
     attributionUrl: "https://bloomberg.com/amd-acquisition",
-    fetchedAt: t("22"),
+    fetchedAt: t("22:00"),
   },
 ];
 

@@ -246,3 +246,53 @@ def test_briefing_am_rerun_preserves_an_existing_pm_edition(db):
                          model_meta=meta, status="published")
     got = db.execute("SELECT pm_json FROM briefing WHERE run_date = %s", (RUN,)).fetchone()[0]
     assert got["today_focus"]["headline"] == "PM"
+
+
+# ── the index levels never regress (NEWS-AND-CONTROL-PLAN §3.1 item 2) ───────────────────────
+
+
+def test_a_failed_fred_night_does_not_wipe_the_index_levels_it_already_had(db):
+    """THE REGRESSION LOCK, against real Postgres.
+
+    Before this rule the upsert said `sp500 = EXCLUDED.sp500` — whatever tonight fetched, including
+    None. So a single flaky FRED night overwrote a perfectly good index level with NULL and the Desk
+    silently collapsed to printing SPY's price under the S&P 500's name. A SUCCESSFUL RUN DESTROYED
+    DATA, which is the worst kind of bug this codebase can have: it looked like everything worked.
+
+    Tonight fetches nothing. The levels must survive, dated for the session they actually belong to.
+    """
+    base = dict(run_date=RUN, stage_status={}, source_status={})
+    breadth = {"advancers": 3200, "decliners": 1800, "pct_above_50dma": 0.61}
+
+    # A good night: the levels land.
+    pub.publish(db, **base, market_context={
+        "vix": 15.84, "ten_year": 4.54,
+        "sp500": 6812.34, "sp500_prior": 6789.10,
+        "nasdaq_composite": 22345.67, "nasdaq_composite_prior": 22280.15,
+        "djia": 44210.55, "djia_prior": 44320.80,
+        **breadth,
+    })
+
+    # A flaky night: FRED answers for the context cells but not one index series.
+    pub.publish(db, **base, market_context={
+        "vix": 16.10, "ten_year": 4.51,
+        "sp500": None, "sp500_prior": None,
+        "nasdaq_composite": None, "nasdaq_composite_prior": None,
+        "djia": None, "djia_prior": None,
+        **breadth,
+    })
+
+    row = db.execute(
+        "SELECT sp500, nasdaq_composite, djia, index_levels_as_of, vix FROM market_context"
+    ).fetchall()
+    assert len(row) == 1
+    sp500, nasdaq, djia, as_of, vix = row[0]
+
+    # The levels SURVIVED the failed fetch.
+    assert sp500 == 6812.34
+    assert nasdaq == 22345.67
+    assert djia == 44210.55
+    # ...and they are dated for the session they are really for, so the app can age them honestly.
+    assert as_of == RUN
+    # The cells that DID come back are updated normally — this is not a freeze, it is a floor.
+    assert vix == 16.10

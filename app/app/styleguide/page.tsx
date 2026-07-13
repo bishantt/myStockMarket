@@ -576,7 +576,12 @@ function CopyDeck() {
     ["baseRate.insufficient", fill(copy.baseRate.insufficient, { n: "18" })],
     ["volband.caveat", copy.volband.caveat],
     ["mover.noNews", copy.mover.noNews],
-    ["macro.provenance", copy.macro.provenance],
+    // The macro provenance line is deliberately NOT in this deck: it is composed at render time
+    // from the rows that actually appeared (buildMacroProvenance, ruling C6). It used to be a fixed
+    // string here, and that is exactly how it came to sit under four ETF prices claiming they were
+    // FRED index levels. What the deck holds now are the FRAGMENTS it is assembled from.
+    ["macro.indexesUnavailable", copy.macro.indexesUnavailable],
+    ["macro.proxyChipDegraded", fill(copy.macro.proxyChipDegraded, { symbol: "SPY" })],
     ["calendar.empty", copy.calendar.empty],
     ["calendar.emptySub", copy.calendar.emptySub],
     ["brief.unavailable", copy.brief.unavailable],

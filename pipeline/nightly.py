@@ -37,6 +37,7 @@ from catalysts import classify
 from parquet_store import PRICES, ParquetStore
 from scans import HORIZON_DAYS, UNUSUAL_VOLUME, build_indicated, build_snapshot, run_all
 from storage import R2Store
+from trading_calendar import is_trading_session
 from trading_calendar import sessions_ahead
 
 # The regime line and the primary card horizon (Appendix F). Breadth is a fraction (0-1).
@@ -102,6 +103,22 @@ class MacroRead:
             "djia": self.djia,
             "djia_prior": self.djia_prior,
         }
+
+    def index_levels(self) -> dict[str, float | None]:
+        """Just the three index LEVELS — the fields the `fred-indexes` source key describes."""
+        return {
+            "sp500": self.sp500,
+            "nasdaq_composite": self.nasdaq_composite,
+            "djia": self.djia,
+        }
+
+    def has_every_index_level(self) -> bool:
+        """True when all three index series answered with a usable level."""
+        return all(level is not None for level in self.index_levels().values())
+
+    def has_any_index_level(self) -> bool:
+        """True when at least one index series answered — the test for carrying a set forward."""
+        return any(level is not None for level in self.index_levels().values())
 
 
 @dataclass(frozen=True)
@@ -179,6 +196,25 @@ def run_nightly(deps: NightlyDeps) -> NightlyResult:
     # and a partial read still fills part of the strip. Only a total FRED outage is "degraded".
     fred_ok = any(value is not None for value in macro.as_columns().values())
     source_status = {"alpaca": "ok", "fred": "ok" if fred_ok else "degraded"}
+
+    # THE INDEX LEVELS GET THEIR OWN SOURCE KEY, and this is not a nicety — it is the bug that
+    # started this phase (NEWS-AND-CONTROL-PLAN §1.1, §3.1).
+    #
+    # On 2026-07-11 in production, all three index levels came back empty while VIX and the 10-year
+    # answered normally. `fred_ok` above was therefore True, the run recorded `fred: ok`, and the
+    # Desk quietly fell back to showing four ETF prices under a footer that still claimed FRED index
+    # levels. Nothing anywhere said the levels were missing.
+    #
+    # The honest reading is that `fred: ok` was CORRECT — FRED really did answer. One key simply
+    # cannot describe two different failures. So the levels get their own key, and a partial read is
+    # degraded too: a Desk showing two true index levels and one ETF proxy has a reader who deserves
+    # to know why the third one changed shape.
+    #
+    # On a non-session day this is skipped entirely. FRED publishes no new index observation for a
+    # day the market never opened, so flagging it would light an amber lamp that means nothing — and
+    # an alert that cries wolf is how a real one gets ignored.
+    if is_trading_session(deps.run_date):
+        source_status["fred-indexes"] = "ok" if macro.has_every_index_level() else "degraded"
 
     # The catalyst stage: fetch news for the movers + the calendar, classify, and merge each
     # provider's health into the source status. A provider being down degrades its section here, in

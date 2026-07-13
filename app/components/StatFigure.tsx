@@ -45,6 +45,14 @@ type StatFigureProps = {
     /** The delta, already formatted and signed, e.g. "+0.42%". */
     value: string;
     direction: Direction;
+    /**
+     * The period the delta covers, e.g. "1D" — a token from the closed `copy.window` set.
+     *
+     * It renders INSIDE the chip, beside the number, because that is the whole of ruling C2: a
+     * window stated in a footnote is a window most readers never connect to the figure. "+0.42%" is
+     * not a fact on its own — over what? — and "+0.42% · 1D" is.
+     */
+    window?: string;
   };
 };
 
@@ -110,6 +118,14 @@ export function StatFigure({
               <span aria-hidden="true">{DELTA_GLYPH[delta.direction]}</span>
             ) : null}
             {delta.value}
+            {/*
+             * The window, inside the chip. It is set quieter than the number — it is the number's
+             * unit, not a second number — but it is in the same chip, because a window that lives
+             * anywhere else is a window the reader has to go and find (C2).
+             */}
+            {delta.window ? (
+              <span className="pl-1 text-2xs font-normal opacity-80">· {delta.window}</span>
+            ) : null}
           </span>
         ) : null}
       </div>

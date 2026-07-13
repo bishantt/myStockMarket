@@ -293,6 +293,38 @@ describe("the seeded news night", () => {
     expect(links.some((l) => l.clusterId === "nc-jpm-earnings")).toBe(true);
   });
 
+  /**
+   * Every Date in the seed is a REAL date.
+   *
+   * This test exists because of a bug it would have caught. The image rows were built with a helper
+   * `t("22")` — meant to be 22:00 — which produced the string "2026-07-09T22:00.000Z": no seconds
+   * field, and therefore an Invalid Date. Prisma rejected it and the seed died, but only in CI, on
+   * the tag, minutes after everything local had gone green. The other fixture tests all passed,
+   * because they asserted the INTERESTING fields — the significance scores, the ordering, the blur
+   * placeholders — and never looked at a timestamp.
+   *
+   * A fixture's boring fields are still fields. `new Date("nonsense")` does not throw; it returns an
+   * object that looks like a Date and fails only when something finally tries to use it.
+   */
+  it("has no Invalid Dates hiding in it — every timestamp is a real one", () => {
+    const check = (value: unknown, where: string) => {
+      if (value instanceof Date) {
+        expect(Number.isNaN(value.getTime()), `${where} is an Invalid Date`).toBe(false);
+      }
+    };
+    const walk = (row: Record<string, unknown>, where: string) => {
+      for (const [key, value] of Object.entries(row)) check(value, `${where}.${key}`);
+    };
+
+    (NEWS_IMAGES as Record<string, unknown>[]).forEach((r, i) => walk(r, `NEWS_IMAGES[${i}]`));
+    (NEWS_CLUSTERS as unknown as Record<string, unknown>[]).forEach((r, i) =>
+      walk(r, `NEWS_CLUSTERS[${i}]`),
+    );
+    (MACRO_STATS as unknown as Record<string, unknown>[]).forEach((r, i) =>
+      walk(r, `MACRO_STATS[${i}]`),
+    );
+  });
+
   it("exercises every rung of the image ladder", () => {
     // L1/L2 — real cached images on three clusters.
     const withImages = clusters.filter((c) => c.imageId !== null);

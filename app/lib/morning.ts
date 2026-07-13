@@ -1,5 +1,6 @@
 import { db } from "@/lib/db";
 import { SCAN_PRESETS } from "@/lib/scan-presets";
+import { copy } from "@/lib/copy";
 import { directionOf, multiple, percent, price, signedPercent } from "@/lib/format";
 import { formatUtcDate } from "@/lib/time";
 import { buildBrief, parseBriefDraft, type BriefView } from "@/lib/briefing";
@@ -55,44 +56,55 @@ import type { WatchRow } from "@/components/desk/Watchlist";
  * (UI-REDESIGN-PLAN §6.1, Appendix E-1).
  */
 type IndexSlot = {
-  /** The label when the true index level is available. */
-  indexLabel: string;
-  /** The ETF that stands in when it is not — and the label that admits it. */
+  /** The label this slot wears. For an index slot it is the index's name; for the by-design proxy
+   *  slot it names the GROUP ("Small caps") and never an index we cannot actually quote. */
+  label: string;
+  /** The ETF that stands in when the index level is missing — or, for small caps, always. */
   proxySymbol: string;
-  proxyLabel: string;
+  /** The single proxy mark. A template from copy.ts; `{symbol}` is filled at render. */
+  proxyChip: string;
+  /** True for the slot that is an ETF BY DESIGN, not by degradation (small caps). */
+  proxyByDesign?: boolean;
   /** Pulls this slot's level and prior level out of the context row. */
   level: (ctx: MacroContext) => { value: number | null; prior: number | null };
 };
 
 const SPX_SLOT: IndexSlot = {
-  indexLabel: "S&P 500",
+  label: "S&P 500",
   proxySymbol: "SPY",
-  proxyLabel: "S&P 500 · SPY (ETF proxy)",
+  proxyChip: copy.macro.proxyChipDegraded,
   level: (ctx) => ({ value: ctx.sp500, prior: ctx.sp500Prior }),
 };
 
 const INDEX_SLOTS: readonly IndexSlot[] = [
   {
-    indexLabel: "Nasdaq Composite",
-    // QQQ tracks the Nasdaq-100, NOT the Composite. The fallback label must not claim otherwise —
-    // it is a different index with different members, and saying "Composite" here would be a lie
-    // of exactly the kind this whole module was rewritten to stop.
+    label: "Nasdaq Composite",
+    // QQQ tracks the Nasdaq-100, NOT the Composite. The chip must not blur that — it is a different
+    // index with different members, and letting "Composite" sit silently over QQQ's price would be
+    // a lie of exactly the kind this module was rewritten to stop.
     proxySymbol: "QQQ",
-    proxyLabel: "Nasdaq-100 · QQQ (ETF proxy)",
+    proxyChip: copy.macro.proxyChipNasdaq,
     level: (ctx) => ({ value: ctx.nasdaqComposite, prior: ctx.nasdaqCompositePrior }),
   },
   {
-    indexLabel: "Dow",
+    label: "Dow",
     proxySymbol: "DIA",
-    proxyLabel: "Dow · DIA (ETF proxy)",
+    proxyChip: copy.macro.proxyChipDegraded,
     level: (ctx) => ({ value: ctx.djia, prior: ctx.djiaPrior }),
   },
   {
-    // No free FRED daily series exists for the Russell 2000, so this slot never has an index level.
-    // It is an ETF proxy by construction, and it wears the chip that says so.
-    indexLabel: "Russell 2000",
+    // No free FRED daily series exists for the Russell 2000 (FRED deleted all 36 FTSE Russell series
+    // in 2019; every licensable alternative was checked and rejected — the search is recorded in the
+    // plan's Appendix A.2). So this slot NEVER has an index level.
+    //
+    // Which is why it is not called "Russell 2000". We cannot quote that index, so we do not put its
+    // name on the row at all — we name the GROUP the number describes ("Small caps") and let the
+    // chip say what the number is. A label that claims an index we are structurally unable to
+    // measure is a promise the row can never keep.
+    label: "Small caps",
     proxySymbol: "IWM",
-    proxyLabel: "Russell 2000 · IWM (ETF proxy)",
+    proxyChip: copy.macro.proxyChip,
+    proxyByDesign: true,
     level: () => ({ value: null, prior: null }),
   },
 ];
@@ -114,10 +126,28 @@ export type MacroContext = {
   advancers: number;
   decliners: number;
   pctAbove50dma: number;
+  /**
+   * The session the index levels above are actually FOR — which is not always the run's own date.
+   *
+   * FRED posts the index closes after both nightly jobs run, and a flaky night now keeps the levels
+   * it already had rather than overwriting them with null. Both mean a level can be real and not
+   * tonight's, and this is how the Desk knows to say so (ruling C7).
+   */
+  indexLevelsAsOf?: Date | string | null;
 };
 
 /** Where a slot's number came from. The label is not free to disagree with this. */
 export type QuoteSource = "index" | "etf-proxy";
+
+/** Midnight UTC of a date, for comparing bare dates without letting a clock time decide the answer. */
+function startOfUtcDay(day: Date): number {
+  return Date.UTC(day.getUTCFullYear(), day.getUTCMonth(), day.getUTCDate());
+}
+
+/** "Fri" — the weekday breadth's as-of names ("63% above the 50-day average · at Fri's close"). */
+function weekdayName(day: Date): string {
+  return new Intl.DateTimeFormat("en-US", { weekday: "short", timeZone: "UTC" }).format(day);
+}
 
 export type IndexQuote = {
   label: string;
@@ -127,17 +157,42 @@ export type IndexQuote = {
   deltaPct: string;
   direction: Direction;
   source: QuoteSource;
-  /** Set only on a proxy slot: the ETF actually being shown. Drives the "ETF proxy" chip. */
+  /** Set only on a proxy slot: the ETF actually being shown. */
   proxySymbol?: string;
+  /**
+   * The slot's SINGLE proxy mark, already filled in — e.g. "IWM · ETF price".
+   *
+   * Present on exactly the proxy slots, and it is the only place the word "ETF" now appears. The old
+   * grammar said it twice — a label suffix "(ETF proxy)" AND a freestanding chip reading "ETF proxy"
+   * — which on screen read as noise, and noise is where a beginner stops reading.
+   */
+  proxyChip?: string;
+  /**
+   * Set when this slot's number is a REAL index level that is not tonight's: "as of Jul 9".
+   *
+   * Only staleness earns a per-slot date. The masthead's as-of already covers the normal case, so a
+   * date on every row every night would be chrome; a date on the ONE row that is behind is
+   * information (ruling C7).
+   */
+  staleAsOf?: string;
 };
 
 /** The macro strip's view-model — the exact shape MacroPulse renders (minus asOf, added by the page). */
 export type MacroView = {
   spx: IndexQuote;
   indices: IndexQuote[];
-  breadth: { advancers: number; decliners: number; pctAbove50dma: string };
+  breadth: { advancers: number; decliners: number; pctAbove50dma: string; asOf: string };
   vix: string;
   tenYear: string;
+  /**
+   * The provenance line, COMPOSED from the rows actually rendered (ruling C6).
+   *
+   * It used to be a static string — "Index levels · FRED · prior close" — printed under whatever the
+   * rows happened to show. On the night FRED's index series failed, it sat under four ETF prices and
+   * declared them FRED index levels. A provenance line that can disagree with its own surface is
+   * worse than no provenance line at all, because it converts a visible gap into an invisible lie.
+   */
+  provenance: string;
 };
 
 /**
@@ -147,21 +202,17 @@ export type MacroView = {
  * borrowed from the ETF: the ETF's percentage move is close to the index's, but "close" is not
  * "the same", and a number the database cannot justify does not get printed.
  */
-function quoteFromLevel(slot: IndexSlot, ctx: MacroContext): IndexQuote | null {
+function quoteFromLevel(slot: IndexSlot, ctx: MacroContext, staleAsOf?: string): IndexQuote | null {
   const { value, prior } = slot.level(ctx);
   if (value === null) return null;
 
+  const base = { label: slot.label, value: price(value), source: "index" as const, ...(staleAsOf ? { staleAsOf } : {}) };
+
   if (prior === null) {
-    return { label: slot.indexLabel, value: price(value), deltaPct: "—", direction: "flat", source: "index" };
+    return { ...base, deltaPct: "—", direction: "flat" };
   }
   const delta = (value - prior) / prior;
-  return {
-    label: slot.indexLabel,
-    value: price(value),
-    deltaPct: signedPercent(delta),
-    direction: directionOf(delta),
-    source: "index",
-  };
+  return { ...base, deltaPct: signedPercent(delta), direction: directionOf(delta) };
 }
 
 /**
@@ -189,12 +240,17 @@ function quoteFromCloses(slot: IndexSlot, closes: number[] | undefined): IndexQu
   const change = dayChange(closes);
   if (change === null) return null;
   return {
-    label: slot.proxyLabel,
+    label: slot.label,
     value: price(change.latest),
     deltaPct: change.deltaPct,
     direction: change.direction,
     source: "etf-proxy",
     proxySymbol: slot.proxySymbol,
+    // THE ONE PROXY MARK. On the small-caps slot it simply names what the number is ("IWM · ETF
+    // price"). On a DEGRADED index slot — where an index's name and an ETF's price share a row, the
+    // one case this module has always guarded hardest — it negates the misreading outright:
+    // "SPY · ETF price — not the index level".
+    proxyChip: slot.proxyChip.replace("{symbol}", slot.proxySymbol),
   };
 }
 
@@ -203,8 +259,63 @@ function quoteForSlot(
   slot: IndexSlot,
   ctx: MacroContext,
   closesBySymbol: Record<string, number[]>,
+  staleAsOf?: string,
 ): IndexQuote | null {
-  return quoteFromLevel(slot, ctx) ?? quoteFromCloses(slot, closesBySymbol[slot.proxySymbol]);
+  return (
+    quoteFromLevel(slot, ctx, staleAsOf) ?? quoteFromCloses(slot, closesBySymbol[slot.proxySymbol])
+  );
+}
+
+/**
+ * Compose the provenance line from the rows that ACTUALLY rendered (ruling C6).
+ *
+ * This is the fix for the defect in the user's screenshot: a static footer reading "Index levels ·
+ * FRED · prior close" printed under four ETF prices. The sentence was written for the happy path and
+ * rendered regardless — so on the one night it mattered, it was a confident lie.
+ *
+ * Now the line is assembled from each slot's real source. If the indexes are live it says so; if
+ * some fell back it names which; if they ALL fell back it opens by saying that outright, because an
+ * absence the reader has to infer from four small chips is an absence most readers will not notice.
+ */
+export function buildMacroProvenance(
+  spx: IndexQuote,
+  indices: IndexQuote[],
+  { vix, tenYear }: { vix: string; tenYear: string },
+): string {
+  const parts: string[] = [];
+
+  // The index slots — everything except the by-design proxy (small caps), which is never a
+  // degradation and so never belongs in a story about index levels being missing.
+  const indexSlots = [spx, ...indices].filter((q) => q.label !== "Small caps");
+  const live = indexSlots.filter((q) => q.source === "index");
+  const fellBack = indexSlots.filter((q) => q.source === "etf-proxy");
+
+  if (live.length === 0 && fellBack.length > 0) {
+    parts.push(copy.macro.indexesUnavailable);
+  } else {
+    if (live.length > 0) {
+      const stale = live.filter((q) => q.staleAsOf);
+      const names = live.map((q) => q.label).join(", ");
+      // A carried-forward level is still a FRED level — but it is not tonight's, and the line says so
+      // rather than letting the masthead's as-of quietly speak for it.
+      parts.push(
+        stale.length === live.length && stale[0].staleAsOf
+          ? `${names}: FRED, ${stale[0].staleAsOf}`
+          : `${names}: FRED, prior close`,
+      );
+    }
+    for (const q of fellBack) {
+      parts.push(`${q.label}: ${q.proxySymbol} ETF close (index level unavailable)`);
+    }
+  }
+
+  const smallCaps = [spx, ...indices].find((q) => q.label === "Small caps");
+  if (smallCaps) parts.push(`Small caps: ${smallCaps.proxySymbol} ETF close`);
+
+  if (vix !== "—") parts.push("VIX: Cboe via FRED");
+  if (tenYear !== "—") parts.push("10-yr: US Treasury via FRED");
+
+  return parts.join(" · ");
 }
 
 /**
@@ -219,15 +330,37 @@ function quoteForSlot(
 export function buildMacro(
   ctx: MacroContext | null,
   closesBySymbol: Record<string, number[]>,
+  runDate?: Date | null,
 ): MacroView | null {
   if (ctx === null) return null;
 
-  const spx = quoteForSlot(SPX_SLOT, ctx, closesBySymbol);
+  // Are the stored index levels tonight's, or an earlier session's carried forward?
+  //
+  // The pipeline no longer lets a flaky FRED night overwrite a good level with null — it keeps what
+  // it has and records the session those levels are really for. So a level can now be REAL and OLD
+  // at the same time, which is a state the Desk has never had to render before. When it happens the
+  // slot says "as of Jul 9" and the number stands; the alternative — collapsing a perfectly good
+  // index level to an ETF price because it is one day behind — would be throwing away the better
+  // number to avoid printing a date.
+  const levelsAsOf = ctx.indexLevelsAsOf ? new Date(ctx.indexLevelsAsOf) : null;
+  const levelsAreStale =
+    levelsAsOf !== null && runDate != null && levelsAsOf.getTime() < startOfUtcDay(runDate);
+  const staleAsOf =
+    levelsAreStale && levelsAsOf
+      ? copy.macro.staleLevel.replace("{date}", formatUtcDate(levelsAsOf))
+      : undefined;
+
+  const spx = quoteForSlot(SPX_SLOT, ctx, closesBySymbol, staleAsOf);
   if (spx === null) return null;
 
-  const indices = INDEX_SLOTS.map((slot) => quoteForSlot(slot, ctx, closesBySymbol)).filter(
-    (quote): quote is IndexQuote => quote !== null,
-  );
+  const indices = INDEX_SLOTS.map((slot) =>
+    quoteForSlot(slot, ctx, closesBySymbol, staleAsOf),
+  ).filter((quote): quote is IndexQuote => quote !== null);
+
+  const vix = ctx.vix === null ? "—" : price(ctx.vix);
+  // The 10-year yield is stored as a plain percent value (4.54 = 4.54%), so it divides by 100
+  // to become the fraction lib/format expects.
+  const tenYear = ctx.tenYear === null ? "—" : percent(ctx.tenYear / 100, 2);
 
   return {
     spx,
@@ -236,11 +369,13 @@ export function buildMacro(
       advancers: ctx.advancers,
       decliners: ctx.decliners,
       pctAbove50dma: percent(ctx.pctAbove50dma),
+      // Breadth is a claim about the WHOLE market, and until now it was the only figure on the
+      // module carrying no window at all (C2). It is as of the close, and it says so.
+      asOf: runDate ? copy.macro.breadthClose.replace("{day}", weekdayName(runDate)) : "at the close",
     },
-    vix: ctx.vix === null ? "—" : price(ctx.vix),
-    // The 10-year yield is stored as a plain percent value (4.54 = 4.54%), so it divides by 100
-    // to become the fraction lib/format expects.
-    tenYear: ctx.tenYear === null ? "—" : percent(ctx.tenYear / 100, 2),
+    vix,
+    tenYear,
+    provenance: buildMacroProvenance(spx, indices, { vix, tenYear }),
   };
 }
 
@@ -660,7 +795,10 @@ async function loadMacro(): Promise<MacroView | null> {
       orderBy: [{ symbol: "asc" }, { date: "asc" }],
       select: { symbol: true, close: true },
     });
-    return buildMacro(ctx, closesBy(bars));
+    // The run date goes in too, so the builder can tell a level that is tonight's from one that was
+    // carried forward — and say "as of Jul 9" on the latter rather than letting the masthead's
+    // as-of quietly speak for a number it does not describe.
+    return buildMacro(ctx, closesBy(bars), ctx?.runDate ?? null);
   } catch (error) {
     console.error("getMorning: could not load the macro strip", error);
     return null;

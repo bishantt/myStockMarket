@@ -232,3 +232,81 @@ def test_served_price_bars_keeps_only_served_symbols_and_adds_adjusted_close():
     assert set(served["symbol"].to_list()) == {"SPY"}
     # adj_close is present and, at P1, equals the (already-adjusted) close.
     assert served["adj_close"].to_list() == [1.5, 2.5]
+
+
+# ── the index-level source status (NEWS-AND-CONTROL-PLAN §3.1) ───────────────────────────────
+#
+# The production failure this exists to prevent, observed on 2026-07-11: market_context carried
+# NULL for all three index levels, VIX and the 10-year came through fine, and the run still recorded
+# `fred: ok`. The Desk therefore rendered four ETF proxies under a footer claiming FRED index
+# levels, and NOTHING anywhere said the levels were missing.
+#
+# `fred: ok` was not even wrong — FRED *was* reachable; it answered for VIX and DGS10. The bug is
+# that one source key cannot describe two different failures. The index levels need their own key,
+# so a run can say "FRED answered, but not for the indexes."
+
+
+def test_missing_index_levels_degrade_their_own_source_key_even_when_fred_answers():
+    # All three index series come back empty; VIX and the 10-year are fine. This is the exact shape
+    # of the production row that started this whole phase.
+    universe = [{"symbol": "SPY", "name": "S&P 500 ETF", "exchange": "ARCA"}]
+    bars = {"SPY": _history("SPY", [500, 502, 505])}
+    publish = RecordingPublish()
+    macro = nightly.MacroRead(vix=15.8, ten_year=4.5)  # levels all default to None
+    deps = _deps(universe, bars, macro=macro, served=("SPY",), publish=publish)
+
+    nightly.run_nightly(deps)
+
+    status = publish.calls[0]["source_status"]
+    # FRED itself is genuinely fine — it answered for the two context cells. Saying otherwise would
+    # be its own small lie, and would light up a source that is not broken.
+    assert status["fred"] == "ok"
+    # But the index levels are missing, and now the run says so out loud.
+    assert status["fred-indexes"] == "degraded"
+
+
+def test_one_missing_index_series_is_enough_to_degrade():
+    # Partial is still degraded: a Desk showing two true index levels and one ETF proxy is a Desk
+    # whose reader deserves to know why the third one changed shape.
+    universe = [{"symbol": "SPY", "name": "S&P 500 ETF", "exchange": "ARCA"}]
+    bars = {"SPY": _history("SPY", [500, 502, 505])}
+    publish = RecordingPublish()
+    macro = nightly.MacroRead(
+        vix=15.8, ten_year=4.5,
+        sp500=6812.34, sp500_prior=6789.10,
+        nasdaq_composite=22345.67, nasdaq_composite_prior=22280.15,
+        djia=None, djia_prior=None,  # the Dow alone failed
+    )
+    deps = _deps(universe, bars, macro=macro, served=("SPY",), publish=publish)
+
+    nightly.run_nightly(deps)
+
+    assert publish.calls[0]["source_status"]["fred-indexes"] == "degraded"
+
+
+def test_a_complete_index_read_reports_ok():
+    universe = [{"symbol": "SPY", "name": "S&P 500 ETF", "exchange": "ARCA"}]
+    bars = {"SPY": _history("SPY", [500, 502, 505])}
+    publish = RecordingPublish()
+    deps = _deps(universe, bars, served=("SPY",), publish=publish)  # the default macro is complete
+
+    nightly.run_nightly(deps)
+
+    assert publish.calls[0]["source_status"]["fred-indexes"] == "ok"
+
+
+def test_a_non_session_night_does_not_flag_the_indexes_degraded():
+    # The weekend no-op. A macro-mode run on a Saturday is reading Friday's close; FRED publishes no
+    # new index observation for a day the market never opened. Flagging that as a degradation would
+    # teach the reader to ignore an amber light that means nothing — which is how a real one gets
+    # missed. (2026-07-11 is a Saturday.)
+    universe = [{"symbol": "SPY", "name": "S&P 500 ETF", "exchange": "ARCA"}]
+    bars = {"SPY": _history("SPY", [500, 502, 505])}
+    publish = RecordingPublish()
+    macro = nightly.MacroRead(vix=15.8, ten_year=4.5)  # no levels — but it is not a session day
+    deps = _deps(universe, bars, macro=macro, served=("SPY",), publish=publish)
+    deps = nightly.NightlyDeps(**{**deps.__dict__, "run_date": date(2026, 7, 11)})
+
+    nightly.run_nightly(deps)
+
+    assert "fred-indexes" not in publish.calls[0]["source_status"]

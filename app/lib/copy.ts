@@ -65,16 +65,66 @@ export const copy = {
   },
 
   /**
-   * The macro strip (redesign §6.1). These four strings exist because an ETF is not its index:
-   * SPY traded near 755 while the S&P 500 was near 6,800, and the Desk printed the former under
-   * the latter's name. The levels now come from FRED; where no free index series exists (the
-   * Russell 2000), the slot still shows an ETF — and says, on the surface, that it is showing one.
+   * THE WINDOW VOCABULARY — a closed set (ruling C2, NEWS-AND-CONTROL-PLAN Appendix B).
+   *
+   * Every number in this app states the period it covers, in the same visual unit as the number
+   * itself — not in a footnote, not only in a module footer. "+8.2%" is not a fact; "+8.2% · 1D"
+   * is. The vocabulary is closed and lives here so that every surface says "20d avg" the same way,
+   * and so a test can check that a metric label carries one of these tokens at all.
+   */
+  window: {
+    d1: "1D",
+    d5: "5D",
+    m1: "1M",
+    m3: "3M",
+    m6: "6M",
+    y1: "1Y",
+    y5: "5Y",
+    avg20d: "20d avg",
+    avg50d: "50d avg",
+    rsi14: "14d",
+    weekOf: "wk of {date}",
+    monthOf: "{month} {year}",
+    asOf: "as of {date}",
+    atClose: "at {day}'s close",
+    vsPriorClose: "vs prior close",
+  },
+
+  /**
+   * The macro strip (redesign §6.1, extended by NEWS-AND-CONTROL-PLAN Part 3).
+   *
+   * These strings exist because an ETF is not its index: SPY traded near 755 while the S&P 500 was
+   * near 6,800, and the Desk printed the former under the latter's name.
+   *
+   * WHAT CHANGED IN N1 — one mark per row, and a footer that cannot lie.
+   *
+   * The old grammar said "ETF proxy" TWICE on every proxy row: once as a label suffix
+   * ("S&P 500 · SPY (ETF proxy)") and again as a freestanding chip. On screen that reads as noise,
+   * and noise is where a beginner stops reading. Now there is exactly ONE proxy mark: the chip.
+   *
+   * And `provenance` is gone. It was a static sentence — "Index levels · FRED · prior close" —
+   * rendered under whatever the rows happened to show, so on the night FRED's index series failed
+   * it sat under four ETF prices and claimed they were FRED index levels. A provenance line that
+   * can disagree with its own surface is worse than none at all. It is now COMPOSED from the rows
+   * actually rendered (ruling C6, buildMacroProvenance in lib/morning.ts).
    */
   macro: {
-    provenance: "Index levels · FRED · prior close",
-    proxyChip: "ETF proxy",
+    /** The single proxy mark on a slot that is an ETF BY DESIGN (small caps — no free index series). */
+    proxyChip: "{symbol} · ETF price",
+    /**
+     * The proxy mark on an index slot that DEGRADED to an ETF. It negates the misreading outright,
+     * because this is the one case where an index's name and an ETF's price share a row.
+     */
+    proxyChipDegraded: "{symbol} · ETF price — not the index level",
+    /** QQQ tracks the Nasdaq-100, not the Composite. The mismatch is stated, never blurred. */
+    proxyChipNasdaq: "QQQ · Nasdaq-100 ETF price — not the Composite",
     proxyNote: "{symbol} is an ETF whose price tracks this group; it is not the index level.",
-    indexUnavailable: "Index level unavailable — showing {symbol} (ETF proxy).",
+    /** Shown on a slot whose stored index level is real but not tonight's (ruling C7). */
+    staleLevel: "as of {date}",
+    /** The provenance line when every index series failed — stated, not implied by an absence. */
+    indexesUnavailable: "Index levels unavailable tonight — showing ETF closes, labeled per row",
+    /** Breadth gains its as-of, like every other number (C2). */
+    breadthClose: "at {day}'s close",
   },
 
   desk: {
