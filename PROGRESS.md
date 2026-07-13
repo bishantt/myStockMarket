@@ -102,8 +102,11 @@ copy too many.
   parameter is on the WIRE: if it ever dropped, FRED would answer with the raw index level (~320) and
   the board would print "Inflation (CPI YoY) 320.5%" through a path where every value assertion passed.
 
+**`nc-3` is tagged and its CI is GREEN — all three jobs, including the pixel oracle (318 e2e passed,
+all 55 VRT baselines matched).**
+
 **Counts at nc-3:** 506 app tests · 296 pytest local / **321 in CI** (the DB tests only run there) ·
-19 drift rules · 55 VRT baselines · B1 10/11 cached · B4 worst 193.3KB under the 200KB ceiling.
+**318 e2e** · 19 drift rules · 55 VRT baselines · B1 10/11 cached · B4 worst 193.3KB under the ceiling.
 
 **Evidence:** `docs/nc-evidence/n3-board.md` — every source, what it really returned, and the ladder.
 
