@@ -1,5 +1,76 @@
 # PROGRESS.md — resumable state
 
+# THE APP FEEL PLAN IS DONE (2026-07-12) — tagged `feel-final`, CI green on the tag.
+
+F0 through F7, all eight phases, unattended. Nothing is blocked. Read this section and then, if you
+want the numbers, `docs/feel-evidence/BUDGETS.md` — every claim below has a measured record behind it.
+
+## What actually changed, in one line
+
+**The app used to rebuild the page you were leaving before it would show you the one you asked for.**
+Eight of the ten rooms re-rendered on the server on every single tap. Now they are served from a
+cache. A tab tap on the phone went from **824–1342ms of frozen screen to 130–280ms**, and the Desk's
+own server answer went from 382ms to 48ms.
+
+That is the whole plan in a sentence, and it is the one thing you will feel in the first ten seconds.
+
+## The budgets you set, and where they landed
+
+| | Budget | Before | Now |
+|---|---|---|---|
+| B1 | Rooms served from a cache | 2 of 10 | **10 of 10** |
+| B2 | Production server answer (warm median) | 382–1237ms | **48–133ms** (ceiling 150) |
+| B3 | Phone: tap → the room is there | Scans **1342ms** | Scans **280ms** |
+| B4 | First-load JavaScript, `/ticker` | 193KB | **145KB** |
+| B5 | Layout shift | 0.000 | **0.000**, both regimes |
+| B6 | Lighthouse | perf 93 · a11y 93 | perf **86** · a11y **100** |
+
+**B6's performance score fell seven points on purpose, and you should know why.** The app now
+prefetches the five tab rooms while the browser is idle — that is precisely the mechanism that took a
+tab tap from 1342ms to 280ms. Lighthouse measures one cold load and counts the bandwidth spent on
+your NEXT screen against your current one. Both hard budgets still pass (layout shift 0.000,
+first-load JS 165KB against a 200KB ceiling). It is one line to reverse and the cost of reversing it
+is written down: `docs/feel-evidence/lighthouse-tradeoff.md`. Flagged [FYI] in QUESTIONS.
+
+## The three real bugs the gates found (all were already in production)
+
+1. **Changing your theme once would have deleted every scan table in the app.** A theme switch
+   revalidated at layout scope, which drops the known-parameter set of the scans route — so every
+   `/scans/<preset>` URL would 404 until the next deploy. Live since P6. Found because a VRT baseline
+   came back as a photograph of the 404 page. Drift rule 17 now forbids it.
+2. **Every write on the Desk hung its own response.** The journal, the setup-card checkboxes: the row
+   landed in the database and the button said "Saving…" forever. Live since 2026-07-11. It survived
+   six phases because the test asserted a marker that renders on the form's *initial* state — a guard
+   that could not fail. Now fixed with `after()`, and the test asserts the textarea actually cleared.
+3. **Accessibility, 93 → 100.** A link nested inside a button (unreachable by keyboard), a scroll
+   region no keyboard could reach, the TradingView attribution link sealed inside the chart's
+   `role="img"` box, and 58 nodes of real information printed in `text-faint` — a colour the token
+   sheet has reserved for placeholders since R1, at 2.23:1 where AA wants 4.5:1. All fixed; drift
+   rule 18 stops the colour one coming back.
+
+## What is waiting for you (nothing is blocked on it)
+
+- **One [NEED] in QUESTIONS-FOR-BISHANT.md: `text-muted` on a glass card does not clear 4.5:1.** The
+  token was measured against paper (4.83:1) and clears that, but a Surface is translucent, so what a
+  reader actually sees it against is the card composited over the lavender wash. This is a palette
+  decision and the palette is the redesign plan's territory, not this one's — so it is recorded with
+  its numbers rather than changed unilaterally at 2am. The fix is one token, two values, and a
+  re-shoot of the baselines. `docs/feel-evidence/accessibility.md`.
+- **The iOS device pass has not happened** — there is no iPhone here. The rules a machine can check
+  (44px targets, 16px inputs, no sideways scroll, no manufactured motion) are checked by the suite on
+  every push. The checklist for the ten minutes of hand-checking is in QUESTIONS.
+- **The two PDFs are not re-rendered.** The markdown plans carry the Part 9 amendments
+  (DEVELOPMENT-PLAN §4.5 and §3.8, the route map, the commands); `docs/*.pdf` still show the old text.
+
+## State of the build
+
+Tests: **384 unit · 214 pytest · e2e + VRT + PWA green on the `feel-final` tag · 18 drift rules ·
+font budget.** Evidence: `docs/feel-evidence/` (BUDGETS, routes, nav, nav-timing, bundles, prefetch
+experiment, the Lighthouse trade, accessibility, desk height). Docs sync: done — DEVELOPMENT-PLAN,
+CLAUDE.md, the `new-surface` skill, and the redesign plan's cross-reference all agree with the code.
+
+---
+
 **F6 COMPLETE (2026-07-12) — tagged `feel-6`, CI green on the tag.**
 Next: F7, the last phase — hardening, the evidence tables, and the docs sync. Nothing is blocked.
 
