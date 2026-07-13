@@ -1,61 +1,121 @@
 # PROGRESS.md — resumable state
 
-# NOW: the News & Control build (N0–N7). N0 is done and tagged `nc-0`.
+# NOW: the News & Control build (N0–N7). **N0 and N1 are done and tagged.** Next: N2.
 
-**Where I am.** N0 (ground truth, wiring, seeds) is complete. Rolling straight into N1 — the macro
-truth fix — under the plan's autonomy contract. Nothing is blocked and nothing needs you.
+**Where I am.** N0 (ground truth, wiring, seeds) and N1 (the macro truth fix) are complete and
+tagged `nc-0` / `nc-1`. Nothing is blocked. Nothing needs you. The next phase is **N2 — windows,
+density, the grid** (plan Parts 4 + 5).
 
-**Read this if you read nothing else:** `docs/nc-evidence/n0-audit.md`. It is the audit of what the
-tree and your production database actually look like, and it found one thing the plan did not know
-about — see QUESTIONS-FOR-BISHANT.md, "A production bug the audit found".
+**If you read only one thing:** `docs/nc-evidence/n0-audit.md`. It is the audit of what your tree
+and your production database actually look like, and it found a bug the plan did not know about.
 
-## What N0 landed
+---
 
-1. **`nc-*` is wired into CI** — the tag triggers *and* the e2e job's `if` condition. This was the
-   first edit of the phase, deliberately: an unwired tag pattern makes every later "gate green"
-   claim ornamental, and the F0 build learned that the hard way.
-2. **The audit** (`docs/nc-evidence/n0-audit.md`). The plan's diagnosis is correct on every point.
-   Module 00 really is a full card holding one date; the Macro Pulse's provenance footer really is a
-   static string that cannot know whether it is true; the degradation really is silent.
-3. **The Appendix C schema, whole** — one migration: `macro_stat`, `news_cluster`, `catalyst_link`,
-   `news_image`, `manual_run`, plus `news_item`'s five new columns and `market_context`'s
-   `index_levels_as_of`. The code that fills these arrives with its phase (N1/N3/N4/N6); the tables
-   land now because the seed cannot write into tables that do not exist.
-4. **The seed, grown** — `prisma/fixtures/macro.mjs` (the five household stats, gold deliberately
-   stale so the amber cell has a source) and `prisma/fixtures/news.mjs` (14 clusters, 16 ticker
-   links, 3 cached images). 11 new unit tests lock its promises. 395 app tests green.
+## The three things worth knowing
 
-## The one number in the seed that carries the whole argument
+### 1. Your evening briefing has been running without its AI extraction since P3 — silently
 
-**The biggest mover on the tape ranks third.** SMCI rose 18.4% — the largest move — and it sits at
-position 3 on the front page. The lead is a Fed statement that moved no single stock at all.
+`ANTHROPIC_API_KEY` was set correctly in GitHub on 2026-07-10. Neither nightly workflow ever
+*passed* it to the job. The pipeline is written to degrade quietly when the key is absent — it
+prints "skipping the extraction batch" and carries on — so the key sat there, correct and unused,
+while the brief assembled without the stage that reads the articles.
 
-That is not a quirk of made-up data. Significance is a stated formula (scope, corroboration,
-magnitude, catalyst class, recency), magnitude is one input of five, and it enters in units of the
-ticker's *own* volatility — so an 18% day in a name that routinely swings 6.5% is a big move, not an
-extraordinary one. I computed all 14 scores by hand, wrote the arithmetic into each cluster's
-comment, and a unit test recomputes every one of them. When the pipeline's ranker lands in N4, it
-has an oracle to be checked against instead of only agreeing with itself.
+Fixed in N1 (one `env:` line per workflow). Nothing was lost; the facts always published. But a
+"degrade gracefully" path degraded for days with nobody told, which is the exact disease this plan's
+Part 1 is about.
 
-A feed ranked by size of move is a leaderboard. This is the test that stops it becoming one.
+### 2. The Macro Pulse bug you screenshotted is confirmed — and it was not what it looked like
 
-## Production, as of tonight (read-only probe)
+Production's `market_context` had exactly one row: all three index levels NULL, VIX and the 10-year
+(also FRED) fine, and the run still recorded `fred: ok`. The R0 fix that fetches true index levels is
+correct and *was already in the tree* — it landed seven hours **after** the last pipeline run, so the
+data simply predated it.
 
-Your `market_context` has exactly one row. All three index levels are NULL, VIX and the 10-year are
-fine, and the run still says `fred: ok`. The R0 fix is correct and in the tree — it landed seven
-hours *after* the last pipeline run, so the data simply predates it, and no run has happened since.
-It will heal on the next nightly. **N1's job is that the failure was silent at all.**
+**The real bug was that the failure was silent at all,** and that is what N1 fixed. `fred: ok` was not
+even wrong — FRED *was* reachable. One source key cannot describe two different failures. The index
+levels now have their own key (`fred-indexes`).
 
-## Resumable state
+Worse, and separately: the nightly upsert said `sp500 = EXCLUDED.sp500` — whatever tonight fetched,
+**including NULL**. So one flaky FRED night did not merely fail to update a level; it *overwrote the
+good one*. A successful run was destroying data. That is now impossible.
 
-- Done: **N0** (tagged `nc-0`).
-- Next: **N1 — the macro truth fix.** Pipeline hardening (a `fred-indexes` source-status key, an
-  upsert that never regresses a good level to null, `index_levels_as_of`), the one-label-per-row
-  grammar, the computed provenance footer (C6), the hierarchy order — plus the ANTHROPIC_API_KEY
-  wiring the audit turned up.
-- Provisioning still open: P-1 (R2 media bucket), P-2 (GitHub PAT), P-5 (GoldAPI key). None block.
-- Open for you: Part 0.1 — where the News room lives. Building the default (a sixth tab); it is a
-  one-file flip until N5.
+### 3. The pixel gate could not fail, and I only found out by looking at a picture
+
+The VRT tolerance was `maxDiffPixelRatio: 0.01`. On the desktop Desk's full-page shot (1366×2763 =
+3.77 million pixels) that is a budget of **37,742 pixels allowed to differ**. N1 rewrote the entire
+macro row — reordered it, relabelled it, deleted a chip, replaced the provenance sentence — and the
+desktop baseline **passed unchanged**. The phone shot, having half the pixels and therefore half the
+budget, caught the same change.
+
+The committed desktop baseline was a photograph of the old behaviour: green, committed, and wrong.
+A ratio makes the gate weaker the taller the page gets, which is precisely backwards. It is now an
+absolute `maxDiffPixels: 600`, and the baseline job runs `--update-snapshots=all` (plain
+`--update-snapshots` only rewrites baselines whose comparison *failed*, so a sub-tolerance change is
+neither reported nor re-baselined — the stale picture survives twice over).
+
+All 44 baselines were re-shot. They are now true pictures rather than pictures that had not yet
+failed.
+
+---
+
+## What N0 landed (tag `nc-0`)
+
+1. **`nc-*` wired into CI** — the tag triggers *and* the e2e job's `if` condition, as the phase's
+   first edit. It paid for itself immediately: the very first `nc-0` tag run went red on a real bug
+   (an Invalid Date in a seed fixture) that every local gate had passed.
+2. **The audit** (`docs/nc-evidence/n0-audit.md`) — the plan's diagnosis re-verified against the
+   tree. Correct on every point, plus the Anthropic finding above.
+3. **The whole Appendix C schema, in one migration** — `macro_stat`, `news_cluster`,
+   `catalyst_link`, `news_image`, `manual_run`, plus `news_item`'s five new columns and
+   `market_context.index_levels_as_of`. The tables land now because the seed cannot write into
+   tables that do not exist; the code that fills them arrives with its phase (N3/N4/N6).
+4. **The seed, grown** — `prisma/fixtures/macro.mjs` (five household stats, gold deliberately stale
+   so the amber cell has a source) and `prisma/fixtures/news.mjs` (14 clusters, 16 ticker links, 3
+   generated images).
+
+**The one number in the seed that carries the whole argument: the biggest mover ranks third.** SMCI
+rose 18.4% — the largest move on the tape — and it sits at position 3 on the front page. The lead is
+a Fed statement that moved no single stock at all. Every significance score was computed by hand from
+Appendix E's formula, the arithmetic is written into each cluster's comment, and a unit test
+recomputes all 14 — so N4's ranker gets an oracle instead of only ever agreeing with itself. A feed
+ranked by size of move is a leaderboard; this is the test that stops it becoming one.
+
+## What N1 landed (tag `nc-1`)
+
+- **Pipeline:** the `fred-indexes` source key (partial reads degrade too; non-session days are
+  skipped — an amber lamp that means nothing is how a real one gets ignored) · `macro_levels.py`, so
+  a failed FRED night KEEPS the levels already stored (up to five sessions) and records the session
+  they are for · `index_levels_as_of` · `publish_macro()` · a `macro` run mode with pinned stage
+  lists · a second cron at 6:00am ET, because FRED posts the index closes *after* both nightly jobs
+  run (the Nasdaq Composite ~11:38pm ET, against Job A at 6:37pm) · the Anthropic key wiring.
+- **App:** one proxy mark per row, not two (the chip now says what the number IS — "IWM · ETF price"
+  — and where an index's name and an ETF's price share a row it denies the misreading outright:
+  "SPY · ETF price — not the index level") · the small-caps slot no longer claims "Russell 2000" at
+  all, because FRED deleted every free Russell series in 2019 and that row can never carry that
+  index's level · the provenance footer is COMPOSED from the rows that actually rendered (C6) · every
+  delta carries "· 1D" and breadth finally states when it was measured (C2) · the risk pair leads at
+  every width.
+
+**Counts:** 409 app tests · 240 pipeline tests · 18 drift rules · all budgets hold.
+
+---
+
+## Resumable state — start here
+
+- **Done:** N0 (`nc-0`), N1 (`nc-1`).
+- **Next: N2 — windows, density, the grid** (plan Parts 4 + 5). The pipeline strip replacing module
+  00, `lib/freshness.ts`, the module-07 and sources-footer shrink, the desktop grid contract (every
+  room's column map + the new `wide` 1536 breakpoint + VRT viewports), the Part 5.1 window-label
+  sweep across every surface, the deck window-token test, and `RangeControl` + the ticker ranges +
+  the C3 negative tests.
+- **Carried into N2 deliberately:** the *e2e* degraded-macro variant. It needs a seeded-clock/param
+  mechanism that N2 builds anyway for the strip's aging/dead states — same machinery, built once.
+  The degraded macro state is already covered by unit tests (the provenance composer has a property
+  test proving the line changes with the rows) and component tests.
+- **Provisioning still open (none block):** P-1 (R2 media bucket), P-2 (GitHub PAT), P-5 (GoldAPI
+  key). Each has a specced fixture path.
+- **Open for you:** Part 0.1 — where the News room lives. I am building the plan's default (a sixth
+  tab) and it stays a one-file flip until N5. See QUESTIONS-FOR-BISHANT.md.
 
 ---
 
