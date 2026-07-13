@@ -501,7 +501,7 @@ Nothing needed from you.
 
 ---
 
-## Q-N4-1 — [FYI, and the one thing in N4 I want you to actually read]
+## Q-N4-1 — [FYI · ANSWERED IN N5 by amending the copy, not the ranking] ✅
 
 **The Front Page works, and its ranking signal is thinner than the plan assumed. You should know this
 before you look at the room in N5.**
@@ -552,3 +552,57 @@ nearly every card the moment a bucket exists. And flipping it live is a secret p
 code change.
 
 **Nothing is blocked.** N5 builds the room against the L3/L4 rungs, which it must do properly anyway.
+
+---
+
+## Q-N5-1 — [FYI] the sixth tab is now real, and it is the one thing here you may simply dislike
+
+**News is a tab.** The bar is now Desk · News · Scans · Paper · Track · Academy — six rooms, ~65px
+each on your phone. That is above the 44px touch floor with the 10px labels still legible, and it is
+one more than the five iOS convention tops out at. The plan recommended it (Part 0.1, option A) and
+no DECISIONS line said otherwise, so I built the default.
+
+**If it feels crowded, this is a one-file change** (`components/desk/TabBar.tsx`). Removing the tab
+costs you one tap, not the room: the Desk's front-page module (module 08 — top 3 stories, its own
+stated cut, a doorway) ships in both options and is already there.
+
+**One thing you will notice immediately: the Desk's icon changed.** It gave up the newspaper glyph
+to the room actually titled "Front page" and took a sunrise. A bar with a room called "Front page"
+sitting next to a differently-named room wearing the newspaper icon is a bar arguing with itself,
+and the Desk *is* the morning ritual. Assumption made and marked; say the word and it goes back.
+
+---
+
+## Q-N5-2 — [FYI] the Front Page has no photographs yet, and it is not broken
+
+Every card on the live room renders the **generated catalyst card** — the event's own name set large
+in the display serif, with its tickers beneath. That is the designed L4 rung, and it is a first-class
+outcome rather than an empty state. It is also, today, the *entire* room.
+
+The reason is still **P-1: there is no media bucket.** The image pipeline is built and tested; it
+records `news-images: not_configured` on every run and stores nothing.
+
+**Every article in the recorded feed carried a publisher image (160 of 160)**, so L1 will answer for
+nearly every card the moment a bucket exists — and turning it on is **a secret plus one environment
+variable**, not a code change (`NEXT_PUBLIC_MEDIA_BASE` feeds both the pipeline's URL construction and
+the app's image allowlist, so the two cannot disagree about where images live).
+
+Worth looking at with your own eyes and telling me whether the claim holds: **does a text-treatment
+card sitting next to a photo card read as an editorial choice, or as a failure?** The styleguide
+(`/styleguide`, section 14) renders all four rungs side by side precisely so you can judge that. It is
+the one design claim in this phase that no test can hold.
+
+---
+
+## Q-N5-3 — [FYI] the ranking still ties, and the room now says so out loud
+
+Following Q-N4-1: I did **not** invent a tiebreaker, and the header sentence was rewritten so it does
+not promise a ranking the data cannot support. It now reads:
+
+> *"Ordered by catalyst significance: how broad the event is, how many separate outlets carried it,
+> and how large a move it explains. Stories that score the same tie, and ties run oldest first."*
+
+On a macro day, the real feed genuinely produces ten-plus stories at exactly the same score. The page
+ties, and it admits it. The three things that would actually strengthen the signal (a third news
+provider, a paid Marketaux tier, or a wider instrument universe) are still listed under Q-N4-1 — each
+is a real cost, and none is a bug fix.

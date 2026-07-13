@@ -94,11 +94,25 @@ def collect_batch(
         sleep(poll_interval)
 
 
-def sync_extract(client: Any, items: Iterable[dict], *, model: str) -> dict[str, ExtractResult]:
-    """Extract a small remainder synchronously, one call per article. Used by Job B when the batch
-    was cancelled at the cutoff with items still unprocessed. A failed article is skipped."""
+def sync_extract(
+    client: Any,
+    items: Iterable[dict],
+    *,
+    model: str,
+    out_of_time: Callable[[], bool] | None = None,
+) -> dict[str, ExtractResult]:
+    """Extract a small remainder synchronously, one call per article. A failed article is skipped.
+
+    `out_of_time`, when given, is checked BEFORE each call and stops the loop when it returns True.
+    A caller with a wall-clock budget uses it to give up on the tail rather than run past its
+    deadline — the Front Page's newsdesk does exactly that, because its prose must never be able to
+    hold the night's FACTS hostage. Without a budget the loop runs to the end, which is Job B's
+    behaviour and is correct there (the remainder is small and the briefing needs it).
+    """
     extracts: dict[str, ExtractResult] = {}
     for item in items:
+        if out_of_time is not None and out_of_time():
+            break
         doc_id = str(item["id"])
         message = client.messages.create(
             model=model,

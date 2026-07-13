@@ -1,6 +1,6 @@
 # PROGRESS.md — resumable state
 
-# NOW: the News & Control build (N0–N7). **N0–N4 are done and tagged.** Next: N5.
+# NOW: the News & Control build (N0–N7). **N0–N5 are done and tagged.** Next: N6.
 
 **Where I am.** N0–N4 are complete and tagged `nc-0` … `nc-4`. Nothing is blocked. The next phase is
 **N5 — the Front Page UI** (plan Part 7.7, 7.8, 7.10's UI half, Desk module 08, the nav wiring).

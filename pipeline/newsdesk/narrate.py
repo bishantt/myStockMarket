@@ -31,9 +31,10 @@ outcome here is COUNTED, the counts travel back to the job, and the night prints
 
 from __future__ import annotations
 
+import time
 from dataclasses import dataclass, field
 from datetime import date
-from typing import Any, Iterable
+from typing import Any, Callable, Iterable
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -49,6 +50,20 @@ AFFECTED_MAX_CHARS = 120
 
 # One note per story for the whole page; the page is capped at 20 stories upstream.
 _MAX_TOKENS = 4096
+
+# How long Stage A may spend reading articles before it gives up on the tail.
+#
+# Job A runs at 22:37 UTC and Job B at 00:25 UTC, so there is nearly two hours of slack — but slack
+# is not a licence to use it. The facts are already computed when this stage starts, and every extra
+# minute here is a minute the front page is not published for a reason nobody would accept: a
+# context line. Six minutes reads a healthy night's 60 articles with room to spare, and caps the
+# damage of a bad one.
+EXTRACT_BUDGET_SECONDS = 360.0
+
+# The per-call bound on the model client. The SDK's default is TEN MINUTES with retries on top,
+# which is how 60 sequential calls became a twenty-minute stage on the first live run.
+CALL_TIMEOUT_SECONDS = 30.0
+CALL_MAX_RETRIES = 2
 
 # The Stage B-mini system prompt, verbatim from Appendix D.
 _SYSTEM = (
@@ -124,18 +139,20 @@ class NarrationResult:
     silent: int = 0
     extracted: int = 0
     extract_attempted: int = 0
+    extract_timed_out: bool = False
     narration_failed: bool = False
 
     def summary(self) -> str:
         """One plain-English line for the night's log. It states what was attempted as well as what
         landed, because "0 notes" and "0 notes out of 20 attempted" are different nights."""
+        gave_up = " (gave up on the rest — out of time)" if self.extract_timed_out else ""
         if self.narration_failed:
             return (
-                f"narration: {self.extracted}/{self.extract_attempted} extracted, "
+                f"narration: {self.extracted}/{self.extract_attempted} extracted{gave_up}, "
                 f"the narrator failed its schema twice — the page publishes without prose"
             )
         return (
-            f"narration: {self.extracted}/{self.extract_attempted} extracted, "
+            f"narration: {self.extracted}/{self.extract_attempted} extracted{gave_up}, "
             f"{self.narrated} notes written, {self.dropped} dropped by the gate, "
             f"{self.silent} left blank by the narrator"
         )
@@ -323,6 +340,8 @@ def run_narration(
     run_date: date,
     model_extract: str,
     model_synth: str,
+    clock: Callable[[], float] = time.monotonic,
+    extract_budget: float = EXTRACT_BUDGET_SECONDS,
 ) -> NarrationResult:
     """
     Both stages, end to end: read the top stories, write their context lines, gate every line.
@@ -335,12 +354,27 @@ def run_narration(
     narration call is a page without prose; a flagged note is a story without a line. In every one of
     those the facts — the headline, the companies, the numbers, the order — publish exactly as they
     would have. That is the whole reason the model runs last.
+
+    AND NOTHING HERE MAY HOLD THE NIGHT OPEN. Stage A makes up to 60 sequential calls, and the
+    Anthropic SDK's default per-call timeout is TEN MINUTES with retries on top — so one slow night
+    at the provider could keep the publish waiting for hours while the facts, already computed, sat
+    in memory. The first live run sat in this stage for over twenty minutes. The prose is the least
+    important thing in the pipeline; it does not get to make the page late. When the budget is gone
+    the extractor stops, the remaining stories go to the narrator with their headlines, and the page
+    ships. The night says how many it gave up on.
     """
-    extracts = sync_extract(client, [story.article for story in stage_a], model=model_extract)
+    started = clock()
+    extracts = sync_extract(
+        client,
+        [story.article for story in stage_a],
+        model=model_extract,
+        out_of_time=lambda: clock() - started >= extract_budget,
+    )
 
     result = NarrationResult()
     result.extracted = len(extracts)
     result.extract_attempted = len(stage_a)
+    result.extract_timed_out = len(extracts) < len(stage_a) and clock() - started >= extract_budget
     result.extracts = {
         story.cluster_id: extracts[story.article["id"]].model_dump(mode="json")
         for story in stage_a
@@ -372,6 +406,7 @@ def run_narration(
     gated.extracts = result.extracts
     gated.extracted = result.extracted
     gated.extract_attempted = result.extract_attempted
+    gated.extract_timed_out = result.extract_timed_out
     return gated
 
 

@@ -37,7 +37,14 @@ from catalyst_ingest import build_catalyst_fetcher
 from config import Settings, load_settings
 from macro_stats import MacroStatRow
 from newsdesk.ingest import FINNHUB_MARKET_CATEGORIES, MARKETAUX_PAGES, build_night
-from newsdesk.narrate import NarrationResult, NoteDecision, Story, run_narration
+from newsdesk.narrate import (
+    CALL_MAX_RETRIES,
+    CALL_TIMEOUT_SECONDS,
+    NarrationResult,
+    NoteDecision,
+    Story,
+    run_narration,
+)
 from newsdesk.rank import TickerMove
 from newsdesk.resolve import Instrument as NewsInstrument
 from newsdesk.resolve import TickerResolver
@@ -906,7 +913,15 @@ def _narrate_front_page(
 
     try:
         result = run_narration(
-            anthropic.Anthropic(api_key=settings.anthropic_api_key),
+            # BOUNDED, and the default is not. The SDK times a call out after TEN MINUTES and then
+            # retries it, so 60 sequential extracts could hold the publish open for hours — which is
+            # what the first live run started doing. The facts are already computed by the time this
+            # runs; they do not get to wait on a context line.
+            anthropic.Anthropic(
+                api_key=settings.anthropic_api_key,
+                timeout=CALL_TIMEOUT_SECONDS,
+                max_retries=CALL_MAX_RETRIES,
+            ),
             stage_a=stories,
             stage_b_ids=[cluster.id for cluster in night.stage_b_clusters],
             moves=moves,

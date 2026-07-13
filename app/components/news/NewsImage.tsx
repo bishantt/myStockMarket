@@ -80,11 +80,23 @@ const SIZES: Record<Slot, string> = {
   story: "(min-width: 1024px) 720px, 100vw",
 };
 
-/** The frame every rung shares. The 1.91:1 ratio is the one the publishers themselves shoot for. */
+/**
+ * The frame every rung shares. The 1.91:1 ratio is the one the publishers themselves shoot for.
+ *
+ * THE HEIGHT CAP IS NOT A STYLE PREFERENCE — it is the lead story's headline. A 1.91:1 image at a
+ * phone's 390px is a comfortable 204px tall. The same ratio across a 1366px desktop column is **715
+ * pixels**, and the first VRT shot of this room showed exactly what that costs: above the fold there
+ * was the masthead, the filters, and a photograph — and nothing else. **The lead story's own
+ * headline was below the fold.** A front page whose lead headline you have to scroll to find is not
+ * a front page; it is a poster.
+ *
+ * So the ratio governs where it is right (the phone) and the height is capped where it is not.
+ * `object-cover` crops the overflow, and the generated rungs centre their text, so both survive it.
+ */
 const FRAME: Record<Slot, string> = {
-  lead: "aspect-[1.91/1] w-full",
+  lead: "aspect-[1.91/1] w-full lg:max-h-[380px]",
   thumb: "aspect-[4/3] w-28 shrink-0",
-  story: "aspect-[1.91/1] w-full",
+  story: "aspect-[1.91/1] w-full lg:max-h-[420px]",
 };
 
 export function NewsImage({

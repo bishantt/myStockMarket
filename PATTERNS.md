@@ -218,3 +218,43 @@ negotiating posture led the page because it contained the words "trade talks".
 
 Six real bugs in this build have been found this way and by no other means. The tests check that the
 machine does what it was told. Reading the output checks whether what it was told was right.
+
+---
+
+## A guard that cannot see the failure it was written for
+
+Three of this build's worst bugs shared one shape: **the observable the test looked at was correct,
+and the thing that was broken was not observable from it.**
+
+- The journal's "Saving…" bug (F4) waited on a marker that renders in the form's INITIAL state, so
+  the assertion was already true before the write happened.
+- The Front Page's photographs (N5) rendered as broken-image icons while `<img>` was present,
+  visible, correctly sized, and carrying the right `src`. **`naturalWidth` is the only thing in a
+  browser that knows an image from a broken one**, and nothing was asking it.
+- `_json_safe` (N5) returned a dict that *looked* right and could not be serialized. A shape
+  assertion passes; `json.dumps` is what fails.
+
+The pattern, and the cure: **assert the CONSEQUENCE, not the shape.** Did the textarea clear (not:
+does a "Saved" marker exist). Did the image decode (not: is there an `<img>`). Does the payload
+actually serialize (not: does it have the right keys). A shape is what the code produced; a
+consequence is what the reader gets.
+
+---
+
+## The narrator's failure mode is SILENCE, and silence is indistinguishable from working
+
+The Front Page's context line is null whenever the verification gate deleted it, and a null prints
+NOTHING on the card — by design (P9: never a placeholder).
+
+Which means a gate that was too strict, a Stage B that never ran, an extractor that read the wrong
+stories, or a narrator with genuinely nothing to add **all produce exactly the same page.** Nothing
+on screen can tell them apart, and neither can any test that only looks at the page.
+
+Two of N5's bugs lived precisely there: the gate turning "2.1x" into a phantom "2" (which would have
+deleted every honest sentence about volume), and the extractor never reading the eight biggest
+stories of the night (which would have left the top of the page narrated from headlines alone).
+
+**So every outcome is COUNTED, and the night prints the counts**: how many were attempted, extracted,
+written, dropped by the gate, and left blank by the narrator. "0 notes" and "0 notes out of 20
+attempted" are different nights, and only one of them is healthy. A count is the only instrument that
+can see an absence.

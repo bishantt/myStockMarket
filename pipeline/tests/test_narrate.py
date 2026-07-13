@@ -435,3 +435,51 @@ def test_a_cashtag_for_a_ticker_we_do_not_carry_is_flagged() -> None:
 
     assert result.decisions["c1"].why_it_matters is None
     assert result.decisions["c1"].verification["flags"][0]["kind"] == "ticker"
+
+
+# ----- the narrator may never hold the night open (N5, found in production) -----
+#
+# The first live news run sat in Stage A for over twenty minutes. The Anthropic SDK defaults to a
+# 600-SECOND timeout with retries, and Stage A makes up to 60 sequential calls — so one slow provider
+# night could hold the publish open for hours, and the FACTS would be held hostage to the PROSE.
+#
+# That is backwards. The prose is the least important thing in the pipeline: the module runs last
+# precisely so that everything before it can publish without it. So the extraction stage takes a
+# wall-clock budget, and when the budget is gone it stops extracting and lets the page ship.
+
+def test_extraction_stops_when_the_budget_is_gone_and_the_page_still_ships() -> None:
+    clock = iter([0.0, 0.0, 5.0, 99.0, 99.0, 99.0, 99.0, 99.0])
+    client = FakeClient(_EXTRACT_JSON, _EXTRACT_JSON, _noteset_json())
+
+    result = _run(
+        client,
+        stage_a=[_story(), _story("c2", "a2"), _story("c3", "a3")],
+        stage_b_ids=["c1"],
+        clock=lambda: next(clock),
+        extract_budget=10.0,
+    )
+
+    # It read what it could and gave up on the rest — rather than reading all three at any cost.
+    assert result.extract_attempted == 3
+    assert result.extracted < 3
+    assert result.extract_timed_out is True
+
+    # And the page still publishes, with its facts and its note.
+    assert result.decisions["c1"].why_it_matters is not None
+    assert "gave up" in result.summary()
+
+
+def test_a_budget_that_is_never_exhausted_reads_everything() -> None:
+    """The negative control: the budget must not be silently truncating a healthy night."""
+    client = FakeClient(_EXTRACT_JSON, _EXTRACT_JSON, _noteset_json())
+
+    result = _run(
+        client,
+        stage_a=[_story(), _story("c2", "a2")],
+        stage_b_ids=["c1"],
+        clock=lambda: 0.0,
+        extract_budget=600.0,
+    )
+
+    assert result.extracted == 2
+    assert result.extract_timed_out is False
