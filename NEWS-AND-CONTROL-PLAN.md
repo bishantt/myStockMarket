@@ -100,10 +100,12 @@ that is your call, not mine. The options, honestly costed:
 | B — News behind a Desk doorway | The Desk gains a bounded "Front page" module (top 3 catalysts + count line) linking to the full `/news` room; the phone tab bar stays five rooms; desktop RoomNav still gains the News pill (it has space). | On the phone, News is two taps instead of one. A "first-class section" that is one level down on the device the user actually reads. |
 | C — News replaces Track in the bar | Track record moves behind the gear with Settings. | Rejected out of hand unless you order it: the track record is the app's public honesty surface — demoting it to reach a news feed reads exactly backwards. Listed only so the rejection is on the record. |
 
-**Default: A.** Rationale: the commission says first-class; the Desk module (a bounded top-3
-"Front page" preview) ships in BOTH options anyway (Part 7.6), so option B's only difference
-is removing the tab — a one-file change (`TabBar.tsx`) that stays cheap to flip at any time.
-Veto hook: a user line in DECISIONS.md or an answer here; N5 reads it before wiring the bar.
+**Default: A.** Rationale: the commission says first-class; the reference apps the user
+supplied both put News in the bottom bar (Part 7.1's study note); and the Desk module (a
+bounded top-3 "Front page" preview) ships in BOTH options anyway (Part 7.6), so option B's
+only difference is removing the tab — a one-file change (`TabBar.tsx`) that stays cheap to
+flip at any time. Veto hook: a user line in DECISIONS.md or an answer here; N5 reads it
+before wiring the bar.
 
 ### 0.2 The calls that came closest to needing you — decided, logged, vetoable
 
@@ -784,15 +786,44 @@ thing it replaces: a salience feed. That is what C1, C4, C9, C10 and the signifi
 formula are for. If those rules ever feel like they are fighting the section, the section
 is drifting, and the rules win.
 
-**A note on the commissioned reference images.** The commission points at mobile-app
-reference screenshots "in the reference folder." At authoring time the repo's only
-reference material was the redesign's own Figma export (`FigmaDesignRef/`), whose one
-screenshot carries the relevant language anyway — image-led cards, category filter chips,
-dense mobile composition, and a "Top Movers" rail that is precisely the content model this
-plan rejects. The news-app screenshots the commission describes ("Top Gainers Today" /
-"Top Losers Today") were not in the tree. N5 opens by checking the folder again; if the
-user has added them, study them for visual grammar under the same standing rule — take the
-language, reject the leaderboard. Nothing below depends on their presence. [FYI logged.]
+**The commissioned reference images (`news/` — three screenshots, studied 2026-07-12).**
+Two are one dark-mode stocks app; the third is a three-screen sage-toned editorial app.
+Per the commission: visual and interaction language only, content model rejected. The
+record of what we take and what we refuse, each with its reason:
+
+*Taken (the visual grammar):*
+- **The news-row grammar** (screens 1–2): muted category kicker → two-line bold headline
+  → source + relative time → right-aligned rounded thumbnail, hairline-separated rows.
+  Part 7.7's card anatomy is this grammar translated into our tokens (catalyst + sector
+  Tags as the kicker line, serif headline, our 4:3 thumb in a uniform frame).
+- **Filter pills with a filled active state** — their chip rows are exactly the
+  interaction Part 7.7 specs; ours scroll on phone rather than wrap (10 catalyst + 14
+  sector chips wrapped would eat half a viewport) and restate active filters in the count
+  line.
+- **The lead-card pattern** (screen 3): one full-width image card leading a list — Part
+  7.7's lead slot.
+- **Source identity worn proudly** (Bloomberg logo + name + date on their lead card) —
+  our source + timestamp line, and the L3 favicon treatment's precedent.
+- **The key figure set heavier inside the headline** (screen 3: "Google's **$5.3B**
+  revenue…") — adopted, with our honesty twist: in a cluster headline, a number renders
+  emphasized (mono, semibold) ONLY when it is one of the cluster's gate-verified
+  key_numbers; unverified numbers get no typographic promotion. One sentence added to
+  7.7's card anatomy.
+- **News as a first-class bottom-bar tab** (screens 1–2) — corroborates Part 0.1's
+  default A.
+
+*Refused (the content model, each refusal already a ruling):*
+- "Top Gainers Today" / "Top Losers Today" ticker rails — the commission's own named
+  target; C1 and the Research Report's −4.7%/20d evidence.
+- "Popular companies" bubble clusters sized by attention — crowd-salience framing (P6/C1).
+- Analyst **price-target panels** (high/median/average vs current) — point predictions
+  and composite analyst aggregates, banned twice over (P1, P3).
+- "Live conversation" social layer — social input into a market surface (P6).
+- The notification bell — C10; this room never pushes.
+- 1D/5D chart ranges — theirs is an intraday app; ours is EOD and says so (5.3's rigor
+  table).
+- Bookmark/save buttons and audio "Play" chips — not dishonest, just engagement surface
+  this product deliberately does not grow; logged as out of scope rather than forbidden.
 
 ### 7.2 Information architecture
 
@@ -911,11 +942,14 @@ story page). All inserts land in the same Job-A publish transaction.
   press-time/provenance card, the filter state). Pagination by "Page N of M" (M6) at 20
   clusters/page; Today rarely exceeds one page.
 - **Card anatomy (every card, both tiers):** image (7.9) · catalyst-type Tag + sector Tag ·
-  headline (serif, 2-line clamp with title attr for overflow) · source + `{h}h ago` time
-  (absolute date past 24h — and the timestamp is the ARTICLE's, the card's as-of is the
-  room's press time) · ticker chips (≤3, then "+N", each chip carrying its `+8.2% · 1D`
-  move) · the why-it-matters line in italic prose (or nothing, if the gate dropped it —
-  never a placeholder) · corroboration whisper (`3 sources`) in the footer.
+  headline (serif, 2-line clamp with title attr for overflow; a number inside the headline
+  renders emphasized in mono ONLY when it is one of the cluster's gate-verified
+  key_numbers — the reference apps' bolded-figure treatment, earned by verification) ·
+  source + `{h}h ago` time (absolute date past 24h — and the timestamp is the ARTICLE's,
+  the card's as-of is the room's press time) · ticker chips (≤3, then "+N", each chip
+  carrying its `+8.2% · 1D` move) · the why-it-matters line in italic prose (or nothing,
+  if the gate dropped it — never a placeholder) · corroboration whisper (`3 sources`) in
+  the footer.
 - **"Moved without a story" (C9):** after the feed (rail card on desktop): up to 3 movers
   with no cluster, each as symbol + move + the standing noise line. Never images, never
   ranked among catalysts.
