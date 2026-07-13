@@ -1,63 +1,124 @@
 """
-Tests for resolve.py — the nightly signal resolver (plan P4 step 5, §6.2).
+Tests for ticker resolution (N4).
 
-The pure outcome classifier is tested directly. The DB flow (one resolution per signal; a rerun
-produces no second row) runs against the throwaway Postgres via the `db` fixture, and skips locally
-without TEST_DATABASE_URL — the insert-only track record must fill within a day of a horizon passing.
+The false-positive tests are the ones that matter. A missed link costs a card one chip; a wrong link
+prints a false statement about a company underneath a real headline and beside a real price move.
+Every case below where the resolver is expected to find NOTHING is a case where a naive
+implementation finds something, and would put it on the front page.
 """
 
-from __future__ import annotations
+import pytest
 
-from datetime import date
-
-import resolve
+from newsdesk.resolve import Instrument, TickerResolver, canonical_name
 
 
-def test_classify_outcome_hit_miss_na():
-    assert resolve.classify_outcome(100.0, 110.0) == "hit"   # price higher → hit
-    assert resolve.classify_outcome(100.0, 90.0) == "miss"   # lower → miss
-    assert resolve.classify_outcome(100.0, 100.0) == "miss"  # flat is not "higher" → miss
-    assert resolve.classify_outcome(None, 110.0) == "na"     # no entry price → cannot resolve
-    assert resolve.classify_outcome(100.0, None) == "na"     # no exit price → cannot resolve
+UNIVERSE = [
+    Instrument("AAPL", "Apple Inc."),
+    Instrument("NVDA", "NVIDIA Corporation"),
+    Instrument("GM", "General Motors Company"),
+    Instrument("BAC", "Bank of America Corporation"),
+    Instrument("TGT", "Target Corporation"),
+    Instrument("GPS", "Gap Inc."),
+    Instrument("V", "Visa Inc."),
+    Instrument("AI", "C3.ai, Inc."),
+    Instrument("FSK", "FS KKR Capital Corp."),
+    Instrument("SBUX", "Starbucks Corporation"),
+    Instrument("PFE", "Pfizer Inc."),
+]
 
 
-def _insert_signal(db, *, sid: str, symbol: str, fired: date, resolves: date) -> None:
-    with db.cursor() as cur:
-        cur.execute(
-            "INSERT INTO signal_log (id, fired_date, symbol, pattern_key, horizon_days, resolves_on) "
-            "VALUES (%s, %s, %s, %s, %s, %s)",
-            (sid, fired, symbol, "unusual-volume", 10, resolves),
-        )
-    db.commit()
+@pytest.fixture
+def resolver() -> TickerResolver:
+    return TickerResolver(UNIVERSE)
 
 
-def test_resolver_writes_one_row_per_signal_and_is_idempotent(db):
-    _insert_signal(db, sid="sig-1", symbol="ACME", fired=date(2026, 6, 1), resolves=date(2026, 6, 15))
-
-    prices = {("ACME", date(2026, 6, 1)): 100.0, ("ACME", date(2026, 6, 15)): 112.0}
-    price_at = lambda symbol, day: prices.get((symbol, day))
-
-    count = resolve.resolve_due(db, price_at, as_of=date(2026, 6, 20))
-    assert count == 1
-    rows = db.execute("SELECT signal_id, outcome FROM signal_resolution").fetchall()
-    assert rows == [("sig-1", "hit")]
-
-    # A rerun resolves nothing new — the horizon is already recorded (insert-only, one per signal).
-    again = resolve.resolve_due(db, price_at, as_of=date(2026, 6, 20))
-    assert again == 0
-    assert db.execute("SELECT count(*) FROM signal_resolution").fetchone()[0] == 1
+def test_strips_the_legal_suffixes_a_headline_never_prints():
+    assert canonical_name("Apple Inc.") == "apple"
+    assert canonical_name("NVIDIA Corporation") == "nvidia"
+    assert canonical_name("Bank of America Corporation") == "bank of america"
+    assert canonical_name("Alphabet Inc. Class A") == "alphabet"
 
 
-def test_resolver_skips_signals_whose_horizon_has_not_passed(db):
-    _insert_signal(db, sid="sig-future", symbol="ACME", fired=date(2026, 6, 1), resolves=date(2026, 7, 1))
-    price_at = lambda symbol, day: 100.0
-    count = resolve.resolve_due(db, price_at, as_of=date(2026, 6, 20))  # before resolves_on
-    assert count == 0
+def test_an_exchange_qualified_ticker_is_the_strongest_evidence_there_is(resolver: TickerResolver):
+    """The article linked itself, in the one format that cannot mean anything else."""
+    assert resolver.resolve("FS KKR Capital: 5 Reasons I'm Staying Away (NYSE:FSK)") == ("FSK",)
+    assert resolver.resolve("Apple (NASDAQ: AAPL) has defied expectations") == ("AAPL",)
 
 
-def test_resolver_records_na_when_a_price_is_missing(db):
-    _insert_signal(db, sid="sig-na", symbol="GONE", fired=date(2026, 6, 1), resolves=date(2026, 6, 15))
-    price_at = lambda symbol, day: None  # e.g. a delisting — no bar to resolve against
-    count = resolve.resolve_due(db, price_at, as_of=date(2026, 6, 20))
-    assert count == 1
-    assert db.execute("SELECT outcome FROM signal_resolution").fetchone()[0] == "na"
+def test_finds_multi_word_and_ordinary_company_names(resolver: TickerResolver):
+    assert resolver.resolve("Bank of America raised its dividend") == ("BAC",)
+    assert resolver.resolve("Nvidia's data-center revenue climbed") == ("NVDA",)
+    assert resolver.resolve("General Motors is cutting shifts") == ("GM",)
+    assert resolver.resolve("Pfizer wins approval for the treatment") == ("PFE",)
+
+
+def test_a_company_named_after_an_ordinary_word_is_not_matched_by_that_word(resolver: TickerResolver):
+    """
+    THE CLASS OF BUG THIS FILE EXISTS FOR.
+
+    Every one of these headlines uses an ordinary English word that is also a listed company's name.
+    A resolver that matched on the name alone would put Target, Gap and Visa on the front page, each
+    attached to a story that is not about them, each wearing a real price move.
+    """
+    assert resolver.resolve("Analysts raised their target price on the stock") == ()
+    assert resolver.resolve("The gap between guidance and consensus widened") == ()
+    assert resolver.resolve("Visa applications for skilled workers fell") == ()
+
+
+def test_an_ambiguous_name_still_links_when_the_article_names_its_ticker(resolver: TickerResolver):
+    """The stoplist blocks the WEAK rule, not the strong one. Evidence beats a blanket ban."""
+    assert resolver.resolve("Target (NYSE: TGT) beat on comparable sales") == ("TGT",)
+    assert resolver.resolve("Visa (NYSE: V) lifted its buyback") == ("V",)
+
+
+def test_the_ai_collision_which_is_the_sharpest_one_on_this_feed(resolver: TickerResolver):
+    """
+    "AI" is simultaneously this decade's biggest market theme and a real listed company (C3.ai).
+
+    A bare-uppercase rule that accepted two-letter tokens would tag every artificial-intelligence
+    story in the feed as a story about C3.ai — dozens of cards a night, each one false, each one
+    perfectly plausible. So bare symbols must be three characters or more, and "AI" links only when
+    an article names the exchange.
+    """
+    assert resolver.resolve("AI spending is reshaping the semiconductor market") == ()
+    assert resolver.resolve("Nvidia says AI demand is accelerating") == ("NVDA",)
+    assert resolver.resolve("C3.ai (NYSE: AI) reported earnings") == ("AI",)
+
+
+def test_common_acronyms_are_never_read_as_tickers(resolver: TickerResolver):
+    """The feed is full of CEO, IPO, GDP, FDA and SEC."""
+    assert resolver.resolve("The CEO told the SEC the IPO would proceed") == ()
+    assert resolver.resolve("FDA approval sent the sector higher") == ()
+
+
+def test_a_bare_uppercase_symbol_links_when_it_is_long_enough_to_be_unambiguous(resolver: TickerResolver):
+    assert resolver.resolve("AAPL slipped 2% after the note") == ("AAPL",)
+    # Symbols come back in the order the article mentions them — a stable, explainable order that
+    # owes nothing to any notion of importance. Ranking the tickers on a card is rank.py's job, and
+    # it is done from price evidence, not from who got named first.
+    assert resolver.resolve("SBUX and NVDA both closed higher") == ("SBUX", "NVDA")
+
+
+def test_a_story_about_nobody_resolves_to_nobody(resolver: TickerResolver):
+    """
+    The Fed decision, the jobs print, the tariff ruling. These name no company, and the Front Page
+    has a designed shape for exactly this story — it does not need a ticker invented for it.
+    """
+    assert resolver.resolve("The Federal Reserve held rates steady") == ()
+    assert resolver.resolve("Jobless claims fell to a four-week low") == ()
+    assert resolver.resolve("") == ()
+
+
+def test_two_companies_that_canonicalize_to_the_same_name_match_neither():
+    """An ambiguous name is not evidence, and choosing one of the two would be inventing the link."""
+    twins = [Instrument("ACME", "Acme Corporation"), Instrument("ACM2", "Acme Inc.")]
+    r = TickerResolver(twins)
+
+    assert r.resolve("Acme announced a buyback") == ()
+    # …and the explicit ticker still works, because it names which one.
+    assert r.resolve("Acme (NASDAQ: ACME) announced a buyback") == ("ACME",)
+
+
+def test_the_same_symbol_is_never_listed_twice(resolver: TickerResolver):
+    """Name and ticker both present is the normal case, not a reason to print the chip twice."""
+    assert resolver.resolve("Apple (NASDAQ: AAPL) said AAPL buybacks continue") == ("AAPL",)
