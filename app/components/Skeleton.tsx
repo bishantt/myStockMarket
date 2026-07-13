@@ -48,7 +48,7 @@ export function Skeleton({ variant, lines = 3, height = 200, className }: Skelet
       <span
         data-slot="figure"
         aria-hidden="true"
-        className={cx("block font-mono text-num-lg leading-none text-faint", className)}
+        className={cx("block font-mono text-num-lg leading-none text-muted", className)}
       >
         —
       </span>

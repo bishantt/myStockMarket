@@ -104,7 +104,7 @@ export function CommandPalette({ items }: { items: PaletteItem[] }) {
             onKeyDown={onInputKey}
             placeholder={copy.palette.placeholder}
             aria-label="Search"
-            className="w-full bg-transparent py-3 font-ui text-input-touch text-ink placeholder:text-faint focus:outline-none md:text-sm"
+            className="w-full bg-transparent py-3 font-ui text-input-touch text-ink placeholder:text-muted focus:outline-none md:text-sm"
           />
         </div>
 

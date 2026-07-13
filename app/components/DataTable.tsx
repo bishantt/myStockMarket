@@ -108,7 +108,7 @@ function Cell<Row>({ column, row }: { column: Column<Row>; row: Row }) {
 
   const numeric = column.kind !== "text";
   return (
-    <span className={cx(numeric ? "font-mono tabular-nums" : "font-ui", value === null && "text-faint")}>
+    <span className={cx(numeric ? "font-mono tabular-nums" : "font-ui", value === null && "text-muted")}>
       {formatCell(value, column.kind)}
     </span>
   );
@@ -202,7 +202,7 @@ export function DataTable<Row>({
                 <span className="flex flex-wrap items-center gap-x-3 gap-y-1 pt-1 font-mono text-2xs text-muted">
                   {line2.map((c) => (
                     <span key={c.key} className="flex items-center gap-1">
-                      <span className="text-faint">{c.header}</span>
+                      <span className="text-muted">{c.header}</span>
                       <Cell column={c} row={row} />
                     </span>
                   ))}
@@ -259,18 +259,18 @@ export function DataTable<Row>({
                       >
                         {column.header}
                         {/* The arrow is a visible affordance, not a hover-only one. */}
-                        <span aria-hidden="true" className="text-faint">
+                        <span aria-hidden="true" className="text-muted">
                           {active ? (sortDir === "asc" ? "▲" : "▼") : ""}
                         </span>
                         {active && isDefaultOrder && defaultSort.label ? (
-                          <span className="font-normal normal-case tracking-normal text-faint">· {defaultSort.label}</span>
+                          <span className="font-normal normal-case tracking-normal text-muted">· {defaultSort.label}</span>
                         ) : null}
                       </button>
                     ) : (
                       <div className={cx("flex min-h-11 items-center px-2 py-2", alignRight ? "justify-end" : "justify-start")}>
                         {column.header}
                         {active && isDefaultOrder && defaultSort.label ? (
-                          <span className="pl-1 font-normal normal-case tracking-normal text-faint">· {defaultSort.label}</span>
+                          <span className="pl-1 font-normal normal-case tracking-normal text-muted">· {defaultSort.label}</span>
                         ) : null}
                       </div>
                     )}
@@ -344,7 +344,7 @@ export function DataTable<Row>({
         </p>
       )}
 
-      {footnote ? <p className="max-w-[62ch] font-ui text-2xs leading-relaxed text-faint">{footnote}</p> : null}
+      {footnote ? <p className="max-w-[62ch] font-ui text-2xs leading-relaxed text-muted">{footnote}</p> : null}
     </div>
   );
 }

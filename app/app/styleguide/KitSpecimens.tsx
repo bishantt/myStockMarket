@@ -109,16 +109,16 @@ export function KitSpecimens() {
           </h3>
           <div className="grid grid-cols-1 gap-5 md:grid-cols-3">
             <div className="flex flex-col gap-2">
-              <p className="font-ui text-2xs text-faint">masthead + text — a container, so it may shimmer</p>
+              <p className="font-ui text-2xs text-muted">masthead + text — a container, so it may shimmer</p>
               <Skeleton variant="masthead" />
               <Skeleton variant="text" lines={3} />
             </div>
             <div className="flex flex-col gap-2">
-              <p className="font-ui text-2xs text-faint">figure — a still em-dash, never a shimmering bar</p>
+              <p className="font-ui text-2xs text-muted">figure — a still em-dash, never a shimmering bar</p>
               <Skeleton variant="figure" />
             </div>
             <div className="flex flex-col gap-2">
-              <p className="font-ui text-2xs text-faint">block — the chart reservation: still geometry</p>
+              <p className="font-ui text-2xs text-muted">block — the chart reservation: still geometry</p>
               <Skeleton variant="block" height={96} />
             </div>
           </div>

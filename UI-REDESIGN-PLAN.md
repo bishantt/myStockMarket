@@ -660,6 +660,15 @@ focusable in order, `aria-describedby` ties marker to step.
 ---
 ## Part 5 — Pages, room by room
 
+> **Amended 2026-07-12.** Layout CONTAINERS per room are superseded by APP-FEEL-PLAN.md
+> Part 4: modular rooms, bounded cards, one tap to depth. Tokens, type, colour, material and
+> motion in this document remain authoritative — the app-feel plan mints no new colours,
+> radii, shadows or durations. Specifically: §5.2's scans spec is superseded by APP-FEEL-PLAN
+> §4.2 (the index becomes a summary with a real table behind it at `/scans/[preset]`), and
+> §5.3's paper spec by §4.3 (the ticket is ONE column at every width, and side has no
+> default — ruling M9).
+
+
 *Page order = build order within each phase. Every page keeps its data flow, server actions,
 copy keys, and honesty behavior; what changes is named per page. Phone behavior is stated
 inline, not deferred to a "mobile section" that Opus might read too late.*

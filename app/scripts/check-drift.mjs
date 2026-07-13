@@ -220,6 +220,26 @@ const RULES = [
     match: (line) => /\.toFixed\(/.test(line) && !/^\s*(\*|\/\/)/.test(line),
   },
   {
+    id: 18,
+    name: "A11Y — `faint` is for placeholders and disabled states, never for information",
+    /*
+     * The token sheet has said so since R1 — "placeholders/disabled; never body text" — and the app
+     * ignored it, including in the kit this plan added. An axe pass at F7 found up to 58 failing
+     * nodes on a single page, and every one of them was a `text-faint` carrying real information: a
+     * disclosure's count, the em-dash standing in for an unknown value, a table's column label.
+     *
+     * The numbers: `faint` measures 2.23:1 against Morning's paper (WCAG AA wants 4.5:1). `muted`
+     * measures 4.83:1 and passes. So this was never a palette problem — it was a misuse of the
+     * palette, and the fix is to honour the contract the token itself declares rather than to repaint
+     * the design system.
+     *
+     * `disabled:text-faint` is allowed: WCAG explicitly exempts disabled controls, and a disabled
+     * control that looked enabled would be the worse lie.
+     */
+    skip: TOKEN_FILES,
+    match: (line) => /\btext-faint\b/.test(line) && !/disabled:text-faint/.test(line),
+  },
+  {
     id: 17,
     name: "PERF/CORRECTNESS — never revalidatePath(..., 'layout'); it 404s the closed-param routes",
     /*

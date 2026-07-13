@@ -133,6 +133,7 @@ export function Movers({ asOf, movers }: { asOf: Date; movers: Mover[] }) {
  */
 function MoverRow({ mover: m }: { mover: Mover }) {
   return (
+<div className="flex flex-wrap items-baseline gap-x-4 gap-y-1">
 <RailTrigger
                 payload={{
                   symbol: m.symbol,
@@ -144,7 +145,7 @@ function MoverRow({ mover: m }: { mover: Mover }) {
                 }}
                 // The hover feedback is a BACKGROUND shift, never a lift: this row contains a delta
                 // chip, and a transform on an ancestor would move a money visual (P2, §3.6).
-                className="flex flex-wrap items-baseline gap-x-4 gap-y-1 rounded-panel px-2 py-2.5 transition-colors duration-(--duration-quick) ease-(--ease-quiet) hover:bg-accent-muted"
+                className="flex flex-1 flex-wrap items-baseline gap-x-4 gap-y-1 rounded-panel px-2 py-2.5 transition-colors duration-(--duration-quick) ease-(--ease-quiet) hover:bg-accent-muted"
               >
                 <span className="w-14 shrink-0 font-mono text-sm font-semibold text-ink">{m.symbol}</span>
                 <span className="hidden min-w-0 flex-1 truncate font-ui text-sm text-muted sm:block">{m.name}</span>
@@ -160,6 +161,7 @@ function MoverRow({ mover: m }: { mover: Mover }) {
                 >
                   {m.rvol}
                 </span>
+              </RailTrigger>
                 {/* The catalyst — chip, headline, source link — or the noise line. Full-width on a
                  * phone (wraps to its own line so the row never overflows); a fixed column on desktop. */}
                 <span className="flex w-full min-w-0 shrink-0 items-baseline gap-2 sm:w-72">
@@ -179,6 +181,6 @@ function MoverRow({ mover: m }: { mover: Mover }) {
                     </span>
                   )}
                 </span>
-              </RailTrigger>
+              </div>
   );
 }

@@ -62,7 +62,7 @@ export function SectionMasthead({
          * screen reader while the spaces around it survive.
          */}
         <h2 className="font-mono text-xs font-medium uppercase tracking-[0.08em] text-muted">
-          <span className="tabular-nums text-faint">{String(index).padStart(2, "0")}</span>
+          <span className="tabular-nums text-muted">{String(index).padStart(2, "0")}</span>
           <span> — </span>
           {title}
         </h2>

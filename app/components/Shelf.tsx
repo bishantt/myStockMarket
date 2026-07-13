@@ -45,10 +45,19 @@ export function Shelf({ label, countLine, children, className }: ShelfProps) {
        * a mask on a scrolling box (see globals.css). Do not merge these two elements.
        */}
       <div className="shelf-frame -mx-4">
-        <ul className="shelf no-scrollbar">{children}</ul>
+        {/*
+         * tabIndex={0}: a scrollable region needs keyboard access, or a reader who does not use a
+         * mouse or a thumb simply cannot reach the figures past the edge of the screen. Axe flags
+         * this as `scrollable-region-focusable` and it is right to — the shelf is the one place in
+         * this app where content lives off-screen by design, which makes it the one place where
+         * "you can scroll to it" has to be true for everybody.
+         */}
+        <ul className="shelf no-scrollbar" tabIndex={0}>
+          {children}
+        </ul>
       </div>
 
-      <p className="px-1 font-mono text-2xs uppercase tracking-[0.08em] text-faint">{countLine}</p>
+      <p className="px-1 font-mono text-2xs uppercase tracking-[0.08em] text-muted">{countLine}</p>
     </section>
   );
 }

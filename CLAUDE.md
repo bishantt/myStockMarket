@@ -1,7 +1,8 @@
 # myStockMarket — constitution
 Single-user US-equities command center + learning hub. Next.js 16 app (app/) + Python pipeline
 (pipeline/) + two GitHub Actions jobs. Executor: Claude Opus 4.8. Contract: DEVELOPMENT-PLAN.md,
-plus UI-REDESIGN-PLAN.md for everything visual. Authority: RR Part 8/9 > Blueprint > plan >
+plus UI-REDESIGN-PLAN.md for everything visual and APP-FEEL-PLAN.md for structure, layout
+containers, navigation and performance (F0–F7, complete 2026-07-12). Authority: RR Part 8/9 > Blueprint > plan >
 DECISIONS.md > judgment — except on looks, where UI-REDESIGN-PLAN.md wins (deliberate user
 amendment, 2026-07-11). Evidence chapters win on evidence.
 
@@ -48,7 +49,8 @@ Optimize everything for a human reader, never for machine brevity.
 
 ## Commands
 app:      npm run dev | test | typecheck | lint | build
-guards:   npm run check:drift (11 anti-drift rules) · check:fonts (budget) · check:lighthouse · icons
+guards:   npm run check:drift (18 anti-drift rules) · check:fonts (budget) · check:lighthouse · icons
+budgets:  npm run check:routes (every room cached) · check:nav (TTFB, needs AUTH_COOKIE_SECRET) · check:bundles
 e2e:      npx playwright test  ·  LOCAL: npm run e2e:local (--ignore-snapshots; CI is the pixel oracle)
 pipeline: uv run pytest      jobs: uv run python -m jobs.job_a (fixtures: MSM_FIXTURES=1)
 db:       npx prisma migrate dev --name <name> · npx prisma db seed   deploy: git push (Vercel auto)
@@ -61,7 +63,8 @@ and lib/format · all copy from lib/copy.ts · tokens from globals.css @theme (U
 Appendix A) — never ad-hoc hex · timestamps via lib/time.ts · adapters follow .claude/skills/new-provider-adapter ·
 readable-first code and plain-English docs per the Readability section above.
 
-**Any new card, panel, module or overlay: read .claude/skills/new-surface FIRST.** It carries the
+**Any new card, panel, module or overlay: read .claude/skills/new-surface FIRST. Any table renders
+through components/DataTable — there is one table in this app.** It carries the
 honesty checklist you run BEFORE writing markup (does it show a base rate → it renders through
 BaseRate and nothing else; a probability or money → `data-p2`, and no ancestor may animate or
 transform it; an outcome → the word goes in the chip; an empty state → it is information, not an
@@ -78,7 +81,8 @@ Phase exit: plan §6.4 gate → tag.
 ## Design one-liner
 “Morning Broadsheet” (amended 2026-07-11/12; supersedes “Broadsheet Terminal”): editorial
 serif over mono numerals, ONE lavender morning-light wash across the whole app, glass cards
-with soft depth, hairlines inside cards, one hero figure. One theme at a time — light
+with soft depth, modular rooms — bounded cards, one tap to depth — hairlines inside cards,
+one hero figure. One theme at a time — light
 “Morning” or dark “Midnight” — governs every room including the Academy (the Academy-stays-
 light rule was repealed by the user, 2026-07-12); rooms differ by structure and pace, never
 by palette. Color is scarce and always means something. If it could be a template — austere

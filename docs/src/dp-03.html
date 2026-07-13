@@ -24,7 +24,8 @@
       <tr><td><code>/</code> (desk)</td><td>The one-screen Desk / phone ritual column: modules 1–8, rail host, source-status footer.</td></tr>
       <tr><td><code>/ticker/[symbol]</code></td><td>Drill level 3: full chart (candles + volume + RSI panes, vol band), signal history, relative-strength (P6+), news timeline, breadcrumb + Back to Desk.</td></tr>
       <tr><td><code>/track-record</code></td><td>Calibration chart, Brier figure, resolved log (app flags + user forecasts), banner state for underperforming families.</td></tr>
-      <tr><td><code>/scans</code></td><td>Preset list with fully visible criteria, each line glossary-linked; results table.</td></tr>
+      <tr><td><code>/scans</code></td><td>Preset <strong>index</strong>: the five recipes with fully visible criteria, each line glossary-linked, a match count and a named 3-row preview. <em>(Amended 2026-07-12.)</em></td></tr>
+      <tr><td><code>/scans/[preset]</code></td><td><strong>Added 2026-07-12 (APP-FEEL-PLAN §4.2).</strong> One preset&rsquo;s full match set as a sortable, paginated table — every match reachable to a stated 500-row cap, with the columns that restate the preset&rsquo;s own criteria. Replaces the dead &ldquo;+ N more&rdquo;.</td></tr>
       <tr><td><code>/settings</code></td><td>Watchlist management, install-app row, dark-mode toggle (P6), logout. (Desk route group — the group adds no URL segment.)</td></tr>
       <tr><td><code>/academy</code> · <code>/academy/[module]</code> · <code>/academy/[module]/[lesson]</code></td><td>Curriculum map (M0–M6, soft-gate states) · module page · MDX lesson with glossary popovers and “See this live”.</td></tr>
       <tr><td><code>/academy/glossary</code> · <code>/academy/review</code> · <code>/academy/journal</code></td><td>Term index · Leitner queue (max 5/day) · journal + forecast entries with resolution states.</td></tr>
@@ -93,7 +94,8 @@
     <code>next: { tags: ['morning'] }</code> where applicable so the pipeline’s revalidate call is
     meaningful. No ISR complexity in v1. Two exceptions: <code>/offline</code> and
     <code>/login</code> export <code>dynamic = 'force-static'</code> so a concrete HTML asset
-    exists for the SW to precache (§5.2).</li>
+    exists for the SW to precache (§5.2).
+    <p style="margin:.6rem 0 0;padding:.5rem .75rem;border-left:3px solid #6c5ce7;background:#f4f2ff;font-size:.92em"><strong>Amended 2026-07-12 — superseded by APP-FEEL-PLAN.md Part 5.</strong> This clause was written before there was evidence, and the evidence reversed it. Measured: the eight <code>force-dynamic</code> rooms answered in 382–1237ms with a frozen screen, while the app&rsquo;s own cached routes answered in 51–67ms. <strong>Every read route is now ISR (<code>revalidate = 600</code>) with on-demand revalidation</strong> — the nightly publish and every user write bust the paths they change. The route-transition promise (&ldquo;render server-fresh without spinners&rdquo;) is replaced by the skeleton contract: every room has a <code>loading.tsx</code>, and a figure slot loads as a still em-dash, never a shimmer (ruling M4). Authenticated production TTFB after the change: 48–77ms across every room.</p></li>
     <li><strong>Budgets (enforced at each phase exit):</strong> first-load JS on <code>/</code>
     ≤ 200KB gz (charts and Recharts lazy-loaded per module via <code>next/dynamic</code>); LCP
     ≤ 2.5s on Moto-G-class 4G (Lighthouse mobile); CLS &lt; 0.05 (reserve chart heights); route

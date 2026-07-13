@@ -127,7 +127,7 @@ export default async function ScansPage() {
                       key={clause}
                       className="flex items-baseline gap-3 border-b border-hairline py-2 last:border-b-0"
                     >
-                      <span className="shrink-0 font-mono text-2xs text-faint">
+                      <span className="shrink-0 font-mono text-2xs text-muted">
                         {String(index + 1).padStart(2, "0")}
                       </span>
                       <span className="max-w-[62ch] font-ui text-sm text-ink-2">{clause}</span>
@@ -142,7 +142,7 @@ export default async function ScansPage() {
                 {preview.length > 0 ? (
                   <div className="flex flex-col pt-3">
                     {/* M8: the cut is named. Never "highlights", never an unlabelled slice. */}
-                    <p className="pb-1 font-mono text-2xs uppercase tracking-[0.08em] text-faint">
+                    <p className="pb-1 font-mono text-2xs uppercase tracking-[0.08em] text-muted">
                       {fill(copy.scans.preview, { k: preview.length, n: hits.length })}
                     </p>
                     {/*
@@ -157,7 +157,7 @@ export default async function ScansPage() {
                           className="flex items-center justify-between gap-3 border-b border-hairline py-2 last:border-b-0"
                         >
                           <span className="flex items-center gap-2">
-                            <span className="font-mono text-2xs text-faint">{row.rank}</span>
+                            <span className="font-mono text-2xs text-muted">{row.rank}</span>
                             <span className="font-mono text-sm text-ink">{row.symbol}</span>
                           </span>
                           {row.ret !== null ? (
@@ -171,7 +171,7 @@ export default async function ScansPage() {
                               {signedPercent(row.ret)}
                             </span>
                           ) : (
-                            <span className="font-mono text-2xs text-faint">—</span>
+                            <span className="font-mono text-2xs text-muted">—</span>
                           )}
                         </li>
                       ))}

@@ -162,7 +162,7 @@ function HeldState() {
       <div aria-hidden="true" className="flex flex-col gap-4 pt-6">
         {SLOTS.map(({ key, label }) => (
           <div key={String(key)} className="flex flex-col gap-2">
-            <span className="font-mono text-2xs uppercase tracking-[0.08em] text-faint">
+            <span className="font-mono text-2xs uppercase tracking-[0.08em] text-muted">
               {label}
             </span>
             <div className="h-px w-full bg-hairline" />

@@ -289,7 +289,9 @@ Two room palettes plus one semantic set. Interactive elements are **ink + underl
 
 ### 3.8 Responsive & the phone ritual
 
-- **Breakpoints:** ≥1366 = one-screen Desk grid (modules 1–8 visible, rail as overlay); 768–1365 = two-column stack, rail overlays; <768 = **the ritual column**.
+**Breakpoints:** ≥1366 = one-screen Desk grid (modules 1–8 visible, rail as overlay); 768–1365 = two-column stack, rail overlays; <768 = **the ritual column**.
+
+**Amended 2026-07-12 — superseded by APP-FEEL-PLAN.md Part 5.** **The two-column spread begins at 1024, not 768** (APP-FEEL-PLAN §4.1). The arithmetic: at 1024px the main column measures 1024 − 32 − 320 − 24 = 648px, which holds the Brief’s 65ch measure comfortably; at 768px it would be 768 − 32 − 280 − 24 ≈ 432px, under the measure floor. So the 768–1023 band (exactly iPad portrait) keeps the ritual column and caps it at a 720px measure — a 990px-wide card is a stretched receipt.
 
 - **Ritual column (phone / installed PWA):** single column in strict order 1→8; each module a full-bleed band separated by 2px rules with its masthead; sticky 48px top bar (date · US session state · sync time); tap targets ≥ 44px; watchlist/movers rows open the bottom sheet; “Open full view” pushes the route (level 3) with an always-visible back bar (installed iOS PWAs can’t rely on swipe-back). Setup cards render as rows; the sheet shows the full card. Thumb reach: primary actions bottom-aligned in sheets.
 
@@ -338,7 +340,8 @@ Node 24 LTS · Next.js 16 (App Router; `proxy.ts`) · TypeScript strict · Tailw
 | `/` (desk) | The one-screen Desk / phone ritual column: modules 1–8, rail host, source-status footer. |
 | `/ticker/[symbol]` | Drill level 3: full chart (candles + volume + RSI panes, vol band), signal history, relative-strength (P6+), news timeline, breadcrumb + Back to Desk. |
 | `/track-record` | Calibration chart, Brier figure, resolved log (app flags + user forecasts), banner state for underperforming families. |
-| `/scans` | Preset list with fully visible criteria, each line glossary-linked; results table. |
+| `/scans` | Preset **index**: the five recipes with fully visible criteria, each line glossary-linked, a match count and a named 3-row preview. *(Amended 2026-07-12.)* |
+| `/scans/[preset]` | **Added 2026-07-12 (APP-FEEL-PLAN §4.2).** One preset’s full match set as a sortable, paginated table — every match reachable to a stated 500-row cap, with the columns that restate the preset’s own criteria. Replaces the dead “+ N more”. |
 | `/settings` | Watchlist management, install-app row, dark-mode toggle (P6), logout. (Desk route group — the group adds no URL segment.) |
 | `/academy` · `/academy/[module]` · `/academy/[module]/[lesson]` | Curriculum map (M0–M6, soft-gate states) · module page · MDX lesson with glossary popovers and “See this live”. |
 | `/academy/glossary` · `/academy/review` · `/academy/journal` | Term index · Leitner queue (max 5/day) · journal + forecast entries with resolution states. |
@@ -365,7 +368,9 @@ Node 24 LTS · Next.js 16 (App Router; `proxy.ts`) · TypeScript strict · Tailw
 
 - Fonts via `next/font` (self-hosted at build, same-origin, precacheable): Archivo variable (wght + wdth), Newsreader variable (wght + italic, *no* opsz axis — see the §3.2 correction of 2026-07-10), IBM Plex Mono 400/500/600 — subsets latin; total budget ≤ 320KB woff2, actual 237KB, enforced by `app/scripts/check-font-budget.mjs` at every phase exit. `display: swap`; fallback stacks defined in tokens.
 
-- Rendering: dynamic RSC everywhere (single user; DB reads are cheap); fetches wrapped with `next: { tags: ['morning'] }` where applicable so the pipeline’s revalidate call is meaningful. No ISR complexity in v1. Two exceptions: `/offline` and `/login` export `dynamic = 'force-static'` so a concrete HTML asset exists for the SW to precache (§5.2).
+Rendering: dynamic RSC everywhere (single user; DB reads are cheap); fetches wrapped with `next: { tags: ['morning'] }` where applicable so the pipeline’s revalidate call is meaningful. No ISR complexity in v1. Two exceptions: `/offline` and `/login` export `dynamic = 'force-static'` so a concrete HTML asset exists for the SW to precache (§5.2).
+
+**Amended 2026-07-12 — superseded by APP-FEEL-PLAN.md Part 5.** This clause was written before there was evidence, and the evidence reversed it. Measured: the eight `force-dynamic` rooms answered in 382–1237ms with a frozen screen, while the app’s own cached routes answered in 51–67ms. **Every read route is now ISR (`revalidate = 600`) with on-demand revalidation** — the nightly publish and every user write bust the paths they change. The route-transition promise (“render server-fresh without spinners”) is replaced by the skeleton contract: every room has a `loading.tsx`, and a figure slot loads as a still em-dash, never a shimmer (ruling M4). Authenticated production TTFB after the change: 48–77ms across every room.
 
 - **Budgets (enforced at each phase exit):** first-load JS on `/` ≤ 200KB gz (charts and Recharts lazy-loaded per module via `next/dynamic`); LCP ≤ 2.5s on Moto-G-class 4G (Lighthouse mobile); CLS < 0.05 (reserve chart heights); route transitions render server-fresh without spinners (quiet “—” placeholders only).
 

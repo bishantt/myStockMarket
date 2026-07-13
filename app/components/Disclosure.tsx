@@ -88,7 +88,7 @@ export function Disclosure({
         <h3 className="flex min-h-11 items-center gap-2 font-mono text-2xs font-medium uppercase tracking-[0.08em] text-muted">
           {label}
           {count > 0 ? (
-            <span className="whitespace-nowrap font-normal normal-case tracking-normal text-faint">
+            <span className="whitespace-nowrap font-normal normal-case tracking-normal text-muted">
               {countLine(count, context, true)}
             </span>
           ) : null}
@@ -122,7 +122,7 @@ export function Disclosure({
            * One non-breaking unit. At 320px the count wraps BELOW the label as a whole phrase
            * rather than shattering into "+ 12" / "more · through Jul 26" across two lines.
            */}
-          <span className="whitespace-nowrap font-normal normal-case tracking-normal text-faint">
+          <span className="whitespace-nowrap font-normal normal-case tracking-normal text-muted">
             {countLine(count, context, open)}
           </span>
         </span>

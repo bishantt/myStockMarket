@@ -148,7 +148,7 @@ export default async function ScanPresetPage({ params }: { params: Promise<{ pre
           <ol className="pt-4">
             {criteriaClauses(preset.criteria).map((clause, index) => (
               <li key={clause} className="flex items-baseline gap-3 border-b border-hairline py-2 last:border-b-0">
-                <span className="shrink-0 font-mono text-2xs text-faint">{String(index + 1).padStart(2, "0")}</span>
+                <span className="shrink-0 font-mono text-2xs text-muted">{String(index + 1).padStart(2, "0")}</span>
                 <span className="max-w-[62ch] font-ui text-sm text-ink-2">{clause}</span>
               </li>
             ))}
@@ -162,7 +162,7 @@ export default async function ScanPresetPage({ params }: { params: Promise<{ pre
               <time
                 dateTime={runDate.toISOString()}
                 data-vrt="mask"
-                className="font-mono text-2xs uppercase tracking-[0.08em] text-faint"
+                className="font-mono text-2xs uppercase tracking-[0.08em] text-muted"
               >
                 as of {formatUtcDate(runDate)}
               </time>

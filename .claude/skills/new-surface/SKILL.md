@@ -85,6 +85,35 @@ a miss render at the same size and the same weight; only the hue differs.
 today" is the product working. Write the sentence into `copy.ts` and render it like it means
 something.
 
+**Does it LIST rows, and hide some of them?**
+→ The collapsed summary states the COUNT and the as-of context ("+ 12 more · through Jul 26"). Use
+`components/Disclosure`, whose `count` prop is required by type — an uncounted disclosure does not
+compile. And a caveat may collapse only WITH the claim it qualifies: a degraded source, a miss, a
+gate flag, a high-importance calendar row may never be folded under a summary that reads as
+complete. (Ruling M2.)
+
+**Is it a TABLE?**
+→ `components/DataTable`, and nothing else. There is one table in this app and drift rule 16 keeps
+it that way. Its default order is the pipeline's own and the header SAYS so, in words — "scan
+order", never "top", "best" or "hottest". A sortable table of market data is one small step from a
+leaderboard, and the step gets taken by accident. (Ruling M1.)
+
+**Does it LOAD?**
+→ Figure slots render a still em-dash, never a shimmering bar. A pulsing rectangle exactly where a
+price is about to appear reads as "a number is coming, look here" — which is the anticipation the
+stillness rule exists to kill. Container bones may shimmer; chart reservations are still geometry.
+(Ruling M4, `components/Skeleton`.)
+
+**Does it SCROLL sideways?**
+→ The reader pushes it; it never pushes itself. No autoplay, no auto-advance, no `scrollTo`, no
+`scroll-behavior: smooth`, no `snap-mandatory` (drift rule 15). And it states what is off the edge:
+`Shelf`'s `countLine` is required by type. (Ruling M3.)
+
+**Is the text `faint`?**
+→ Only if it is a placeholder or a disabled state. `faint` is 2.23:1 against paper — it fails WCAG
+AA, and the token sheet has always said "never body text". Information is `muted`. Drift rule 18
+enforces it.
+
 **Are you reaching for amber?**
 → Don't. Amber has exactly two consumers in this app (the verification-gate flag and the
 fired-signal marker), and the reservation is of the whole amber–orange REGION, not one hex. A
