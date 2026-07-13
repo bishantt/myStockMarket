@@ -43,13 +43,23 @@
 
 name: ci
 
-# One live run per ref. A re-pushed tag, or a main push that supersedes another, kills its
-# predecessor the moment it starts. Before G0 nothing cancelled anything: nc-final's endgame burned
-# a 785-second run and a 229-second run on tags that had already been superseded, and a 13-minute
-# zombie once had to be cancelled by hand. Branch refs and tag refs are distinct groups, so tagging
-# a commit never cancels that commit's own main run.
+# One live run per ref AND PER PURPOSE. A re-pushed tag, or a main push that supersedes another,
+# kills its predecessor the moment it starts. Before G0 nothing cancelled anything: nc-final's
+# endgame burned a 785-second run and a 229-second run on tags that had already been superseded, and
+# a 13-minute zombie once had to be cancelled by hand. Branch refs and tag refs are distinct groups,
+# so tagging a commit never cancels that commit's own main run.
+#
+# `github.event_name` IS PART OF THE GROUP, and that is not decoration — it was measured (G1). G0
+# grouped on the ref alone, which was correct until the rehearsal existed and fatal the moment it
+# did: a rehearsal dispatched on main carries `github.ref == refs/heads/main`, the very same ref as
+# main's own push run. On 2026-07-13 the first rehearsal ever dispatched cancelled the push run of
+# the very commit it was rehearsing (run 29291818293, killed by run 29291878002) — and the reverse
+# is worse: pushing a docs commit during a 9-minute rehearsal would have killed the rehearsal, and
+# an exit would have gone to its tag with no oracle behind it and nothing saying so. The exit ritual
+# runs the branch push and the rehearsal deliberately IN PARALLEL, so these two must be able to
+# coexist. Splitting the group by event keeps every supersede-cancel G0 bought and lets them.
 concurrency:
-  group: ci-${{ github.ref }}
+  group: ci-${{ github.ref }}-${{ github.event_name }}
   cancel-in-progress: true
 
 on:
