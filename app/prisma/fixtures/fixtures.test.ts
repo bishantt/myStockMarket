@@ -180,7 +180,22 @@ type Cluster = {
   sources: number;
   whyItMatters: string | null;
   imageId: string | null;
-  verification: { status: string; flags: string[] };
+  /**
+   * The gate's record, in the shape `newsdesk/narrate.py` ACTUALLY writes it.
+   *
+   * It was declared here as `{ status: string; flags: string[] }` — a shape the pipeline has never
+   * emitted. The type was invented alongside the fixture it describes, so it certified the fiction
+   * instead of catching it. A hand-written type over a hand-written fixture checks nothing but the
+   * author's consistency with themselves.
+   */
+  verification: {
+    narrated: boolean;
+    dropped?: boolean;
+    reason?: string;
+    checked: number;
+    citations: string[];
+    flags: { location: string; entity: string; kind: string; reason: string }[];
+  };
 };
 type Link = { clusterId: string; symbol: string; ret1: number | null; rvol20: number | null; hasSetupCard: boolean };
 type Stat = { seriesKey: string; value: number; asOfLabel: string; sourceKey: string; meta: unknown };
@@ -284,11 +299,32 @@ describe("the seeded news night", () => {
    * exactly one of these so the UI has to handle it.
    */
   it("carries one cluster whose prose the gate dropped, with its facts intact", () => {
-    const dropped = clusters.filter((c) => c.verification.status === "dropped");
+    /*
+     * THIS TEST USED TO ASSERT A SHAPE THAT DOES NOT EXIST, and it passed for a whole phase.
+     *
+     * It checked `verification.status === "dropped"` — because the fixture wrote that, because both
+     * were hand-authored in N4 before the narrator existed. `newsdesk/narrate.py` has never emitted
+     * it; the real record is `{ narrated: false, dropped: true, reason, checked, citations, flags }`.
+     *
+     * So the fixture agreed with the test, the test agreed with the fixture, and NEITHER agreed with
+     * the pipeline. The app — which reads the real shape — quietly found nothing and told the reader
+     * the narrator had simply had nothing to add, when in truth the gate had deleted a line. Green
+     * the whole way. This is N3's fabricated-fixture lesson wearing different clothes: an invented
+     * fixture does not fail to check the producer, it certifies that the code agrees with an
+     * imagination.
+     *
+     * The shape below was copied from a real production row. lib/news-fixture.test.ts now runs the
+     * whole seed through the app's own boundary reader, which is what would have caught this.
+     */
+    const dropped = clusters.filter((c) => c.verification.dropped === true);
     expect(dropped).toHaveLength(1);
     expect(dropped[0].id).toBe("nc-jpm-earnings");
     expect(dropped[0].whyItMatters, "the prose is dropped, not softened").toBeNull();
+    expect(dropped[0].verification.narrated).toBe(false);
     expect(dropped[0].verification.flags.length).toBeGreaterThan(0);
+    // A flag names WHERE it was and WHAT it was — a bare string could not be rendered or audited.
+    expect(dropped[0].verification.flags[0].location).toBeTruthy();
+    expect(dropped[0].verification.flags[0].entity).toBeTruthy();
     // The facts survive: the card still has its extract and its ticker link.
     expect(links.some((l) => l.clusterId === "nc-jpm-earnings")).toBe(true);
   });

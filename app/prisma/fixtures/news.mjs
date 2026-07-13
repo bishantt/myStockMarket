@@ -125,7 +125,7 @@ const CLUSTERS = [
       "The path of short-term rates sets the discount rate under every valuation on the board, which is why a statement that moves no single stock can still be the day's largest event.",
     affectedNote: "Rate-sensitive sectors — housing, banks, utilities — carry the mechanism.",
     extract: { summary: "The FOMC left the target range unchanged and repeated that it will wait for more data before easing.", key_numbers: [] },
-    verification: { status: "ok", checked: 2, flags: [] },
+    verification: { narrated: true, checked: 2, citations: [], flags: [] },
     imageId: "img-fed-decision",
   },
   {
@@ -149,9 +149,9 @@ const CLUSTERS = [
     affectedNote: "Pain-management franchises across large-cap pharma carry exposure.",
     extract: {
       summary: "The agency cleared a first-in-class non-opioid analgesic for moderate-to-severe acute pain.",
-      key_numbers: [{ id: "kn-1", label: "trial participants", value: "2,100" }],
+      key_numbers: [{ value_str: "2,100", what: "trial participants" }],
     },
-    verification: { status: "ok", checked: 3, flags: [] },
+    verification: { narrated: true, checked: 3, citations: [], flags: [] },
     imageId: "img-fda-approval",
   },
   {
@@ -178,11 +178,11 @@ const CLUSTERS = [
     extract: {
       summary: "Revenue rose 40% year over year and the company raised its full-year guidance.",
       key_numbers: [
-        { id: "kn-2", label: "revenue growth", value: "40%" },
-        { id: "kn-3", label: "shares", value: "+18.4%" },
+        { value_str: "40%", what: "revenue growth" },
+        { value_str: "+18.4%", what: "shares" },
       ],
     },
-    verification: { status: "ok", checked: 4, flags: [] },
+    verification: { narrated: true, checked: 4, citations: [], flags: [] },
     imageId: null, // L4 — the generated catalyst card. A first-class outcome, not a failure (C4).
   },
   {
@@ -206,9 +206,9 @@ const CLUSTERS = [
     affectedNote: "Accelerator competitors carry second-order exposure.",
     extract: {
       summary: "AMD agreed to buy a networking-silicon designer for $12 billion in cash and stock.",
-      key_numbers: [{ id: "kn-4", label: "deal value", value: "$12B" }],
+      key_numbers: [{ value_str: "$12B", what: "deal value" }],
     },
-    verification: { status: "ok", checked: 3, flags: [] },
+    verification: { narrated: true, checked: 3, citations: [], flags: [] },
     imageId: "img-chip-merger",
   },
   {
@@ -233,12 +233,29 @@ const CLUSTERS = [
     affectedNote: null,
     extract: {
       summary: "The bank reported higher-than-expected profit and said credit costs remained stable.",
-      key_numbers: [{ id: "kn-5", label: "shares", value: "+2.4%" }],
+      key_numbers: [{ value_str: "+2.4%", what: "shares" }],
     },
+    // The shape `newsdesk/narrate.py` ACTUALLY writes when the gate deletes a note. It was invented
+    // here in N4 — before the narrator existed — as `{status: "dropped", flags: [<string>]}`, which
+    // the pipeline has never produced and the app therefore never recognised: the story page read
+    // `verification.dropped`, found nothing, and told the reader the narrator simply had nothing to
+    // add. A fixture that models a shape its producer does not emit is a fixture that tests the app
+    // against a fiction. (Same family as the fabricated FRED fixtures N3 found — the lie is in the
+    // SHAPE here rather than the values, and the app reads shapes.)
     verification: {
-      status: "dropped",
+      narrated: false,
+      dropped: true,
+      reason: "an entity in the note traced back to no source",
       checked: 3,
-      flags: ["why_it_matters cited a net-interest-margin figure absent from the source extracts"],
+      citations: ["a-jpm-1"],
+      flags: [
+        {
+          location: "why_it_matters",
+          entity: "3.1%",
+          kind: "percent",
+          reason: "no source match",
+        },
+      ],
     },
     imageId: null, // L4
   },
@@ -259,8 +276,8 @@ const CLUSTERS = [
     whyItMatters:
       "A delivery guide is the closest thing an automaker publishes to a forward revenue number, so cutting it re-bases every estimate below it.",
     affectedNote: null,
-    extract: { summary: "The company lowered its full-year delivery target.", key_numbers: [{ id: "kn-6", label: "shares", value: "-4.7%" }] },
-    verification: { status: "ok", checked: 2, flags: [] },
+    extract: { summary: "The company lowered its full-year delivery target.", key_numbers: [{ value_str: "-4.7%", what: "shares" }] },
+    verification: { narrated: true, checked: 2, citations: [], flags: [] },
     imageId: null, // L4
   },
   {
@@ -281,7 +298,7 @@ const CLUSTERS = [
       "A registration ruling sets the compliance cost for every venue that lists the same assets, not only the defendant.",
     affectedNote: null,
     extract: { summary: "A federal court ruled the exchange's listings did not require securities registration.", key_numbers: [] },
-    verification: { status: "ok", checked: 2, flags: [] },
+    verification: { narrated: true, checked: 2, citations: [], flags: [] },
     imageId: null, // L4
   },
   {
@@ -302,7 +319,7 @@ const CLUSTERS = [
       "Datacentre guidance from the largest supplier is the sector's demand signal; the rest of the chain is priced against it.",
     affectedNote: null,
     extract: { summary: "The company guided next-quarter revenue above analyst consensus.", key_numbers: [] },
-    verification: { status: "ok", checked: 2, flags: [] },
+    verification: { narrated: true, checked: 2, citations: [], flags: [] },
     imageId: null, // L4
   },
   {
@@ -323,7 +340,7 @@ const CLUSTERS = [
       "An analyst note changes an opinion, not a business — which is why this class of catalyst carries the lowest prior in the ranking.",
     affectedNote: null,
     extract: { summary: "A sell-side analyst raised the price target citing services growth.", key_numbers: [] },
-    verification: { status: "ok", checked: 1, flags: [] },
+    verification: { narrated: true, checked: 1, citations: [], flags: [] },
     imageId: null, // L4
   },
   {
@@ -344,8 +361,8 @@ const CLUSTERS = [
     whyItMatters:
       "The move came on a rating change rather than a change in the business, which is the distinction this page exists to keep visible.",
     affectedNote: null,
-    extract: { summary: "The firm cut its rating to Sell and reduced its price target.", key_numbers: [{ id: "kn-7", label: "shares", value: "-9.2%" }] },
-    verification: { status: "ok", checked: 2, flags: [] },
+    extract: { summary: "The firm cut its rating to Sell and reduced its price target.", key_numbers: [{ value_str: "-9.2%", what: "shares" }] },
+    verification: { narrated: true, checked: 2, citations: [], flags: [] },
     imageId: null, // L3 — resolved by the component from the source domain, not from a stored row.
   },
   {
@@ -365,8 +382,8 @@ const CLUSTERS = [
     whyItMatters:
       "An impairment is an accounting write-down of assets already owned; it moves reported earnings without moving cash.",
     affectedNote: null,
-    extract: { summary: "The company recorded an impairment against certain upstream assets.", key_numbers: [{ id: "kn-8", label: "impairment", value: "$2.1B" }] },
-    verification: { status: "ok", checked: 2, flags: [] },
+    extract: { summary: "The company recorded an impairment against certain upstream assets.", key_numbers: [{ value_str: "$2.1B", what: "impairment" }] },
+    verification: { narrated: true, checked: 2, citations: [], flags: [] },
     imageId: null, // L4
   },
   {
@@ -387,7 +404,7 @@ const CLUSTERS = [
       "A multi-year award converts a backlog line into scheduled revenue, which is why defense names re-rate on contracts rather than on quarters.",
     affectedNote: null,
     extract: { summary: "The award covers several production lots over five years.", key_numbers: [] },
-    verification: { status: "ok", checked: 1, flags: [] },
+    verification: { narrated: true, checked: 1, citations: [], flags: [] },
     imageId: null, // L4
   },
   {
@@ -408,7 +425,7 @@ const CLUSTERS = [
       "Platform access changes who can build on the stack; it rarely changes this quarter's revenue, and the ranking treats it accordingly.",
     affectedNote: null,
     extract: { summary: "The company published APIs for its agent runtime.", key_numbers: [] },
-    verification: { status: "ok", checked: 1, flags: [] },
+    verification: { narrated: true, checked: 1, citations: [], flags: [] },
     imageId: null, // L4
   },
   {
@@ -428,7 +445,7 @@ const CLUSTERS = [
     whyItMatters: null,
     affectedNote: null,
     extract: { summary: "The company launched freight operations in two additional metros.", key_numbers: [] },
-    verification: { status: "ok", checked: 1, flags: [] },
+    verification: { narrated: true, checked: 1, citations: [], flags: [] },
     imageId: null, // L4
   },
 ];
