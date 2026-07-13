@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 
 /**
  * Journey 1 (P1 variant) — the Desk renders the morning the pipeline published (plan §6.2, §9.2).
@@ -344,6 +344,24 @@ test.describe("C2 — every number on the Desk carries its window", () => {
  * its window intact, its staleness graded, and — for the one number here that is ours — its entire
  * derivation on the page beside it.
  */
+/**
+ * The one instance of some text that the reader can ACTUALLY SEE.
+ *
+ * The macro board renders twice — once in the phone shelf (`md:hidden`), once in the ≥md row — and
+ * exactly one of the two is display:none at any given width. `.first()` therefore resolves to the
+ * SHELF's copy on the desktop project, which is present in the DOM, correct in every particular, and
+ * invisible. The nc-3 tag caught this: three tests failed with "13 × locator resolved to <span>…
+ * unexpected value: hidden".
+ *
+ * jsdom has no CSS, so the component tests could never have seen it — they were right to use
+ * getAllByText, and they were blind to this by construction. In a real browser the honest question is
+ * not "is this in the DOM" but "can the reader see it", and this is how the rest of this file already
+ * asked it. I should have read the file before writing new tests into it.
+ */
+function visible(page: Page, text: string | RegExp) {
+  return page.getByText(text).filter({ visible: true }).first();
+}
+
 test.describe("The macro board", () => {
   test.skip(process.env.MSM_SEEDED !== "1", "needs a seeded test database (MSM_SEEDED=1)");
 
@@ -359,41 +377,41 @@ test.describe("The macro board", () => {
     // The seeded night: a Thursday mortgage rate, a June CPI print, a gold price a week stale, and
     // Thursday's rupee. Four sources, four different cadences, four different as-of labels — which is
     // the entire reason these live in macro_stat instead of as four more market_context columns.
-    await expect(page.getByText("wk of Jul 9").first()).toBeVisible();
-    await expect(page.getByText("Jun 2026").first()).toBeVisible();
-    await expect(page.getByText("6.72%").first()).toBeVisible();
+    await expect(visible(page, "wk of Jul 9")).toBeVisible();
+    await expect(visible(page, "Jun 2026")).toBeVisible();
+    await expect(visible(page, "6.72%")).toBeVisible();
   });
 
   test("the stale gold cell is amber AND says the word (C7 rung 5)", async ({ page }) => {
     // Gold's seeded row is a week old against a daily cadence — past three sessions, so the cell is
     // loud. The WORD is what makes the colour redundant rather than load-bearing.
-    const note = page.getByText("stale — last Jul 2").first();
+    const note = visible(page, "stale — last Jul 2");
     await expect(note).toBeVisible();
 
     // Staleness is data, not absence: the number is still there, still readable, just no longer
     // wearing a claim to be current.
-    await expect(page.getByText("4,085.20").first()).toBeVisible();
+    await expect(visible(page, "4,085.20")).toBeVisible();
   });
 
   test("the Mood gauge never shows its number without showing its work (C8)", async ({ page }) => {
     // The score, the band word, and — non-negotiably — the two sentences that make a home-built
     // sentiment number legitimate to print at all.
-    await expect(page.getByText("42").first()).toBeVisible();
-    await expect(page.getByText("leaning fearful").first()).toBeVisible();
-    await expect(page.getByText(/not CNN's index/).first()).toBeVisible();
-    await expect(page.getByText(/Context, not a signal/).first()).toBeVisible();
+    await expect(visible(page, "42")).toBeVisible();
+    await expect(visible(page, "leaning fearful")).toBeVisible();
+    await expect(visible(page, /not CNN's index/)).toBeVisible();
+    await expect(visible(page, /Context, not a signal/)).toBeVisible();
 
     // And the breakdown is genuinely reachable — every input, with the window it measured over.
-    await page.getByText("How this is computed").first().click();
-    await expect(page.getByText("Credit spreads").first()).toBeVisible();
-    await expect(page.getByText(/ICE BofA US High Yield OAS/).first()).toBeVisible();
+    await visible(page, "How this is computed").click();
+    await expect(visible(page, "Credit spreads")).toBeVisible();
+    await expect(visible(page, /ICE BofA US High Yield OAS/)).toBeVisible();
   });
 
   test("the rupee shows a pair, names its source, and admits it is not a remittance rate", async ({ page }) => {
-    await expect(page.getByText("151.66 buy · 152.26 sell").first()).toBeVisible();
-    await expect(page.getByText("NRB reference").first()).toBeVisible();
+    await expect(visible(page, "151.66 buy · 152.26 sell")).toBeVisible();
+    await expect(visible(page, "NRB reference")).toBeVisible();
     // We quote no remittance app, because none publishes a legitimate rate API — so rather than
     // inventing one, the cell says plainly that this is not the number the reader will be given.
-    await expect(page.getByText("Remittance apps may differ.").first()).toBeVisible();
+    await expect(visible(page, "Remittance apps may differ.")).toBeVisible();
   });
 });
