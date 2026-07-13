@@ -13,7 +13,18 @@
 #   (GATE-EFFICIENCY-ANALYSIS.md §2.3-#5). The oracle is the only thing a tag adds, so it is the
 #   only thing a tag runs.
 #
-# - `gh workflow run ci.yml -f job=vrt-baselines`: the manual baseline mint, and nothing else.
+# - `gh workflow run ci.yml -f job=e2e` (the REHEARSAL, new at G1): the browser oracle again, run by
+#   hand on any ref you name — normally main's HEAD, the exact SHA you are about to tag. This is the
+#   whole point of G1. The oracle used to run for the FIRST time on the tag, which made the tag the
+#   first real test: 52% of tag runs failed, and each failure meant deleting the tag, fixing, and
+#   pushing it again (GATE-EFFICIENCY-ANALYSIS.md §2.3-#1). Now you rehearse the identical suite on
+#   the identical SHA before the tag exists, so the tag run is a formality that should be green on the
+#   first try. Same jobs, same shards, same pixels; only the trigger differs.
+#
+# - `gh workflow run ci.yml -f job=vrt-baselines`: the manual baseline mint, for a restyle you KNOW
+#   moved pixels and want to re-baseline before rehearsing. A rehearsal that reds on pixels also
+#   mints candidates by itself (see the auto-mint step in the e2e job), so this dispatch is now the
+#   deliberate-restyle path, not the only path.
 #
 # LIGHTHOUSE DOES NOT RUN HERE, and never has. The old header claimed it ran "on the phase-exit
 # tags"; no Lighthouse job has ever existed in any workflow in this repo's history. Lighthouse runs
@@ -50,9 +61,12 @@ on:
       job:
         description: "Which manual job to run"
         required: true
-        default: vrt-baselines
+        default: e2e
         type: choice
         options:
+          # The rehearsal: the full browser oracle on a ref of your choosing, before any tag exists.
+          - e2e
+          # The deliberate baseline mint, for a restyle you already know moved pixels.
           - vrt-baselines
 
 jobs:
@@ -166,9 +180,21 @@ jobs:
         run: uv run pytest -q
 
   e2e:
-    name: e2e + VRT + PWA + axe (the browser oracle — phase-exit tags)
-    # Keep in step with `on.push.tags` above. test_ci_tag_families.py fails the build if they drift.
-    if: startsWith(github.ref, 'refs/tags/phase-') || startsWith(github.ref, 'refs/tags/redesign-') || startsWith(github.ref, 'refs/tags/feel-') || startsWith(github.ref, 'refs/tags/nc-') || startsWith(github.ref, 'refs/tags/gate-') || startsWith(github.ref, 'refs/tags/pd-')
+    name: e2e + VRT + PWA + axe (the browser oracle — phase-exit tags, and the G1 rehearsal)
+    # TWO ways in, and they run the identical suite:
+    #
+    #   1. A phase-exit tag. Keep the families here in step with `on.push.tags` above —
+    #      test_ci_tag_families.py reads this line and fails the build if the two ever drift apart.
+    #
+    #   2. `gh workflow run ci.yml -f job=e2e [--ref <ref>]` — the REHEARSAL (G1). The same oracle,
+    #      on demand, on a SHA that has no tag on it yet. Because it is the same job and not a copy
+    #      of it, a rehearsal cannot pass while the tag run fails: there is one oracle, invoked twice.
+    #      Dispatching by ref is also how you prove a change on a scratch branch without merging it.
+    #
+    # GitHub validates dispatch inputs against the workflow file ON THE TARGET REF, so `job=e2e` is
+    # only an accepted value once this line is on the ref you are dispatching. Push first, then
+    # dispatch; a 422 here means the ref does not know about the input yet.
+    if: startsWith(github.ref, 'refs/tags/phase-') || startsWith(github.ref, 'refs/tags/redesign-') || startsWith(github.ref, 'refs/tags/feel-') || startsWith(github.ref, 'refs/tags/nc-') || startsWith(github.ref, 'refs/tags/gate-') || startsWith(github.ref, 'refs/tags/pd-') || (github.event_name == 'workflow_dispatch' && inputs.job == 'e2e')
     runs-on: ubuntu-latest
     # A throwaway Postgres, seeded with the deterministic synthetic morning (prisma/seed.mjs), so
     # the Desk data journey (desk.spec.ts) asserts real rendered values end to end. This is a TEST
