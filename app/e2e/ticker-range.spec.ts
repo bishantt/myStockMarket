@@ -36,7 +36,7 @@ test.describe("the ticker's range control", () => {
     await expect(range).toBeVisible();
     await expect(page.getByRole("radio", { name: "6M" })).toBeChecked(); // the editorial default
 
-    // Everything from here on is the thing under test. Count every request the page makes.
+    // Everything from here on is the thing under test.
     const requests: string[] = [];
     page.on("request", (r) => requests.push(r.url()));
 
@@ -46,9 +46,29 @@ test.describe("the ticker's range control", () => {
     await page.getByRole("radio", { name: "1Y" }).click();
     await expect(page.getByRole("radio", { name: "1Y" })).toBeChecked();
 
+    /*
+     * WHAT "ZERO REQUESTS" HAS TO MEAN, AND WHY THE FIRST VERSION OF THIS WAS WRONG.
+     *
+     * The naive assertion — "the page made no requests at all" — failed on the tag's CI, and it was
+     * the TEST that was wrong. The router prefetches the tab-bar rooms while the browser is idle
+     * (`/?_rsc=`, `/paper?_rsc=`, `/academy?_rsc=`…). Those fire whether or not the reader touches
+     * anything, they are not caused by the range switch, and they are the very mechanism that took a
+     * tab tap from 1342ms to 280ms (budget B3). Failing the build for them would have meant deleting
+     * the app's navigation performance to satisfy a test.
+     *
+     * The claim this control actually rests on is narrower and sharper: **switching range fetches no
+     * DATA FOR THIS PAGE.** The chart's whole history is already in the browser. So the falsifiable
+     * assertion is that nothing went back to the server for this route — no RSC round trip for
+     * /ticker, no API call. If the switch ever did trigger one, its URL would say /ticker, and this
+     * fails.
+     */
+    const fetchedForThisPage = requests.filter(
+      (url) => url.includes("/ticker") || url.includes("/api/"),
+    );
+
     expect(
-      requests,
-      "a range switch hit the network — the whole design of this control assumes it does not",
+      fetchedForThisPage,
+      "a range switch went back to the server for this page — the whole design of this control is that it cannot need to",
     ).toEqual([]);
   });
 

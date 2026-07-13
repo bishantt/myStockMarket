@@ -8,6 +8,50 @@ Format: newest first. I mark each as [FYI], [VETO?], or [NEED] so you can scan.
 
 ---
 
+## 2026-07-13 — N2 (windows, density, the grid)
+
+**[FYI] Your production database was missing a migration, and nothing could tell you.**
+N0 wrote a migration (five new tables and one column), committed it, and every CI run since has
+been green. **Production never received it.** The reason is worth knowing, because it is not a
+mistake anyone made twice: CI spins up a *brand new, empty* Postgres on every run and migrates it
+from zero — so a green pipeline proves the migration *works*, never that it was applied to the
+database your app actually reads. Vercel's build ran no migration step at all.
+
+Nothing crashed, which is why it went unnoticed: the app catches a database error and degrades to
+its honest empty state (by design — that is what lets CI build with no database at all). So the
+Macro Pulse just quietly fell back, night after night, which is the exact disease this plan was
+commissioned to end. **I applied the migration** (additive only — five CREATE TABLEs and some new
+columns, nothing dropped) and verified it against the live database. Two guards now: your deploy
+runs the migration before it builds, and `npm run check:migrations` fails before a push if the
+database is behind. Nothing needed from you.
+
+**[FYI] The Desk got 208px shorter on your phone, and nothing was removed.** 3,212px → 3,004px,
+measured the same way against the same database, minutes apart. Module 00's card is gone; the strip
+that replaces it says *more* than the card did (which session you are reading, when the pipeline
+wrote it, when the next edition lands) in one line instead of a card. Evidence:
+`docs/nc-evidence/n2-footprint.md`.
+
+**[FYI] Your app now has one red thing in it, and only one.** A dead pipeline — two or more
+sessions with no run — puts a red banner across the top of the Desk that you cannot dismiss, saying
+what every number on the page actually is. That is the only red in the application, enforced by a
+build rule, because the value of that banner is entirely in its scarcity. A stale-but-not-dead
+pipeline gets amber. A healthy one gets one quiet grey line.
+
+**[VETO?] `/settings` now lays its three cards out two-up on a wide screen** (add-a-name and theme
+side by side, watchlist spanning below). The DOM order changed from add → curate → look to add →
+look → curate so that the tab order still matches the reading order. If you preferred the old
+single column, it is a one-line revert.
+
+**[FYI] First-load JavaScript grew ~5.4KB on every room.** The freshness strip has to run in your
+browser (if it ran on the server it would be graded with the *cache's* clock, and a pipeline that
+died overnight would still show as "fresh" on your first load next morning — the one thing it
+exists to prevent). That is the cost. Every room is still under the 200KB budget; the worst is
+/paper at 194.7KB. I also *armed* that 200KB ceiling, which had never actually been enforced — only
+"don't grow more than 10KB since last time" was, and that kind of budget dies by a thousand honest
+increments.
+
+---
+
 ## 2026-07-12 — the news & control build (N0–N7)
 
 ### The one decision that is actually yours

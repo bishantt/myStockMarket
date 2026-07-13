@@ -29,6 +29,19 @@ import { expect, test, type Page } from "@playwright/test";
 const USER = "testuser";
 const PASSWORD = "correct horse battery staple";
 
+/**
+ * The app's OWN alert, and not the framework's.
+ *
+ * Next.js renders `<div role="alert" aria-live="assertive" id="__next-route-announcer__">` on every
+ * page — an empty live region it uses to announce client-side navigations to screen readers. So a
+ * bare `getByRole("alert")` matches on EVERY page, always, and `toHaveCount(0)` can never pass.
+ *
+ * The tag's CI found this: four of these tests failed asserting "no alert on a healthy night" while
+ * the healthy night was rendering no alert at all. The assertion was measuring the framework.
+ */
+const appAlert = (page: Page) =>
+  page.locator('[role="alert"]:not([id="__next-route-announcer__"])');
+
 async function signIn(page: Page) {
   await page.goto("/login");
   await page.getByLabel("Username").fill(USER);
@@ -120,7 +133,7 @@ test.describe("the pipeline strip — the escalation, on the real page", () => {
     await expect(strip).toContainText("next:");
 
     // Quiet. No banner, no alert role, nothing shouting on a night when nothing is wrong.
-    await expect(page.getByRole("alert")).toHaveCount(0);
+    await expect(appAlert(page)).toHaveCount(0);
     await expect(strip.getByRole("link")).toHaveAttribute("href", /\/settings/);
   });
 
@@ -147,7 +160,7 @@ test.describe("the pipeline strip — the escalation, on the real page", () => {
     await expect(strip).toContainText("showing");
 
     // Aging is not an emergency. It is still role=status — polite.
-    await expect(page.getByRole("alert")).toHaveCount(0);
+    await expect(appAlert(page)).toHaveCount(0);
   });
 
   test("DEAD — two sessions missed: the loudest surface in the app, and it cannot be dismissed", async ({
@@ -163,7 +176,7 @@ test.describe("the pipeline strip — the escalation, on the real page", () => {
 
     // role=alert, not role=status. If the escalation lived only in the colour, a screen-reader user
     // would get the app's calmest voice on its worst night.
-    const banner = page.getByRole("alert");
+    const banner = appAlert(page);
     await expect(banner).toBeVisible();
     await expect(banner).toContainText("has not run since");
 
@@ -202,7 +215,7 @@ test.describe("the pipeline strip — the escalation, on the real page", () => {
     await page.reload();
 
     // Quiet, still. No alert, no amber, no "stale".
-    await expect(page.getByRole("alert")).toHaveCount(0);
+    await expect(appAlert(page)).toHaveCount(0);
     await expect(page.getByText("stale", { exact: true })).toHaveCount(0);
   });
 });

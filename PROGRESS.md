@@ -1,143 +1,155 @@
 # PROGRESS.md — resumable state
 
-# NOW: the News & Control build (N0–N7). **N0 and N1 are done and tagged.** Next: N2.
+# NOW: the News & Control build (N0–N7). **N0, N1 and N2 are done and tagged.** Next: N3.
 
-**Where I am.** N0 (ground truth, wiring, seeds) and N1 (the macro truth fix) are complete and
-tagged `nc-0` / `nc-1`. Nothing is blocked. Nothing needs you. The next phase is **N2 — windows,
-density, the grid** (plan Parts 4 + 5).
+**Where I am.** N0 (ground truth, wiring, seeds), N1 (the macro truth fix) and N2 (windows, density,
+the grid) are complete and tagged `nc-0` / `nc-1` / `nc-2`. Nothing is blocked. Nothing needs you.
+The next phase is **N3 — the macro board** (plan Part 6).
 
-**If you read only one thing:** `docs/nc-evidence/n0-audit.md`. It is the audit of what your tree
-and your production database actually look like, and it found a bug the plan did not know about.
-
----
-
-## The three things worth knowing
-
-### 1. Your evening briefing has been running without its AI extraction since P3 — silently
-
-`ANTHROPIC_API_KEY` was set correctly in GitHub on 2026-07-10. Neither nightly workflow ever
-*passed* it to the job. The pipeline is written to degrade quietly when the key is absent — it
-prints "skipping the extraction batch" and carries on — so the key sat there, correct and unused,
-while the brief assembled without the stage that reads the articles.
-
-Fixed in N1 (one `env:` line per workflow). Nothing was lost; the facts always published. But a
-"degrade gracefully" path degraded for days with nobody told, which is the exact disease this plan's
-Part 1 is about.
-
-### 2. The Macro Pulse bug you screenshotted is confirmed — and it was not what it looked like
-
-Production's `market_context` had exactly one row: all three index levels NULL, VIX and the 10-year
-(also FRED) fine, and the run still recorded `fred: ok`. The R0 fix that fetches true index levels is
-correct and *was already in the tree* — it landed seven hours **after** the last pipeline run, so the
-data simply predated it.
-
-**The real bug was that the failure was silent at all,** and that is what N1 fixed. `fred: ok` was not
-even wrong — FRED *was* reachable. One source key cannot describe two different failures. The index
-levels now have their own key (`fred-indexes`).
-
-Worse, and separately: the nightly upsert said `sp500 = EXCLUDED.sp500` — whatever tonight fetched,
-**including NULL**. So one flaky FRED night did not merely fail to update a level; it *overwrote the
-good one*. A successful run was destroying data. That is now impossible.
-
-### 3. The pixel gate could not fail, and I only found out by looking at a picture
-
-The VRT tolerance was `maxDiffPixelRatio: 0.01`. On the desktop Desk's full-page shot (1366×2763 =
-3.77 million pixels) that is a budget of **37,742 pixels allowed to differ**. N1 rewrote the entire
-macro row — reordered it, relabelled it, deleted a chip, replaced the provenance sentence — and the
-desktop baseline **passed unchanged**. The phone shot, having half the pixels and therefore half the
-budget, caught the same change.
-
-The committed desktop baseline was a photograph of the old behaviour: green, committed, and wrong.
-A ratio makes the gate weaker the taller the page gets, which is precisely backwards. It is now an
-absolute `maxDiffPixels: 600`, and the baseline job runs `--update-snapshots=all` (plain
-`--update-snapshots` only rewrites baselines whose comparison *failed*, so a sub-tolerance change is
-neither reported nor re-baselined — the stale picture survives twice over).
-
-All 44 baselines were re-shot. They are now true pictures rather than pictures that had not yet
-failed.
+**If you read only one thing:** the first section below. Your production database had been missing a
+migration for days, and every gate in the build was green the whole time.
 
 ---
 
-## What N0 landed (tag `nc-0`)
+## The three things worth knowing from N2
 
-1. **`nc-*` wired into CI** — the tag triggers *and* the e2e job's `if` condition, as the phase's
-   first edit. It paid for itself immediately: the very first `nc-0` tag run went red on a real bug
-   (an Invalid Date in a seed fixture) that every local gate had passed.
-2. **The audit** (`docs/nc-evidence/n0-audit.md`) — the plan's diagnosis re-verified against the
-   tree. Correct on every point, plus the Anthropic finding above.
-3. **The whole Appendix C schema, in one migration** — `macro_stat`, `news_cluster`,
-   `catalyst_link`, `news_image`, `manual_run`, plus `news_item`'s five new columns and
-   `market_context.index_levels_as_of`. The tables land now because the seed cannot write into
-   tables that do not exist; the code that fills them arrives with its phase (N3/N4/N6).
-4. **The seed, grown** — `prisma/fixtures/macro.mjs` (five household stats, gold deliberately stale
-   so the amber cell has a source) and `prisma/fixtures/news.mjs` (14 clusters, 16 ticker links, 3
-   generated images).
+### 1. Production never received N0's migration — and CI could not have told you
 
-**The one number in the seed that carries the whole argument: the biggest mover ranks third.** SMCI
-rose 18.4% — the largest move on the tape — and it sits at position 3 on the front page. The lead is
-a Fed statement that moved no single stock at all. Every significance score was computed by hand from
-Appendix E's formula, the arithmetic is written into each cluster's comment, and a unit test
-recomputes all 14 — so N4's ranker gets an oracle instead of only ever agreeing with itself. A feed
-ranked by size of move is a leaderboard; this is the test that stops it becoming one.
+N0 wrote the migration (five tables, one column), committed it, and every CI run since went green.
+Production never got it.
 
-## What N1 landed (tag `nc-1`)
+The reason is structural, and it is the most useful thing this phase learned: **CI spins up a brand
+new, empty Postgres on every run and migrates it from zero.** So a green pipeline proves that a
+migration *applies*. It never proves it was applied to the database the deployed app actually reads.
+Vercel's build ran `next build` and no migration step, so nothing ever ran it there.
 
-- **Pipeline:** the `fred-indexes` source key (partial reads degrade too; non-session days are
-  skipped — an amber lamp that means nothing is how a real one gets ignored) · `macro_levels.py`, so
-  a failed FRED night KEEPS the levels already stored (up to five sessions) and records the session
-  they are for · `index_levels_as_of` · `publish_macro()` · a `macro` run mode with pinned stage
-  lists · a second cron at 6:00am ET, because FRED posts the index closes *after* both nightly jobs
-  run (the Nasdaq Composite ~11:38pm ET, against Job A at 6:37pm) · the Anthropic key wiring.
-- **App:** one proxy mark per row, not two (the chip now says what the number IS — "IWM · ETF price"
-  — and where an index's name and an ETF's price share a row it denies the misreading outright:
-  "SPY · ETF price — not the index level") · the small-caps slot no longer claims "Russell 2000" at
-  all, because FRED deleted every free Russell series in 2019 and that row can never carry that
-  index's level · the provenance footer is COMPOSED from the rows that actually rendered (C6) · every
-  delta carries "· 1D" and breadth finally states when it was measured (C2) · the risk pair leads at
-  every width.
+And nothing crashed, which is why nobody noticed. Every loader in this app catches a database error
+and degrades to its honest empty state — that is correct, and it is what lets CI build with no
+database at all. So the missing column did not break the Desk. It just made the Macro Pulse fall
+back, quietly, every single night: **the exact disease this plan was commissioned to end, running
+underneath the plan while the plan was fixing it.**
 
-**Counts:** 409 app tests · 240 pipeline tests · 18 drift rules · all budgets hold.
+Applied (`prisma migrate deploy` — additive only, nothing dropped) and verified against the live
+database. Two guards now, because finding it once by accident is not a system:
+- the Vercel build runs `prisma migrate deploy` before `next build` — it fails CLOSED
+- `npm run check:migrations` is in the standing gate and fails before a push if the database is behind
+  (negative-controlled: a fabricated pending migration makes it exit 1)
+
+### 2. Module 00 is gone, and what replaced it gets LOUDER as the news gets worse
+
+Module 00 spent a full card — the best slot the phone has — on one date and one fixed sentence. The
+problem was never the size. It was that it looked **identical on a healthy night and on a night the
+pipeline had been dead for a week.** That is not a freshness indicator; it is a decoration that
+mentions freshness.
+
+The rule that replaces it: **freshness is prominent in proportion to how BAD the news is.**
+
+| state | what the reader sees |
+|---|---|
+| fresh | one quiet grey line: the session on screen, when the pipeline ran, when the next edition lands |
+| aging | amber, plus the word "stale", naming the missed session AND the data they are looking at instead |
+| dead | a red banner, undismissable, stating that every number on the page is from a night days ago |
+| never | quiet. An empty database is not a dead pipeline; it is one that has not started |
+
+The escalation is carried three times over — colour, WORD, and ARIA role (status → alert) — because
+if it lived only in the hue, a screen-reader user would get the app's calmest voice on its worst
+night. `--color-danger` is new and has **exactly one consumer, forever** (drift rule 19); the value
+of that banner is entirely in its scarcity.
+
+**The strip grades in the BROWSER, not on the server, and that is the load-bearing decision.** The
+Desk is cached, and a cached render carries the clock it was made with. Graded server-side, a render
+made Monday morning (healthy) is what the reader is served on Tuesday — so a pipeline that died
+overnight would be photographed as "fresh" on their first paint, by the one surface whose entire job
+is catching that. The last completed run is DATA and is cached. "Now" is not data.
+
+### 3. Four more guards that could not fail
+
+The count is now six across this build, and they all have the same shape: **a guard passes because
+the thing it measures is ABSENT, not because it is correct.**
+
+1. **The iOS 16px sweep had been passing on /paper without looking at the form.** The ticket sits
+   behind a Suspense boundary; `page.goto()` resolves before it hydrates; the sweep found zero
+   fields, iterated over nothing, and reported success — on the one page whose form is the entire
+   reason the rule exists. It now fails if it swept nothing.
+2. **The same sweep was crying wolf in the other direction**, measuring the segmented control's
+   radios. iOS zooms on focusing a field that summons a *keyboard*; a radio summons none. A guard
+   that rejects correct code teaches people to work around the guard.
+3. **The touch sweep could not see a `figcaption`**, so the chart's "Chart by TradingView"
+   attribution — a link inside a sentence, exactly what WCAG's inline exception covers — was
+   measured as a bare 82×14 control. It passed only when the code-split chart was slow enough that
+   the caption did not exist yet.
+4. **The desk VRT baseline would have rotted with the calendar.** The strip's appearance depends on
+   *when it is*, so the first baseline run photographed it mid-escalation — correctly, and
+   unrepeatably. A day later it would have failed on its own. The VRT now pins the browser's clock
+   to the seeded session's evening and ASSERTS the fresh state before shooting.
+
+Found the same way the last three VRT bugs were found: **by opening the PNG and looking at it.**
 
 ---
 
-## ⚠ THE ONE OPEN ITEM — do this first
+## What N2 landed (tag `nc-2`)
 
-**`nc-1` is tagged at `3a9c47a` and its CI needs to be confirmed green.** Everything is committed and
-green locally (409 app tests, 240 pipeline tests, 18 drift rules, build + budgets). The only thing
-unverified is the tag's own CI run, and specifically the VRT job.
+- **`lib/freshness.ts`** — the pure state machine, counting in SESSIONS, never days. A weekend is not
+  staleness. A holiday is not staleness. Monday morning is not staleness (Monday's close has not
+  happened; Friday's data is the newest that EXISTS). A lamp that glows amber every Saturday is a
+  lamp nobody reads by Tuesday, and then it is not there on the night it matters.
+- **Every number states its window (C2)** — movers' deltas say `· 1D` and their RVOL says `· 20d avg`;
+  the watchlist's sparklines finally state their window (a shape with no period is not information: a
+  month and a year draw the same picture and mean opposite things); every scan-table column header
+  carries its token; the ticker's chart says what the bars ARE and through when, read from the LAST
+  BAR rather than from "today". Guards: the vocabulary is a CLOSED set, and a metric column without a
+  token fails the build.
+- **The desktop grid contract** — a new `wide` (1536px) breakpoint and every room's column map. What
+  it buys is internal density, never more columns; the Desk gains no third column at any width,
+  because a second reading column would split the ritual's order into two ambiguous streams.
+- **`RangeControl`** — the only time-range control in the app, on exactly two surfaces, enforced by a
+  closed type union (ruling C3). A reader who can slide a base rate's horizon until it flatters a
+  pattern is a reader the app has taught to p-hack, and the control would not look wrong — it would
+  look like a thoughtful piece of UI. Negative tests assert the evidence surfaces render no
+  radiogroup, no fieldset, no button.
+- **B4 got stronger while being re-baselined** — the bundle guard fired legitimately (the client-side
+  strip adds ~5.4KB to every room). Re-baselining is how a budget dies: every "it only grew a little"
+  is individually true, and six of them puts the app at 260KB with a green gate the whole way. So the
+  rebaseline landed WITH the hard 200KB ceiling the plan always specified and nothing had ever
+  enforced. Worst route: /paper at 194.7KB.
 
-The story, so you do not have to re-derive it: tightening the pixel gate (below) exposed that the
-Academy VRT shot was photographing a checkmark left behind by `academy.spec.ts` (opening a lesson
-marks it read). Two fixes landed, in this order:
+**Counts at nc-2:** 472 app tests · 240 pipeline tests · 19 drift rules · 55 VRT baselines
+(46 + 9 new at `wide`) · B1 10/11 cached · B4 under the ceiling · migrations current.
 
-1. `vrt.spec.ts` now clears `lesson_progress` before shooting. **This alone was not enough** —
-   `/academy` is an ISR route, and the action that marked the lesson read had already revalidated it,
-   so the CACHE still held the checkmark.
-2. So the reset now also calls `/api/revalidate` to bust the cache. The test server gets a known
-   `CRON_SECRET` (`VRT_RESET_SECRET` in `playwright.config.ts`) for exactly this.
+**Evidence:** `docs/nc-evidence/n2-footprint.md` — the phone Desk went 3,212px → 3,004px (−208px),
+measured against the same database minutes apart. Nothing was removed to get it.
 
-**Check it:** `gh run list --limit 5` → find the `nc-1` run → it must be green. If the Academy shots
-still differ, the remaining suspect is another spec mutating state the VRT photographs (paper trades
-and the watchlist are the other app-writable tables; they passed, but they passed under the OLD loose
-tolerance too, so do not assume). Do NOT loosen the tolerance to make it green — that is the guard
-that found this.
+---
 
 ## Resumable state — start here
 
-- **Done:** N0 (`nc-0`), N1 (`nc-1` — tagged, CI confirmation pending, see above).
-- **Next: N2 — windows, density, the grid** (plan Parts 4 + 5). The pipeline strip replacing module
-  00, `lib/freshness.ts`, the module-07 and sources-footer shrink, the desktop grid contract (every
-  room's column map + the new `wide` 1536 breakpoint + VRT viewports), the Part 5.1 window-label
-  sweep across every surface, the deck window-token test, and `RangeControl` + the ticker ranges +
-  the C3 negative tests.
-- **Carried into N2 deliberately:** the *e2e* degraded-macro variant. It needs a seeded-clock/param
-  mechanism that N2 builds anyway for the strip's aging/dead states — same machinery, built once.
-  The degraded macro state is already covered by unit tests (the provenance composer has a property
-  test proving the line changes with the rows) and component tests.
-- **Provisioning still open (none block):** P-1 (R2 media bucket), P-2 (GitHub PAT), P-5 (GoldAPI
-  key). Each has a specced fixture path.
-- **Open for you:** Part 0.1 — where the News room lives. I am building the plan's default (a sixth
-  tab) and it stays a one-file flip until N5. See QUESTIONS-FOR-BISHANT.md.
+- **Done:** N0 (`nc-0`), N1 (`nc-1`), N2 (`nc-2`).
+- **Next: N3 — the macro board** (plan Part 6). `macro_stat` migration is ALREADY APPLIED (it landed
+  with N0's migration, which N2 finally pushed to production). The four fetchers (mortgage, CPI, gold,
+  USD→NPR), cadence/no-thrash logic, the Mood gauge compute + display contract (ruling C8: the number
+  may not render without its component breakdown — enforce it in the TYPE, same shape as BaseRate),
+  the C7 degradation rungs, the board layout inside the pulse, and the provenance strings.
+- **What N3 inherits and should USE:** `copy.window.*` (the closed vocabulary), `copy.macroBoard.*`
+  (already specced in the plan's Appendix B), the `wide` breakpoint, and the escalation pattern the
+  strip established (quiet when normal, loud only when it is genuinely bad news).
+- **Provisioning still open (none block):** P-1 (R2 media bucket), P-2 (GitHub PAT), P-5 (GoldAPI key
+  — N3's gold cell renders its honest "not yet reported" state without it). Each has a specced
+  fixture path.
+- **Open for the user:** Part 0.1 — where the News room lives. Building the plan's default (a sixth
+  tab); it stays a one-file flip until N5.
+
+## Standing hazards for the next session
+
+- **There is no local Postgres on this Mac**, and there will not be. CI's service container is the
+  database oracle. But note what N2 learned: CI's database is DISPOSABLE, so it can never tell you
+  anything about production's. `npm run check:migrations` is now the instrument that can.
+- **VRT baselines are born in CI** — `gh workflow run ci.yml -f job=vrt-baselines`, download the
+  artifact, commit it. Never shoot one on macOS.
+- **The VRT clock is pinned to the seed's session** (`SEEDED_SESSION` in `vrt.spec.ts`). If the seed's
+  trading day ever moves, move the pin with it — the desk shots assert the strip is FRESH and will
+  fail loudly saying so.
+- **`npm run e2e:local` runs against PRODUCTION data**, unseeded, so the seeded journeys skip. It is
+  still worth running: it is what caught the a11y contrast regression and both broken sweeps in N2.
 
 ---
 

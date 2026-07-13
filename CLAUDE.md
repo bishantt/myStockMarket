@@ -6,6 +6,23 @@ containers, navigation and performance (F0–F7, complete 2026-07-12). Authority
 DECISIONS.md > judgment — except on looks, where UI-REDESIGN-PLAN.md wins (deliberate user
 amendment, 2026-07-11). Evidence chapters win on evidence.
 
+## Session rhythm — ONE PHASE PER SESSION (standing rule — user, 2026-07-13, permanent)
+Do NOT run multiple phases in one session. Long single-session runs bloat the context window and
+degrade the quality of the later work. Work ONE phase, then stop.
+At the end of the phase:
+1. Finish it properly — tests green, the plan's standing gate passed, tagged, everything committed
+   and pushed. Never stop mid-task or with a red build.
+2. Bring EVERY intelligence file fully current: PROGRESS.md (exact checkpoint, what's done, what's
+   next, anything in flight), DECISIONS.md, LESSONS.md, PATTERNS.md, QUESTIONS-FOR-BISHANT.md, plus
+   any evidence table. Write them as if the next session has NO memory of this one — because it won't.
+3. Write NEXT-SESSION-PROMPT.md at the repo root: the complete, paste-ready prompt for the next
+   session, self-contained.
+4. Report back in plain English: what was built, what passed, anything new in QUESTIONS, and confirm
+   NEXT-SESSION-PROMPT.md is ready. Then STOP and wait.
+**Within a phase the Autonomy Contract below still holds in full** — never ask, never wait, never end
+a phase with a question. Anything that would be a question goes to QUESTIONS-FOR-BISHANT.md with the
+most reasonable assumption made and marked.
+
 ## Autonomy (standing directive — user, 2026-07-11, permanent)
 Run the entire plan to completion without pausing. Do NOT stop at phase boundaries or ask
 permission to continue: after tagging a phase, roll straight into the next one. Work through every
@@ -49,7 +66,10 @@ Optimize everything for a human reader, never for machine brevity.
 
 ## Commands
 app:      npm run dev | test | typecheck | lint | build
-guards:   npm run check:drift (18 anti-drift rules) · check:fonts (budget) · check:lighthouse · icons
+guards:   npm run check:drift (19 anti-drift rules) · check:fonts (budget) · check:lighthouse · icons
+db-drift: npm run check:migrations — is the LIVE database running the schema in this repo? CI can
+          never answer this (it migrates a fresh container every run), and production silently ran
+          without N0's migration for days because nothing asked. Deploy applies migrations too.
 budgets:  npm run check:routes (every room cached) · check:nav (TTFB, needs AUTH_COOKIE_SECRET) · check:bundles
 e2e:      npx playwright test  ·  LOCAL: npm run e2e:local (--ignore-snapshots; CI is the pixel oracle)
 pipeline: uv run pytest      jobs: uv run python -m jobs.job_a (fixtures: MSM_FIXTURES=1)

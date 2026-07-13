@@ -210,11 +210,23 @@ test.describe("The Desk, chunked", () => {
   test("the pipeline strip is page chrome — one quiet line, above the grid, and a doorway", async ({
     page,
   }) => {
+    /*
+     * THE CLOCK IS PINNED, AND THE TAG'S CI IS WHY.
+     *
+     * The strip grades freshness against the BROWSER's clock (deliberately — a cached render must
+     * never photograph a dead pipeline as a healthy one). The seed publishes one run for a fixed
+     * trading day, and real time keeps moving. So this test asserted the FRESH line while CI, running
+     * days after the seeded session, was correctly showing the AGING one.
+     *
+     * The test was wrong, not the product. A test that reads time-dependent output has to say WHEN it
+     * is reading, or it passes this week and fails next week for a reason nobody can reconstruct.
+     */
+    await page.clock.setFixedTime(new Date("2026-07-09T23:00:00-04:00")); // the seeded session's night
     await page.goto("/");
 
-    // The seeded database has a completed run for the seeded session, so the strip is in its FRESH
-    // state: quiet, no colour, no card, no masthead. It states the three facts module 00's whole
-    // card never managed — the session on screen, when the pipeline wrote it, and when it next runs.
+    // Now the strip is in its FRESH state: quiet, no colour, no card, no masthead. It states the
+    // three facts module 00's whole card never managed — the session on screen, when the pipeline
+    // wrote it, and when the next edition lands.
     const strip = page.getByRole("status").filter({ hasText: "Data through" });
     await expect(strip).toBeVisible();
     await expect(strip).toContainText("next:");
