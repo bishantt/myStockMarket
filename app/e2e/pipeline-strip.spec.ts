@@ -195,27 +195,59 @@ test.describe("the pipeline strip — the escalation, on the real page", () => {
     await expect(banner.getByRole("link")).toHaveAttribute("href", /\/settings/);
   });
 
-  test("the weekend is NOT staleness — a Saturday reader sees the quiet line", async ({ page }) => {
-    // The case that decides whether the strip is worth having at all. The market is shut, no session
-    // was missed, the pipeline is behaving perfectly. Amber here would be a lie — and a lamp that
-    // glows amber every Saturday is a lamp nobody reads by Tuesday, which means it is not there on
-    // the night it matters.
+  test("a WEEKEND adds no staleness — Saturday and Sunday do not escalate the strip", async ({
+    page,
+  }) => {
+    /*
+     * THE CASE THAT DECIDES WHETHER THE STRIP IS WORTH HAVING AT ALL — and the tag's CI made me
+     * state it properly.
+     *
+     * My first version of this test asserted that a Saturday reader sees the QUIET line. It failed,
+     * and the product was right: the seed's run is a THURSDAY, so by Saturday, Friday's edition is
+     * genuinely owed and genuinely absent. The strip says "stale" because it IS stale. There is no
+     * way to construct "the weekend immediately after the last session" from a Thursday seed —
+     * Friday is always in the way.
+     *
+     * So this asserts the rule that actually matters, and that this seed CAN prove: **the weekend
+     * itself adds nothing.** From Thursday's run, Saturday is one session behind (Friday). Sunday is
+     * still one session behind. The two days of the weekend passed and the strip did not escalate,
+     * because no session was OWED on either of them.
+     *
+     * That is the whole reason freshness counts in sessions rather than days. A strip that counted
+     * days would read "3 days stale" on Sunday and show the red banner — and a lamp that turns red
+     * every Sunday is a lamp nobody looks at by Tuesday, which means it is not there on the night it
+     * matters. (The pure "Friday's run, read on Saturday, is FRESH" case is covered exhaustively in
+     * lib/freshness.test.ts, where the clock and the run are both free variables.)
+     */
     await signIn(page);
     await page.goto("/");
     const session = await seededSession(page);
 
-    // Walk forward to the next Saturday after the seeded session.
-    const saturday = new Date(session);
-    do {
-      saturday.setUTCDate(saturday.getUTCDate() + 1);
-    } while (saturday.getUTCDay() !== 6);
-    saturday.setUTCHours(14, 0, 0, 0); // 10am ET on the Saturday
+    /** 10am ET on the Nth calendar day after the seeded session. */
+    const morningOf = (daysAfter: number) => {
+      const d = new Date(session);
+      d.setUTCDate(d.getUTCDate() + daysAfter);
+      d.setUTCHours(14, 0, 0, 0); // 10am EDT
+      return d;
+    };
 
-    await page.clock.setFixedTime(saturday);
+    // Walk to the Saturday and the Sunday that follow the seeded session.
+    let saturdayOffset = 1;
+    while (morningOf(saturdayOffset).getUTCDay() !== 6) saturdayOffset += 1;
+
+    // SATURDAY — one session behind (Friday's edition never landed). Amber, and NOT the red banner.
+    await page.clock.setFixedTime(morningOf(saturdayOffset));
     await page.reload();
+    await expect(page.getByText("stale", { exact: true })).toBeVisible();
+    await expect(appAlert(page), "Saturday must not escalate to the dead banner").toHaveCount(0);
 
-    // Quiet, still. No alert, no amber, no "stale".
-    await expect(appAlert(page)).toHaveCount(0);
-    await expect(page.getByText("stale", { exact: true })).toHaveCount(0);
+    // SUNDAY — a whole day later, and STILL only one session behind. The weekend cost nothing.
+    await page.clock.setFixedTime(morningOf(saturdayOffset + 1));
+    await page.reload();
+    await expect(page.getByText("stale", { exact: true })).toBeVisible();
+    await expect(
+      appAlert(page),
+      "Sunday escalated the strip — the weekend is being counted as missed sessions",
+    ).toHaveCount(0);
   });
 });
