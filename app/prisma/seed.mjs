@@ -14,6 +14,8 @@
 import { PrismaClient } from "@prisma/client";
 import { SCAN_ROWS, SCAN_INSTRUMENTS } from "./fixtures/scans.mjs";
 import { PAPER_TRADES } from "./fixtures/paper.mjs";
+import { MACRO_STATS } from "./fixtures/macro.mjs";
+import { NEWS_CLUSTERS, CATALYST_LINKS, NEWS_IMAGES, NEWS_INSTRUMENTS } from "./fixtures/news.mjs";
 
 const db = new PrismaClient();
 
@@ -281,9 +283,10 @@ async function main() {
     },
   });
 
-  // The Desk's own names, plus every name the scan tables reference — the match table joins on
-  // Instrument for its Name column, and a match whose instrument is missing renders a nameless row.
-  for (const i of [...INSTRUMENTS, ...SCAN_INSTRUMENTS]) {
+  // The Desk's own names, plus every name the scan tables reference, plus the four the news night
+  // introduces — the match table joins on Instrument for its Name column, and a match whose
+  // instrument is missing renders a nameless row.
+  for (const i of [...INSTRUMENTS, ...SCAN_INSTRUMENTS, ...NEWS_INSTRUMENTS]) {
     await db.instrument.upsert({ where: { symbol: i.symbol }, update: i, create: i });
   }
 
@@ -373,6 +376,33 @@ async function main() {
   await db.paperTrade.deleteMany({ where: { id: { in: PAPER_TRADES.map((t) => t.id) } } });
   for (const trade of PAPER_TRADES) await db.paperTrade.create({ data: trade });
 
+  // ── The News & Control plan's data (N0 seeds it; the CODE that reads it arrives per phase) ──
+
+  // The macro board's five household stats. Keyed by (series, the date the SOURCE says it is for),
+  // so a re-seed replaces each row in place. Gold's row is deliberately a week old — the amber
+  // "stale" cell (C7 rung 5) needs a seeded source, and it happens to be gold's honest state until
+  // the GoldAPI key is provisioned.
+  for (const stat of MACRO_STATS) {
+    await db.macroStat.upsert({
+      where: { seriesKey_asOfDate: { seriesKey: stat.seriesKey, asOfDate: stat.asOfDate } },
+      update: stat,
+      create: stat,
+    });
+  }
+
+  // The news night. Images first (clusters point at them), then clusters, then the per-ticker links.
+  // Delete-then-create keeps the seed idempotent and the VRT pixels stable.
+  for (const img of NEWS_IMAGES) {
+    await db.newsImage.upsert({ where: { id: img.id }, update: img, create: img });
+  }
+  await db.catalystLink.deleteMany({ where: { clusterId: { in: NEWS_CLUSTERS.map((c) => c.id) } } });
+  for (const cluster of NEWS_CLUSTERS) {
+    await db.newsCluster.upsert({ where: { id: cluster.id }, update: cluster, create: cluster });
+  }
+  for (const link of CATALYST_LINKS) {
+    await db.catalystLink.create({ data: link });
+  }
+
   const byPreset = SCAN_ROWS.reduce((counts, row) => {
     counts[row.presetKey] = (counts[row.presetKey] ?? 0) + 1;
     return counts;
@@ -381,11 +411,17 @@ async function main() {
     .map(([key, count]) => `${key} ${count}`)
     .join(", ");
 
+  const instrumentCount = INSTRUMENTS.length + SCAN_INSTRUMENTS.length + NEWS_INSTRUMENTS.length;
   console.log(
-    `Seeded: ${INSTRUMENTS.length + SCAN_INSTRUMENTS.length} instruments, ${PRICE_HISTORY.length} price bars, ` +
+    `Seeded: ${instrumentCount} instruments, ${PRICE_HISTORY.length} price bars, ` +
       `${SCAN_ROWS.length} scan matches (${presetSummary}; rsi-extreme 0 — the empty state is seeded on purpose), ` +
       `${PAPER_TRADES.length} paper trades, ${WATCHLIST.length} watchlist names, 1 macro context, ` +
-      `${NEWS.length} news items, ${CALENDAR.length} calendar events, 1 briefing.`,
+      `${NEWS.length} news items, ${CALENDAR.length} calendar events, 1 briefing,\n` +
+      `        ${MACRO_STATS.length} macro stats (gold deliberately stale — the amber cell), ` +
+      `${NEWS_CLUSTERS.length} news clusters, ${CATALYST_LINKS.length} catalyst links, ` +
+      `${NEWS_IMAGES.length} cached images.\n` +
+      `        The biggest mover (SMCI +18.4%) ranks THIRD by significance — the lead is a Fed ` +
+      `statement that moved nothing. That ordering is the point.`,
   );
 }
 

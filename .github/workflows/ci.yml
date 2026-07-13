@@ -3,8 +3,8 @@
 # On every push: the app's typecheck, lint, unit tests, and build, plus the pipeline's pytest.
 # The heavier browser suite (Playwright + axe + visual regression + PWA) and Lighthouse run only on
 # the phase-exit tags — phase-* for the build phases, redesign-* for the UI redesign, feel-* for the
-# app-feel plan — because they need a browser and a full build and would slow every push down for
-# little gain mid-phase.
+# app-feel plan, nc-* for the news-and-control plan — because they need a browser and a full build
+# and would slow every push down for little gain mid-phase.
 #
 # The tag list here and the `if:` conditions on the tag-gated jobs below must be kept in step. A tag
 # family that appears in one but not the other is a gate that silently never runs.
@@ -16,7 +16,7 @@ name: ci
 on:
   push:
     branches: ["**"]
-    tags: ["phase-*", "redesign-*", "feel-*"]
+    tags: ["phase-*", "redesign-*", "feel-*", "nc-*"]
   workflow_dispatch:
     inputs:
       job:
@@ -120,8 +120,8 @@ jobs:
         run: uv run pytest -q
 
   e2e:
-    name: e2e + VRT + PWA (phase-exit tags only — phase-*, redesign-*, feel-*)
-    if: startsWith(github.ref, 'refs/tags/phase-') || startsWith(github.ref, 'refs/tags/redesign-') || startsWith(github.ref, 'refs/tags/feel-')
+    name: e2e + VRT + PWA (phase-exit tags only — phase-*, redesign-*, feel-*, nc-*)
+    if: startsWith(github.ref, 'refs/tags/phase-') || startsWith(github.ref, 'refs/tags/redesign-') || startsWith(github.ref, 'refs/tags/feel-') || startsWith(github.ref, 'refs/tags/nc-')
     runs-on: ubuntu-latest
     # A throwaway Postgres, seeded with the deterministic synthetic morning (prisma/seed.mjs), so
     # the Desk data journey (desk.spec.ts) asserts real rendered values end to end. This is a TEST

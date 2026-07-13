@@ -186,6 +186,16 @@ model MarketContext {
   decliners     Int
   pctAbove50dma Float    @map("pct_above_50dma")
 
+  /// The date the index LEVELS above are actually for (News plan, N1).
+  ///
+  /// It is not always this run's date, and pretending otherwise is the bug this column exists to
+  /// close. FRED posts the index closes AFTER both nightly jobs run (the Nasdaq series around
+  /// 11:38pm ET, against Job A at 6:37pm), so a level fetched tonight can be last session's. Worse,
+  /// the upsert used to overwrite a good level with NULL on a flaky night — losing a true level and
+  /// silently falling back to an ETF. Now a failed fetch LEAVES the stored level alone, and this
+  /// date is how the Desk can say "as of Jul 9" instead of implying it is tonight's (C7).
+  indexLevelsAsOf DateTime? @map("index_levels_as_of") @db.Date
+
   @@map("market_context")
 }
 
@@ -209,8 +219,27 @@ model NewsItem {
   sentiment   Float?
   extract     Json?
 
+  /// Added by the News plan (N4). The providers already send all of this and we already threw it
+  /// away; the Front Page needs it.
+  ///
+  /// The outlet's name ("Reuters"), for the corroboration count and the byline under each card.
+  source      String?
+  /// The image URL AS RECEIVED from the provider or the article's og:image. This is a candidate, not
+  /// a serving URL — the copy we actually render lives in news_image, fetched into our own bucket.
+  /// We never hotlink it at render time (0.2.1).
+  imageUrl    String?  @map("image_url")
+  /// The provider's own category ("general", "merger") — an ingest hint, not our taxonomy.
+  category    String?
+  /// Marketaux's per-entity industry strings. Feeds the deterministic sector map (Appendix E), which
+  /// is the only thing allowed to assign a sector — the LLM never invents taxonomy (0.2.4).
+  industries  String[]
+  /// The story this article belongs to, once clustering has run. Null until then, and null forever
+  /// for articles ingested before the Front Page existed — old rows never join new clusters.
+  clusterId   String?  @map("cluster_id")
+
   @@unique([provider, url])
   @@index([publishedAt])
+  @@index([clusterId])
   @@map("news_item")
 }
 
@@ -451,4 +480,163 @@ model PaperTrade {
   @@index([status])
   @@index([openedAt])
   @@map("paper_trade")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────────────────────
+// The News & Control plan (NEWS-AND-CONTROL-PLAN.md, Appendix C). Landed whole at N0 so the seed
+// — which every later phase asserts against — has tables to write into. The CODE that fills these
+// arrives with its phase: macro_stat at N3, the news trio at N4, manual_run at N6.
+// ─────────────────────────────────────────────────────────────────────────────────────────────
+
+/// One macro observation, keyed by (series, the date the SOURCE says it is for).
+///
+/// This is a separate table from market_context on purpose. market_context is one row per pipeline
+/// night — a snapshot of the market at that close. These stats are not like that: the mortgage rate
+/// is weekly, CPI is monthly, gold and FX are daily, and each publishes on its own schedule. Storing
+/// them as more market_context columns would force every one of them to inherit the run's date, and
+/// a Thursday mortgage rate stamped "Tuesday" is a lie (ruling C2/C7).
+///
+/// So the as-of date is part of the key, and `asOfLabel` carries the human window the cell prints
+/// ("wk of Jul 9", "Jun 2026"). A source that has not published anything new simply writes no row —
+/// that is not staleness, it is the cadence, and the label says so.
+model MacroStat {
+  /// "mortgage30us" | "cpi_yoy" | "gold_usd" | "usd_npr" | "mood" — the closed set lives in code.
+  seriesKey String   @map("series_key")
+  /// The date the SOURCE reports the observation for — never our fetch date.
+  asOfDate  DateTime @map("as_of_date") @db.Date
+  value     Float
+  /// The previous observation, so a period-over-period delta needs no second query.
+  prior     Float?
+  /// The window as the reader sees it: "wk of Jul 9", "Jun 2026", "Jul 11".
+  asOfLabel String   @map("as_of_label")
+  /// Which source answered — the label follows this, mechanically (C6). e.g. "fred" | "nrb" | "erapi".
+  sourceKey String   @map("source_key")
+  fetchedAt DateTime @map("fetched_at")
+  /// Per-series extras. The Mood gauge's component breakdown lives here — and because C8 makes the
+  /// breakdown a REQUIRED prop, a gauge row without it cannot render at all.
+  meta      Json?
+
+  @@id([seriesKey, asOfDate])
+  @@index([seriesKey, asOfDate(sort: Desc)])
+  @@map("macro_stat")
+}
+
+/// One story. Not one article — one STORY.
+///
+/// A single catalyst arrives as N articles from N outlets. Clustering them (deterministically, in
+/// pipeline/newsdesk/cluster.py — no LLM) is what turns a feed into a front page: the reader sees
+/// the event once, with its corroboration count, instead of the same event five times.
+///
+/// `significance` is computed by a fixed formula (Appendix E), never by a model and never by
+/// attention — there is no click, view, or popularity column here, and that absence is the deepest
+/// guard against this room drifting into a trending feed (ruling C1).
+model NewsCluster {
+  /// sha1 of the SEED member's canonical url (the earliest article), so the id is stable as later
+  /// articles join the cluster over the following evenings.
+  id           String   @id
+  /// The last night this cluster was updated — stories span evenings and keep accumulating.
+  runDate      DateTime @map("run_date") @db.Date
+  firstSeen    DateTime @map("first_seen")
+  headline     String
+  eventType    String   @map("event_type")
+  sectors      String[]
+  themes       String[]
+  tickers      String[]
+  significance Float
+  /// How many distinct outlets carried it. Corroboration is evidence; volume of coverage is not.
+  sources      Int
+  /// The one-line "so what". Null when the verification gate dropped it, or when the cluster was
+  /// outside the narrated top-20. A null here prints NOTHING — never a placeholder (P9).
+  whyItMatters String?  @map("why_it_matters")
+  affectedNote String?  @map("affected_note")
+  extract      Json
+  /// What the gate checked and what it decided, kept so a dropped line can be explained later.
+  verification Json
+  imageId      String?  @map("image_id")
+
+  image NewsImage?     @relation(fields: [imageId], references: [id])
+  links CatalystLink[]
+
+  @@index([runDate, significance(sort: Desc)])
+  @@map("news_cluster")
+}
+
+/// A cluster's link to one ticker, with the ticker's numbers SNAPSHOTTED at publish time.
+///
+/// The snapshot is the point. If the story page recomputed a move from live tables, the feed's
+/// number and the card's number could drift apart within one night — the same fact, two values.
+/// Freezing them at publish means the front page and the story always agree.
+model CatalystLink {
+  id           String  @id @default(cuid())
+  clusterId    String  @map("cluster_id")
+  symbol       String
+  /// The 1-day return at publish.
+  ret1         Float?
+  /// Relative volume against the 20-day average, at publish.
+  rvol20       Float?
+  /// Whether evidence exists for this ticker — gates the "Setup card" doorway. A doorway to nothing
+  /// is worse than no doorway.
+  hasSetupCard Boolean @map("has_setup_card")
+
+  cluster NewsCluster @relation(fields: [clusterId], references: [id])
+
+  @@unique([clusterId, symbol])
+  @@map("catalyst_link")
+}
+
+/// A cached article image, fetched at INGEST and served from our own bucket — never hotlinked.
+///
+/// Hotlinking a publisher's photo at render time rots (they move and expire), leaks the reader's IP
+/// to every publisher on the page, breaks on referrer blocks, and makes layout shift unknowable
+/// because we never learn the dimensions. Fetching once and storing the dimensions is what lets
+/// every card ship with width, height, and a blur placeholder — which is how CLS stays 0.000.
+model NewsImage {
+  /// sha1 of the source image url.
+  id                String   @id
+  /// Which rung of the sourcing ladder answered: "provider" | "og" | "favicon".
+  sourceKind        String   @map("source_kind")
+  urlFull           String   @map("url_full")
+  urlCard           String   @map("url_card")
+  urlThumb          String   @map("url_thumb")
+  width             Int
+  height            Int
+  /// A ~300-byte base64 8px JPEG. Server-rendered, so it needs no client JS to paint.
+  blurDataUrl       String   @map("blur_data_url")
+  dominantColor     String   @map("dominant_color")
+  /// Who took the photo, and the article it came from. Printed under the image, linked out.
+  attributionSource String   @map("attribution_source")
+  attributionUrl    String   @map("attribution_url")
+  fetchedAt         DateTime @map("fetched_at")
+
+  clusters NewsCluster[]
+
+  @@map("news_image")
+}
+
+/// ✎ APP-WRITABLE — this is user state, and the one table in this plan the app may write.
+///
+/// The rule the whole system rests on: the pipeline computes and writes; the app reads, and writes
+/// only what the USER did. A manual run is something the user did. So the app records the REQUEST
+/// here and dispatches a GitHub Action — it never fetches a provider or writes a pipeline table
+/// itself. That would be a second, unaudited writer.
+///
+/// The not_applicable and not_configured states are deliberately absent from `status`: those are UI
+/// states of the panel, describing a run that was never requested. Nothing happened, so nothing is
+/// stored.
+model ManualRun {
+  id          String    @id @default(cuid())
+  requestedAt DateTime  @default(now()) @map("requested_at")
+  /// "nightly-a" | "nightly-b"
+  workflow    String
+  /// "full" | "news" | "macro" | "compute" | "briefing"
+  mode        String
+  /// The GitHub Actions run this dispatch created, once GitHub tells us.
+  ghRunId     BigInt?   @map("gh_run_id")
+  /// requested | queued | running | succeeded | failed
+  status      String
+  reason      String?
+  finishedAt  DateTime? @map("finished_at")
+
+  @@index([requestedAt(sort: Desc)])
+  @@map("manual_run")
 }

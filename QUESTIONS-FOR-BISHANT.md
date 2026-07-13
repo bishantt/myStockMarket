@@ -8,6 +8,71 @@ Format: newest first. I mark each as [FYI], [VETO?], or [NEED] so you can scan.
 
 ---
 
+## 2026-07-12 — the news & control build (N0–N7)
+
+### The one decision that is actually yours
+
+- **[NEED — proceeding on the plan's default, marked and cheap to flip] Where does the News room
+  live?** This is Part 0.1 of the plan, and it is the only choice that amends a standing decision of
+  yours (D2: a five-room tab bar — Desk, Scans, Paper, Track, Academy).
+
+  **I am building option A: a sixth tab.** The bar becomes Desk · News · Scans · Paper · Track ·
+  Academy. At 390px each tab is ~65px wide, above the 44px minimum, and the 10px labels stay
+  legible. Reasons: you commissioned News as a *first-class* section; both reference apps you sent
+  put News in the bottom bar; and the Desk's bounded "Front page" preview module ships either way.
+
+  **The cost, honestly:** iOS convention tops out at five tabs, so this spends the comfortable
+  maximum plus one. If you'd rather keep five, say so and News goes behind a Desk doorway instead —
+  **it is a one-file change (`TabBar.tsx`) and nothing else in the plan moves.** The wiring lands in
+  N5, so there is time.
+
+### A production bug the audit found — you should know about this one
+
+- **[FYI] Your evening briefing has been running without its AI extraction since P3, silently.**
+  `ANTHROPIC_API_KEY` is set correctly in GitHub — you provisioned it on 2026-07-10. But neither
+  nightly workflow ever *passes* it to the job, and the pipeline is written to degrade quietly when
+  the key is absent: it prints "skipping the extraction batch" and carries on. So the key has been
+  sitting there, correct and unused, and the brief has been assembling without the stage that reads
+  the articles.
+
+  It is a two-line fix (one `env:` line per workflow) and it lands in N1. Nothing was lost — the
+  facts always published; only the LLM narration was missing. But it is worth knowing that a
+  "degrade gracefully" path degraded for four days without anyone being told, which is precisely the
+  disease this plan's Part 1 is about.
+
+### What I still need you to provision (nothing is blocked)
+
+Every one of these has a fixture-backed path, so the build runs to completion without them. Each
+feature flips live the moment its secret lands, and I log the flip.
+
+| # | What | For | Until it lands |
+|---|---|---|---|
+| P-1 | **A public R2 bucket for article images** (suggest `msm-media`) + a public base URL, on the Cloudflare account you already have. GH secrets `R2_MEDIA_BUCKET`, `R2_MEDIA_PUBLIC_BASE`; Vercel env `NEXT_PUBLIC_MEDIA_BASE`. Your existing R2 token works if it is account-scoped. | N4 — cached article photos | The image pipeline runs on fixtures and cards render the designed fallbacks (which are first-class by design, not failure states). The feed ships and looks right. |
+| P-2 | **A fine-grained GitHub PAT**, `actions: read+write`, this repo only. Vercel env `GH_DISPATCH_TOKEN`, `GH_REPO`. | N6 — the control room's run buttons | The panel renders in its "not configured" state, which says plainly that the token is absent. Every other state is tested against a mocked GitHub API. |
+| P-5 | **A GoldAPI key** (goldapi.io — free tier, no card). GH secret `GOLDAPI_KEY`. | N3 — the gold cell | The gold cell renders "not yet reported", honestly. (The seed already carries gold as a stale cell, so you will see what that looks like.) |
+
+`ANTHROPIC_API_KEY` (P-3) is **already provisioned** — see the bug above; it just needed wiring.
+
+### Heads-ups, no action needed
+
+- **[FYI] I cannot take production screenshots.** The plan's N0 asks for them. The app is
+  login-walled (by design — licensing), and the app's own username/password live only in Vercel's
+  environment, not in the local `.env`. So I have no way to sign in. I did better instead: I read
+  the production database directly (read-only) and put the actual rows in
+  `docs/nc-evidence/n0-audit.md` — which is what the screenshot would have been evidence *for*. If
+  you want screenshots to be possible later, drop the app credentials into the root `.env`.
+
+- **[FYI] The Macro Pulse bug you screenshotted is confirmed, and it is not what it looks like.**
+  Your production database holds exactly one `market_context` row, and its three index levels are
+  NULL while VIX and the 10-year (also FRED) came through fine — and the run still recorded
+  `fred: ok`. The R0 fix that fetches true index levels is correct and is in the tree; it landed at
+  02:20 on 2026-07-12, about seven hours *after* the last pipeline run. So the code is right and the
+  data simply predates it. **But the deeper bug is real and is what N1 fixes:** even after it heals,
+  the next FRED index outage will be just as silent, because the run has no way to say "the index
+  levels are missing tonight". Fixing the data does not fix the instrument.
+
+---
+
 ## 2026-07-12 — the app-feel build (F0–F7)
 
 ### RESOLVED — you approved this, and it turned out I had the diagnosis half wrong

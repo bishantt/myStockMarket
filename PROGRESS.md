@@ -1,5 +1,65 @@
 # PROGRESS.md — resumable state
 
+# NOW: the News & Control build (N0–N7). N0 is done and tagged `nc-0`.
+
+**Where I am.** N0 (ground truth, wiring, seeds) is complete. Rolling straight into N1 — the macro
+truth fix — under the plan's autonomy contract. Nothing is blocked and nothing needs you.
+
+**Read this if you read nothing else:** `docs/nc-evidence/n0-audit.md`. It is the audit of what the
+tree and your production database actually look like, and it found one thing the plan did not know
+about — see QUESTIONS-FOR-BISHANT.md, "A production bug the audit found".
+
+## What N0 landed
+
+1. **`nc-*` is wired into CI** — the tag triggers *and* the e2e job's `if` condition. This was the
+   first edit of the phase, deliberately: an unwired tag pattern makes every later "gate green"
+   claim ornamental, and the F0 build learned that the hard way.
+2. **The audit** (`docs/nc-evidence/n0-audit.md`). The plan's diagnosis is correct on every point.
+   Module 00 really is a full card holding one date; the Macro Pulse's provenance footer really is a
+   static string that cannot know whether it is true; the degradation really is silent.
+3. **The Appendix C schema, whole** — one migration: `macro_stat`, `news_cluster`, `catalyst_link`,
+   `news_image`, `manual_run`, plus `news_item`'s five new columns and `market_context`'s
+   `index_levels_as_of`. The code that fills these arrives with its phase (N1/N3/N4/N6); the tables
+   land now because the seed cannot write into tables that do not exist.
+4. **The seed, grown** — `prisma/fixtures/macro.mjs` (the five household stats, gold deliberately
+   stale so the amber cell has a source) and `prisma/fixtures/news.mjs` (14 clusters, 16 ticker
+   links, 3 cached images). 11 new unit tests lock its promises. 395 app tests green.
+
+## The one number in the seed that carries the whole argument
+
+**The biggest mover on the tape ranks third.** SMCI rose 18.4% — the largest move — and it sits at
+position 3 on the front page. The lead is a Fed statement that moved no single stock at all.
+
+That is not a quirk of made-up data. Significance is a stated formula (scope, corroboration,
+magnitude, catalyst class, recency), magnitude is one input of five, and it enters in units of the
+ticker's *own* volatility — so an 18% day in a name that routinely swings 6.5% is a big move, not an
+extraordinary one. I computed all 14 scores by hand, wrote the arithmetic into each cluster's
+comment, and a unit test recomputes every one of them. When the pipeline's ranker lands in N4, it
+has an oracle to be checked against instead of only agreeing with itself.
+
+A feed ranked by size of move is a leaderboard. This is the test that stops it becoming one.
+
+## Production, as of tonight (read-only probe)
+
+Your `market_context` has exactly one row. All three index levels are NULL, VIX and the 10-year are
+fine, and the run still says `fred: ok`. The R0 fix is correct and in the tree — it landed seven
+hours *after* the last pipeline run, so the data simply predates it, and no run has happened since.
+It will heal on the next nightly. **N1's job is that the failure was silent at all.**
+
+## Resumable state
+
+- Done: **N0** (tagged `nc-0`).
+- Next: **N1 — the macro truth fix.** Pipeline hardening (a `fred-indexes` source-status key, an
+  upsert that never regresses a good level to null, `index_levels_as_of`), the one-label-per-row
+  grammar, the computed provenance footer (C6), the hierarchy order — plus the ANTHROPIC_API_KEY
+  wiring the audit turned up.
+- Provisioning still open: P-1 (R2 media bucket), P-2 (GitHub PAT), P-5 (GoldAPI key). None block.
+- Open for you: Part 0.1 — where the News room lives. Building the default (a sixth tab); it is a
+  one-file flip until N5.
+
+---
+
+
 # THE APP FEEL PLAN IS DONE (2026-07-12) — tagged `feel-final`, CI green on the tag.
 
 F0 through F7, all eight phases, unattended. Nothing is blocked. Read this section and then, if you

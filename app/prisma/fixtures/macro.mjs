@@ -1,0 +1,147 @@
+/**
+ * The seeded macro board — five household stats (NEWS-AND-CONTROL-PLAN Part 6).
+ *
+ * These are the cells that answer the questions a market number cannot: what does a mortgage cost,
+ * what did prices do, what is gold worth, what is a dollar worth in rupees, and how is the market
+ * feeling. Each one publishes on its OWN schedule, which is the entire reason they live in
+ * macro_stat instead of as more market_context columns: the mortgage rate is weekly, CPI is
+ * monthly, gold and FX are daily. Stamping a Thursday rate with tonight's date would be a lie, so
+ * the as-of date is part of the key and `asOfLabel` is the window the reader actually sees.
+ *
+ * The seeded run date is 2026-07-09 (a Thursday), matching seed.mjs.
+ *
+ * ONE CELL IS DELIBERATELY STALE. Gold's row is dated Jul 2 — a week old against a daily cadence,
+ * which is past the "cadence × 3" threshold, so the board must render it amber and word it "stale —
+ * last Jul 2" (degradation rung 5, ruling C7). It is seeded that way because a board that only ever
+ * renders its happy path has no test for the day a source goes quiet, and because it happens to be
+ * true: the GoldAPI key is not provisioned yet (provisioning row P-5), so this IS gold's honest
+ * state today. When the key lands, the cell goes fresh and this fixture changes with it.
+ */
+
+const RUN_DATE_ISO = "2026-07-09";
+
+/** A UTC midnight Date from a bare YYYY-MM-DD, so the seed is byte-for-byte reproducible. */
+const day = (iso) => new Date(`${iso}T00:00:00.000Z`);
+
+/** When the seeded night fetched these — the same moment seed.mjs finishes its run. */
+const FETCHED_AT = new Date("2026-07-09T22:39:00.000Z");
+
+/**
+ * The Mood gauge's components (ruling C8).
+ *
+ * The number may NEVER render without this table. That is not a style preference — it is the whole
+ * argument for building our own gauge instead of borrowing CNN's: a sentiment number you cannot
+ * take apart is a number you have to trust, and this app does not ask for trust. Each component
+ * carries its raw value, the window it was measured over, and its percentile against its own
+ * trailing history — so a reader can see exactly which input is doing the work.
+ *
+ * The score is the unweighted mean of the percentiles: (0.55 + 0.38 + 0.48 + 0.35 + 0.34) / 5
+ * = 0.42 → 42, which falls in the 25–44 band, "leaning fearful". The arithmetic is stated here so
+ * the pipeline's own computation (N3) can be checked against a number a human worked out.
+ */
+const MOOD_COMPONENTS = [
+  {
+    key: "breadth",
+    label: "Breadth",
+    value: 0.61,
+    window: "% of universe above its 50-day average",
+    percentile: 0.55,
+    contributes: "greedy",
+  },
+  {
+    key: "volatility",
+    label: "Volatility (VIX)",
+    value: 15.84,
+    window: "last close",
+    percentile: 0.38,
+    // Inverted on purpose: a HIGH VIX is a FEARFUL reading, so a low percentile here means the
+    // market is calm-ish but not calm enough to pull the gauge upward.
+    contributes: "fearful",
+  },
+  {
+    key: "momentum",
+    label: "Momentum",
+    value: 0.021,
+    window: "S&P 500 vs its 125-session mean",
+    percentile: 0.48,
+    contributes: "greedy",
+  },
+  {
+    key: "range",
+    label: "Range position",
+    value: 0.18,
+    window: "share near 252-day highs minus share near lows",
+    percentile: 0.35,
+    contributes: "fearful",
+  },
+  {
+    key: "credit",
+    label: "Credit spreads",
+    value: 3.12,
+    window: "ICE BofA US High Yield OAS, last close",
+    // Also inverted: wider spreads mean more fear.
+    percentile: 0.34,
+    contributes: "fearful",
+  },
+];
+
+export const MACRO_STATS = [
+  {
+    seriesKey: "mortgage30us",
+    asOfDate: day(RUN_DATE_ISO),
+    value: 6.72,
+    prior: 6.78,
+    // Freddie Mac's survey is published for the week ENDING Thursday. The label says so, because
+    // "6.72% as of tonight" would claim a freshness the source does not offer.
+    asOfLabel: "wk of Jul 9",
+    sourceKey: "fred",
+    fetchedAt: FETCHED_AT,
+    meta: null,
+  },
+  {
+    seriesKey: "cpi_yoy",
+    asOfDate: day("2026-06-01"),
+    value: 2.7,
+    prior: 2.9,
+    // June's data, published mid-July. A monthly series in the middle of its cycle is not stale —
+    // the label IS the honesty (degradation rung 2).
+    asOfLabel: "Jun 2026",
+    sourceKey: "fred",
+    fetchedAt: FETCHED_AT,
+    meta: null,
+  },
+  {
+    seriesKey: "gold_usd",
+    // A WEEK OLD, on purpose — see the file comment. This drives the amber "stale" cell.
+    asOfDate: day("2026-07-02"),
+    value: 4085.2,
+    prior: 4071.9,
+    asOfLabel: "Jul 2",
+    sourceKey: "goldapi",
+    fetchedAt: new Date("2026-07-02T22:39:00.000Z"),
+    meta: null,
+  },
+  {
+    seriesKey: "usd_npr",
+    asOfDate: day(RUN_DATE_ISO),
+    // `value` carries the BUY side so a single-number consumer has a defined answer, but the cell
+    // renders the pair: picking one side silently answers a question the reader never asked.
+    value: 151.66,
+    prior: 151.42,
+    asOfLabel: "Jul 9",
+    sourceKey: "nrb",
+    fetchedAt: FETCHED_AT,
+    meta: { buy: 151.66, sell: 152.26 },
+  },
+  {
+    seriesKey: "mood",
+    asOfDate: day(RUN_DATE_ISO),
+    value: 42,
+    prior: 47,
+    asOfLabel: "Jul 9",
+    // Ours. Not CNN's, and the surface says so in as many words (C8).
+    sourceKey: "computed",
+    fetchedAt: FETCHED_AT,
+    meta: { score: 42, band: "leaning fearful", components: MOOD_COMPONENTS },
+  },
+];
