@@ -61,16 +61,29 @@ def record_finnhub(client: httpx.Client, root: Path, key: str) -> None:
     page1 = general.json()
     _write(out, "news_general", page1)
 
-    # Page 2 starts below the oldest id on page 1 — Finnhub returns newest first, and `minId` means
-    # "only ids greater than this", so paging BACKWARDS in time is done by asking for ids below the
-    # smallest one we hold. Recorded so the parser's assumption meets the provider's behaviour.
+    # WHAT `minId` ACTUALLY DOES — measured, because the plan's ingest budget assumed the opposite.
+    #
+    # The budget said "2 calls, the second with minId pagination, ~100-200 items". The first
+    # recording killed that: asking with a minId BELOW the oldest id we held returned the identical
+    # 100 articles, byte for byte. So minId is a "newer than this" filter, not a page cursor — the
+    # endpoint hands back the newest ~100 and there is no way to reach further back.
+    #
+    # This second recording proves the direction rather than leaving it as my inference: minId set to
+    # a MID-RANGE id must return only the items newer than it, i.e. strictly fewer than 100. If it
+    # ever comes back with 100 again, the reading above is wrong and the budget must be rethought.
     if page1:
-        oldest = min(item["id"] for item in page1)
-        page2 = client.get(
-            _FINNHUB_NEWS, params={"category": "general", "minId": oldest - 200, "token": key}
+        ids = sorted(item["id"] for item in page1)
+        midpoint = ids[len(ids) // 2]
+        probe = client.get(
+            _FINNHUB_NEWS, params={"category": "general", "minId": midpoint, "token": key}
         )
-        page2.raise_for_status()
-        _write(out, "news_general_p2", page2.json(), f" [minId={oldest - 200}]")
+        probe.raise_for_status()
+        body = probe.json()
+        _write(out, "news_general_minid", body, f" [minId={midpoint} — the forward-only probe]")
+        print(
+            f"    minId probe: asked for ids above {midpoint} (the median of page 1) and got "
+            f"{len(body)} items. Fewer than 100 means minId filters FORWARD and cannot page back."
+        )
 
     merger = client.get(_FINNHUB_NEWS, params={"category": "merger", "token": key})
     merger.raise_for_status()
