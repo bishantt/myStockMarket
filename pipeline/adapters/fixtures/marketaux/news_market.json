@@ -1,0 +1,122 @@
+{
+  "meta": {
+    "found": 3481263,
+    "returned": 3,
+    "limit": 3,
+    "page": 1
+  },
+  "data": [
+    {
+      "uuid": "24652dc5-ab71-42f4-9802-606fb73a8553",
+      "title": "FS KKR Capital: 5 Reasons I'm Staying Away (NYSE:FSK)",
+      "description": "FSK stock plunged 50% as non-accruals hit 8.1% and dividend coverage stays thin.",
+      "keywords": "",
+      "snippet": "FS KKR Capital ( FSK ) stock price sank ~50% since the last time I covered it . I decided not to buy any shares then. And I'm glad I did that. I know that FSK's...",
+      "url": "https://seekingalpha.com/article/4921561-fs-kkr-capital-5-reasons-i-am-staying-away",
+      "image_url": "https://static.seekingalpha.com/cdn/s3/uploads/getty_images/2209041723/image_2209041723.jpg?io=getty-c-w1536",
+      "language": "en",
+      "published_at": "2026-07-13T13:01:37.000000Z",
+      "source": "seekingalpha.com",
+      "relevance_score": null,
+      "entities": [
+        {
+          "symbol": "FSK",
+          "name": "FS KKR Capital Corp.",
+          "exchange": null,
+          "exchange_long": null,
+          "country": "us",
+          "type": "equity",
+          "industry": "Financial Services",
+          "match_score": 128.98376,
+          "sentiment_score": 0.31845,
+          "highlights": [
+            {
+              "highlight": "<em>FS</em> <em>KKR</em> <em>Capital</em[+258 characters]",
+              "sentiment": 0.6369,
+              "highlighted_in": "main_text"
+            },
+            {
+              "highlight": "<em>FS</em> <em>KKR</em> <em>Capital</em>: 5 Reasons I'm Staying Away (<em>NYSE:FSK</em>)",
+              "sentiment": 0,
+              "highlighted_in": "title"
+            }
+          ]
+        }
+      ],
+      "similar": []
+    },
+    {
+      "uuid": "c0b6863b-0b8e-445d-8f72-e4d10b3327e4",
+      "title": "Apple's Impending Margin Crisis, Sell Or Hedge Ahead Of Q3 Earnings (NASDAQ:AAPL)",
+      "description": "Apple (AAPL) faces margin pressure from soaring NAND/DRAM costs, risking share declines.",
+      "keywords": "",
+      "snippet": "One thing Apple Inc ( AAPL ) has desperately needed in recent years is growth in device revenues. I said as much in my May article called Apple: We Don't Need N...",
+      "url": "https://seekingalpha.com/article/4921534-apples-impending-margin-crisis-sell-or-hedge-ahead-of-q3-earnings",
+      "image_url": "https://static.seekingalpha.com/cdn/s3/uploads/getty_images/1208618501/image_1208618501.jpg?io=getty-c-w1536",
+      "language": "en",
+      "published_at": "2026-07-13T13:00:16.000000Z",
+      "source": "seekingalpha.com",
+      "relevance_score": null,
+      "entities": [
+        {
+          "symbol": "AAPL",
+          "name": "Apple Inc.",
+          "exchange": null,
+          "exchange_long": null,
+          "country": "us",
+          "type": "equity",
+          "industry": "Technology",
+          "match_score": 45.517727,
+          "sentiment_score": -0.0968,
+          "highlights": [
+            {
+              "highlight": "One thing <em>Apple</em> <em>Inc</em> ( [+241 characters]",
+              "sentiment": 0.4313,
+              "highlighted_in": "main_text"
+            },
+            {
+              "highlight": "Apple's Impending Margin Crisis, Sell Or Hedge Ahead Of Q3 Earnings (<em>NASDAQ:AAPL</em>)",
+              "sentiment": -0.6249,
+              "highlighted_in": "title"
+            }
+          ]
+        }
+      ],
+      "similar": []
+    },
+    {
+      "uuid": "44e46130-f2c6-49f5-add5-f8c148986757",
+      "title": "Starbucks: Using AI To Cut Costs While Compounding Dividends And EPS (NASDAQ:SBUX)",
+      "description": "Starbucks (SBUX) Q2 beats and raised FY2026 guidance signal a strong turnaround.",
+      "keywords": "",
+      "snippet": "I am focused on growth and dividend income. My personal strategy revolves around setting myself up for an easy retirement by creating a portfolio which focuses ...",
+      "url": "https://seekingalpha.com/article/4921470-starbucks-using-ai-to-cut-costs-while-compounding-dividends-and-eps",
+      "image_url": "https://static.seekingalpha.com/cdn/s3/uploads/getty_images/2199578213/image_2199578213.jpg?io=getty-c-w1536",
+      "language": "en",
+      "published_at": "2026-07-13T13:00:00.000000Z",
+      "source": "seekingalpha.com",
+      "relevance_score": null,
+      "entities": [
+        {
+          "symbol": "SBUX",
+          "name": "Starbucks Corporation",
+          "exchange": null,
+          "exchange_long": null,
+          "country": "us",
+          "type": "equity",
+          "industry": "Consumer Cyclical",
+          "match_score": 63.258873,
+          "sentiment_score": -0.2732,
+          "highlights": [
+            {
+              "highlight": "<em>Starbucks</em>: Using AI To Cut Costs While Compounding Dividends And EPS (<em>NASDAQ:SBUX</em>)",
+              "sentiment": -0.2732,
+              "highlighted_in": "title"
+            }
+          ]
+        }
+      ],
+      "similar": []
+    }
+  ]
+}
