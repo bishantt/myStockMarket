@@ -304,6 +304,11 @@ jobs:
       #
       # Named per leg: artifact names are unique within a run, so three legs uploading
       # `playwright-failures` would collide.
+      #
+      # THIS STEP MUST STAY AHEAD OF THE AUTO-MINT BELOW. Playwright empties its output directory at
+      # the start of every run, so the mint's re-run of vrt.spec.ts DELETES test-results/ — including
+      # the expected/actual/diff triptych this uploads. Photograph the crime scene before you rebuild
+      # on top of it.
       - name: Upload the failure artifacts (the expected/actual/diff images live here)
         if: failure()
         uses: actions/upload-artifact@v4
@@ -314,6 +319,56 @@ jobs:
             app/playwright-report/
           retention-days: 14
           if-no-files-found: warn
+
+      # --- AUTO-MINT ON A PIXEL FAILURE (G1) ------------------------------------------------------
+      #
+      # A rehearsal that reds on pixels used to cost a second round trip: dispatch the mint job, wait
+      # ~6 minutes, download, commit, and only then find out whether the run was even right. The run
+      # that saw the diff can hand you the fresh baselines itself.
+      #
+      # But ONLY when it was actually the pixels. `*-actual.png` is the precise witness: Playwright
+      # writes it into test-results/ when, and only when, a snapshot COMPARISON fails. A red assertion
+      # ("the chip says the wrong word") leaves no such file, and it must not buy four minutes of
+      # photography — that is the whole reason this is guarded rather than unconditional.
+      - name: Was it the pixels, or was it an assertion? (`*-actual.png` is the witness)
+        id: pixels
+        if: failure()
+        run: |
+          if find test-results -name '*-actual.png' -print -quit 2>/dev/null | grep -q .; then
+            echo "moved=true" >> "$GITHUB_OUTPUT"
+            echo "A snapshot comparison failed. Minting candidate baselines for ${{ matrix.project }}."
+          else
+            echo "moved=false" >> "$GITHUB_OUTPUT"
+            echo "No *-actual.png in test-results: this red is an assertion, not a pixel. Not minting."
+          fi
+
+      # `=all`, never a bare `--update-snapshots`, and that is an untouchable. Plain `--update-snapshots`
+      # means "changed": it rewrites only the baselines whose comparison FAILED, so a real change that
+      # happens to land inside the 600-pixel tolerance is neither reported nor re-baselined, and the old
+      # picture survives as a picture of the previous behaviour. That is exactly how N1's rewritten macro
+      # row passed on desktop while the phone shot caught it.
+      - name: Mint CANDIDATE baselines for this leg
+        if: failure() && steps.pixels.outputs.moved == 'true'
+        run: npx playwright test vrt.spec.ts --project=${{ matrix.project }} --update-snapshots=all
+
+      # A CANDIDATE. NOT A DECISION. Nothing here is ever auto-committed, and no job in this repo has
+      # write access to the branch. You download it, you OPEN EVERY IMAGE, and you commit only a diff
+      # you can explain, with the reason in the commit body. An unexplained diff is not a baseline to
+      # refresh — it is a bug you just found, and the triptych in playwright-failures-<leg> is where you
+      # go to look at it. Nine real bugs in this build were caught by someone opening the picture.
+      #
+      # The glob keeps each leg to its own baselines (Playwright stamps the project into every filename:
+      # academy-dark-desktop-linux.png), so the three candidate artifacts cannot collide when you flatten
+      # them into the snapshots directory. `error`, not `warn`, on no-files-found: if Playwright ever
+      # changes that naming convention, this must SCREAM rather than hand back an empty candidate.
+      - name: Upload them — a candidate for your eyes, never an auto-commit
+        if: failure() && steps.pixels.outputs.moved == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: vrt-baselines-candidate-${{ matrix.project }}
+          path: app/e2e/vrt.spec.ts-snapshots/*-${{ matrix.project }}-linux.png
+          retention-days: 14
+          if-no-files-found: error
 
   vrt-baselines:
     name: VRT — generate baselines (manual; CI is the pixel oracle)

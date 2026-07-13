@@ -1,7 +1,9 @@
 # vrt-update
 
 **Status:** minted 2026-07-12 during the UI redesign (R1), when the visual-regression suite
-became real.
+became real. **Rewritten 2026-07-13 (GATE-EFFICIENCY-PLAN G1)**: the oracle now runs on demand
+before any tag exists, it runs as three sharded legs, and a run that reds on pixels mints its own
+candidate baselines. The one rule below did not change and never will.
 
 **When to use:** whenever a change moves pixels — and, more importantly, whenever CI tells you a
 change moved pixels that you did not expect it to.
@@ -36,20 +38,72 @@ two sets for one developer is pure cost (Appendix E-7).
 npm run e2e:local        # playwright test --ignore-snapshots
 ```
 
-**To regenerate baselines** after an intentional restyle:
+Never run `--update-snapshots` on this Mac. It would rewrite all 76 baselines in macOS
+rasterisation and every one of them would then fail in CI.
+
+---
+
+## The normal flow (since G1): rehearse, and let the failing run mint
+
+You no longer tag to find out. Run the oracle on the SHA you are about to tag:
 
 ```bash
-gh workflow run ci.yml -f job=vrt-baselines
-# then, when it finishes:
-gh run download <run-id> -n vrt-baselines -D app/e2e/vrt.spec.ts-snapshots
+gh workflow run ci.yml -f job=e2e          # main's HEAD, or --ref <branch> for a scratch branch
+gh run watch <run-id>
+```
+
+It runs as **three legs** — `desktop`, `phone`, `wide` — each its own job, its own database, its
+own artifacts. `fail-fast` is off, so one red leg does not hide the others.
+
+**If a leg reds on pixels**, that run has already done the work for you. It uploads two things per
+leg:
+
+| artifact | what it is |
+|---|---|
+| `playwright-failures-<leg>` | the **triptych** — expected, actual, diff. This is what you look at. |
+| `vrt-baselines-candidate-<leg>` | the **candidate** baselines, freshly shot. Only appears if a snapshot comparison actually failed. |
+
+The candidate is minted only when `test-results/**/*-actual.png` exists — the precise witness of a
+pixel diff. A red *assertion* does not mint, because it must not spend four minutes photographing.
+
+### Getting them, and the flag that will trip you up
+
+`gh run download` extracts **each artifact into its own subdirectory** when more than one matches.
+Only a single named artifact lands flat in `-D`. So download to a scratch directory, look, and
+only then copy:
+
+```bash
+gh run download <run-id> -p 'vrt-baselines-candidate-*' -D /tmp/vrt-candidates
+# → /tmp/vrt-candidates/vrt-baselines-candidate-desktop/*.png   (and -phone, -wide)
+
+gh run download <run-id> -p 'playwright-failures-*' -D /tmp/vrt-failures
+# → the triptychs. OPEN THEM. Every one.
+
+# Only after you have looked and can say WHY each pixel moved:
+cp /tmp/vrt-candidates/*/*.png app/e2e/vrt.spec.ts-snapshots/
+git status --short app/e2e/vrt.spec.ts-snapshots/     # exactly what moved, and nothing else
 git add app/e2e/vrt.spec.ts-snapshots
 git commit -m "…
 
 VRT: 14 baselines updated — the Academy's cards became solid paper (R5)."
 ```
 
-**To read a failure**, the diff images are in the CI artifact `playwright-report` (uploaded on
-failure). Look at the triptych — expected, actual, diff — before you touch anything.
+Flattening the three legs together is safe: Playwright stamps the project into every filename
+(`academy-dark-desktop-linux.png`), so the legs cannot overwrite each other.
+
+---
+
+## The deliberate mint (still here, for a restyle you have already decided on)
+
+When you *know* you moved pixels and want green baselines before you rehearse:
+
+```bash
+gh workflow run ci.yml -f job=vrt-baselines
+gh run download <run-id> -n vrt-baselines -D app/e2e/vrt.spec.ts-snapshots   # single artifact → flat
+```
+
+This is now the exception, not the path. The rehearsal mints for you when it finds a diff, and the
+diff is the thing you wanted to see anyway.
 
 ---
 
