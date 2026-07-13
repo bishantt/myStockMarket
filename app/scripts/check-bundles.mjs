@@ -106,7 +106,17 @@ const BASELINE_KB = {
   // The Front Page (N5). The room carries a client feed (filters, the window control, pagination),
   // and the story page carries the app's one table — which is why the story is the LIGHTER of the
   // two: the table was already in the shared chunks, and the feed's interactivity is not.
-  "/news": 184.2,
+  //
+  // CORRECTED FROM 184.2, AND THE CORRECTION IS THE INTERESTING PART. 184.2 was never a real
+  // measurement of this route: it was read out of a `.next` that predated the final build, so it
+  // described a page that no longer existed. The guard then fired on the next honest build and
+  // reported the room "growing 11KB" — for changes that were 51 lines of comments and CSS classes.
+  //
+  // Rebuilding the baseline COMMIT and measuring it settled it: /news was 194.9KB there too. So the
+  // route did not grow; the first number was wrong. A baseline is a measurement, and a measurement
+  // taken from a stale artifact is a guess wearing a number's clothes — which is exactly the species
+  // of error the bundles guard exists to catch, and it caught mine.
+  "/news": 195.1,
   "/news/[cluster]": 161.6,
   "/offline": 163.0,
   "/paper": 194.7,
