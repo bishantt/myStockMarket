@@ -103,7 +103,7 @@ export const NEWS_IMAGES = [
  * never softened, never replaced with a placeholder. That is P9 rendered as data, and the e2e
  * asserts the card shows its numbers and simply says nothing where the sentence would have been.
  */
-export const NEWS_CLUSTERS = [
+const CLUSTERS = [
   {
     // RANK 1 — THE LEAD. A Fed statement, zero tickers, zero price fireworks.
     //   scope 1.0 (macro-wide) · corrob 5/5 = 1.0 · magnitude 0 (no tickers) · class 1.0 · recency 1.0
@@ -432,6 +432,116 @@ export const NEWS_CLUSTERS = [
     imageId: null, // L4
   },
 ];
+
+/**
+ * The articles each story was built from — the thing "3 sources" is a count OF.
+ *
+ * The corroboration count is the second-heaviest term in the significance formula, and until N5
+ * nothing in the app could show the reader what it was counting. A number that cannot be opened is
+ * a number that has to be taken on trust, which is the posture this whole product argues against.
+ * So every cluster carries its articles, and the story page lists them with their outlets, their
+ * publication times and their links out.
+ *
+ * The wires are collapsed the way `newsdesk/outlets.py` collapses them: GlobeNewswire and
+ * BusinessWire carrying one company's announcement are ONE source, not two, because a company PAYS
+ * a wire to carry its words verbatim and a wire does not decide whether the words are worth
+ * carrying. That is the entire thing corroboration measures.
+ */
+const CLUSTER_ARTICLES = {
+  "nc-fed-hold": [
+    { source: "Reuters", url: "https://reuters.com/fed-holds-july", headline: "Fed holds rates steady, signals patience on cuts", published: t("18:02") },
+    { source: "Bloomberg", url: "https://bloomberg.com/fomc-july-hold", headline: "FOMC leaves target range unchanged, repeats data-dependent line", published: t("18:04") },
+    { source: "CNBC", url: "https://cnbc.com/fed-decision-july", headline: "Fed stands pat, Powell says the committee can wait", published: t("18:11") },
+    { source: "Associated Press", url: "https://apnews.com/fed-july-decision", headline: "Federal Reserve keeps rates on hold", published: t("18:19") },
+    { source: "Financial Times", url: "https://ft.com/fed-holds-patience", headline: "Fed holds and signals no hurry to cut", published: t("18:33") },
+  ],
+  "nc-fda-nonopioid": [
+    { source: "Associated Press", url: "https://apnews.com/fda-nonopioid-approval", headline: "FDA approves first non-opioid painkiller in a generation", published: t("14:41") },
+    { source: "Reuters", url: "https://reuters.com/fda-clears-painkiller", headline: "US regulator clears novel non-opioid analgesic", published: t("14:52") },
+    { source: "STAT", url: "https://statnews.com/nonopioid-approval", headline: "FDA green-lights first-in-class pain drug", published: t("15:10") },
+    { source: "CNBC", url: "https://cnbc.com/fda-pain-approval", headline: "FDA approves non-opioid pain treatment", published: t("15:26") },
+  ],
+  "nc-smci-earnings": [
+    { source: "Reuters", url: "https://reuters.com/smci-q3-beat", headline: "Super Micro beats on AI server demand, lifts full-year outlook", published: t("20:15") },
+    { source: "CNBC", url: "https://cnbc.com/smci-earnings-beat", headline: "Super Micro tops estimates, raises guidance on AI demand", published: t("20:22") },
+    { source: "Bloomberg", url: "https://bloomberg.com/smci-results", headline: "Super Micro lifts outlook as AI server orders build", published: t("20:40") },
+  ],
+  "nc-amd-acquisition": [
+    { source: "Bloomberg", url: "https://bloomberg.com/amd-acquisition", headline: "AMD to acquire networking-chip designer in $12B deal", published: t("12:05") },
+    { source: "Reuters", url: "https://reuters.com/amd-buys-networking", headline: "AMD strikes $12B deal for networking-chip maker", published: t("12:11") },
+    { source: "Wall Street Journal", url: "https://wsj.com/amd-deal", headline: "AMD reaches $12B networking deal", published: t("12:24") },
+    { source: "CNBC", url: "https://cnbc.com/amd-acquires", headline: "AMD announces $12B acquisition", published: t("12:31") },
+    { source: "press release", url: "https://globenewswire.com/amd-announcement", headline: "AMD Announces Agreement to Acquire Networking Chip Designer", published: t("12:02") },
+  ],
+  "nc-jpm-earnings": [
+    { source: "Reuters", url: "https://reuters.com/jpm-q2", headline: "JPMorgan tops estimates as loan losses stay contained", published: t("11:32") },
+    { source: "Bloomberg", url: "https://bloomberg.com/jpm-earnings", headline: "JPMorgan beats as credit costs stay low", published: t("11:38") },
+    { source: "CNBC", url: "https://cnbc.com/jpm-results", headline: "JPMorgan earnings top estimates", published: t("11:44") },
+    { source: "Financial Times", url: "https://ft.com/jpm-quarter", headline: "JPMorgan profits beat forecasts", published: t("12:02") },
+  ],
+  "nc-tsla-guidance": [
+    { source: "Reuters", url: "https://reuters.com/tesla-cuts-outlook", headline: "Tesla trims delivery outlook, citing softer European demand", published: t("13:20") },
+    { source: "Bloomberg", url: "https://bloomberg.com/tesla-guidance", headline: "Tesla lowers delivery guidance on Europe weakness", published: t("13:29") },
+    { source: "CNBC", url: "https://cnbc.com/tesla-outlook", headline: "Tesla cuts its delivery forecast", published: t("13:47") },
+  ],
+  "nc-coin-ruling": [
+    { source: "Reuters", url: "https://reuters.com/coinbase-ruling", headline: "Court rules for Coinbase in registration dispute", published: t("15:48") },
+    { source: "Bloomberg", url: "https://bloomberg.com/coin-court", headline: "Coinbase wins registration case", published: t("15:55") },
+    { source: "CNBC", url: "https://cnbc.com/coinbase-court-win", headline: "Judge sides with Coinbase", published: t("16:09") },
+  ],
+  "nc-nvda-guidance": [
+    { source: "Reuters", url: "https://reuters.com/nvda-guides-above", headline: "Nvidia guides above consensus on datacentre orders", published: yesterday("21:10") },
+    { source: "Bloomberg", url: "https://bloomberg.com/nvda-outlook", headline: "Nvidia forecast tops estimates on data-centre demand", published: yesterday("21:18") },
+    { source: "CNBC", url: "https://cnbc.com/nvidia-guidance", headline: "Nvidia issues above-consensus guidance", published: yesterday("21:31") },
+    { source: "Wall Street Journal", url: "https://wsj.com/nvidia-forecast", headline: "Nvidia's forecast beats Wall Street", published: yesterday("21:52") },
+  ],
+  "nc-aapl-note": [
+    { source: "CNBC", url: "https://cnbc.com/apple-target-raise", headline: "Analyst lifts Apple target ahead of next week's earnings", published: t("09:55") },
+    { source: "Reuters", url: "https://reuters.com/apple-price-target", headline: "Broker raises Apple price target before results", published: t("10:04") },
+    { source: "Barron's", url: "https://barrons.com/apple-target", headline: "Apple gets a price-target hike", published: t("10:21") },
+  ],
+  "nc-gme-downgrade": [
+    { source: "Reuters", url: "https://reuters.com/gme-downgrade", headline: "Analyst downgrades GameStop to Sell on weak fundamentals", published: t("11:30") },
+    { source: "CNBC", url: "https://cnbc.com/gamestop-cut", headline: "GameStop cut to Sell", published: t("11:41") },
+  ],
+  "nc-xom-filing": [
+    { source: "Reuters", url: "https://reuters.com/exxon-impairment", headline: "Exxon discloses a $2.1B impairment in a quarterly filing", published: t("16:40") },
+    { source: "Bloomberg", url: "https://bloomberg.com/xom-writedown", headline: "Exxon books $2.1B impairment", published: t("16:58") },
+  ],
+  "nc-lmt-contract": [
+    { source: "Reuters", url: "https://reuters.com/lockheed-contract", headline: "Pentagon awards Lockheed a multi-year missile contract", published: t("10:12") },
+    { source: "Defense News", url: "https://defensenews.com/lmt-award", headline: "Lockheed wins multi-year missile award", published: t("10:33") },
+  ],
+  "nc-msft-copilot": [
+    { source: "Reuters", url: "https://reuters.com/microsoft-agents", headline: "Microsoft opens its agent platform to third-party developers", published: t("08:30") },
+    { source: "The Verge", url: "https://theverge.com/microsoft-agent-platform", headline: "Microsoft opens up its agent platform", published: t("08:47") },
+    { source: "CNBC", url: "https://cnbc.com/microsoft-developers", headline: "Microsoft opens agent platform to developers", published: t("09:05") },
+  ],
+  "nc-uber-expansion": [
+    { source: "Reuters", url: "https://reuters.com/uber-freight", headline: "Uber expands its freight brokerage into two new markets", published: t("07:45") },
+    { source: "Bloomberg", url: "https://bloomberg.com/uber-freight-expansion", headline: "Uber Freight enters two new markets", published: t("08:02") },
+  ],
+};
+
+/**
+ * The 14 clusters, each carrying the articles it was built from.
+ *
+ * THE FIXTURE CHECKS ITSELF. A cluster whose `sources` count disagrees with the number of articles
+ * behind it is a seed that lies — the card would print "5 sources" over a list of two, and every
+ * test would still pass because no test compares those two numbers. So the seed refuses to load.
+ * This is cheap here and it is the same discipline the pipeline keeps: a count that nobody checks
+ * against the thing it counts is a count that will eventually be wrong.
+ */
+export const NEWS_CLUSTERS = CLUSTERS.map((cluster) => {
+  const articles = CLUSTER_ARTICLES[cluster.id] ?? [];
+  if (articles.length !== cluster.sources) {
+    throw new Error(
+      `Seed inconsistency: cluster ${cluster.id} claims ${cluster.sources} sources but carries ` +
+        `${articles.length} articles. The card would print a corroboration count it cannot show.`,
+    );
+  }
+  return { ...cluster, articles };
+});
 
 /**
  * The per-ticker links, with each ticker's numbers SNAPSHOTTED at publish.

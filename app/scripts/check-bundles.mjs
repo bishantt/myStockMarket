@@ -103,6 +103,11 @@ const BASELINE_KB = {
   "/academy/glossary": 169.0,
   "/academy/review": 170.2,
   "/login": 164.1,
+  // The Front Page (N5). The room carries a client feed (filters, the window control, pagination),
+  // and the story page carries the app's one table — which is why the story is the LIGHTER of the
+  // two: the table was already in the shared chunks, and the feed's interactivity is not.
+  "/news": 184.2,
+  "/news/[cluster]": 161.6,
   "/offline": 163.0,
   "/paper": 194.7,
   "/scans": 186.2,
@@ -112,7 +117,8 @@ const BASELINE_KB = {
   // whole kit (the table, the disclosure, the form controls) to it. It is not a product room; no
   // reader ever loads it on a phone. Growth here is the page working, not a regression — but it is
   // still baselined, so a surprise 40KB would still be caught.
-  "/styleguide": 180.7,
+  // Rebaselined at N5: 180.7 → 187.9 — the four news-image rungs joined the living spec.
+  "/styleguide": 187.9,
   "/ticker/[symbol]": 148.5,
   "/track-record": 185.1,
 };

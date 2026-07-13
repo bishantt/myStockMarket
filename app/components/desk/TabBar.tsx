@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
-import { GraduationCap, LineChart, Newspaper, NotebookPen, ScanSearch } from "lucide-react";
+import { GraduationCap, LineChart, Newspaper, NotebookPen, ScanSearch, Sunrise } from "lucide-react";
 
 import { activeRoomHref } from "@/lib/nav";
 import { cx } from "@/lib/cx";
@@ -24,14 +24,26 @@ import { cx } from "@/lib/cx";
  * bar while the keyboard is up. It hides rather than animating: a bar sliding away under a
  * keyboard is motion nobody asked for.
  *
- * Settings is deliberately not a tab. Five rooms fit a 375px row with 44px targets; six do not,
- * and Settings is the thing a reader visits monthly, not daily. It lives behind a gear in the top
- * bar (§4.2).
+ * Settings is deliberately not a tab. It is the thing a reader visits monthly, not daily, and it
+ * lives behind a gear in the top bar (§4.2).
+ *
+ * THE BAR TOOK A SIXTH ROOM IN N5, and it is the plan's own recommendation (Part 0.1, option A —
+ * News is commissioned as a first-class section, and no DECISIONS line overrode the default). Six
+ * tabs at 390px is ~65px each: comfortably past the 44px touch floor, with 10px labels still
+ * legible. iOS convention tops out at five, so this spends the comfortable maximum plus one — a
+ * real cost, costed in the plan, and one file to reverse if the reader hates it.
+ *
+ * THE DESK GAVE UP THE NEWSPAPER ICON, and that is not a whim. A room literally titled "Front page"
+ * sitting next to a differently-named room wearing the newspaper glyph is a bar that argues with
+ * itself. The Desk is the morning ritual — the reason this app promises a briefing by 9pm for a
+ * reader who opens it with coffee — so it takes the sunrise, and the newspaper goes to the
+ * newspaper.
  */
 
-/** The five rooms, in bar order. Icons are functional, never decorative. */
+/** The six rooms, in bar order. Icons are functional, never decorative. */
 const TABS = [
-  { href: "/", label: "Desk", Icon: Newspaper },
+  { href: "/", label: "Desk", Icon: Sunrise },
+  { href: "/news", label: "News", Icon: Newspaper },
   { href: "/scans", label: "Scans", Icon: ScanSearch },
   { href: "/paper", label: "Paper", Icon: NotebookPen },
   { href: "/track-record", label: "Track", Icon: LineChart },

@@ -1,0 +1,15 @@
+-- N5: a cluster remembers the ARTICLES it was built from.
+--
+-- news_cluster.sources has always been a COUNT — "3 sources" — and nothing anywhere named them. So
+-- the card could not print the outlet that carried the story, and the story page's source list (the
+-- first line of its spec, plan 7.8) had no data to render. A corroboration count the reader cannot
+-- check is exactly the kind of unverifiable claim this app exists not to make.
+--
+-- The plan assumed these lived in news_item. They cannot: news_item is the MOVERS' catalyst table,
+-- and Job B synchronously extracts every row in it that was not in the nightly batch — so writing
+-- the market-wide feed there would fire ~200 extra Haiku calls a night and feed the whole feed into
+-- the evening briefing's synthesis. That is a different product, not a schema detail.
+--
+-- SNAPSHOTTED at publish, for the same reason catalyst_link's numbers are: the feed and the story
+-- page must never be able to disagree about which articles a story was built from.
+ALTER TABLE "news_cluster" ADD COLUMN "articles" JSONB NOT NULL DEFAULT '[]';

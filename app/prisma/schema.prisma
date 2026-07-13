@@ -552,6 +552,11 @@ model NewsCluster {
   extract      Json
   /// What the gate checked and what it decided, kept so a dropped line can be explained later.
   verification Json
+  /// The articles this story was built from — [{ source, url, headline, published }] — SNAPSHOTTED
+  /// at publish. `sources` above is only a COUNT, and a corroboration count the reader cannot check
+  /// is an unverifiable claim. This is what the card's outlet line and the story page's source list
+  /// render from, and it is why "3 sources" can be opened rather than merely believed.
+  articles     Json     @default("[]")
   imageId      String?  @map("image_id")
 
   image NewsImage?     @relation(fields: [imageId], references: [id])

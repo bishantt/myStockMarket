@@ -807,6 +807,17 @@ def _build_front_page(settings: Settings, conn, run_date: date) -> Callable[[], 
                 "affected_note": narration.decisions.get(cluster.id, default_note).affected_note,
                 "extract": narration.extracts.get(cluster.id, {}),
                 "verification": narration.decisions.get(cluster.id, default_note).verification,
+                # The articles behind the story, snapshotted. `sources` is only a count, and a
+                # corroboration count the reader cannot open is a claim they have to take on trust.
+                "articles": [
+                    {
+                        "source": member.source,
+                        "url": member.url,
+                        "headline": member.headline,
+                        "published": member.published,
+                    }
+                    for member in cluster.members
+                ],
                 "image_id": None,
                 "links": [
                     {

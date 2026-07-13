@@ -266,6 +266,71 @@ export const copy = {
   },
 
   /**
+   * The Front Page (NEWS-AND-CONTROL-PLAN Part 7, Appendix B).
+   *
+   * ONE STRING HERE IS NOT THE PLAN'S, AND THE REASON IS THE WHOLE ETHIC OF THE ROOM.
+   *
+   * Appendix B wrote the ordering sentence as: "Ordered by catalyst significance — scope,
+   * corroboration, and the size of the move it explains." Every word of that is true about the
+   * FORMULA, and it is misleading about the PAGE, because on the real feed two of those three terms
+   * barely vary:
+   *
+   *   - corroboration is 1 for 131 of 134 clusters (three outlets, few genuine duplicates)
+   *   - magnitude is 0 for ~130 of them (most stories name no listed company, so there is no move)
+   *
+   * That is 45% of the formula's weight sitting nearly constant, so the order collapses onto scope
+   * and the catalyst's class — and ten or more stories routinely tie at exactly the same score, with
+   * the lead decided by which was published first. A sentence promising a ranking by three
+   * discriminating signals, printed above a page where two of them discriminate nothing, is the app
+   * flattering its own machinery. So the sentence SAYS the ties are there, and says how they break.
+   *
+   * The honest fix was to change the words, not the ranking. Inventing a tiebreaker — a
+   * "US-market relevance" term, say — would be the app forming an editorial opinion about which
+   * stories deserve the front page, which is the one thing ruling C1 forbids. On a day when the Gulf
+   * is on fire, a wall of Gulf stories IS the honest front page. (Q-N4-1; amendment logged.)
+   */
+  news: {
+    roomTitle: "Front page",
+    pressTime: "Assembled {date} {time} ET · from {articles} articles, {clusters} catalysts",
+    ordering:
+      "Ordered by catalyst significance: how broad the event is, how many separate outlets carried it, and how large a move it explains. Stories that score the same tie, and ties run oldest first.",
+    /** C10. The room is a newspaper: it has a press time, and it does not pretend to be a wire. */
+    cadence: "Assembled nightly after the US close. This page does not update during the day.",
+    countLine: "{n} catalysts{filters}",
+    zeroState: "No {filter} catalysts today — that is information, not an error.",
+    reset: "Clear filters",
+    /** C9. It affects everything and names nothing — which is a fact about the story, not a gap. */
+    noListing: "No direct listing in our universe.",
+    noStoryHeader: "Moved without a story",
+    sources: "{n} sources",
+    oneSource: "1 source",
+    photoVia: "Photo via {source}",
+    deskPreviewCut: "First {n} of {total} by significance",
+    deskDoorway: "The full front page →",
+    provenance:
+      "Ingested {time} · extracted by {model} · every number machine-verified against its sources",
+    whatHappened: "What happened",
+    whyItMatters: "Why it matters",
+    byTheNumbers: "By the numbers",
+    affected: "Affected tickers",
+    learn: "Learn the mechanism",
+    setupCard: "Setup card",
+    backToFeed: "← Back to the front page",
+    sourceList: "Sources",
+    weekUnavailable: "less than a week of coverage so far — showing all of it",
+    /**
+     * The gate-dropped note, and it is deliberately NOT rendered on the card — a null prints
+     * nothing there (P9). This line exists for the STORY page, where a reader who came looking for
+     * the "why" is owed the reason there is none. Silence on a card is restraint; silence on the
+     * page devoted to one story would be a hole.
+     */
+    noteDropped:
+      "No context line for this story: the one written failed the number check, so it was dropped rather than published unverified.",
+    /** The narrator honestly had nothing to add. Different from the line above, and it says so. */
+    noteAbsent: "No context line for this story.",
+  },
+
+  /**
    * The login wall. Even the marketing-flavoured lines obey the one-deck rule and the mechanical
    * voice — the first page a reader ever sees is not the place to start over-promising.
    */

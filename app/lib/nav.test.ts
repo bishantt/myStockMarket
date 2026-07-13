@@ -11,6 +11,10 @@ describe("activeRoomHref", () => {
 
   it("lights each room on its own route", () => {
     expect(activeRoomHref("/scans")).toBe("/scans");
+    // News is a first-class room (Part 0.1, option A), and a story page belongs to it: a reader
+    // deep in one story must still see which room they are standing in.
+    expect(activeRoomHref("/news")).toBe("/news");
+    expect(activeRoomHref("/news/nc-fed-hold")).toBe("/news");
     expect(activeRoomHref("/paper")).toBe("/paper");
     expect(activeRoomHref("/track-record")).toBe("/track-record");
     expect(activeRoomHref("/settings")).toBe("/settings");

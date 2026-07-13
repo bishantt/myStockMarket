@@ -4,6 +4,7 @@ import { SectionMasthead } from "@/components/SectionMasthead";
 import { Surface } from "@/components/Surface";
 import { MacroPulse } from "@/components/desk/MacroPulse";
 import { BriefArticle } from "@/components/desk/BriefArticle";
+import { FrontPagePreview } from "@/components/desk/FrontPagePreview";
 import { DeskHeader } from "@/components/desk/DeskHeader";
 import { Movers } from "@/components/desk/Movers";
 import { Watchlist } from "@/components/desk/Watchlist";
@@ -293,6 +294,15 @@ export default async function DeskPage() {
             Each preset shows its criteria and its evidence grade. A match is a filter hit, not a
             forecast.
           </p>
+        </Surface>
+
+        {/* 08 — the Front Page, previewed. A glance and a doorway; the room does the rest. */}
+        <Surface className="flex h-full flex-col p-5 desk:p-6">
+          <FrontPagePreview
+            top={morning.frontPage.top}
+            total={morning.frontPage.total}
+            asOf={asOf ?? undefined}
+          />
         </Surface>
 
         {/* The evening counterpart to the morning ritual: the scorecard and the PM journal. Always

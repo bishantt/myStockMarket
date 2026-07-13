@@ -51,6 +51,10 @@ const THEMES = ["light", "dark"] as const;
 /** Every room a reader can reach. The sweep is only as honest as this list. */
 const ROUTES = [
   "/",
+  // The Front Page and one story (N5). The room is dense with chips, a scrolling filter row and a
+  // table, which is exactly the shape that ships a keyboard trap.
+  "/news",
+  "/news/nc-fed-hold",
   "/scans",
   "/scans/unusual-volume",
   "/paper",

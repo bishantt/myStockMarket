@@ -24,6 +24,7 @@ import { NextResponse, type NextRequest } from "next/server";
 /** The fixed pages a nightly publish changes. */
 const PUBLISHED_PATHS = [
   "/", // the Desk — the morning itself
+  "/news", // the Front Page — rebuilt by the nightly run and by a news-mode refresh
   "/scans", // the preset cards and their match counts
   "/track-record", // signals resolve overnight, so the record grows
   "/academy", // lesson read-counts
@@ -39,7 +40,15 @@ const PUBLISHED_PATHS = [
  * the family — every ticker anyone has opened, every scan preset, every lesson — rather than one
  * URL that happens to be spelled with brackets.
  */
-const PUBLISHED_FAMILIES = ["/ticker/[symbol]", "/scans/[preset]", "/academy/[slug]"];
+const PUBLISHED_FAMILIES = [
+  "/ticker/[symbol]",
+  "/scans/[preset]",
+  "/academy/[slug]",
+  // Every story page anyone has opened. A cluster's numbers are snapshotted at publish, so a
+  // re-published night genuinely changes them — a stale story page would show last night's move
+  // beside tonight's headline.
+  "/news/[cluster]",
+];
 
 export async function POST(request: NextRequest) {
   const provided = request.nextUrl.searchParams.get("secret") ?? request.headers.get("x-cron-secret");

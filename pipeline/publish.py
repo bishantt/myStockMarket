@@ -685,12 +685,12 @@ def publish_news(
                     INSERT INTO news_cluster (
                         id, run_date, first_seen, headline, event_type, sectors, themes, tickers,
                         significance, sources, why_it_matters, affected_note, extract, verification,
-                        image_id
+                        articles, image_id
                     ) VALUES (
                         %(id)s, %(run_date)s, %(first_seen)s, %(headline)s, %(event_type)s,
                         %(sectors)s, %(themes)s, %(tickers)s, %(significance)s, %(sources)s,
                         %(why_it_matters)s, %(affected_note)s, %(extract)s, %(verification)s,
-                        %(image_id)s
+                        %(articles)s, %(image_id)s
                     )
                     ON CONFLICT (id) DO UPDATE SET
                         run_date = EXCLUDED.run_date,
@@ -705,10 +705,13 @@ def publish_news(
                         affected_note = EXCLUDED.affected_note,
                         extract = EXCLUDED.extract,
                         verification = EXCLUDED.verification,
+                        articles = EXCLUDED.articles,
                         image_id = EXCLUDED.image_id
                     """,
-                    {**cluster, "extract": Json(_json_safe(cluster.get("extract") or {})),
-                     "verification": Json(_json_safe(cluster.get("verification") or {}))},
+                    {**cluster,
+                     "extract": Json(_json_safe(cluster.get("extract") or {})),
+                     "verification": Json(_json_safe(cluster.get("verification") or {})),
+                     "articles": Json(_json_safe(cluster.get("articles") or []))},
                 )
                 written += 1
 

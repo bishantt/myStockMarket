@@ -9,9 +9,19 @@
 
 export type Room = { label: string; href: string };
 
-/** The rooms, in bar order. The Desk is "/" (the ritual); the rest are their own routes. */
+/**
+ * The rooms, in bar order. The Desk is "/" (the ritual); the rest are their own routes.
+ *
+ * NEWS IS A FIRST-CLASS ROOM (Part 0.1, option A — the plan's default, and no DECISIONS line
+ * overrode it). It sits second, right after the Desk, because it is the thing a reader reaches for
+ * after the morning brief and before they go looking for a scan. The tab bar takes six rooms at
+ * ~65px each on a 390px phone — above the 44px floor, with the labels still legible — which spends
+ * iOS's comfortable maximum of five, plus one. That is the cost, it was costed in the plan, and it
+ * stays a one-file change to reverse.
+ */
 export const ROOMS: Room[] = [
   { label: "Desk", href: "/" },
+  { label: "News", href: "/news" },
   { label: "Scans", href: "/scans" },
   { label: "Paper", href: "/paper" },
   { label: "Track record", href: "/track-record" },
@@ -21,13 +31,14 @@ export const ROOMS: Room[] = [
 
 /**
  * The href of the room a path belongs to. A sub-route belongs to its room's section: /ticker/* is
- * still the Desk (the drill), /academy/* is the Academy. The Desk matches only the exact root or a
- * ticker drill, so it does not greedily claim every path.
+ * still the Desk (the drill), /academy/* is the Academy, /news/* is the story behind a front-page
+ * card. The Desk matches only the exact root or a ticker drill, so it does not greedily claim every
+ * path.
  */
 export function activeRoomHref(pathname: string): string {
   if (pathname === "/" || pathname.startsWith("/ticker")) return "/";
   // Longest specific prefixes first so /track-record is not shadowed by anything shorter.
-  const ordered = ["/track-record", "/scans", "/paper", "/academy", "/settings"];
+  const ordered = ["/track-record", "/news", "/scans", "/paper", "/academy", "/settings"];
   for (const href of ordered) {
     if (pathname === href || pathname.startsWith(`${href}/`)) return href;
   }

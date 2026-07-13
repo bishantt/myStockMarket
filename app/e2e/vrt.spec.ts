@@ -208,6 +208,13 @@ test.describe("visual regression — the design system", () => {
 
   const SEEDED_ROOMS = [
     { path: "/", name: "desk" },
+    // The Front Page and one story (N5). Worth locking above almost anything else, because the room
+    // is carried today by GENERATED imagery — the media bucket does not exist (P-1), so every card
+    // renders its designed catalyst card rather than a photograph. The claim those rungs make is
+    // "this reads as an editorial choice, not as a failure", and that claim is only ever true or
+    // false in a picture. No test can hold it. The oracle can.
+    { path: "/news", name: "news" },
+    { path: "/news/nc-fed-hold", name: "news-story" },
     { path: "/scans", name: "scans" },
     // The match table (F3). This is the page that replaced the dead "+ N more", so its pixels are
     // worth locking: the recipe card, the named default order, the lottery chip, and the pagination
@@ -300,6 +307,70 @@ test.describe("visual regression — the design system", () => {
     await page.getByRole("button", { name: "Next" }).click();
     await expect(page.getByText("Page 2 of 2 · 32 rows")).toBeVisible();
     await expect(page).toHaveScreenshot("scans-preset-page2.png", {
+      fullPage: true,
+      mask: [page.locator('[data-vrt="mask"], time')],
+    });
+  });
+
+  /**
+   * The Front Page's INTERACTIVE states (Appendix F): filtered, empty, and the week window.
+   *
+   * The zero-state shot is the one that earns its keep. "No FDA catalysts today — that is
+   * information, not an error" is a sentence the whole product's posture rests on, and whether it
+   * lands as information or as an apology is decided entirely by how it is SET — its size, its
+   * weight, how much air is around it. That is not something a DOM assertion can see.
+   */
+  test("the front page, filtered — the count line restates the filter", async ({ page }, testInfo) => {
+    test.skip(!process.env.MSM_SEEDED, "needs the seeded database");
+    test.skip(testInfo.project.name === "wide", "the wide project locks room layouts only");
+
+    await useTheme(page, "light");
+    await page.goto("/news");
+    await expect(page.locator(".skeleton-bone")).toHaveCount(0);
+    await waitForFonts(page);
+
+    await page.getByRole("button", { name: "FDA", exact: true }).click();
+    await expect(page.getByTestId("news-count")).toHaveText("1 catalyst · FDA");
+
+    await expect(page).toHaveScreenshot("news-filtered.png", {
+      fullPage: true,
+      mask: [page.locator('[data-vrt="mask"], time')],
+    });
+  });
+
+  test("the front page, empty — an empty state is information, not an apology", async ({ page }, testInfo) => {
+    test.skip(!process.env.MSM_SEEDED, "needs the seeded database");
+    test.skip(testInfo.project.name === "wide", "the wide project locks room layouts only");
+
+    await useTheme(page, "light");
+    await page.goto("/news");
+    await expect(page.locator(".skeleton-bone")).toHaveCount(0);
+    await waitForFonts(page);
+
+    // No FDA story in Technology tonight — a true fact about the night, not a failure of the app.
+    await page.getByRole("button", { name: "FDA", exact: true }).click();
+    await page.getByRole("button", { name: "Technology", exact: true }).click();
+    await expect(page.getByTestId("news-count")).toHaveText("0 catalysts · FDA · Technology");
+
+    await expect(page).toHaveScreenshot("news-zero-state.png", {
+      fullPage: true,
+      mask: [page.locator('[data-vrt="mask"], time')],
+    });
+  });
+
+  test("the front page, this week — the window says how deep it goes", async ({ page }, testInfo) => {
+    test.skip(!process.env.MSM_SEEDED, "needs the seeded database");
+    test.skip(testInfo.project.name === "wide", "the wide project locks room layouts only");
+
+    await useTheme(page, "light");
+    await page.goto("/news");
+    await expect(page.locator(".skeleton-bone")).toHaveCount(0);
+    await waitForFonts(page);
+
+    await page.getByRole("radio", { name: "This week" }).click();
+    await expect(page.getByTestId("news-count")).toHaveText("14 catalysts");
+
+    await expect(page).toHaveScreenshot("news-week.png", {
       fullPage: true,
       mask: [page.locator('[data-vrt="mask"], time')],
     });

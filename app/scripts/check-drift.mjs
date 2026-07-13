@@ -316,6 +316,31 @@ const RULES = [
     match: (line) => /revalidatePath\([^)]*,\s*["']layout["']\s*\)/.test(line) && !/^\s*(\*|\/\/)/.test(line),
   },
   {
+    id: 20,
+    name: "one door for imagery — news visuals render only through components/news/NewsImage.tsx",
+    /*
+     * The imagery rule (plan 7.9). One component owns every news visual, and the reasons are all
+     * things that go quietly wrong when a second one appears:
+     *
+     *   - ETIQUETTE. Images are fetched at INGEST, into our own bucket, with a descriptive user
+     *     agent and robots.txt honoured. A second consumer that hotlinks a publisher's URL at render
+     *     time is stealing their bandwidth on every page view, and it would look identical on screen.
+     *   - LAYOUT SHIFT. Every rendered image carries explicit width/height from its stored row, which
+     *     is what makes the room's CLS zero BY CONSTRUCTION rather than by luck. An <img> without
+     *     them reflows the page under the reader's thumb.
+     *   - THE FALLBACK RUNGS. When no photo exists — which today is EVERY card, since the bucket does
+     *     not exist yet (P-1) — the generated card is what ships, and it is a designed outcome rather
+     *     than a hole. A second consumer would render an empty box and call it a failure state.
+     *
+     * `next/image` and `<img>` are both caught: the point is that the news bucket has one door, not
+     * that one API is safer than the other.
+     */
+    skip: ["components/news/NewsImage.tsx"],
+    match: (line, file) =>
+      /^(components|app)\//.test(file) &&
+      (/<img[\s>]/.test(line) || /from ["']next\/image["']/.test(line)),
+  },
+  {
     id: 16,
     name: "one table, one set of ergonomics — <table> lives only in components/DataTable.tsx",
     // A second hand-rolled table is a second set of sort affordances, a second pagination grammar,

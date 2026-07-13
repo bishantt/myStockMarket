@@ -54,6 +54,8 @@ const SAMPLES = 5;
 /** The nine product rooms, plus one representative per on-demand family, plus the static controls. */
 const PRODUCT_ROUTES = [
   "/",
+  "/news",
+  "/news/nc-fed-hold",
   "/scans",
   "/scans/unusual-volume",
   "/paper",

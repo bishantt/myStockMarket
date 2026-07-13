@@ -550,8 +550,24 @@ export type Morning = {
    * route's cache, turns it into a figure the reader can actually read in passing.
    */
   scans: { matches: number; presets: number };
+  /**
+   * The top of tonight's Front Page, and how many catalysts it is the top OF (§4.1 module 08).
+   *
+   * A bounded preview, and it states its own cut — "First 3 of 14 by significance" — because an
+   * unlabelled slice of a ranked list is the same lie ruling M8 exists to forbid: the reader cannot
+   * tell three-of-three from three-of-forty, and those are very different nights.
+   */
+  frontPage: { top: FrontPagePreviewRow[]; total: number };
   /** How many journal entries exist for today (0 or 1). The scorecard's disclosure reports it (M2). */
   journalSavedToday: number;
+};
+
+/** One line of the Desk's Front Page preview. Deliberately thin: it is a doorway, not a card. */
+export type FrontPagePreviewRow = {
+  id: string;
+  headline: string;
+  eventType: string;
+  sources: number;
 };
 
 /**
@@ -615,7 +631,7 @@ function closesBy(rows: Array<{ symbol: string; close: number }>): Record<string
  */
 export async function getMorning(): Promise<Morning> {
   const asOf = await latestAsOf();
-  const [macro, macroBoard, brief, setupCards, movers, watch, calendar, sources, scans, journalSavedToday] =
+  const [macro, macroBoard, brief, setupCards, movers, watch, calendar, sources, scans, frontPage, journalSavedToday] =
     await Promise.all([
       loadMacro(),
       loadMacroBoard(),
@@ -626,6 +642,7 @@ export async function getMorning(): Promise<Morning> {
       loadCalendar(),
       loadSourceStatus(),
       loadScanCount(),
+      loadFrontPage(),
       loadJournalCount(),
     ]);
   return {
@@ -639,8 +656,45 @@ export async function getMorning(): Promise<Morning> {
     calendar,
     sources,
     scans,
+    frontPage,
     journalSavedToday,
   };
+}
+
+/** How many stories the Desk's Front Page preview shows before pointing at the room. */
+const FRONT_PAGE_PREVIEW = 3;
+
+/**
+ * The top of tonight's front page, with the total it was cut from.
+ *
+ * The order is the pipeline's `significance` and nothing else — the Desk does not get a second
+ * opinion about which story leads. Reading it here rather than re-deriving it is the point: two
+ * places that decide what the day's biggest story was will eventually disagree, and then the Desk
+ * and the Front Page would print two different front pages.
+ */
+async function loadFrontPage(): Promise<{ top: FrontPagePreviewRow[]; total: number }> {
+  try {
+    const latest = await db.newsCluster.findFirst({
+      orderBy: { runDate: "desc" },
+      select: { runDate: true },
+    });
+    if (!latest) return { top: [], total: 0 };
+
+    const [rows, total] = await Promise.all([
+      db.newsCluster.findMany({
+        where: { runDate: latest.runDate },
+        orderBy: [{ significance: "desc" }, { firstSeen: "asc" }, { id: "asc" }],
+        take: FRONT_PAGE_PREVIEW,
+        select: { id: true, headline: true, eventType: true, sources: true },
+      }),
+      db.newsCluster.count({ where: { runDate: latest.runDate } }),
+    ]);
+
+    return { top: rows, total };
+  } catch (error) {
+    console.error("getMorning: could not load the front page preview", error);
+    return { top: [], total: 0 };
+  }
 }
 
 /**

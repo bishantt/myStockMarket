@@ -22,7 +22,29 @@ function revisionOf(...files: string[]): string {
   return hash.digest("hex").slice(0, 12);
 }
 
-const nextConfig: NextConfig = {};
+/**
+ * The media bucket, if one exists (provisioning row P-1).
+ *
+ * It does not today: the pipeline records `news-images: not_configured` on every run, and every card
+ * on the Front Page falls to its designed generated rung. The whole point of reading the base from
+ * the environment is that turning images on is then a SECRET AND ONE VARIABLE, not a code change —
+ * the same string feeds the pipeline's URL construction and this allowlist, so the two cannot
+ * disagree about where images live.
+ *
+ * The seeded night's images are local paths under /fixtures/, which need no allowlist at all.
+ */
+const mediaBase = process.env.NEXT_PUBLIC_MEDIA_BASE;
+
+const nextConfig: NextConfig = {
+  images: mediaBase
+    ? {
+        remotePatterns: [new URL(`${mediaBase.replace(/\/$/, "")}/**`)],
+        // The objects are immutable and their keys are content-hashed, so a long TTL is free: the
+        // optimizer is the only client that ever reaches the origin, and it never needs to re-ask.
+        minimumCacheTTL: 60 * 60 * 24 * 31,
+      }
+    : undefined,
+};
 
 /**
  * Serwist injects its precache manifest through a webpack plugin. Next 16 defaults to Turbopack,

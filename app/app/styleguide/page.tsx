@@ -9,6 +9,7 @@ import { KitSpecimens } from "./KitSpecimens";
 import { StatFigure } from "@/components/StatFigure";
 import { RangeBands } from "@/components/ticker/RangeBands";
 import { Surface } from "@/components/Surface";
+import { NewsImage } from "@/components/news/NewsImage";
 import { Tag } from "@/components/Tag";
 import { copy, fill } from "@/lib/copy";
 import type { LadderBand } from "@/lib/range-ladder";
@@ -59,6 +60,7 @@ export default function StyleguidePage() {
           <CopyDeck />
           <Kit />
           <FreshnessLadder />
+          <NewsImageLadder />
           <DegradedMacro />
           <DegradedBoard />
           <SuppressedGauge />
@@ -875,6 +877,86 @@ function SuppressedGauge() {
       <Surface className="p-5">
         <MacroBoard board={buildMacroBoard(thin, null, runDate)} />
       </Surface>
+    </Section>
+  );
+}
+
+/**
+ * The four image rungs, side by side (plan 7.9).
+ *
+ * This section exists so the fallbacks can be JUDGED rather than assumed. The claim they make is
+ * strong — "a text-treatment card next to a photo card reads as an editorial choice, not a failure"
+ * — and the only way to know whether it holds is to put them next to each other and look. The pixel
+ * oracle locks them here; a human decides whether the claim is true.
+ *
+ * Today L4 is what the whole Front Page renders, because the media bucket does not exist yet (P-1),
+ * so this is not a corner case: it is the room. L3 has no producer at all until the bucket lands —
+ * a favicon must be fetched into our own storage, and hotlinking one at render is exactly what 7.9
+ * forbids — so it is exercised here and nowhere else. It is a latch, not dead code.
+ */
+function NewsImageLadder() {
+  const photo = {
+    urlCard: "/fixtures/news/fed-decision.jpg",
+    urlThumb: "/fixtures/news/fed-decision.jpg",
+    urlFull: "/fixtures/news/fed-decision.jpg",
+    width: 1200,
+    height: 628,
+    blurDataUrl: null,
+    attributionSource: "Reuters",
+    attributionUrl: "https://reuters.com/fed-holds-july",
+  };
+
+  return (
+    <Section
+      id="news-imagery"
+      index={14}
+      title="News imagery — the four rungs"
+      intro="L1 and L2 are the publisher's own photo. L3 and L4 are generated from tokens, and they are first-class outcomes: same geometry, same frame, same visual weight. Every card on the Front Page is L4 today, because the media bucket does not exist yet (P-1)."
+    >
+      <div className="grid grid-cols-1 gap-4 desk:grid-cols-2">
+        <figure className="flex flex-col gap-2">
+          <NewsImage image={photo} eventType="macro" tickers={[]} slot="lead" />
+          <figcaption className="font-mono text-2xs uppercase tracking-[0.04em] text-muted">
+            L1 · the publisher&apos;s photo
+          </figcaption>
+        </figure>
+
+        <figure className="flex flex-col gap-2">
+          <NewsImage
+            image={null}
+            eventType="ma"
+            tickers={["AMD", "NVDA"]}
+            favicon={{ url: "/fixtures/news/chip-merger.jpg", source: "Bloomberg" }}
+            slot="lead"
+          />
+          <figcaption className="font-mono text-2xs uppercase tracking-[0.04em] text-muted">
+            L3 · publisher identity (dormant until P-1)
+          </figcaption>
+        </figure>
+
+        <figure className="flex flex-col gap-2">
+          <NewsImage image={null} eventType="fda" tickers={["MRNA", "LLY", "PFE"]} slot="lead" />
+          <figcaption className="font-mono text-2xs uppercase tracking-[0.04em] text-muted">
+            L4 · catalyst identity, with tickers
+          </figcaption>
+        </figure>
+
+        <figure className="flex flex-col gap-2">
+          <NewsImage image={null} eventType="macro" tickers={[]} slot="lead" />
+          <figcaption className="font-mono text-2xs uppercase tracking-[0.04em] text-muted">
+            L4 · catalyst identity, no listing (C9)
+          </figcaption>
+        </figure>
+      </div>
+
+      <div className="flex items-start gap-3 pt-2">
+        <NewsImage image={null} eventType="earnings" tickers={["SMCI"]} slot="thumb" />
+        <NewsImage image={photo} eventType="macro" tickers={[]} slot="thumb" />
+        <p className="font-ui text-2xs text-muted">
+          The row tier&apos;s thumbnails, generated and photographic. The frames match, which is the
+          whole claim.
+        </p>
+      </div>
     </Section>
   );
 }
