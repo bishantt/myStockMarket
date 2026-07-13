@@ -393,3 +393,45 @@ guard's own null result is indistinguishable from success unless you make it dis
 
 **The rule: every sweep asserts that it swept something, and names the room it swept.** If it can
 pass on an empty screen, it is not a guard; it is a decoration that fails only when you are unlucky.
+
+## A fixture pinned to an absolute date, under a rule that is relative (N7, 2026-07-13)
+
+**The shape.** The product asks a rolling question — *this week*, *the last 30 days*, *since the
+last close*, *in the past hour*. The fixture answers it with a fixed timestamp. The two agree on
+the day you write them and diverge every day after.
+
+`/paper` counts "round trips this week" as `closedAt >= now - 7 days`. The seed dated its closed
+trades `2026-07-02`, `07-06`, `07-07`. Watch it go:
+
+```
+nc-6      CI 2026-07-13 19:22Z → cutoff 07-06 19:22 → the 07-06T19:50 trade is IN  → count 2 ✅
+nc-final  CI 2026-07-13 20:39Z → cutoff 07-06 20:39 → the same trade is OUT        → count 1 ❌
+```
+
+**The baseline expired at 19:50Z — 28 minutes after the run that last certified it.** Nobody
+touched a line of code. The cost mirror silently halved (−31.2%/yr → −15.6%/yr) because half the
+round trips had aged out of the year's projection.
+
+**The trap inside the trap: re-shooting the baseline WORKS — for one day.** Then the next trade
+ages out, the count reads 0, and the mirror goes to zero. A green re-baseline hides a fixture that
+is still decaying. *If a re-baseline makes a failure go away, ask what it will look like tomorrow.*
+
+**The rule.** *Anything a test pins — a pixel, a count, a sentence — must be pinned to something
+that does not move on its own.* There is no fixed date that stays "this week" forever, so a fixture
+claiming "two round trips this week" must say so **relative to the week**:
+
+```js
+const DAYS_AGO = (n) => new Date(SEED_NOW - n * 86_400_000);
+closedAt: DAYS_AGO(3),   // inside the window, on every run, at every hour
+closedAt: DAYS_AGO(11),  // deliberately outside it — the count must be able to be wrong
+```
+
+**Where else this lives.** The same phase found a *test* with the same fuse: the control-room e2e
+asserted the `full` row always carries a reason, which is true while the market is open and false
+after the close. It passed at `nc-6` (CI at 3:22pm ET) and failed at `nc-final` (4:39pm ET). **When
+a test is time-dependent, the fix is almost never to pin the clock — it is to find the sentence
+that was true all along.** There, it was: *the reader is never left with a row that neither works
+nor explains itself.*
+
+**Smell test.** Grep your fixtures for absolute dates, then grep the code for `now -`. Every place
+those two meet is a fuse with a length you have not measured.

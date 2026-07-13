@@ -80,6 +80,19 @@ contains it. Background and border hover feedback only. A jsdom test walks up fr
 → The word goes in the chip. Colour is the redundant channel, never the primary one. A hit and
 a miss render at the same size and the same weight; only the hue differs.
 
+**Did you ADD THE ROUTE TO THE SWEEPS?** *(Added N7, 2026-07-13 — and it is the cheapest line here.)*
+→ `e2e/hardening.spec.ts` (44px targets, no sideways scroll) and `e2e/a11y.spec.ts` (axe, both
+themes) each walk a hard-coded list of routes. **A room that is not on those lists is not
+protected by them, and nothing anywhere will tell you.** `/news` shipped in N5 and no sweep
+measured it until N7 — by which time the story page's source links, the controls a reader taps to
+check a story against the outlet that reported it, had been **20px tall on a phone** for two
+tagged phases. The guard existed. The room was simply not in its list.
+
+If the room needs seeded data to exist, put it in `SEEDED_ROUTES`, not `ROUTES` — otherwise the
+sweep walks to a page that isn't there, measures **the 404 page**, and passes. And do not reach
+for the status code to catch that: a `notFound()` inside a statically-generated route answers
+**HTTP 200** with the 404 page in the body. The body is the only honest witness.
+
 **Does EVERY number on this surface state its WINDOW?** *(Added N7, 2026-07-13 — plan §5.2.)*
 → A number with no window is a claim with no scope, and the reader supplies the missing scope
 themselves — usually the wrong one. "+2.1%" is meaningless until it says *today*, *5D*, *wk of
