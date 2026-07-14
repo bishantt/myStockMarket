@@ -773,3 +773,28 @@ On a macro day, the real feed genuinely produces ten-plus stories at exactly the
 ties, and it admits it. The three things that would actually strengthen the signal (a third news
 provider, a paid Marketaux tier, or a wider instrument universe) are still listed under Q-N4-1 — each
 is a real cost, and none is a bug fix.
+
+---
+
+## Q-G1-1 — [FYI, no action needed] sharding the oracle buys wall-clock with billed minutes
+
+G1 split the browser suite into three parallel legs (desktop / phone / wide), as the plan directed.
+It is a real trade and I want it visible rather than buried in an evidence file:
+
+| | before | after |
+|---|---|---|
+| **wall-clock** of a tag run (what you wait for) | 14 m 53 s | **7 m 58 s** (−46%) |
+| **billed job-minutes** of a tag run (what you pay) | ~14.8 | **~18.6** (+26%) |
+
+The extra minutes are real: three legs each pay their own `npm ci`, Playwright install, migrate+seed
+and production build. That fixed setup is now paid three times instead of once.
+
+**My assumption, and what I built on:** waiting is the thing this plan exists to kill — an exit pays
+that wall-clock several times over, with a human sitting there — and CI minutes are cheap next to a
+person's evening. So I took the trade. G0 had already bought back ~21% of billed minutes by deleting
+the duplicated tag jobs, and G2 (docs commits stop firing CI) will give back more, so the total bill
+should still land well below where it started.
+
+**If you disagree**, the fix is one commit: revert `b137f81` and the oracle goes back to a single
+serial job at ~15 m. The rehearsal — which is most of G1's value, and the thing that made `gate-1` go
+green on the first try — does not depend on the sharding at all and would be unaffected.

@@ -468,3 +468,60 @@ A guard reading the wrong line is a guard that cannot fail, just better dressed.
 
 **Smell test.** Grep your config files and plans for the word "must". For each hit, name the thing
 that turns red. The ones with no answer are your next tests.
+
+## Rehearse the gate, then tag (G1, 2026-07-13)
+
+**The pattern:** if a check can only run in CI, do not let the *tag* be the first time it runs.
+Give it a second door.
+
+The browser oracle (e2e + VRT + PWA + axe) needs a browser, a seeded Postgres and a full build, so
+it can only run in CI — and it was wired to run on phase-exit tags. That made the tag the first real
+test of the phase. 52% of all tag runs failed. `nc-final` needed six pushes of one tag.
+
+The fix is not a new job. It is **the same job with a second trigger**:
+
+```yaml
+if: startsWith(github.ref, 'refs/tags/gate-') || …
+    || (github.event_name == 'workflow_dispatch' && inputs.job == 'e2e')
+```
+
+One `if:`, two doors. This matters more than it looks: a *copy* of the oracle could drift from the
+real one and go green while the tag reds. There is one oracle, invoked twice, so a green rehearsal
+is not evidence about the tag run — it is the *same evidence*.
+
+**The ritual that falls out of it:** rehearse on the candidate SHA → green → tag *that SHA* → the tag
+run confirms. `gate-1` was green on the first try, and that is the expected outcome now, not a
+hopeful one. A suspected flake gets `gh run rerun <id> --failed`; **the tag never moves.**
+
+**Two things this pattern breaks on its way in, both worth expecting elsewhere:**
+
+1. **Concurrency by ref is not enough once a job has two doors.** A dispatch on main shares main's
+   ref, so a ref-keyed `cancel-in-progress` group makes the rehearsal and the branch run kill each
+   other. Key the group on `<ref>-<event_name>`. Two individually-correct features whose composition
+   is a silent hole is the shape to watch for.
+2. **`workflow_dispatch` inputs are validated against the workflow file on the TARGET REF.** A new
+   input value must be pushed before it can be dispatched. Push, then dispatch, or take a 422.
+
+## Shard by the axis the config already declares (G1, 2026-07-13)
+
+`playwright.config.ts` already had three projects — `desktop`, `phone`, `wide`. The CI job ran all
+three serially in one runner: 15 m 26 s, and 90% of every exit's wall-clock.
+
+**The shard axis was already in the config. The matrix just names it:**
+
+```yaml
+strategy: { fail-fast: false, matrix: { project: [desktop, phone, wide] } }
+…
+run: npm run e2e -- --project=${{ matrix.project }}
+```
+
+`playwright.config.ts` is not edited and does not know it is being sharded. 15 m 26 s → 7 m 58 s.
+
+**The serialisation rule survives because the reason for it does.** `workers: 1` exists because
+seeded specs write to one shared database. Each matrix leg is a separate runner with its own Postgres
+service container — three databases, no sharing — so the rule's *premise* is gone, not the rule. Each
+leg is still one worker, still serial. **Before you parallelise something, find the sentence that
+justified the serialisation and check whether it still describes the world.**
+
+The trade is booked, not hidden: billed minutes rise ~26% (three legs each pay their own setup),
+wall-clock falls ~46%. Wall-clock is what a human waits for, several times per exit.

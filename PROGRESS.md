@@ -1,8 +1,13 @@
 # PROGRESS.md — resumable state
 
-# THE GATE-EFFICIENCY BUILD IS RUNNING — G0 is done (2026-07-13), tagged `gate-0`, CI green.
+# THE GATE-EFFICIENCY BUILD IS RUNNING — G1 is done (2026-07-13), tagged `gate-1`, CI green.
 
-**Checkpoint: G0 complete. G1 is next. Nothing is blocked. Nothing is in flight.**
+**Checkpoint: G0 and G1 complete. G2 is next. Nothing is blocked. Nothing is in flight.**
+
+**`gate-1` went green on the FIRST TRY, in 7 m 58 s, and the tag never moved.** That is the whole
+point of the phase and it is worth stating plainly: the oracle had already run the identical suite on
+the identical SHA before the tag existed, so the tag run was a confirmation, not a discovery. Before
+this, 52% of tag runs failed and `nc-final` needed six pushes of one tag.
 
 ## What this build is (read this first if you have no memory of it)
 
@@ -47,35 +52,82 @@ Saturday-row SQL. It is theirs.
 Evidence: `docs/gate-evidence/g0-dedup.md`, with the before/after numbers measured from this repo's
 own Actions runs.
 
-## What is NEXT — G1 (read GATE-EFFICIENCY-PLAN.md §G1 in full)
+## Where G1 left the machinery (all of this is live on `main` now)
 
-**G1 — Move the oracle before the tag → tag `gate-1`.** This is the phase that kills the
-tag→red→fix→re-tag loop. Three separately-proven commits:
+Full evidence with every run id: `docs/gate-evidence/g1-oracle.md`.
 
-1. **The rehearsal switch.** Add `e2e` to `ci.yml`'s `workflow_dispatch` options so the full browser
-   oracle can be dispatched on a candidate SHA *before* tagging it. **Sequencing trap: GitHub
-   validates dispatch inputs against the workflow file ON THE TARGET REF — push to main FIRST, then
-   dispatch, or you get a 422.**
-2. **Shard the oracle** into a 3-leg matrix (desktop / phone / wide), each leg with its own
-   throwaway Postgres. The `workers: 1` constraint exists because seeded writes share one database;
-   three databases dissolve it. Expect ~15.8 m → ~7–9 m. `playwright.config.ts` is NOT edited.
-   Fallback if a leg flakes on seeding twice: revert the matrix, keep the rehearsal.
-3. **Auto-mint on pixel failure** — on a failing run, if `test-results/**/*-actual.png` exists,
-   re-run vrt with `--update-snapshots=all` and upload the fresh baselines as an artifact of *that
-   same run*. **The artifact is a CANDIDATE. It is never auto-committed.** You open every image and
-   look, and you commit only an explained diff with the reason in the body. Nine real bugs in this
-   build were found by opening the picture.
+- **The oracle is dispatchable.** `gh workflow run ci.yml -f job=e2e` runs the full browser suite
+  (all three shards) on any ref, with no tag involved. Add `--ref <branch>` for a scratch branch.
+  It is **the same job** as the tag runs — one `if:`, two doors — so a rehearsal cannot go green
+  while the tag run reds. **Trap: GitHub validates dispatch inputs against the workflow file ON THE
+  TARGET REF. Push first, then dispatch, or take a 422.**
+- **The oracle is SHARDED** into three matrix legs (`desktop`, `phone`, `wide`), each with its own
+  Postgres service container. **15 m 26 s → 7 m 58 s** (−46%). `playwright.config.ts` is NOT edited
+  and `workers: 1` is NOT weakened — three legs are three throwaway databases, so the shared-state
+  premise that justified serial execution is simply gone. `fail-fast: false`, so one red leg never
+  hides another. `wide` is the short leg (~3 m 20 s; it is testMatch-scoped to vrt+hardening).
+  **The trade, booked openly:** billed job-minutes went UP ~26% (each leg pays its own setup) to buy
+  the 46% off the wall-clock. Waiting is what this plan exists to kill; minutes are cheap next to it.
+- **A run that reds on PIXELS mints its own candidate baselines** — guarded by the `*-actual.png`
+  witness, so a red *assertion* does not spend four minutes photographing. Artifacts per leg:
+  `playwright-failures-<leg>` (the triptych) and `vrt-baselines-candidate-<leg>`. **The candidate is
+  never auto-committed. No job in this repo can write to a branch.**
+- **`ci.yml`'s concurrency group is now `ci-<ref>-<event_name>`.** The event part is load-bearing —
+  see the next section. Every supersede-cancel G0 bought still holds.
+
+## Three things G1 learned the hard way (read these before you touch ci.yml)
+
+1. **A rehearsal on main shares main's ref.** G0's group was `ci-<ref>` with `cancel-in-progress`, so
+   the first rehearsal ever dispatched **cancelled the push run of the commit it was rehearsing.**
+   The reverse is worse and silent: a docs push during a 9-minute rehearsal kills the rehearsal, and
+   the exit walks to its tag believing it rehearsed. Fixed by adding `event_name` to the group.
+   **The exit ritual overlaps the branch push and the rehearsal on purpose. They must coexist.**
+2. **`--update-snapshots=all` hands back EVERY shot, not the shots that moved.** Measured with a
+   controlled one-line change: 2 shots failed, **6 files came back byte-different** — the extras are
+   sub-tolerance re-photographs of rooms that could not possibly have changed. `cp candidate/*` would
+   commit four files nobody can explain. **The triptych is the list of what moved; the candidate is
+   only where you fetch those files from.** `=all` stays (untouchable). See `.claude/skills/vrt-update`.
+3. **`main` moves under you.** `nightly-a.yml` pushes an empty `chore: heartbeat` commit after each
+   full nightly (it keeps GitHub from disabling the cron after 60 idle days). It landed mid-endgame
+   tonight and rejected a push. **Tag the SHA you rehearsed, BY SHA — never `HEAD`.**
+
+## What is NEXT — G2 (read GATE-EFFICIENCY-PLAN.md §G2 in full)
+
+**G2 — Make documentation free (paths-ignore, with the tag-edge proof) → tag `gate-2`.** A small
+phase by design: its danger is one specific edge, so the phase *is* the proof.
+
+Add `paths-ignore: ['**/*.md', 'docs/**', '.claude/**']` to `on.push` so docs commits stop firing
+app+pipeline (58 of 249 commits are docs-only, each paying full CI price). **The dangerous edge:** if
+GitHub evaluated path filters for TAG pushes too, a phase tag landing on a docs-heavy commit would
+silently skip the pixel oracle — the exact "gate that silently never runs" disease. GitHub documents
+that path filters are ignored for tag pushes, **but the vendor's documentation is not a recording**,
+and G1 just re-earned that lesson the hard way. Prove it live: push the ci.yml commit → push a
+docs-only commit and assert **no run was created** → tag `gate-2` **on that docs-only commit** and
+assert the oracle **did** run and is green. If it does not trigger, `git revert` (never rewrite
+history) and adopt the `[skip ci]` fallback — with the bright line: **never `[skip ci]` a commit a tag
+will sit on.**
+
+**One thing G1 hands G2:** the heartbeat commit is **empty** — it changes no paths at all. Whether
+`paths-ignore` skips it, runs it, or does something else is not documented anywhere worth trusting.
+Find out by looking; it is free evidence sitting in the same experiment.
 
 ## The exit ritual as it now stands (GATE-EFFICIENCY-PLAN Part 3)
 
 Local gate (typecheck/lint/test · pytest · build + routes/bundles/fonts · e2e:local · drift) → push,
-confirm the branch run green → **rehearse** (`gh workflow run ci.yml -f job=e2e` — exists from G1) →
-green → `check:migrations` (local; CI structurally cannot answer it) → tag → confirm the tag run →
-**THE TAG STAYS PUT** (a suspected flake gets `gh run rerun <id> --failed`, never a re-point) → the
-intelligence files land as **ONE** docs commit *after* the tag → report to Bishan and **STOP**.
+confirm the branch run green → **rehearse** (`gh workflow run ci.yml -f job=e2e` — LIVE since G1) →
+green → in parallel, the deploy checks (`check:nav`, `check:lighthouse`) → once per phase,
+`check:migrations` (local; CI structurally cannot answer it) → **tag the rehearsed SHA, by SHA** →
+confirm the tag run → **THE TAG STAYS PUT** (a suspected flake gets `gh run rerun <id> --failed`,
+never a re-point) → the intelligence files land as **ONE** docs commit *after* the tag → report to
+Bishan and **STOP**.
+
+**The tag run should now be green on the first try** — the rehearsal already ran the identical suite
+on the identical SHA. `gate-1` was. If a tag run ever reds after a green rehearsal, that is a real
+finding and it belongs in the evidence file.
 
 Every evidence file ends with the **gate-size line** so growth of the gate is a booked number, never
-an accident. At `gate-0`: **20 drift rules · 76 VRT baselines · 22 e2e specs.**
+an accident. At `gate-1`: **20 drift rules · 76 VRT baselines · 22 e2e specs · tag run 7 m 58 s.**
+No growth at G1 — it added no rule, no baseline, no spec, and no test.
 
 ---
 

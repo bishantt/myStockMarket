@@ -77,12 +77,22 @@ db-drift: npm run check:migrations — is the LIVE database running the schema i
 budgets:  npm run check:routes (every room cached) · check:nav (TTFB, needs AUTH_COOKIE_SECRET) · check:bundles
 e2e:      npx playwright test  ·  LOCAL: npm run e2e:local (--ignore-snapshots; CI is the pixel oracle)
           Seeded journeys need MSM_SEEDED=1 and a seeded Postgres — CI sets both; this Mac has neither.
-rehearse: gh workflow run ci.yml -f job=e2e — run the FULL browser oracle on a candidate SHA BEFORE
-          tagging it. Not wired yet: it arrives at GATE-EFFICIENCY-PLAN G1. Until then the tag run is
-          still the first real test, which is the whole disease that plan is curing.
-ci shape: (G0, 2026-07-13) branch pushes run app + pipeline; TAGS RUN ONLY THE BROWSER ORACLE — the
+rehearse: gh workflow run ci.yml -f job=e2e — LIVE since G1. Runs the FULL browser oracle (all three
+          shards) on any ref, with no tag involved. Run it on main's HEAD — the exact SHA you are
+          about to tag — and the tag run becomes a confirmation instead of a discovery. `gate-1` went
+          green on the first try because of this. Add `--ref <branch>` to rehearse a scratch branch.
+          THE TRAP: GitHub validates dispatch inputs against the workflow file ON THE TARGET REF, so
+          a new input value must be pushed BEFORE you can dispatch it. Push first, then dispatch.
+ci shape: (G0/G1, 2026-07-13) branch pushes run app + pipeline; TAGS RUN ONLY THE BROWSER ORACLE — the
           tagged SHA already proved app+pipeline on main, and re-running them was 43% of the CI bill.
-          One live run per ref: a superseded push or re-pushed tag now auto-cancels its predecessor.
+          The oracle is SHARDED into three legs (desktop, phone, wide), one Postgres each: 15.9 m ->
+          7.9 m. `workers: 1` is untouched — three legs are three databases, so nothing is shared.
+          One live run per ref AND PER EVENT: the group is `ci-<ref>-<event_name>`, and the event part
+          is load-bearing — a rehearsal on main shares main's ref, and on its first outing it CANCELLED
+          the push run it was rehearsing. Push and rehearsal must be able to overlap; they now do.
+heartbeat: nightly-a pushes an EMPTY `chore: heartbeat` commit to main after each full nightly (it
+          keeps GitHub from disabling the cron after 60 idle days). So MAIN CAN MOVE UNDER YOUR
+          ENDGAME. Tag the SHA you rehearsed, by SHA — never `HEAD`.
 pipeline: uv run pytest      jobs: uv run python -m jobs.job_a (fixtures: MSM_FIXTURES=1)
 modes:    job_a runs in FOUR modes, pinned in MODE_STAGES (pipeline/jobs/job_a.py), and main() REFUSES
           any mode it has no handler for — an unrecognised mode used to fall through to the full
@@ -91,8 +101,13 @@ modes:    job_a runs in FOUR modes, pinned in MODE_STAGES (pipeline/jobs/job_a.p
           takes its run date from the DATA not the clock, publishes via publish_compute so it never
           overwrites the night's source_status). job_a SKIPS a non-session day and exits cleanly.
 db:       npx prisma migrate dev --name <name> · npx prisma db seed   deploy: git push (Vercel auto)
-VRT:      baselines are BORN IN CI — gh workflow run ci.yml -f job=vrt-baselines, then download the
-          artifact and commit it. Never shoot a baseline on macOS (see .claude/skills/vrt-update).
+VRT:      baselines are BORN IN CI. Never shoot one on macOS. Since G1 a rehearsal that reds on
+          PIXELS mints its own candidates: download `vrt-baselines-candidate-<leg>`, OPEN EVERY IMAGE,
+          commit only an explained diff. THE CANDIDATE IS EVERY SHOT, NOT THE SHOTS THAT MOVED —
+          `--update-snapshots=all` re-photographs all of them, so copying the whole directory commits
+          files nobody can explain. The triptych (`playwright-failures-<leg>`) is the list of what
+          actually moved; the candidate is only where you fetch those files from. Read
+          .claude/skills/vrt-update FIRST. `-f job=vrt-baselines` remains for a deliberate restyle.
 
 ## The control room (/settings#pipeline — N6)
 The reader can run the pipeline by hand: five actions, each in exactly one of ten states, with daily
