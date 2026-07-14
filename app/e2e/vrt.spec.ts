@@ -119,6 +119,31 @@ async function shoot(page: Page, path: string, name: string, options: { allowSke
   }
 
   await waitForFonts(page);
+
+  /*
+   * PARK THE MOUSE BEFORE SHOOTING (PD4) — and this is not a nicety, it is a bug fix.
+   *
+   * `signIn()` CLICKS the Sign-in button, and Chromium leaves the pointer resting wherever that click
+   * landed. Playwright never moves it again. So on `/ticker/AAPL`, the candle chart lands underneath
+   * that stationary cursor, lightweight-charts decides it is being hovered, and draws a CROSSHAIR —
+   * two dashed lines and a black price pill — into the baseline.
+   *
+   * WHICH MEANS THE TICKER'S BASELINE HAS BEEN A PHOTOGRAPH OF WHERE THE LOGIN BUTTON HAPPENED TO BE.
+   * PD4 moved the Sign-in button down (the phone login gained its mark), the resting pointer moved
+   * with it, the crosshair slid down the price axis, and the pill it prints went from 214.54 to
+   * 213.02 — on a page PD4 never touched. The chart itself was pixel-identical; only the crosshair
+   * moved. It reproduced exactly on a re-run, so it was not flake: it was a baseline quietly coupled
+   * to an unrelated page's layout.
+   *
+   * This is PD3's law again, and it keeps being the same law: **a baseline proves the page did not
+   * change; it never proved the page was right.** An exact, green, reproducible baseline was locking
+   * in a hover state that no reader will ever see on arrival.
+   *
+   * (0, 0) is outside every chart in the app, so the crosshair is dismissed and the page is
+   * photographed in the state a reader actually lands on.
+   */
+  await page.mouse.move(0, 0);
+
   const masks = page.locator('[data-vrt="mask"], time');
   await expect(page).toHaveScreenshot(`${name}.png`, { fullPage: true, mask: [masks] });
 }
