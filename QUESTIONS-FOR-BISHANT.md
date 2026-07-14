@@ -8,6 +8,64 @@ Format: newest first. I mark each as [FYI], [VETO?], or [NEED] so you can scan.
 
 ---
 
+## 2026-07-14 — PD2 (brand: the identity kit)
+
+### [FYI] Your logo file has fake transparency — and I did NOT edit it
+
+`myLogo11.png` is the right artwork and it is now the master at `assets/brand/logo-source.png`,
+byte for byte as you gave it to me. But it has **no transparency at all**: the tool that made it
+painted the grey-and-white transparency *checkerboard* into the pixels. Dropped straight into an
+icon, every one of them would have had a chequered box around the mark.
+
+The generator cuts it out itself (it flood-fills the checkerboard from the edge inward, which is why
+it can never eat the white "M" in the middle), so **nothing is broken and nothing needs doing.** But
+if you ever re-export the logo, **a genuine RGBA export would be a little cleaner** — I would delete
+about forty lines of pixel-keying.
+
+I also checked the other two: `myLogo.png` DOES have real transparency, but it is the **navy/gold/green**
+version — the wrong palette, and green candles collide with the colour meanings this app reserves.
+`myLogo11.png` is the one.
+
+### [FYI] The app had no browser tab icon. At all. Since the first phase.
+
+`proxy.ts` has allowlisted `/favicon.ico` since P0 and **no such file has ever existed** — the old
+generator wrote `favicon.png`, nothing linked it, and the app has been shipping a blank tab this
+whole time. It has one now, and a test fetches every brand path so it cannot happen again.
+
+### [VETO?] The phone login has no mark
+
+The login's brand panel is desktop-only by existing design (below `lg` it collapses and only the
+headline and form remain), so the mark you see at 96px on a laptop **is not there on a phone at all**.
+I did not change that — plan Part 7 (PD4) owns the phone composition, and this is its call to make.
+
+**If you want the mark on the phone login, say so and PD4 will add it.** It is a two-line change.
+
+### [FYI] A follow-up I chose not to do, and you may disagree
+
+`e2e/briefing.spec.ts` writes a journal entry into the seeded test database and **never cleans up**,
+which is what corrupted the Desk's pixel baseline (see below, and DECISIONS). I fixed it by making the
+CAMERA look away from the count, which is correct and cheap. **The deeper fix is to make the test
+clean up after itself** — but there is no delete path for a journal entry today, so building one is a
+feature, not a test fix. Left as a follow-up rather than smuggled into a brand phase.
+
+### [FYI] The gate had been forgiving a real bug for months
+
+Worth knowing because it says something about the gate rather than about the brand.
+
+The pixel oracle allows a 600-pixel difference before it complains. The Desk's baseline said
+*"none saved tonight"* while every real run produced *"1 saved tonight"* — a 387-pixel disagreement,
+sitting under the tolerance, **for as long as that baseline has existed.** Nobody could have known.
+PD2's new mark added 746 more pixels, the total cleared 600, and the old bug fell out of the failure.
+
+And the same tolerance was hiding the mark itself from **45 other shots**: they changed, they did not
+fail, and they would have gone on passing while showing a top bar the app no longer has. All 59
+changed baselines were re-photographed, not just the 14 that went red.
+
+**Nothing is wrong now.** But "what the gate forgives is where the next bug lives" is now written into
+PATTERNS.md, and I will keep looking at tolerances rather than through them.
+
+---
+
 ## 2026-07-14 — PD1 (production made current)
 
 **[FYI — DONE, and it is the good news] Your production Desk is now telling the truth, and there is a

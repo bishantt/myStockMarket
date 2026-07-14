@@ -70,7 +70,25 @@ Optimize everything for a human reader, never for machine brevity.
 
 ## Commands
 app:      npm run dev | test | typecheck | lint | build
-guards:   npm run check:drift (22 anti-drift rules) · check:fonts (budget) · check:lighthouse · icons
+guards:   npm run check:drift (23 anti-drift rules) · check:fonts (budget) · check:lighthouse
+brand:    (PD2) `npm run brand` is THE ONE GENERATOR — `npm run icons` is an alias of it, and
+          scripts/icons.mjs is gone. One master in (assets/brand/logo-source.png, repo root, OUTSIDE
+          app/public/ so the 1.2MB original never ships), ten artifacts out, each with a named size,
+          geometry, budget and consumer. It PRINTS its artifact table with byte sizes and EXITS
+          NON-ZERO on a missed budget — which is how it caught, on its first run, that the raster mark
+          encodes to 300KB at 512px against a 120KB budget written for the flat SVG tile it replaced
+          (19KB). Needs Node 24. Three things a future session must not re-learn the hard way:
+          · THE MASTER'S TRANSPARENCY IS PAINTED ON — the delivered PNG has no alpha channel at all;
+            the checkerboard is IN the pixels. brand-geometry.mjs keys it out by flood-filling from
+            the BORDER inward, which is why it can never eat the white M in the middle of the mark.
+          · SHARP CANNOT USE OUR FONTS AND SAYS NOTHING. `fontfile` is silently ignored: a monospace
+            and a proportional font rendered one string to the same 1135x159px. The OG card's type is
+            VECTOR OUTLINES (brand-type.mjs), from TTFs vendored in assets/brand/fonts/. Never
+            re-introduce a font lookup here.
+          · public/mark-glyph.svg SURVIVES the retirement of mark.svg — Android's monochrome icon must
+            be one flat colour on transparency, which a rendered logo cannot be.
+          Any new brand hex goes in the generator and NOWHERE else (drift rule 23). components/
+          BrandMark.tsx is the ONLY component that may render the mark (drift rule 20's second door).
 rooms:    (G3) app/lib/routes-manifest.json is THE ONE LIST OF ROOMS. The sweeps (a11y, hardening),
           the pixel oracle (vrt), the nav budget (check-nav) and the bundle budget (check-bundles) all
           read it. app/lib/routes-manifest.test.ts walks app/app/**/page.tsx and REDS THE UNIT SUITE if
@@ -144,6 +162,15 @@ VRT:      baselines are BORN IN CI. Never shoot one on macOS. Since G1 a rehears
           files nobody can explain. The triptych (`playwright-failures-<leg>`) is the list of what
           actually moved; the candidate is only where you fetch those files from. Read
           .claude/skills/vrt-update FIRST. `-f job=vrt-baselines` remains for a deliberate restyle.
+          BUT (PD2): "WHAT MOVED" AND "WHAT FAILED" ARE NOT THE SAME LIST, and the gap is where bugs
+          live. `maxDiffPixels: 600`, so a shot can CHANGE and still PASS. PD2's 28px mark moved 59
+          baselines and redded only 14 — the other 45 would have gone on passing while showing a top
+          bar the app no longer had. DIFF EVERY CANDIDATE AGAINST ITS COMMITTED BASELINE (decode both,
+          count differing pixels) rather than trusting the failure list, and re-baseline everything
+          that MOVED. That diff is also what surfaced a 387-pixel bug the tolerance had been hiding
+          for months: the Desk's baseline said "none saved tonight" while every real run produced
+          "1 saved tonight", because briefing.spec writes a journal entry, runs first, and never
+          cleans up. A baseline that is TOLERATED is still a baseline that is WRONG.
 
 ## The control room (/settings#pipeline — N6)
 The reader can run the pipeline by hand: five actions, each in exactly one of ten states, with daily

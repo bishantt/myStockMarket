@@ -797,3 +797,60 @@ And fence BOTH ends, because they fail differently:
 Use when: any table that a periodic job "replaces". Also: **a bounded read (`take: N`) with no lower
 bound is an eviction waiting for something to rot** — the four dead rows sorted first and displaced
 six days of real calendar, which is a data-loss bug wearing a cosmetic bug's clothes.
+
+## one-master-many-artifacts (and the budget check that catches the day it stops working)
+
+**The shape.** A single source file, a single committed generator, and a table where every emitted
+artifact names its size, geometry, budget and consumer. `npm run brand` →
+`app/scripts/brand-assets.mjs` → ten files. Nothing is drawn twice, so nothing can drift from
+anything else, and the phase's evidence is the generator's own printed output.
+
+Three parts make it hold, and each one earned its place by catching something:
+
+1. **The source is ASSERTED, not assumed.** The generator samples the master's field colour and
+   refuses to run if it no longer matches the committed `BRAND_FIELD`. Swap the master for a
+   differently-tinted logo and the build does not silently re-tint every icon and the OG card to a
+   colour nobody chose — it stops and says the field moved. *A build that changes twenty files
+   because one file changed should have to announce itself.*
+
+2. **The BUDGET is asserted, and it is the only test an icon set can fail.** An icon set has no
+   failing assertion; it just quietly gets heavier until someone notices the app is slow. PD2's very
+   first run printed a 300 KB 512px icon against a 120 KB budget for the whole set — because the
+   budget had been written for the flat SVG tile it replaced (19 KB), and the new mark is a rendered
+   illustration. Nothing else in the repo would have said a word.
+
+3. **The pure logic is a separate, hermetic module.** `brand-geometry.mjs` takes raw pixels and
+   returns numbers; `brand-assets.mjs` does the IO. The tests run the geometry against **synthetic**
+   fixtures — never the real logo. A test that asserted today's logo is today's logo would pass
+   forever, prove nothing, and go red the day the mark is redrawn, which is precisely the day it
+   should stay green.
+
+**Where it generalises:** any time one input fans out into many committed binary artifacts nobody
+can grep — icons, sprites, OG cards, seeded fixtures, generated schemas.
+
+## Measure a library's promise; do not read it
+
+An API that accepts a parameter is not an API that USES it. sharp takes a `fontfile`; Pango ignored
+it and substituted a system font, and the only way to know was to construct a measurement it could
+not fake: **a monospace font and a proportional font must set the same string to different widths.**
+They did not. The parameter was dead.
+
+The general form: find an observable that MUST differ if the thing you asked for actually happened,
+and check that observable — not the exit code, not the presence of output, not the docs. Then, where
+you can, delete the dependency on the promise entirely (the OG card's text is now vector outlines,
+so there is no font to resolve and nothing to fall back to).
+
+## What the gate forgives is where the next bug lives
+
+`maxDiffPixels: 600` had been absorbing a 387-pixel disagreement in the Desk's baseline — a picture
+that said "none saved tonight" against a run that produced "1 saved tonight", because one spec writes
+a journal entry and never cleans up. It also absorbed the 45 shots whose top bar changed and did not
+fail.
+
+**A tolerance is not neutral.** It is a region where drift is invited to accumulate, and it is the
+one region nobody inspects, precisely because it is green. When a tolerance finally lets something
+through, do not just re-baseline what failed: re-baseline everything that MOVED, and go and look at
+what else the tolerance has been quietly holding.
+
+Related: [the-instrument-that-can-see-production] (PD0/PD1) — the same disease, one layer up. A guard
+that cannot fail on a real defect, and a guard that forgives one, are the same guard.

@@ -411,3 +411,65 @@ I re-sampled twice: **87** and **86**. Synthetic-4G runs vary by ten points. The
 
 **A shrug and a panic are equally wrong, and both are cheaper than a second measurement.** Take the
 second measurement — it cost two minutes and it is the difference between "I think" and "I know".
+
+---
+
+## PD2 — A library that "works" can be ignoring you (2026-07-14)
+
+The OG card needs two lines of type. sharp renders text, and it takes a `fontfile` option, so the
+obvious thing is to point it at the app's own fonts. It ran. It produced an image. The image had
+words in it. Everything looked fine.
+
+Then I measured, because the output is committed and I wanted to know it was reproducible:
+
+```
+"myStockMarket", 40px, no font named at all   ->  1135 x 159
+"myStockMarket", 40px, JetBrains Mono Medium  ->  1135 x 159     <- MONOSPACE
+"myStockMarket", 40px, Inter Regular          ->  1135 x 159     <- PROPORTIONAL
+```
+
+**Three different fonts cannot set one string to one width.** Pango was ignoring the `fontfile`
+entirely and substituting whatever this Mac happened to have installed. The card would have shipped
+in a system font — and in a *different* system font on the next machine — and every test would have
+passed, because no test in the world asserts "this text is in the typeface I asked for".
+
+**A silent fallback is worse than an error.** An error is a fact; a fallback is a lie that renders.
+The defence is not to trust the API — it is to construct a measurement the API cannot fake. Two
+fonts with different metrics must produce different widths. If they do not, the parameter is dead,
+whatever the docs say.
+
+The fix removed the class of bug rather than the instance: the strings are now converted to vector
+outlines from the vendored TTFs, so **by the time anything is rasterised there is no text left, only
+shapes.** Nothing to resolve, nothing to fall back to, identical on a machine with no fonts at all.
+
+## PD2 — A tolerance is a place where bugs go to live (2026-07-14)
+
+Every room's VRT shot moved by exactly 746 pixels — the new 28px mark, in the identical place. The
+Desk moved by 1,291. That extra 545 was at the *bottom* of the page, and blown up it said:
+
+```
+old baseline:  none saved tonight
+new actual:    + 1 more · 1 saved tonight
+```
+
+`briefing.spec` writes a journal entry, runs before `vrt.spec`, and never cleans up. So the Desk the
+full oracle photographs and the Desk the standalone baseline job photographs **have disagreed by 387
+pixels for as long as the baseline has existed.** Nobody knew, because `maxDiffPixels: 600` was
+absorbing it.
+
+Two lessons, and the second is the bigger one.
+
+**A pixel baseline that depends on which tests ran first is not a baseline.** `desk.spec.ts` had
+already worked this out and written it down — *"asserting 'none saved tonight' would be asserting
+the test ORDER, not the product"* — and then the oracle went on asserting exactly that, in pixels,
+where nobody would read it. A rule enforced in one instrument and not in its neighbour is a rule
+with a hole in it.
+
+**And: only 14 baselines went red, but 59 had actually changed.** Forty-five shots moved by 746 px,
+sat under the tolerance, and would have gone on passing *while showing a top bar this app no longer
+has*. The tolerance was not protecting the gate from noise; it was hiding real drift from it — and
+it had been hiding a 387-pixel bug for months in the same breath.
+
+**A baseline that is tolerated is still a baseline that is wrong.** Re-photograph everything that
+moved, not everything that failed. What the gate FORGIVES is exactly where the next bug will sit,
+because it is the one place nobody is looking.

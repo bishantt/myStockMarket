@@ -1,125 +1,121 @@
 # PROGRESS.md — resumable state
 
-# PD1 IS **COMPLETE** — tagged `pd-1`, CI green. **Production is repaired and now watched.**
+# PD2 IS **COMPLETE** — tagged `pd-2`, CI green on the first try. **The app has a face.**
 
-**Checkpoint: POLISH-AND-DEPTH-PLAN.md, PD1 (Part 4 — production made current) is DONE.
+**Checkpoint: POLISH-AND-DEPTH-PLAN.md, PD2 (Part 5 — brand: the identity kit) is DONE.
 Nothing is blocked. Nothing is in flight.**
 
-**NEXT: PD2 — Brand: the identity kit** (plan Part 5).
+**NEXT: PD3 — the desktop grid contract v2** (plan Part 6).
 
-## What PD1 did, in one paragraph
+## What PD2 did, in one paragraph
 
-PD0 built `check:live`, the first instrument that asks whether PRODUCTION is right rather than whether
-the code is. PD1 acted on what it said. The macro board had already self-healed (it was never broken —
-it was starving on the poisoned Saturday edition, exactly as plan 1.3 predicted). The session
-calendar had NOT, and the plan was wrong to expect it to. Both were verified against the live site,
-the poisoned rows Bishan authorised were deleted, the calendar was fenced at both ends, and
-`check:live` is now **in the standing gate** at the post-deploy step of every phase from here on.
+The app had good plumbing and no identity: a placeholder gradient tile with a letter "M" in the top
+bar, and — it turned out — **no browser tab icon at all**, because `proxy.ts` had allowlisted
+`/favicon.ico` since P0 and no such file ever existed. PD2 built the identity kit. **One master file
+goes in (`assets/brand/logo-source.png`), ten artifacts come out** (`npm run brand`), each with a
+named size, geometry, budget and consumer. There is now exactly one component allowed to render the
+mark (`components/BrandMark.tsx`, the argued second door in drift rule 20), one place a brand colour
+may be stated outside the token sheet (the generator, policed by new drift rule 23), and a link
+preview — the only public face a login-walled product has — generated from the same master and
+photographed by the pixel oracle. Along the way the phase found a **387-pixel bug that the VRT's own
+tolerance had been hiding for months**.
 
-## The four things that are now true (a fresh session must know these)
+## The five things that are now true (a fresh session must know these)
 
-1. **PRODUCTION IS GREEN AND THERE IS A COMMAND THAT PROVES IT.** `npm run check:live` reports **all
-   six assertions pass** (1 PENDING, owed to PD8 — the news bylines are plain text because that
-   feature does not exist yet). It runs at the **post-deploy step of the standing gate** now. It needs
-   `set -a; source .env; set +a` for `AUTH_COOKIE_SECRET`. **It is local-only by nature** — CI builds a
-   fresh database and deployment every run, so it structurally cannot answer this (same as
-   `check:migrations`).
+1. **`npm run brand` IS THE ONE GENERATOR.** `npm run icons` is an alias of it; `scripts/icons.mjs`
+   and the old placeholder tile (`public/mark.svg`) are deleted. Ten artifacts, all from
+   `assets/brand/logo-source.png`. The generator prints its own artifact table with byte sizes and
+   **exits non-zero if any budget is missed** — which is how it caught, on its very first run, that
+   the new raster mark encodes to 300 KB at 512px against a 120 KB budget written for the flat SVG
+   tile it replaced (19 KB). Palette quantisation to 128 colours brings the set to 97.3 KB.
+   `public/mark-glyph.svg` SURVIVES — it is still the source for Android's monochrome icon, which
+   must be one flat colour on transparency and therefore cannot come from a rendered logo.
 
-2. **THE EDITION RULE — the most important thing PD1 learned, and it is now law.**
+2. **THE MASTER'S TRANSPARENCY IS PAINTED ON, and the generator undoes it.** The delivered file has
+   no alpha channel: the transparency *checkerboard* is rendered into the pixels. `brand-geometry.mjs`
+   keys it out by flood-filling light-and-grey pixels **from the border inward** — which is the whole
+   safety argument, because the mark's own whites (the M, the book) are interior and a fill that
+   starts at the edge can never reach them. It then fits the mark's true circle (median reach over 72
+   angular sectors, so a drop shadow on one side cannot inflate it) and cuts a real alpha.
+
+3. **A LIBRARY THAT "WORKS" CAN BE IGNORING YOU.** sharp accepts a `fontfile`, so the OG card's type
+   looked easy. Measured: the same string at the same size rendered to **exactly 1135×159px with our
+   monospace font, with our proportional font, and with no font named at all**. Pango was ignoring the
+   file and substituting a system font. The card would have shipped in the wrong typeface, differently
+   on every machine, and no test on earth would have said so. **The text is now vector outlines**
+   (`brand-type.mjs` + `opentype.js`) from two TTFs vendored in `assets/brand/fonts/` — by the time
+   anything rasterises there is no text left, only shapes.
+
+4. **THE TOLERANCE WAS HIDING A REAL BUG — read this before you touch VRT.** `maxDiffPixels: 600`.
+   `e2e/briefing.spec.ts` writes a journal entry, runs before `e2e/vrt.spec.ts` (workers: 1,
+   alphabetical) and never cleans up — so the Desk the *full oracle* photographs says "1 saved
+   tonight" while the baseline minted by the standalone `vrt-baselines` job (which runs `vrt.spec`
+   alone on a fresh DB) says "none saved tonight". **They had disagreed by 387 px for as long as that
+   baseline existed.** PD2's 746-px mark cleared the tolerance and it fell out. Fixed: `Disclosure`
+   takes an opt-in `maskCount` and the journal is its only consumer — the reader still sees the count,
+   the camera does not.
+   **AND: only 14 baselines went red, but 59 had actually CHANGED.** The other 45 moved by 746 px,
+   sat under the tolerance, and would have gone on passing while showing a top bar the app no longer
+   has. All 59 were re-photographed. **A baseline that is tolerated is still a baseline that is wrong.**
+
+5. **THE EDITION RULE still stands (PD1's law, unchanged and still the most dangerous thing here).**
    > **IF A SURFACE IS DERIVED FROM THE EDITION, IT IS MEASURED AGAINST THE EDITION — never the wall
    > clock.**
-   The Desk serves a dated edition, like a newspaper; Monday's paper is still Monday's paper at 1am
-   Tuesday. THREE surfaces broke this rule and all three were found within an hour: the calendar's own
-   read (no floor at all), the next-edition promise, and the calendar hygiene check. **Two of them were
-   in the INSTRUMENT, and they would have failed a perfectly healthy Desk EVERY NIGHT** between
-   midnight ET and the ~6:40pm publish — starting the night `check:live` joined the gate. Both checks
-   now take **no clock at all**. The one assertion that legitimately reads the clock is the one that
-   asks whether the edition itself is current, and it is loud — so everything else can trust the
-   edition and stop asking what time it is.
+   PD2 touched no clock. Every later phase that filters, labels or checks anything dated must obey it,
+   and the failure mode is invisible at the hour you usually work (between midnight ET and the
+   ~6:40pm publish).
 
-3. **FIXING A WRITE PATH DOES NOT CLEAN A TABLE.** The `Coinbase Cryptocurrencies` rows survived a
-   correct allowlist for a month because the refresh deleted `WHERE date >= run_date` — the forward
-   window — and a row that has fallen BEHIND the window is not in it. **And it was not cosmetic:** the
-   Desk takes the 15 earliest rows in date order, so the 4 dead rows sorted FIRST and spent 4 of the 15
-   slots. The calendar said "through Jul 16"; the table held events through Jul 23. **The rot was
-   evicting six days of real horizon.** Now fenced at BOTH ends — `publish._replace_calendar` replaces
-   the whole table, and `loadCalendar` floors at the edition — because the two fences fail differently.
+## Gate size at `pd-2`
 
-4. **PRODUCTION SCREENSHOTS ARE POSSIBLE.** The old QUESTIONS note saying otherwise is **wrong and now
-   marked so**. The login wall does not need the app's password — it needs `AUTH_COOKIE_SECRET`, which
-   is in the root `.env`. `check-nav.mjs` and `check-live.mjs` both mint a session cookie exactly as
-   `lib/auth.createSessionToken` does. PD1's before/after shots are in `docs/pd-evidence/pd1/`.
+**23 drift rules · 76 VRT baselines · 23 e2e specs · 638 unit tests · 16 bundle baselines · 14
+manifest rooms · tag run 8 m 17 s.** Pipeline: 535 (504 + 31 skipped without Postgres).
 
-## Production, verified 2026-07-14 00:27 ET
+Growth this phase, each with a reason (full detail in `docs/pd-evidence/pd2-brand.md`):
+- **+1 drift rule (23)** — the brand's hexes have one door outside the token sheet. Rule 1 never
+  scanned `scripts/` or `public/*.svg`. Proven to bite.
+- **+1 e2e spec (23)** — `brand.spec.ts`: every brand path fetched **unauthenticated**, 200 +
+  content-type; the login mark; the OG card's absolute URL.
+- **+13 unit tests (638)** — the generator's geometry, against **synthetic** fixtures only. A test
+  that asserted today's logo is today's logo would pass forever and prove nothing.
+- **+1 amendment to drift rule 20** — `BrandMark.tsx` is the argued second door for imagery.
+- **Bundles UNMOVED** — worst `/news` 196.3 KB, exactly as before. Images are not code.
 
-```
-✓ masthead · session truth      2026-07-13   (Monday — correct)
-✓ macro board · presence        mortgage · CPI · gold · rupee · mood  (ALL FIVE)
-✓ macro pulse · index honesty   real FRED levels (S&P 7,575.39)
-✓ session calendar · hygiene    clean  ← was the one live defect; repaired
-✓ news · press-time truth       2026-07-13
-… news · byline links           PENDING → PD8 (plan 9.4)
-✓ strip · next-edition promise  Tue
-All 6 live checks pass (1 pending a later phase).
-```
+## Production is green and watched
 
-Part 0.1 executed (Bishan's decision, logged as **user-authored** in DECISIONS.md): `scan_result`
-**1315** · `market_context` **1** · `pipeline_run` **1**, all `run_date = 2026-07-11`, deleted.
-**`signal_log` untouched — 4551 rows before, 4551 after.** An authorisation check ran FIRST and
-confirmed the poisoned date reached exactly the three authorised tables and no others.
+`npm run check:live` — **all six assertions pass** (1 PENDING, owed to PD8: the news bylines are plain
+text because that feature does not exist yet). Needs `set -a; source .env; set +a` for
+`AUTH_COOKIE_SECRET`. **Local-only by nature** — CI builds a fresh database and deployment every run,
+so it structurally cannot answer this. It runs at the **post-deploy step of the standing gate**.
 
-## The exit ritual (unchanged, and it works — SEVEN tags, SEVEN first-try greens)
-
-Read **CLAUDE.md's "The Endgame"** block. Local gate → push → **REHEARSE** (`gh workflow run ci.yml
--f job=e2e --ref main` — the same job the tag runs, on the exact SHA you will tag) → tag **BY SHA** →
-confirm → **ONE docs commit after the tag** (it is free; `paths-ignore` means prose starts no CI run).
-
-**The post-deploy step now has four instruments:** `check:live` (must be GREEN — a PENDING owed to a
-later phase is fine, a FAIL is not), `check:nav`, `check:lighthouse`, and once per phase
-`check:migrations`.
-
-**THE TRAP:** nothing in the gate reads a `paths-ignore`d path (`**/*.md`, `docs/**`, `.claude/**`),
-which is the only reason the filter is safe. If you write a guard that reads a document, put its path
-back in the trigger FIRST.
-
-## Gate size at `pd-1`
-
-**22 drift rules · 76 VRT baselines · 22 e2e specs · 625 unit tests · 16 bundle baselines ·
-14 manifest rooms.** Pipeline: **535** (534 passed + 1 skipped locally with Postgres running).
-
-**Growth, booked:** +8 unit tests (3 for `calendarFloor`; 5 for the instrument's edition anchoring and
-the year-turn guard) · +2 pipeline tests (the write fence, and the degraded-ingest case that must NOT
-sweep) · **+1 gate command (`check:live`, now LIVE in the standing gate)**. No new drift rule, no new
-VRT baseline, no new room.
-
-## Budgets — unchanged, and still tight
-
-**`/news`: 196.3 KB against a 200 KB HARD ceiling. Real headroom is ≈3.7 KB**, NOT the ≈4.9 KB the
-plan records. PD5's shared kit and PD9's overlay both spend from this pot; PD9's code-split is
-pre-authorised. **Plan against 3.7 KB.** Fonts: 243 KB of 560.
-
-Lighthouse: advisory perf **87** (a 77 appeared on one sample and was **re-measured**, not shrugged at
-— two further samples gave 87 and 86; synthetic-4G variance). The two HARD gates pass: **CLS 0.000**
-and **first-load JS 178 KB ≤ 200**.
+All ten brand paths verified 200 + correct content-type against the deployed origin, unauthenticated.
+The OG card's `og:image` resolves **absolute** (`metadataBase` from `APP_BASE_URL`), which is what an
+unfurler requires. Lighthouse: **CLS 0.000** and **first-load JS 177 KB** (both HARD gates) ·
+advisory perf 86 (was 87) · **LCP 3.83 s, unmoved** from PD1's 3.86 s — the mark did not join the
+critical path.
 
 ## Known-and-fine (do not chase)
 
 - **Node 20 shadowing.** Claude Code exports its own Node 20 into every shell it spawns; `check:fonts`
   then dies with a `globSync` export error. Not a regression. Prepend Node 24:
-  `export PATH="$HOME/.nvm/versions/node/v24.18.0/bin:$PATH"`.
+  `export PATH="$HOME/.nvm/versions/node/v24.18.0/bin:$PATH"`. **The brand generator needs Node 24 too**
+  (`sharp`, `png-to-ico`, `opentype.js`).
 - **`uv run pytest` fails `test_missing_database_url_fails_loudly` if you sourced the root `.env`** —
   the test asserts a *missing* `DATABASE_URL` fails loudly. Not a regression. Run `env -u DATABASE_URL
   uv run pytest`.
-- **The 29 Postgres-backed pipeline tests skip on this Mac** — but **they do not have to.** PD1 started
-  Docker and ran them locally:
-  `docker run -d --name msm-pd1-pg -e POSTGRES_PASSWORD=postgres -e POSTGRES_DB=msm_test -p 55433:5432 postgres:16`
+- **The 29 Postgres-backed pipeline tests skip on this Mac** — but **they do not have to**:
+  `docker run -d --name msm-pg -e POSTGRES_PASSWORD=postgres -e POSTGRES_DB=msm_test -p 55433:5432 postgres:16`
   then `TEST_DATABASE_URL="postgresql://postgres:postgres@localhost:55433/msm_test" uv run pytest`.
-  **Do this whenever you touch a database write path.** PD0's first push went red in CI on a test that
-  "passed" locally as a skip. A local green with a skip count is not a green.
+  **Do this whenever you touch a database write path. A local green with a skip count is not a green.**
 - **`check:lighthouse` needs** `export CHROME_PATH="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"`
-  and the root `.env` sourced.
-- **`/settings` answers in ~400 ms, every sample a cache MISS.** Correct — the app's one *writer* room,
-  `force-dynamic` by design, with an argued exemption. Every cached room answers in 43–205 ms.
+  and the root `.env` sourced. Advisory perf varies ±10 — **re-sample before explaining a move.**
+- **`/settings` answers in ~385 ms, every sample a cache MISS.** Correct — the app's one *writer* room,
+  `force-dynamic` by design, with an argued exemption. Every cached room answers in 42–94 ms.
+- **`nav-timing — Desk → Scans` on the phone leg is timing-flaky on a contended runner.** PD2 saw it
+  red at median 451 ms against a 400 ms ceiling — on a commit whose *application code was identical* to
+  a passing one (the only difference was 59 PNG baselines, which cannot slow a client-side nav). The
+  samples were bimodal: `[451, 178, 904, 877, 164, 178, 482]` — half of them *faster* than the passing
+  run. `gh run rerun <id> --failed` → green. **Read the samples before believing it; a real slowdown
+  moves every one of them.**
 - **P-2 (a GitHub PAT with `workflow` scope) is still NOT PROVISIONED**, so the control room's buttons
   are dark in production. The path is proven working end to end. It is a secret and nothing else.
 - **Three untracked files** (`UI-LIBRARY-EVALUATION.md` + its PDF/HTML) are a finished research
@@ -127,12 +123,18 @@ and **first-load JS 178 KB ≤ 200**.
 
 ## Open questions (none blocking — see QUESTIONS-FOR-BISHANT.md)
 
-- **Q-N6-1 — CLOSED at PD1.** The Saturday rows are deleted; his decision, carried out and logged.
-- **Q-PD0-1 — CLOSED at PD1.** The `Coinbase Cryptocurrencies` rows are gone and both ends are fenced.
+- **[VETO?] The phone login has no mark.** The brand panel is `hidden lg:flex` by existing design, so
+  the 96px lockup is desktop-only. PD4 owns the phone composition; if Bishan wants it there, it is a
+  two-line change.
+- **[FYI] `e2e/briefing.spec.ts` never cleans up its journal entry.** The camera now looks away, which
+  is the cheap correct fix. The deeper fix needs a journal delete path — a feature, not a test fix.
+- **[FYI] Your logo file has fake transparency.** Handled entirely by the generator; nothing to do. A
+  genuine RGBA re-export would let ~40 lines of pixel-keying be deleted.
+- **Q-N6-1 · Q-PD0-1 — CLOSED at PD1.** The Saturday rows are deleted; the Coinbase calendar rows are
+  gone and both ends are fenced.
 - **[FYI] A tracked file went missing from the working tree during PD1 and was restored.**
-  `Screenshot 2026-07-12 at 6.20.46 PM.png` (repo root, committed in `cb20a9f`) appeared as deleted;
-  **I did not delete it and cannot account for what did.** Restored byte-for-byte from HEAD rather than
-  committing the deletion. Flagged for Bishan.
+  `Screenshot 2026-07-12 at 6.20.46 PM.png` (repo root, committed in `cb20a9f`). **PD2 did NOT see it
+  disappear again** — one occurrence, not yet a pattern.
 - **Q-G4-1 [VETO?]** PD5's movers delta chip carries `data-p2` (hover = opacity/underline only).
   **PD5 has not started — nothing is built on it. Reversing it still costs one paragraph.**
 - **Q-G3-2 [WORTH HIS EYES]** `/academy/[slug]` is neither swept nor pixel-locked. A one-line manifest
