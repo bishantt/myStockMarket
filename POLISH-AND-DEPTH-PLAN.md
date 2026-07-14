@@ -1427,7 +1427,10 @@ made 52% of tag runs fail. PD inherits the reformed exit from PD0.]**
    — the same job the tag runs, on any ref, no tag involved. Sharded into 3 legs, ~8 min.
    IN PARALLEL (they overlap by design — push and rehearsal share a ref and must):
      wait for the Vercel deploy → npm run check:nav -- --report
-     → npm run check:live                              # PD1 onward — production truth, not vibes
+     → npm run check:live                              # LIVE IN THE GATE SINCE PD1 — must be GREEN
+       (a PENDING assertion owed to a later phase is fine; a FAIL is not. Needs the root .env for
+        AUTH_COOKIE_SECRET. Read a red before believing it: PD1's two reds were the CHECKER, not
+        the Desk — a surface derived from the EDITION must be measured against the EDITION.)
      → npm run check:lighthouse                        # budgets on / (and /news, /ticker/[symbol] from PD8)
 8  Rehearsal RED on pixels? The run mints its own candidate baselines
    (vrt-baselines-candidate-<leg>). Download, OPEN EVERY IMAGE, commit only an explained diff.

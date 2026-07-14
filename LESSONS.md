@@ -330,3 +330,84 @@ a table being otherwise empty depends on every other test in the suite, and on t
 
 **The general shape:** when a test harness can only run in one environment, its bugs live in that
 environment and nowhere else. Distrust any local green that comes with a skip count.
+
+---
+
+## PD1 — Fixing a write path does not clean a table (2026-07-14)
+
+**The plan predicted these rows would self-heal. It was wrong, and it was wrong for a reason worth
+keeping.**
+
+Four rows from a provider retired a month ago — "Coinbase Cryptocurrencies", dated on a Saturday and
+a Sunday — sat on the live Desk. The allowlist that stopped them being written landed weeks earlier
+and was correct. The plan reasoned: the calendar refresh replaces the forward window on every run,
+so the next run will overwrite them.
+
+The refresh deleted `WHERE date >= run_date`. **A row that has fallen BEHIND the window is not in the
+window.** Nothing ever touched it again. The fix to the write path could not reach the rows the write
+path had already written, because the delete only ever looked forward.
+
+**The general shape: a write-path fix changes what happens NEXT. It says nothing about what is already
+in the table.** Whenever you fix an ingest, ask the second question out loud — *what did the broken
+version already leave behind, and what will ever go back for it?* Very often the answer is "nothing",
+and it will be "nothing" forever, silently.
+
+### And it was not cosmetic — it was evicting the real rows
+
+The Desk takes the 15 earliest calendar rows in date order. The four dead rows sorted **first** and
+spent 4 of those 15 slots. The table held events through **Jul 23**; the reader was told the calendar
+ran **"through Jul 16"**. The rot had quietly **truncated the product's horizon by six days**, and
+every test was green, because every test was asking whether the app rendered its rows correctly — and
+it did.
+
+**Stale data in a bounded list does not just add noise. It displaces signal.** A `take: N` with no
+lower bound is an eviction waiting for something to rot.
+
+---
+
+## PD1 — If a surface is derived from the EDITION, measure it against the EDITION (2026-07-14)
+
+**The hardest bug of the phase was in the instrument, not the product — and it appeared three times
+in one hour.**
+
+This app serves a dated **edition**, like a newspaper. Monday's paper is still Monday's paper at 1am
+on Tuesday. But three different pieces of code compared an edition-derived surface against the **wall
+clock**:
+
+| where | it demanded | production said | who was right |
+|---|---|---|---|
+| `loadCalendar` (the product) | *no floor at all* | — | neither: the bug |
+| `checkNextEdition` (the gate) | "Wed", the day after *today* | "Tue" — the next edition, landing tonight | **production** |
+| `checkCalendar` (the gate) | every row ≥ *today* | Monday's edition carries Monday's own FOMC decision | **production** |
+
+Between midnight ET and the ~6:40pm publish, the clock and the edition disagree. **Both checks would
+have failed a completely healthy Desk every single night** — starting the night `check:live` joined
+the standing gate. I only saw it because I ran the instrument against live production at 00:25.
+
+**A gate that cries wolf nightly is not a gate.** It is a thing people learn to ignore, and then it is
+not there on the night it is right. Both checks now take **no clock at all**: they read the edition
+off the masthead and measure against that. A *stale* edition is a different assertion's job, and it
+does that job loudly — so nothing was lost by removing the clock.
+
+**The rule, now written into CLAUDE.md and live-truth.mjs: IF A SURFACE IS DERIVED FROM THE EDITION,
+IT IS MEASURED AGAINST THE EDITION.** Two clocks in one system will always disagree eventually; the
+only question is whether they disagree where someone is looking.
+
+**Corollary, and it is the meta-lesson of the whole PD0→PD1 pair:** a new guard's first red is as
+likely to be the *guard* being wrong as the product. **Read the failure before you believe it.** PD0's
+lesson was "distrust a local green with a skip count". PD1's is the twin: **distrust a new guard's
+first red.** Both of PD1's were the checker.
+
+---
+
+## PD1 — Re-sample an advisory number before you explain it (2026-07-14)
+
+The first post-deploy Lighthouse run reported performance **77**, down from the historical **87**, and
+LCP 3.86s → 4.98s. It would have been easy to shrug (it is advisory) or to panic and go hunting
+through a change that could not plausibly have caused it (the Desk is a cached room; the extra query
+is paid at revalidation, not per request).
+
+I re-sampled twice: **87** and **86**. Synthetic-4G runs vary by ten points. There was nothing there.
+
+**A shrug and a panic are equally wrong, and both are cheaper than a second measurement.** Take the
+second measurement — it cost two minutes and it is the difference between "I think" and "I know".

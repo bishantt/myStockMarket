@@ -743,3 +743,57 @@ CAVEAT, MEASURED: if the JSON ships to the browser, its prose ships too. A `_com
 DATA. Keep the file bare and put the explanation in the module that imports it.
 ```
 Use when: two implementations of the same fact exist in different languages and both are load-bearing.
+
+---
+
+## The edition anchor — never measure an edition against a clock
+
+Where it lives: `app/lib/morning.ts` (`calendarFloor`) · `app/scripts/live-truth.mjs`
+(`checkCalendar`, `checkNextEdition`) · CLAUDE.md's `live:` command block
+Shape:
+```
+This product serves a dated EDITION, like a newspaper. Monday's paper is still Monday's paper
+at 1am on Tuesday. So:
+
+  IF A SURFACE IS DERIVED FROM THE EDITION, IT IS MEASURED AGAINST THE EDITION — never `now`.
+
+The floor of the session calendar is the edition's session (INCLUSIVE — an event on the
+edition's own day belongs to that edition). The "next edition" promise is the next trading day
+after the EDITION. The staleness check on a calendar row is against the EDITION.
+
+None of these three take a clock at all. The ONE surface that legitimately reads the clock is
+the assertion that the edition itself is current — and it is loud, so everything else can
+safely trust the edition and stop asking what time it is.
+```
+Use when: any check, filter or label derived from a dated snapshot. **Two clocks in one system will
+disagree eventually; the only question is whether they disagree where someone is looking.** Here they
+disagreed for the ~6 hours between midnight ET and the evening publish — long enough that a
+clock-reading gate would have failed a healthy product every night, and short enough that nobody
+would have been awake to see why.
+
+---
+
+## Fix the write path, then go back for the rows
+
+Where it lives: `pipeline/publish.py` (`_replace_calendar`) · `app/lib/morning.ts` (`loadCalendar`)
+Shape:
+```
+A write-path fix changes what happens NEXT. It says NOTHING about what is already in the table.
+
+The calendar refresh deleted `WHERE date >= run_date` — the forward window. A row whose date had
+fallen BEHIND the window was not in the window, so nothing ever touched it again. The allowlist
+that stopped the bad rows being written was correct and landed a month earlier; the rows it was
+meant to prevent sat on the live Desk the whole time.
+
+So, whenever you fix an ingest, ask the second question OUT LOUD:
+  "what did the broken version already leave behind, and what will ever go back for it?"
+Very often the answer is "nothing", and it will be "nothing" forever, silently.
+
+And fence BOTH ends, because they fail differently:
+  - the WRITE fence stops litter accumulating (here: the refresh replaces the whole table);
+  - the READ fence holds when the writer has not run for days, and cannot be defeated by
+    whatever is sitting in the table (here: the query is floored at the edition).
+```
+Use when: any table that a periodic job "replaces". Also: **a bounded read (`take: N`) with no lower
+bound is an eviction waiting for something to rot** — the four dead rows sorted first and displaced
+six days of real calendar, which is a data-loss bug wearing a cosmetic bug's clothes.

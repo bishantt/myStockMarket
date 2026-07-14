@@ -70,7 +70,7 @@ Optimize everything for a human reader, never for machine brevity.
 
 ## Commands
 app:      npm run dev | test | typecheck | lint | build
-guards:   npm run check:drift (21 anti-drift rules) · check:fonts (budget) · check:lighthouse · icons
+guards:   npm run check:drift (22 anti-drift rules) · check:fonts (budget) · check:lighthouse · icons
 rooms:    (G3) app/lib/routes-manifest.json is THE ONE LIST OF ROOMS. The sweeps (a11y, hardening),
           the pixel oracle (vrt), the nav budget (check-nav) and the bundle budget (check-bundles) all
           read it. app/lib/routes-manifest.test.ts walks app/app/**/page.tsx and REDS THE UNIT SUITE if
@@ -87,6 +87,18 @@ clocks:   (G3, drift rule 21) NO absolute date literal in prisma/seed.mjs, prism
 db-drift: npm run check:migrations — is the LIVE database running the schema in this repo? CI can
           never answer this (it migrates a fresh container every run), and production silently ran
           without N0's migration for days because nothing asked. Deploy applies migrations too.
+live:     (PD1, IN THE STANDING GATE) `set -a; source .env; set +a` then npm run check:live — is
+          PRODUCTION telling the truth? Six assertions against the deployed origin (masthead session ·
+          macro board present · index honesty · calendar hygiene · press-time · next-edition promise).
+          It mints its own session cookie, so it needs AUTH_COOKIE_SECRET but NOT the app's password.
+          LOCAL-ONLY BY NATURE, like check:migrations: CI builds a fresh database and a fresh
+          deployment every run, so it structurally cannot answer this. Runs at the POST-DEPLOY step of
+          every phase gate. Every other guard asks whether the CODE is right; this is the only one
+          that asks whether the PRODUCT is.
+          THE RULE IT ENFORCES, learned the hard way in PD1 (three surfaces, one bug, one hour): IF A
+          SURFACE IS DERIVED FROM THE EDITION, IT IS MEASURED AGAINST THE EDITION — never the wall
+          clock. The Desk serves a dated edition; between midnight ET and the evening run the clock
+          and the edition disagree, and a check that reads the clock reds a healthy Desk every night.
 budgets:  npm run check:routes (every room cached) · check:nav (TTFB, needs AUTH_COOKIE_SECRET) · check:bundles
 e2e:      npx playwright test  ·  LOCAL: npm run e2e:local (--ignore-snapshots; CI is the pixel oracle)
           Seeded journeys need MSM_SEEDED=1 and a seeded Postgres — CI sets both; this Mac has neither.
@@ -198,7 +210,13 @@ be the first real test — is what made 52% of tag runs fail and endgames run 60
    so a green rehearsal is not evidence *about* the tag run — it is the same evidence, collected
    before the tag exists. Rehearse on the exact SHA you are about to tag. In parallel (they
    overlap; push and rehearsal deliberately share a ref): wait for the Vercel deploy, then
-   `check:nav` and `check:lighthouse`.
+   **`check:live`** (PD1 — it must be GREEN; a pending assertion owed to a later phase is fine, a
+   FAIL is not), `check:nav` and `check:lighthouse`.
+   **`check:live` is the only guard that asks whether PRODUCTION is right rather than whether the
+   CODE is, and it is the reason a phase may not exit on a deployment nobody looked at.** If it reds,
+   read it before you believe it: PD1's own run reds were twice the CHECKER being wrong, not the
+   Desk. And if an advisory number moves (Lighthouse perf), RE-SAMPLE before you explain it —
+   synthetic-4G runs vary by ten points, and a shrug and a panic are equally wrong.
 4. **Rehearsal red on pixels?** The run mints its own candidate baselines
    (`vrt-baselines-candidate-<leg>`). Download, **OPEN EVERY IMAGE**, commit only an explained
    diff. Read `.claude/skills/vrt-update/SKILL.md` first. An unexplained diff is a bug, not a
