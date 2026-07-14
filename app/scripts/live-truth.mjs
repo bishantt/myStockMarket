@@ -249,7 +249,26 @@ export function checkIndexHonesty(deskText) {
  */
 const RETIRED_PROVIDERS = ["Coinbase Cryptocurrencies"];
 
-export function checkCalendar(deskText, now) {
+/**
+ * The full date of a calendar row, from its "Jul 14" label, resolved against the edition it sits on.
+ *
+ * The rows carry no year, so one has to be inferred — and it is inferred from the EDITION, like
+ * everything else here. It also has to survive the turn of the year: a "Jan 2" row on a December
+ * edition belongs to the NEXT year, and naively stamping the edition's year onto it would make it
+ * look 363 days stale and red this gate every Christmas. The calendar only ever looks a fortnight
+ * ahead, so a row that lands far in the edition's past is really a row in its future, a year on.
+ */
+function rowDate(monthAbbr, dayOfMonth, edition) {
+  const month = MONTHS.findIndex((name) => name.startsWith(monthAbbr));
+  if (month < 0) return null;
+  const stamp = (y) => `${y}-${String(month + 1).padStart(2, "0")}-${String(dayOfMonth).padStart(2, "0")}`;
+
+  const candidate = stamp(Number(edition.slice(0, 4)));
+  const daysBehind = (new Date(`${edition}T00:00:00Z`) - new Date(`${candidate}T00:00:00Z`)) / 86_400_000;
+  return daysBehind > 180 ? stamp(Number(edition.slice(0, 4)) + 1) : candidate;
+}
+
+export function checkCalendar(deskText) {
   const section = deskText.slice(deskText.indexOf("Session calendar"));
   const scope = section.slice(0, 600); // the module, not the whole page
 
@@ -262,26 +281,33 @@ export function checkCalendar(deskText, now) {
     );
   }
 
-  // Rows read "Jul 14 EARNINGS …". Anything dated before today's session is stale.
-  const today = easternParts(now).day;
-  const year = Number(today.slice(0, 4));
+  // Rows read "Jul 14 EARNINGS …". Anything dated before THE EDITION's session is stale.
+  //
+  // Against the edition, not against the clock — the third surface in this file to be corrected the
+  // same way, and the reason is worth stating once more. The Desk serves a dated edition, and the
+  // calendar is floored at that edition's own session (lib/morning.ts, calendarFloor): an event ON
+  // the edition's day is part of that edition and belongs on it. Measured against the WALL CLOCK,
+  // this check called the edition's own FOMC decision "a row in the past" at 00:25 ET the moment the
+  // date rolled over — a red gate on a Desk that was completely correct. An edition-derived surface
+  // is measured against the edition, or the two disagree for a few hours every night.
+  const edition = parseLongDate(deskText);
+  if (!edition) {
+    return fail("session calendar · hygiene", "an edition to measure against", "the Desk names no date");
+  }
+
   const stale = [...scope.matchAll(/\b([A-Z][a-z]{2}) (\d{1,2})\b/g)]
-    .map((m) => {
-      const month = MONTHS.findIndex((name) => name.startsWith(m[1]));
-      if (month < 0) return null;
-      return `${year}-${String(month + 1).padStart(2, "0")}-${String(Number(m[2])).padStart(2, "0")}`;
-    })
-    .filter((day) => day && day < today);
+    .map((m) => rowDate(m[1], Number(m[2]), edition))
+    .filter((day) => day !== null && day < edition);
 
   if (stale.length > 0) {
     return fail(
       "session calendar · hygiene",
-      `every row dated ${today} or later`,
-      `${stale.length} row(s) in the past: ${[...new Set(stale)].join(", ")} — the forward-window refresh never reaches a row that has fallen behind it`,
+      `every row dated ${edition} (the edition) or later`,
+      `${stale.length} row(s) behind the edition: ${[...new Set(stale)].join(", ")} — the forward-window refresh never reaches a row that has fallen behind it`,
     );
   }
 
-  return pass("session calendar · hygiene", "no retired providers, no past rows", "clean");
+  return pass("session calendar · hygiene", "no retired providers, no rows behind the edition", "clean");
 }
 
 /**
@@ -393,7 +419,7 @@ export function checkLive({ deskHtml, newsHtml, now }) {
     checkMasthead(deskText, now),
     checkBoard(deskText),
     checkIndexHonesty(deskText),
-    checkCalendar(deskText, now),
+    checkCalendar(deskText),
     checkPressTime(newsText),
     checkBylines(newsHtml),
     checkNextEdition(deskText),

@@ -171,16 +171,48 @@ describe("4 — session calendar hygiene", () => {
     // allowlisted away a month ago. The plan predicted these would self-heal on the next run. They
     // did not, and the reason is in checkCalendar's own comment: the refresh replaces the FORWARD
     // window, and a row that has fallen behind the window is not in it.
-    const result = checkCalendar(desk(HEALTHY_DESK), MONDAY_EVENING);
+    const result = checkCalendar(desk(HEALTHY_DESK));
     expect(result.verdict).toBe("FAIL");
     expect(result.found).toContain("Coinbase Cryptocurrencies");
   });
 
-  it("passes a calendar with no retired rows and nothing in the past", () => {
+  it("passes a calendar with no retired rows and nothing behind the edition", () => {
     const clean = desk(HEALTHY_DESK)
       .replace(/Jul 11 fed FOMC Press Release Jul 11 macro Coinbase Cryptocurrencies Jul 12 macro Coinbase Cryptocurrencies Jul 12 fed FOMC Press Release /g, "");
-    const result = checkCalendar(clean, MONDAY_EVENING);
+    const result = checkCalendar(clean);
     expect(result.verdict).toBe("PASS");
+  });
+
+  it("keeps an event on the edition's OWN day — it belongs to that edition", () => {
+    // THE BUG THIS EXISTS FOR (PD1, minutes after the strip's twin). The Monday edition carries an
+    // "FOMC decision" dated Jul 13 — its own session. Measured against the WALL CLOCK, this check
+    // called that row "in the past" the moment midnight ET rolled into Tuesday, and redded the gate
+    // on a Desk that was completely right. The calendar is floored at the edition's session
+    // (lib/morning.ts, calendarFloor) and the floor is INCLUSIVE, so the check must be too.
+    const clean = desk(HEALTHY_DESK)
+      .replace(/Jul 11 fed FOMC Press Release Jul 11 macro Coinbase Cryptocurrencies Jul 12 macro Coinbase Cryptocurrencies Jul 12 fed FOMC Press Release /g, "");
+    // The fixture's masthead is Monday, July 13 and it carries "Jul 13 FOMC ... FOMC decision".
+    expect(clean).toContain("Jul 13");
+    expect(checkCalendar(clean).verdict).toBe("PASS");
+  });
+
+  it("still catches a row that has genuinely fallen behind the edition", () => {
+    // The disease itself: the edition is Jul 13, and the rows are dated Jul 11 and Jul 12.
+    const result = checkCalendar(desk(HEALTHY_DESK).replaceAll("Coinbase Cryptocurrencies", "Some Other Release"));
+    expect(result.verdict).toBe("FAIL");
+    expect(result.found).toContain("2026-07-11");
+    expect(result.found).toContain("2026-07-12");
+  });
+
+  it("does not red the gate at the turn of the year", () => {
+    // A "Jan 2" row on a December edition is NEXT year's, not 363 days stale. Stamping the edition's
+    // year onto it blindly would fail this check every Christmas — on a perfectly good calendar.
+    const december = desk(HEALTHY_DESK)
+      .replace("Monday, July 13, 2026", "Wednesday, December 30, 2026")
+      .replace(/Jul 11 fed FOMC Press Release Jul 11 macro Coinbase Cryptocurrencies Jul 12 macro Coinbase Cryptocurrencies Jul 12 fed FOMC Press Release /g, "")
+      .replaceAll("Jul 13", "Dec 30").replaceAll("Jul 14", "Dec 31")
+      .replaceAll("Jul 15", "Jan 2").replaceAll("Jul 16", "Jan 5");
+    expect(checkCalendar(december).verdict).toBe("PASS");
   });
 });
 
