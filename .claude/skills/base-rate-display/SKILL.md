@@ -31,5 +31,11 @@ setup cards, scan rows, calendar branches, lesson worked examples, the track rec
 - Copy-deck strings byte-identical to `lib/copy.ts`.
 
 ## Verification
-Vitest suite green; visual baseline of a card in `/styleguide`; §3.10 anti-drift checklist passes
-(no colored chips, numerals in Plex Mono, provenance line present).
+Vitest suite green; visual baseline of a card in `/styleguide`; `npm run check:drift` passes (no
+colored chips, numerals in the mono numeral stack, provenance line present).
+
+Numerals render in **the mono numeral stack — `var(--font-mono)`**, never a named family. (This
+line used to say "Plex Mono". IBM Plex Mono left the build at the R-phase redesign; the mono face
+is JetBrains Mono today, and drift rule 7 BANS naming a family beyond the four loaded — so the old
+wording told you to do the one thing the gate would fail you for. Corrected 2026-07-13, G4.) Ask
+for the token, not the family: the token is what survives the next redesign.

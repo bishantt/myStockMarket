@@ -259,10 +259,21 @@ decomposes into three real things, none of which is a missing migration or a bro
    `calendar_event` refresh replaces the FORWARD window on each run — rows written by the
    pre-N-phase ingest survive until a real run rewrites the window. Tonight's run rewrites it;
    the live check (3.6) greps the payload so a regression can never sit unnoticed again.
-3. **Production schema is NOT missing migrations** — `nc-6`'s tag CI ran `check:migrations`
-   green on 2026-07-13, and a Vercel deploy applies migrations. This is stated so PD1 does not
-   waste a session re-proving it; the playbook still runs the command once as its first probe
-   (evidence, not assumption).
+3. **Production schema is NOT missing migrations** — `check:migrations` ran green on 2026-07-13,
+   and a Vercel deploy applies migrations. This is stated so PD1 does not waste a session
+   re-proving it; the playbook still runs the command once as its first probe (evidence, not
+   assumption).
+   > **[Corrected 2026-07-13, GATE-EFFICIENCY-PLAN G4 — analysis §3.6.]** This item used to say
+   > "**`nc-6`'s tag CI** ran `check:migrations` green." **CI has never run it and structurally
+   > cannot.** The check asks "is the LIVE database running the schema in this repo?" — and CI
+   > migrates a fresh throwaway container on every run, so the only thing it could ever answer is
+   > "yes, the container I just built matches the repo," which is not a question worth asking. The
+   > check ran **LOCALLY**, against production, on 2026-07-13. An executor who went hunting for it
+   > in the `nc-6` tag-run logs would have found nothing and had no way to tell whether the check
+   > was missing or the claim was false. That asymmetry is the whole point: **`check:migrations`
+   > and (from PD1) `check:live` are the only instruments that can see production, and they are
+   > local-only by nature.** Production silently ran without N0's migration for days precisely
+   > because nothing asked.
 
 **Expected self-heal:** tonight (Monday 2026-07-13) the cron fires at 22:37 UTC (6:37pm EDT);
 job B assembles by ~8:40pm EDT. A green run replaces every stale surface: masthead Monday,
@@ -958,6 +969,25 @@ Each treatment: what it is → the information it carries → its guard.
    Carries: "this symbol is a door (to `/ticker/…`)." Consumers: movers rows, news cards,
    affected tables, watchlist, scan tables. *Guard:* drift rule (next free number): an
    internal `href` matching `/ticker/` renders only through `TickerChip` — one door, greppable.
+
+   > **[Pre-decided 2026-07-13, GATE-EFFICIENCY-PLAN G4 — MARKED ASSUMPTION, logged in
+   > QUESTIONS-FOR-BISHANT.md (Q-G4-1) for veto. Analysis §3.7 / R14.]** The optional trailing
+   > **move chip is a money/probability figure**, and TickerChip is the first component in this
+   > build where a *hoverable, interactive* element and a *P2 figure* are the same piece of UI.
+   > That collision has been deferred twice; PD5 forces it. **The ruling, unless Bishan vetoes:**
+   > 1. **The delta chip carries `data-p2`.** It is a market figure — it is exactly the class of
+   >    thing P2 exists to hold still.
+   > 2. **Any hover TickerChip keeps must be NON-ANIMATING on the figure: opacity and underline
+   >    only — no transform, no scale, no translate, no color transition on the number itself.**
+   >    The accent wash on hover is fine (it is chrome, and it signals a door). The number does not
+   >    move, and nothing containing the number moves.
+   >
+   > **Why this way.** The alternative — drop `data-p2` so the chip can animate freely — trades a
+   > permanent honesty guarantee for a hover effect, and P2 is not a style rule: a number that
+   > reacts to the cursor is a number that looks like it is doing something, and this app's whole
+   > thesis is that it isn't. If the two genuinely cannot be reconciled on some surface, **the
+   > figure wins and the interactivity goes** — but they reconcile fine here, because a wash is not
+   > a transform.
 2. **`Term`** (new, `components/Term.tsx`): a glossary doorway — dotted underline
    (`text-decoration: underline dotted` + `underline-offset`), ink text (NOT accent — it is
    a definition, not a call to act), opening the existing `GlossaryPopover`. Budget: ≤2 per
@@ -1323,11 +1353,51 @@ story/symbol; the room behind is not readable while open.
 
 The `@modal` slot + overlay chrome add client JS to the `(desk)` shared chunk — budgeted:
 `/news` and `/` must hold baseline+10KB; if the slot costs more, the overlay chrome
-code-splits behind the first open (`next/dynamic`) and the gate proves the split. Unit:
+code-splits behind the first open (`next/dynamic`) and the gate proves the split.
+
+> **[Amended 2026-07-13, GATE-EFFICIENCY-PLAN G4 — analysis §3.3. THE SENTENCE ABOVE POINTS AT THE
+> WRONG CONSTRAINT, AND ON `/news` IT IS ARITHMETICALLY IMPOSSIBLE.]**
+> `baseline+10KB` is **not** the binding constraint on `/news`. The binding constraint is the
+> **200 KB hard ceiling** (`check-bundles.mjs:52`, `CEILING_KB`), which is explicitly **not
+> re-baselinable** — the script's own words are "Ship less JavaScript." Do the sum: `/news` has a
+> baseline of **195.1 KB**, so "baseline+10" is **205.1 KB — over the ceiling.** A PD9 that spends
+> its full slack passes the slack check and **fails the build.** Real headroom on `/news` is
+> **≈4.9 KB**, and PD5's shared kit (TickerChip / Term / KeyFigure) spends from the *same* pot,
+> because these are shared-chunk bytes.
+>
+> **So the code-split is PRE-AUTHORIZED, not a fallback.** Assume from the start that the overlay
+> chrome loads behind the first open (`next/dynamic`), and let the gate prove the split. Do not
+> spend a phase discovering this at an exit — which is exactly what would have happened, at PD5 or
+> PD9, and it is why this block is written now.
+>
+> **The ceiling does not move.** It is doing its stated job right now, and "raise the ceiling" is
+> the one response that is off the table (analysis §6). Budgets that re-baseline under pressure are
+> not budgets.
+
+Unit:
 overlay renders the same tree as the page (snapshot the section-order contract) · dismissal
 handlers. E2e: 11.3's suite · jsdom P2-ancestor walk passes with the sheet mounted (E7's
 guard, extended scan set). VRT: sheet open on phone (story + ticker), overlay open at
 desktop, both themes — masked over the live figures the seed pins anyway.
+
+> **[Pre-authorized 2026-07-13, GATE-EFFICIENCY-PLAN G4 — analysis §3.7 / R14. The sheet's
+> transition is a SANCTIONED P2-WALK EXEMPTION, decided now so PD9 does not discover it at a
+> gate.]** The sheet opens over rooms that contain probability and money figures, so a `[data-p2]`
+> node will have an animating ancestor — and `app/components/p2-motion.test.tsx` walks up from
+> every `[data-p2]` node and fails on exactly that. Today it exempts **one** class **by name**:
+> `.route-fade`. The sheet joins it, **on identical terms and for the identical reason**:
+> **opacity ONLY — no transform, no translation, no scale.** Every frame must show the figure
+> complete and unmoving *relative to everything else on the page*. That is the whole content of
+> P2: a probability may fade in with the page around it, but it may never itself move, resize, or
+> ticker, because motion on a number is a claim about the number.
+> - **A slide-up sheet is therefore NOT permitted** — `translateY` on an ancestor of a `[data-p2]`
+>   node moves the figure, and no amount of "it's just the container" changes what the reader sees.
+>   If PD9 wants the sheet to feel like it arrives, it arrives by opacity.
+> - **The exemption is BY NAME, and the test is extended when PD9 builds it** — one named class
+>   added to the allowlist in `p2-motion.test.tsx`, with the reason in the comment beside it, the
+>   way the route fade is. **A blanket exemption, a wildcard, or a widened selector is a veto:** the
+>   list is short and closed on purpose, and the moment it accepts a pattern instead of a name, the
+>   guard has stopped being able to fail.
 
 ---
 ## Part 12 — Phases PD0–PD10 (playbooks + gates)
@@ -1341,26 +1411,58 @@ richness a stable stage); the voice system before the deep pages that speak it (
 PD8); pipeline depth before the surfaces that render it (PD7 → PD8); the overlay last of the
 features (PD9 wraps the finished pages); hardening to close (PD10).*
 
-**The standing gate (every phase, in order — the N-plan's gate plus this plan's additions):**
+**The standing gate (every phase, in order — the N-plan's gate plus this plan's additions).**
+**[REWRITTEN 2026-07-13 by GATE-EFFICIENCY-PLAN G4 into the reformed order — see the amendment
+note below. The old order tagged FIRST and let the tag run be the first real test; that is what
+made 52% of tag runs fail. PD inherits the reformed exit from PD0.]**
 ```
 1  npm run typecheck && npm run lint && npm test        # app unit — CI additionally runs the TZ matrix (PD0+)
 2  uv run pytest                                        # pipeline
-3  npm run build && npm run check:routes && npm run check:bundles
+3  npm run build && npm run check:routes && npm run check:bundles && npm run check:fonts
 4  npm run e2e:local                                    # local e2e (--ignore-snapshots; CI is the pixel oracle)
 5  npm run check:drift                                  # incl. this plan's new rules as they land
-6  push → deployment → npm run check:nav -- --report
-6.5  npm run check:live                                 # PD1 onward — production truth, not vibes
-7  lighthouse-check.mjs — budgets on / (and /news, /ticker/[symbol] from PD8)
-8  git tag pd-N · push --tags → the CI tag run is the pixel oracle
-   (PD0 wires pd-* into ci.yml FIRST — trigger AND both tag-gated job conditions;
-    an unwired tag pattern makes every later gate claim ornamental — the F0 lesson)
-   [DONE 2026-07-13 by GATE-EFFICIENCY-PLAN G0 — pd-* is already in on.push.tags AND in the e2e
-    job's if:, and pipeline/tests/test_ci_tag_families.py now FAILS THE BUILD if the two ever drift
-    apart, so this can no longer be forgotten. Note the detail the sentence above gets wrong: there
-    is exactly ONE tag-gated job (e2e, the browser oracle), not two — vrt-baselines is gated on
-    workflow_dispatch, never on a tag. PD0 should VERIFY this wiring, not redo it.]
-9  Update PROGRESS.md · append DECISIONS/LESSONS · confirm the tag CI green
+5.5  npm run check:migrations                           # ONCE per phase, LOCAL — CI structurally cannot answer it
+6  push to main → confirm the branch run green
+7  REHEARSE: gh workflow run ci.yml -f job=e2e          # THE FULL BROWSER ORACLE, BEFORE THE TAG EXISTS
+   — the same job the tag runs, on any ref, no tag involved. Sharded into 3 legs, ~8 min.
+   IN PARALLEL (they overlap by design — push and rehearsal share a ref and must):
+     wait for the Vercel deploy → npm run check:nav -- --report
+     → npm run check:live                              # PD1 onward — production truth, not vibes
+     → npm run check:lighthouse                        # budgets on / (and /news, /ticker/[symbol] from PD8)
+8  Rehearsal RED on pixels? The run mints its own candidate baselines
+   (vrt-baselines-candidate-<leg>). Download, OPEN EVERY IMAGE, commit only an explained diff.
+   Read .claude/skills/vrt-update/SKILL.md first. An unexplained diff is a BUG, not a re-bake.
+9  Rehearsal GREEN → git tag pd-N <THE REHEARSED SHA>  # BY SHA, never HEAD — main moves under you
+   → push --tags → confirm the tag run green (same SHA, same suite: first-try green is the
+   expectation, not the hope)
+10 THE TAG STAYS PUT. Suspected flake → gh run rerun <id> --failed. NEVER a re-point.
+   (But read the failure first: G2's "flake" was a real race that had failed its retry too.)
+11 ONE docs commit, AFTER the tag: PROGRESS + DECISIONS/LESSONS/PATTERNS/QUESTIONS + the evidence
+   file + NEXT-SESSION-PROMPT.md, together. It is FREE — paths-ignore means prose starts no CI run.
+   No post-tag "CI confirmed green" commit: the tag run's green IS the record, cited by run-id.
+12 Report to Bishan in plain English. STOP. (One phase per session.)
 ```
+> **[Amendment note, 2026-07-13, G4 — what changed and why, so nobody "restores" the old order.]**
+> The reform is step 7: **the oracle now runs BEFORE the tag.** It used to run only *after* — the
+> tag push was the first time the browser suite had ever executed against the work — so every
+> browser-layer defect was discovered after "done" was declared, in ~16-minute quanta, on a tag
+> that had to be deleted and re-pushed per attempt. Measured across the previous build: **52% of
+> tag runs failed**, and `nc-final` took **six** pushes of one tag. The rehearsal is *the same job*
+> the tag runs, so a green rehearsal is not evidence *about* the tag run — it is the same evidence,
+> collected earlier. Nothing was weakened to buy this: **every verification that existed still
+> happens, on the exact tagged SHA.** Also new here: `check:fonts` and `check:migrations` were in
+> CLAUDE.md's command list but in **no** standing gate (step 3 / 5.5); the gate-size line closes
+> every evidence file; and the docs land in ONE commit after the tag.
+>
+> Every mechanism above is LIVE and PROVEN — see `docs/gate-evidence/g0`–`g4`. Read
+> GATE-EFFICIENCY-PLAN.md Part 3 and CLAUDE.md's "The Endgame" block before your first exit.
+
+**PD0's ci.yml wiring — VERIFY, DO NOT REDO.** [DONE 2026-07-13 by GATE-EFFICIENCY-PLAN G0 — `pd-*`
+is already in `on.push.tags` AND in the e2e job's `if:`, and `pipeline/tests/test_ci_tag_families.py`
+now FAILS THE BUILD if the two ever drift apart, so this can no longer be forgotten. Note the detail
+the original sentence got wrong: there is exactly **ONE** tag-gated job (e2e, the browser oracle),
+not two — `vrt-baselines` is gated on `workflow_dispatch`, never on a tag. An unwired tag pattern
+makes every later gate claim ornamental — the F0 lesson — which is why it was pre-wired.]
 
 ### PD0 · Session truth — the dating contract [0.5–1 day]
 FIRST: session ritual; confirm `nc-final` tagged + CI green (if not, finish the news plan

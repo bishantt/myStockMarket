@@ -1,5 +1,13 @@
 <!-- APP-FEEL-PLAN.md — authored 2026-07-12. Companion to DEVELOPMENT-PLAN.md and
-     UI-REDESIGN-PLAN.md. Typeset copy: docs/App-Feel-Plan.pdf. -->
+     UI-REDESIGN-PLAN.md. Typeset copy: docs/App-Feel-Plan.pdf.
+
+     THIS MARKDOWN IS THE LIVE COPY. THE PDF IS AN ARCHIVE OF A FINISHED BUILD (F0–F7, complete
+     2026-07-12) and was deliberately NOT re-rendered for the amendments dated 2026-07-13 or later
+     (GATE-EFFICIENCY-PLAN G4): the two "roll straight on" repeals (Part 0, Part 6) and the P11
+     amber-register pointer exist HERE ONLY. Read the markdown. Re-rendering an archive to carry a
+     correction about a build that is already over would manufacture a second source of truth for no
+     reader; pointing at the live copy costs one line. (The ACTIVE plan's PDF — Polish-And-Depth-
+     Plan.pdf — IS kept regenerated, for the opposite reason: it is the one still used to decide.) -->
 
 # APP FEEL PLAN — "A Broadsheet, Not a Receipt"
 
@@ -20,6 +28,15 @@ F0 → F7 to completion, in order, without a single pause for permission:
   with "shall I continue?", "let me know", or an offer of next steps — after a completed
   step, the next action IS the next step. A phase gate passing is not a checkpoint to
   report and wait at; tag it and roll straight into the next phase.
+  > **[Amended 2026-07-13 by GATE-EFFICIENCY-PLAN G4 — the last sentence is SUPERSEDED.]** A
+  > phase gate passing *is* a checkpoint to report and stop at. CLAUDE.md's "Session rhythm"
+  > rule (user, 2026-07-13, permanent) is ONE PHASE PER SESSION: finish the phase, bring the
+  > intelligence files current, report to Bishan in plain English, and STOP. Do not roll on.
+  > **The rest of this contract holds in full, and it is the part that matters WITHIN a
+  > phase:** never ask, never wait, never end a phase with a question — anything that needs
+  > Bishan goes to QUESTIONS-FOR-BISHANT.md with the most reasonable assumption made and
+  > marked. (This plan's build is complete; the annotation is here so a session that re-reads
+  > it for precedent is not handed a repealed order.)
 - **Anything that would have been a question goes to QUESTIONS-FOR-BISHANT.md** — marked
   [NEED], [VETO?], or [FYI] as the existing file does — then make the most reasonable
   assumption, mark whatever is built on it (code comment + DECISIONS.md + PROGRESS.md), and
@@ -244,7 +261,7 @@ ruling is enforced by a named guard, not by discipline (PATTERNS.md, "Enforce st
 | P5 | Misses first-class, log append-only | The track-record table gets sort/pagination, but hits and misses ride the SAME table with equal weight; no filter default hides misses (default filter = all). |
 | P6 | No trending surfaces, no gamification, no urgency | Ruling M1 (tables are not leaderboards), M6 (no infinite scroll), M7 (no badges/dots/pull-to-refresh theater). |
 | P8 | Movers need a catalyst or the noise line | The phone mover Shelf keeps the full catalyst zone **on every card** — the container changed, the anatomy did not (§4.1). |
-| P11 | Amber reserved for two consumers | Skeletons, table chrome, pagination, shelves: none may use alert tokens. Grep #5 unchanged. |
+| P11 | Amber is reserved — the register is `check-drift.mjs`'s `ALERT_ALLOWED` *(amended 2026-07-13, G4: this row said "two consumers"; the register had grown to four via logged amendments, and a count restated in four places rots)* | Skeletons, table chrome, pagination, shelves: none may use alert tokens. Grep #5 unchanged. |
 | P12 | Mechanical voice; copy from `copy.ts`; timestamps everywhere | Every new durable string lands in Appendix B. Every module masthead keeps its as-of stamp — that stamp is what makes caching honest (ruling M5). |
 | P13 | Position/length over angle/area | No progress rings, no gauges anywhere in the new kit. Pagination is words ("Page 2 of 7"), not a bar. |
 | P14 | One hero figure per view | Unchanged; the new `/scans/[preset]` route's largest numeral is the match count at `--text-num-lg` max. |
@@ -1168,6 +1185,12 @@ speed before layout (F1) because it is global, independent, and the user feels i
 night; the kit before its consumers (F2); then rooms in priority-times-dependency order —
 Scans (worst page, table-kit proving ground), Paper (form-kit proving ground), Desk (highest
 stakes, consumes the by-then-hardened Disclosure/Shelf), the light sweeps, hardening.*
+
+> **[Amended 2026-07-13 by GATE-EFFICIENCY-PLAN G4 — "roll straight on" is SUPERSEDED.]** One
+> phase per session (CLAUDE.md, user, 2026-07-13, permanent): tag, bring the intelligence files
+> current as ONE commit, report to Bishan, STOP. The exit ritual itself also changed — you now
+> REHEARSE the browser oracle (`gh workflow run ci.yml -f job=e2e`) BEFORE tagging, and the tag
+> stays put once green. See CLAUDE.md's "The Endgame" block.
 
 **The standing gate (every phase, in order):**
 ```

@@ -2,7 +2,15 @@
      UI-REDESIGN-PLAN.md, and APP-FEEL-PLAN.md. Typeset copy: docs/News-And-Control-Plan.pdf.
      Written by a planning session while the app-feel build (F6–F7) was still running in a
      parallel session — so this plan cites INTENT and ACCEPTANCE CRITERIA, never line numbers.
-     Where it names a file, re-verify against the working tree at build time. -->
+     Where it names a file, re-verify against the working tree at build time.
+
+     THIS MARKDOWN IS THE LIVE COPY. THE PDF IS AN ARCHIVE OF A FINISHED BUILD (N0–N7, complete
+     2026-07-13) and was deliberately NOT re-rendered for the amendments dated 2026-07-13 or later
+     (GATE-EFFICIENCY-PLAN G4): the two "roll straight on" repeals (Part 0, Part 9) exist HERE ONLY.
+     Read the markdown. Re-rendering an archive to carry a correction about a build that is already
+     over would manufacture a second source of truth for no reader; pointing at the live copy costs
+     one line. (The ACTIVE plan's PDF — Polish-And-Depth-Plan.pdf — IS kept regenerated, for the
+     opposite reason: it is the one still used to decide what to build.) -->
 
 # NEWS & CONTROL PLAN — "A Front Page, Not a Feed"
 
@@ -26,6 +34,15 @@ to completion, in order, without a single pause for permission:
   "shall I continue?", "let me know", or an offer of next steps — after a completed step, the
   next action IS the next step. A phase gate passing is not a checkpoint to report and wait
   at; tag it and roll straight into the next phase.
+  > **[Amended 2026-07-13 by GATE-EFFICIENCY-PLAN G4 — the last sentence is SUPERSEDED.]** A
+  > phase gate passing *is* a checkpoint to report and stop at. CLAUDE.md's "Session rhythm"
+  > rule (user, 2026-07-13, permanent) is ONE PHASE PER SESSION: finish the phase, bring the
+  > intelligence files current, report to Bishan in plain English, and STOP. Do not roll on.
+  > **The rest of this contract holds in full, and it is the part that matters WITHIN a
+  > phase:** never ask, never wait, never end a phase with a question — anything that needs
+  > Bishan goes to QUESTIONS-FOR-BISHANT.md with the most reasonable assumption made and
+  > marked. (This plan's build is complete; the annotation is here so a session that re-reads
+  > it for precedent is not handed a repealed order.)
 - **Anything that would have been a question goes to QUESTIONS-FOR-BISHANT.md** — marked
   [NEED], [VETO?], or [FYI] as the existing file does — then make the most reasonable
   assumption, mark whatever is built on it (code comment + DECISIONS.md + PROGRESS.md), and
@@ -1195,6 +1212,12 @@ news room (it is smaller, exercises the new adapter/cadence machinery, and the p
 hierarchy Part 3 defined needs its cells); news data before news UI (N4→N5, so the UI is
 built against real shapes); the control room last of the features (it depends on the mode
 inputs N4 adds to the workflows); hardening and docs to close.*
+
+> **[Amended 2026-07-13 by GATE-EFFICIENCY-PLAN G4 — "roll straight on" is SUPERSEDED.]** One
+> phase per session (CLAUDE.md, user, 2026-07-13, permanent): tag, bring the intelligence files
+> current as ONE commit, report to Bishan, STOP. The exit ritual itself also changed — you now
+> REHEARSE the browser oracle (`gh workflow run ci.yml -f job=e2e`) BEFORE tagging, and the tag
+> stays put once green. See CLAUDE.md's "The Endgame" block.
 
 **The standing gate (every phase, in order — the F-plan's gate with this plan's additions):**
 ```

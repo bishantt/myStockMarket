@@ -16,11 +16,12 @@ import { cx } from "@/lib/cx";
  *     so a colourblind reader loses precisely nothing.
  *
  * And one rule that shapes the palette itself: **no tier, grade, or chip may sit in the
- * amber–orange region** (§3.3). Amber has exactly two consumers in the whole app — the
- * verification-gate flag and the fired-signal marker — and the reservation is perceptual, not
- * hex-deep. A Desk full of amber-ish "moderate" chips would drown the gate flag even if no chip
- * shared its exact value. That is why "moderate" and "mixed" are teal: green → teal → grey is an
- * ordinal ramp, which is what an evidence scale wants anyway.
+ * amber–orange region** (§3.3). Amber is RESERVED — its consumer list is short, closed, and
+ * registered in `scripts/check-drift.mjs` (`ALERT_ALLOWED`), which is the truth; this comment
+ * deliberately does not restate the count, because the count is what rots. The reservation is
+ * perceptual, not hex-deep. A Desk full of amber-ish "moderate" chips would drown the gate flag
+ * even if no chip shared its exact value. That is why "moderate" and "mixed" are teal: green →
+ * teal → grey is an ordinal ramp, which is what an evidence scale wants anyway.
  */
 
 /** The four evidence grades from the Research Report Part 4 ledger. */

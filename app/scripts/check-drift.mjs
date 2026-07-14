@@ -8,9 +8,15 @@
  * sum is a template.
  *
  * So the rules that CAN be checked by a machine are checked by a machine, at every phase exit.
- * Eleven greps. All must come back empty. The ones marked HONESTY are not style rules wearing a
- * style rule's clothes — they enforce the preserved constitution (§2.2), and a failure there means
- * the product can lie, not merely that it looks wrong.
+ * All must come back empty. The ones marked HONESTY are not style rules wearing a style rule's
+ * clothes — they enforce the preserved constitution (§2.2), and a failure there means the product
+ * can lie, not merely that it looks wrong.
+ *
+ * THIS SCRIPT IS THE CHECKLIST. §3.10 v2 of UI-REDESIGN-PLAN.md is its prose ancestor and is now a
+ * pointer, not a register: it described eleven greps, this file grew to 21 rules, and for a while
+ * both documents looked authored and confident while only one of them ran. Do not restate the rule
+ * count anywhere else — cite this file. (The count prints itself at the end of every run, which is
+ * the only number that cannot rot.)
  *
  * Run: npm run check:drift
  */
@@ -34,9 +40,20 @@ const BLUR_ALLOWED = [
 ];
 
 /**
- * Amber's only two consumers (§3.3, P11): the verification-gate flag and the fired-signal marker.
+ * THIS LIST IS THE AMBER REGISTER. It is the truth about who may spend amber, and the plans and
+ * skills that discuss P11 point HERE rather than restating a count that then rots.
  *
- * The styleguide is the third name here and is not a third consumer. It is the living spec, and
+ * They used to restate it, and it rotted exactly as predicted: UI-REDESIGN-PLAN §3.10, APP-FEEL's
+ * P11 row and the new-surface skill all said "exactly two consumers" — and so did this docstring —
+ * while the list below had grown to FOUR product consumers via two logged structural amendments
+ * (N2's PipelineStrip, N3's MacroBoard). An executor obeying the text would have stripped
+ * sanctioned amber at an exit. Repaired 2026-07-13 (GATE-EFFICIENCY-PLAN G4, analysis §3.5).
+ *
+ * P11 (§3.3) is NOT a count. It is: amber is RESERVED, the list is SHORT, and every entry is
+ * ARGUED IN PLACE. Adding one is a structural amendment — log it in DECISIONS.md and write the
+ * argument here, beside the entry. The count is whatever this array says today.
+ *
+ * The styleguide is the last name here and is not a consumer at all. It is the living spec, and
  * §5.8 requires it to render the reserved-region swatch row — the page whose whole job is to show
  * what amber is reserved FOR cannot be the page forbidden from showing it.
  */

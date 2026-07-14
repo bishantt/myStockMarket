@@ -17,7 +17,9 @@ import type { BriefItemView, BriefFootnote, BriefView } from "@/lib/briefing";
  * When the verification gate held the briefing, none of that renders: the module shows the calm
  * "briefing unavailable" line over the verified scans below. That is the honesty rule in its final
  * form — a withheld briefing beats a fabricated sentence. The unavailable line is neutral ink, not
- * amber: amber has exactly two consumers in this app (§3.3), and a whole-briefing hold is neither.
+ * amber: amber is reserved for something DEGRADED (§3.3 — the consumer register is
+ * `scripts/check-drift.mjs`'s `ALERT_ALLOWED`), and a whole-briefing hold is not that. It is a calm,
+ * honest, working state, like the offline ribbon.
  */
 
 const SLOTS: ReadonlyArray<{ key: keyof BriefItemView; label: string }> = [

@@ -149,6 +149,15 @@ caps and cooldowns. Server surfaces: `app/(desk)/settings/pipeline-actions.ts` (
   production. The whole path is proven working (evidence §6). It is a secret and nothing else.
 
 ## Conventions
+**THIS REPO OVERRIDES THE GLOBAL RULES.** The `~/.claude/rules/*` files load into every session and
+announce that they "OVERRIDE any default behavior" — in this repo they do not. Plan §6.2's targeted
+TDD list and this constitution supersede them: no 80%-coverage chase (this repo has no coverage
+tooling at all, deliberately — the TDD list names what gets tested and UI is explicitly exempt), no
+planner/code-reviewer/tdd-guide agent ceremony, no research-first ritual before an implementation
+the plan already specifies. Follow the plan you are executing. This sentence exists because every
+fresh session was re-deriving it, and a session that took the globals literally would burn a phase
+on coverage-chasing.
+
 Conventional commits · TDD-first list in plan §6.2 · numbers render ONLY via components/BaseRate
 and lib/format · all copy from lib/copy.ts · tokens from globals.css @theme (UI-REDESIGN-PLAN.md §3 +
 Appendix A) — never ad-hoc hex · timestamps via lib/time.ts · adapters follow .claude/skills/new-provider-adapter ·
@@ -168,7 +177,49 @@ colour (`bg-surface/50` silently no-ops in Tailwind v4).
 Start: git pull → read this + PROGRESS.md + LESSONS.md → diff DECISIONS.md (any non-[claude]
 line = user veto, rank 2.5 — honor it FIRST) → run tests → announce checkpoint.
 End: update PROGRESS.md → log DECISIONS/LESSONS ([claude]-marked) → push.
-Phase exit: plan §6.4 gate → tag.
+**Phase exit: THE STANDING GATE OF THE PLAN YOU ARE CURRENTLY EXECUTING → tag.** Not §6.4.
+DEVELOPMENT-PLAN §6.4 is the ORIGINAL 6-step gate from the P-phase era and it is history, not
+law: it orders a local full `npx playwright test` (which reds ~46 snapshots on this Mac, because
+baselines are Linux-born) and `npx lhci autorun` (an instrument this repo has never contained —
+the real one is `check:lighthouse`). It carries a dated correction block saying so. The live gate
+is the active plan's own standing-gate block — today POLISH-AND-DEPTH-PLAN.md's, run in the
+Endgame order below.
+
+## The Endgame — how a phase actually exits (GATE-EFFICIENCY-PLAN Part 3, installed at G4)
+Read this before every phase exit. It is the reformed ritual, and every mechanism in it is live
+and proven (evidence: `docs/gate-evidence/g0`–`g4`). The old way — tag first and let the tag run
+be the first real test — is what made 52% of tag runs fail and endgames run 60–90 minutes.
+1. **Local gate:** `typecheck && lint && test` · `uv run pytest` · `build` + `check:routes` +
+   `check:bundles` + `check:fonts` · `e2e:local` · `check:drift`. Once per phase: `check:migrations`
+   (local only — CI structurally cannot answer it).
+2. **Push to main.** Confirm the branch run green.
+3. **REHEARSE — this is the reform.** `gh workflow run ci.yml -f job=e2e` runs the FULL browser
+   oracle (all three shards) on any ref, with no tag involved. It is **the same job the tag runs**,
+   so a green rehearsal is not evidence *about* the tag run — it is the same evidence, collected
+   before the tag exists. Rehearse on the exact SHA you are about to tag. In parallel (they
+   overlap; push and rehearsal deliberately share a ref): wait for the Vercel deploy, then
+   `check:nav` and `check:lighthouse`.
+4. **Rehearsal red on pixels?** The run mints its own candidate baselines
+   (`vrt-baselines-candidate-<leg>`). Download, **OPEN EVERY IMAGE**, commit only an explained
+   diff. Read `.claude/skills/vrt-update/SKILL.md` first. An unexplained diff is a bug, not a
+   baseline to refresh.
+5. **Rehearsal green → tag the rehearsed SHA, BY SHA** (`git tag <family>-N <sha>` — never `HEAD`;
+   the nightly heartbeat can move main under you) → push → confirm the tag run green.
+6. **THE TAG STAYS PUT.** A suspected flake gets `gh run rerun <id> --failed` — never a re-point.
+   But READ THE FAILURE FIRST: G2's "flake" was a real race that had failed its retry too. A real
+   defect found after tagging means the phase was not done: fix forward, and the *next* tag's
+   evidence file tells the honest story.
+7. **ONE docs commit, AFTER the tag** — intelligence files + evidence + NEXT-SESSION-PROMPT.md
+   together. That commit is FREE: `on.push` carries `paths-ignore: ['**/*.md', 'docs/**',
+   '.claude/**']`, so a prose-only commit starts no CI run at all (a MIXED commit still runs in
+   full). Never re-point a green tag onto trailing prose. Never write a post-tag "CI confirmed
+   green" commit — the tag run's green IS the record, cited by run-id in the evidence file.
+   **THE TRAP: nothing in the gate currently READS those ignored paths, which is the only reason
+   the filter is safe. If you ever write a guard that reads a document, put its path back in the
+   trigger FIRST — otherwise the guard breaks silently.**
+8. **Every evidence file ends with the gate-size line** — "N drift rules · N VRT baselines · N e2e
+   specs · N unit tests · N bundle baselines · N manifest rooms · tag run M m S s." Growth of the
+   gate is a booked decision with a reason, never an accident.
 
 ## Design one-liner
 “Morning Broadsheet” (amended 2026-07-11/12; supersedes “Broadsheet Terminal”): editorial
@@ -178,7 +229,9 @@ one hero figure. One theme at a time — light
 “Morning” or dark “Midnight” — governs every room including the Academy (the Academy-stays-
 light rule was repealed by the user, 2026-07-12); rooms differ by structure and pace, never
 by palette. Color is scarce and always means something. If it could be a template — austere
-OR glossy — it is wrong. Spec: UI-REDESIGN-PLAN.md Part 3 · checklist: its §3.10 v2.
+OR glossy — it is wrong. Spec: UI-REDESIGN-PLAN.md Part 3 · checklist: **`app/scripts/check-drift.mjs`
+is the checklist** (21 rules, `npm run check:drift`). §3.10 v2 is its prose ancestor and is now a
+pointer, not a register — the script is the truth, and it is the thing that actually runs.
 
 ## Timing (user lives on market time)
 User: Long Island, NY — America/New_York, observes DST. Crons UTC-fixed (DST-proof):

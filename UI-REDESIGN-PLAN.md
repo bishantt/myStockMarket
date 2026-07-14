@@ -1,5 +1,14 @@
 <!-- UI-REDESIGN-PLAN.md — authored 2026-07-11, decisions resolved 2026-07-12.
-     Companion to DEVELOPMENT-PLAN.md. Typeset copy: docs/UI-Redesign-Plan.pdf. -->
+     Companion to DEVELOPMENT-PLAN.md. Typeset copy: docs/UI-Redesign-Plan.pdf.
+
+     THIS MARKDOWN IS THE LIVE COPY. THE PDF IS AN ARCHIVE OF A FINISHED BUILD (R0–R6, complete
+     2026-07-12) and was deliberately NOT re-rendered for the amendments dated 2026-07-13 or later
+     (GATE-EFFICIENCY-PLAN G4). Those amendments — the "roll straight on" repeal in Part 8, and the
+     amber-register pointers in P11 / §3.10 / Appendix A — exist HERE ONLY. Read the markdown.
+     Re-rendering an archive to carry a correction about a build that is already over would
+     manufacture a second source of truth for no reader; pointing at the live copy costs one line.
+     (The ACTIVE plan's PDF — Polish-And-Depth-Plan.pdf — IS kept regenerated, for the opposite
+     reason: it is the one people still open to decide what to build.) -->
 
 # UI REDESIGN PLAN — "Morning Broadsheet"
 
@@ -172,7 +181,7 @@ executed with this plan (Part 10) — Opus never has to reconcile two constituti
 | P8 | **Movers need a catalyst or the noise line.** | plan §1.5; `copy.mover.noNews` | Row anatomy keeps the catalyst zone; noise renders muted italic, never hidden. |
 | P9 | **LLM narrates, never computes; the verification gate blocks unverified numbers.** | plan Appendix E | Pure pipeline concern; untouched by the redesign. Amber gate flag keeps its reserved color (P11). |
 | P10 | **Desk/Academy separated, doorways + return rails; paper-first; login wall.** | plan §1.5; `proxy.ts` | Rooms keep separate shells, routes, doorways, and return rails — the separation is navigational and structural. Per D1/D4 they now share one palette and one theme; the felt switch comes from material and typography (§5.6), not color temperature. |
-| P11 | **Amber is reserved.** Exactly two consumers: the verification-gate inline flag and the fired-signal watchlist marker. | plan §3.3 | Survives the colored-chip amendment: tier-moderate and grade-mixed get their **own** amber-adjacent hexes so no chip shares the alert token. Grep stays. |
+| P11 | **Amber is reserved.** The consumer list is short, closed, and every entry is argued in place. **The register is `app/scripts/check-drift.mjs`'s `ALERT_ALLOWED` — it is the truth; do not restate the count here.** *(Amended 2026-07-13, G4: this row used to say "exactly two consumers" and had been wrong since N2 — two logged structural amendments had added PipelineStrip's AGING state and MacroBoard's STALE cell. A count restated in four documents is a count that rots; the register is one file, and it runs.)* | plan §3.3; `ALERT_ALLOWED` | Survives the colored-chip amendment: tier-moderate and grade-mixed get their **own** amber-adjacent hexes so no chip shares the alert token. Grep stays. |
 | P12 | **Mechanical voice; all copy from `copy.ts`; timestamps everywhere; numbers only via `BaseRate`/`format`.** | CLAUDE.md; plan §3.9 | New copy strings (Appendix B) follow the deck's voice. Every surface keeps its as-of stamp. |
 | P13 | **Position/length over angle/area** — no gauges, donuts, speedometers. | RR §9.7 last clause | Kept verbatim; it is an honesty-of-perception rule, not an austerity rule. |
 | P14 | **One hero figure per view.** | plan §3.1 required list | Kept — it is information hierarchy, and it is also what makes the new hero beautiful. |
@@ -472,13 +481,23 @@ rail. Touch targets ≥44×44px on every interactive element.
 
 ### 3.10 Anti-drift checklist v2 (run at every phase exit, replaces plan §3.10 greps)
 
+> **[Amended 2026-07-13, G4 — this section is MECHANIZED, and the script is the truth.]** The list
+> below is the prose ancestor of `app/scripts/check-drift.mjs` (`npm run check:drift`), which today
+> carries **21 rules** and runs in CI on every branch push (since G0 — before that it ran in no CI
+> workflow at all). Where this text and the script disagree, **the script wins**: it is the thing
+> that executes. Read this section for the *reasoning* behind a rule; read the script for what the
+> rule actually is. Do not restate rule counts or consumer lists here — cite the file. (This
+> section once described eleven greps and named a component that does not exist, while the script
+> had grown past it. Two sources of truth for one document is a slow-motion lie.)
+
 Mechanical greps — must all be empty outside `app/globals.css` + `lib/tokens.ts`
 (items marked ⊕ are new since the adversarial review):
 1. Hex colors anywhere else (excluding the two sanctioned files, SVG fixtures).
 2. Raw gradients: `linear-gradient|radial-gradient` outside `globals.css`.
 3. Arbitrary shadows/radii: `shadow-\[|rounded-\[`.
 4. `backdrop-blur` outside the five sanctioned components (§3.4).
-5. Amber tokens (`alert`) outside the two consumers.
+5. Amber tokens (`alert`) outside the sanctioned consumers — **the register is `ALERT_ALLOWED` in
+   `check-drift.mjs`, not a number written here** (G4, 2026-07-13).
 6. Motion on P2 **files**: `transition|animate|@keyframes` inside `BaseRate.tsx,
    CalibrationScatter.tsx, RangeBands.tsx, QuantileDotplot.tsx, StatFigure.tsx,
    SetupCards.tsx, MacroPulse.tsx` (the last two carry inline P2 marks today) — plus the
@@ -1099,6 +1118,14 @@ one of the worst phone bugs found in review is iOS-specific and invisible to it.
 checklist, every phase exits through the gate, tag `redesign-N`, roll straight into the next.
 Estimates assume the same executor pace as P0–P6.*
 
+> **[Amended 2026-07-13 by GATE-EFFICIENCY-PLAN G4 — "roll straight into the next" is
+> SUPERSEDED.]** One phase per session (CLAUDE.md, user, 2026-07-13, permanent): tag, bring the
+> intelligence files current as ONE commit, report to Bishan, STOP. The exit ritual itself also
+> changed — you now REHEARSE the browser oracle (`gh workflow run ci.yml -f job=e2e`) BEFORE
+> tagging, and the tag stays put once green. See CLAUDE.md's "The Endgame" block. Note also that
+> "DEVELOPMENT-PLAN.md §6" above points at the ORIGINAL gate, which is history: §6.4 carries its
+> own dated correction block, and the live gate is the active plan's standing-gate block.
+
 **The standing gate (every phase, in order):**
 ```
 1  npm run typecheck && npm run lint && npm test          # app unit
@@ -1388,8 +1415,9 @@ sheet is paste-COMPLETE — the dark and system blocks are both written out in f
   --color-up-bar: rgb(37 99 235 / 0.35);   /* proportion/breadth segments — equal weight */
   --color-down-bar: rgb(234 88 12 / 0.35);
 
-  /* Reserved amber — the REGION is reserved, not just the hex (§3.3): only losses and
-   * these two consumers (gate flag, fired-signal) may sit in the amber–orange range. */
+  /* Reserved amber — the REGION is reserved, not just the hex (§3.3): only losses and the
+   * sanctioned consumers may sit in the amber–orange range. The consumer list is ALERT_ALLOWED
+   * in check-drift.mjs (the register — G4, 2026-07-13), not a count written here. */
   --color-alert: #8a5200;
   --color-alert-wash: #f7ead0;
 

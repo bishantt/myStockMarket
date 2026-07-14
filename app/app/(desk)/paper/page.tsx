@@ -170,8 +170,10 @@ export default async function PaperPage() {
         </div>
 
         {ledger.frequencyMirrorTriggered ? (
-          // The frequency mirror stays plain prose — never amber. Amber has two consumers, and a
-          // behavioural nudge is neither of them.
+          // The frequency mirror stays plain prose — never amber. Amber is reserved for something
+          // DEGRADED (the consumer register is check-drift.mjs's ALERT_ALLOWED); a behavioural
+          // nudge is not a degradation, and dressing one as an alert is how urgency gets
+          // manufactured.
           <p className="max-w-[58ch] pt-4 font-prose text-base text-ink">
             You have made more than five paper round trips this week. The most active retail traders
             underperform by about their trading costs — worth sitting on the next one until tomorrow.

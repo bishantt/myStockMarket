@@ -260,4 +260,31 @@ shortcuts: [{name:"Track record", url:"/track-record"}, {name:"Review queue", ur
    CI-minted session cookie passed in lhci extraHeaders (PWA asserts live in step 3)
 5  Anti-drift checklist (§3.10) against fresh screenshots
 6  Update PROGRESS.md · append DECISIONS/LESSONS · git tag phase-N · push</pre>
+
+  <p><strong>Correction, 2026-07-13 (GATE-EFFICIENCY-PLAN G4 · structural · analysis §3.5).</strong>
+  <strong>The gate above is HISTORY, not law. Do not run it.</strong> It is the original P-phase
+  gate, and three of its six steps now describe a build that no longer exists. Every later plan
+  declared its own gate by naming this one as parent — so this block sat at the bottom of the chain
+  being cited by CLAUDE.md as “the” gate, while nothing in it had been executable for a month.</p>
+
+  <p><strong>What is wrong with it, step by step.</strong> Step 3’s bare <code>npx playwright
+  test</code> cannot pass on the developer’s machine: the visual baselines are born in CI on Linux,
+  and macOS rasterizes text differently enough to red roughly 46 screenshots on font smoothing
+  alone — plus 16 of the 22 e2e specs need a seeded Postgres this Mac cannot run. The local command
+  is <code>npm run e2e:local</code> (<code>--ignore-snapshots</code>); <strong>CI is the pixel
+  oracle, and that is deliberate.</strong> Step 4 names <code>lhci</code>, an instrument this repo
+  has never contained — no <code>@lhci/cli</code> dependency, no config, no CI job has ever existed;
+  the real one is <code>npm run check:lighthouse</code> (<code>app/scripts/lighthouse-check.mjs</code>),
+  run locally against the Vercel deployment. Step 5’s “checklist against fresh screenshots” is now
+  mechanical: <code>npm run check:drift</code>, 21 rules, and it runs in CI. And step 6 has the
+  ORDER backwards — the reformed ritual tags first and lands the documentation afterwards, in one
+  commit, precisely so that a green tag never gets re-pointed onto trailing prose.</p>
+
+  <p><strong>Where the live gate actually lives:</strong> the standing-gate block of <em>the plan
+  you are currently executing</em> (today POLISH-AND-DEPTH-PLAN.md), run in the order CLAUDE.md’s
+  “The Endgame” section sets out. The one step that section adds and no older text contains is the
+  <strong>rehearsal</strong>: <code>gh workflow run ci.yml -f job=e2e</code> runs the full browser
+  oracle on any ref with no tag involved, so the oracle is consulted <em>before</em> the tag exists
+  rather than after. That single move is what this plan’s successor was written to install; 52% of
+  tag runs used to fail, because the tag run was the first time the suite had ever run.</p>
 </section>

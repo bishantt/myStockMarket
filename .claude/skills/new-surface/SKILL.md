@@ -168,9 +168,19 @@ AA, and the token sheet has always said "never body text". Information is `muted
 enforces it.
 
 **Are you reaching for amber?**
-→ Don't. Amber has exactly two consumers in this app (the verification-gate flag and the
-fired-signal marker), and the reservation is of the whole amber–orange REGION, not one hex. A
-grep counts the consumers; a unit test measures the hues.
+→ Almost certainly don't. Amber is RESERVED: the consumer list is short, closed, and every entry
+is argued in place, and the reservation covers the whole amber–orange REGION, not one hex. A grep
+enforces the list; a unit test measures the hues.
+
+**The register is `app/scripts/check-drift.mjs`'s `ALERT_ALLOWED`. Read it — do not trust a count
+you read in a plan.** (This line used to say "exactly two consumers." It had been wrong since N2:
+two logged structural amendments had added the pipeline strip's AGING state and the macro board's
+STALE cell. Corrected 2026-07-13, G4.) Amber earns its place when something real has DEGRADED and
+the reader is entitled to be told — not when something is merely absent. The register's own
+comments draw that line: "not yet reported" and "source unreachable tonight" both render quiet,
+because an app that shouts about a missing API key has nothing left to say on the night its numbers
+are wrong. Adding a consumer is a structural amendment: log it in DECISIONS.md and write the
+argument into the register beside the entry.
 
 ---
 

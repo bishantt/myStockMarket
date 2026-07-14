@@ -189,7 +189,7 @@ Part 3
 
 *The aesthetic contract. Bold through typography, scale, and space — never through chrome that lies. Implement these tokens exactly; the styleguide route renders them as a living spec and every visual-regression baseline is captured against it.*
 
-> **Amended 2026-07-11 (user directive — “Morning Broadsheet”).** The aesthetic clauses of this Part — the §3.1 ban list, 2px radii, no-elevation, motion minimalism, and the §3.10 greps that enforce them — are superseded by **UI-REDESIGN-PLAN.md**, which deliberately allows gradients, soft elevation, rounded glass cards, colored chips, a warm indigo palette, and general UI motion. Every honesty clause in this Part stands unchanged and is restated there: mono numerals everywhere, one hero figure per view, redundant (never color-only) delta encoding, amber’s two consumers, no motion on probability/money visuals, N + CI on every base rate. Where this Part and UI-REDESIGN-PLAN.md disagree on looks, the redesign plan wins; on honesty, nothing changed and nothing may.
+> **Amended 2026-07-11 (user directive — “Morning Broadsheet”).** The aesthetic clauses of this Part — the §3.1 ban list, 2px radii, no-elevation, motion minimalism, and the §3.10 greps that enforce them — are superseded by **UI-REDESIGN-PLAN.md**, which deliberately allows gradients, soft elevation, rounded glass cards, colored chips, a warm indigo palette, and general UI motion. Every honesty clause in this Part stands unchanged and is restated there: mono numerals everywhere, one hero figure per view, redundant (never color-only) delta encoding, amber’s reserved consumer list, no motion on probability/money visuals, N + CI on every base rate. Where this Part and UI-REDESIGN-PLAN.md disagree on looks, the redesign plan wins; on honesty, nothing changed and nothing may.
 
 ### 3.1 The manifesto (read before styling anything)
 
@@ -228,7 +228,7 @@ Part 3
 
 ### 3.3 Color tokens
 
-*Amended 2026-07-11: the palette below is the original build’s (P0–P6); the current palette is UI-REDESIGN-PLAN.md Appendix A. The rules in the rightmost column — redundant encoding, amber’s two consumers, grade dots only beside their words — remain law verbatim.*
+*Amended 2026-07-11: the palette below is the original build’s (P0–P6); the current palette is UI-REDESIGN-PLAN.md Appendix A. The rules in the rightmost column — redundant encoding, amber’s reserved consumer list, grade dots only beside their words — remain law verbatim.*
 
 Two room palettes plus one semantic set. Interactive elements are **ink + underline** (editorial), with petrol reserved for focus/active states — so no color ever competes with the semantic channel. All text pairs meet WCAG AA on their surface (spot-check with a contrast tool during P0; log results in the styleguide).
 
@@ -244,8 +244,12 @@ Two room palettes plus one semantic set. Interactive elements are **ink + underl
 | `--accent` | #0E6E64 | #2E9C90 | petrol — focus rings, active nav, selected states, links on hover. Never on data, never decorative fills. |
 | `--up` / `--down` | #0072B2 / #D55E00 | #4CA5DE / #E97F33 | Wong colorblind-safe pair for chart strokes, candle bodies, triangles, and text ≥ 21px (3:1 large-text/graphics threshold). Always paired with a redundant non-color channel: ▲/▼ + sign for deltas, hollow/filled bodies for candles, direct labels for series; unchanged/doji renders ink. Banned from buttons, links, decoration. |
 | `--up-text` / `--down-text` | #005A8E / #A84A00 | #6FB6E6 / #F09456 | darkened/lightened Wong variants for delta *text at ≤ 18px* (mover percentages, deltas in tables) — same hues, AA-compliant. Declared token-level decision; charts keep the originals. |
-| `--alert` | #8A5200 text / #F6E3B4 wash | #E0A83E / #3A2F14 | reserved attention. **Exactly two consumers exist:** (1) the verification-gate inline flag on a briefing sentence; (2) a fired-signal marker on a focus-watchlist row. More than 3 simultaneously ⇒ collapse to one “N flagged” Tag. Amber anywhere else is a bug (§3.10). Tier tags never use it. |
+| `--alert` | #8A5200 text / #F6E3B4 wash | #E0A83E / #3A2F14 | reserved attention. **The consumer list is short, closed, and every entry is argued in place — the register is `ALERT_ALLOWED` in `app/scripts/check-drift.mjs`, and it is the truth.** It began as two (the verification-gate inline flag on a briefing sentence; a fired-signal marker on a focus-watchlist row) and has grown by logged structural amendment since. More than 3 simultaneously ⇒ collapse to one “N flagged” Tag. Amber anywhere else is a bug, and `npm run check:drift` is what says so. Tier tags never use it. *(Amended 2026-07-13, G4: this cell used to read “Exactly two consumers exist” and had been wrong since N2 — see the correction block below.)* |
 | `--grade-*` | light: supported #0B7A3B · mixed #8A5200 · weak #A64A32 · folklore #A21C1C — dark: #4CBF7E · #D9A03F · #D07B5B · #E06C6C | evidence-grade dots inside Tag only — Academy ledger contexts, scan-preset labels, and setup-card decay stamps; always beside the word, never alone. Spot-check dark values ≥3:1 at P6. |  |
+
+**Correction, 2026-07-13 (GATE-EFFICIENCY-PLAN G4 · structural · analysis §3.5).** The `--alert` row above said “**Exactly two consumers exist**” — and so did UI-REDESIGN-PLAN §3.10 and its P11 row, APP-FEEL’s P11 row, the `new-surface` skill, three shipped source comments, and *the register’s own docstring*. All seven were wrong, and had been since N2. The real list had grown to **four** product consumers by two logged structural amendments — N2 added the pipeline strip’s AGING state, N3 added the macro board’s STALE cell — each of which is a genuine alert about a real degradation, which is exactly what the reserved colour is reserved FOR. **An executor obeying the text would have stripped sanctioned amber at a phase exit.**
+
+So the count is gone from every document, and they all point at one register: `ALERT_ALLOWED` in `app/scripts/check-drift.mjs`, which is the list the machine actually enforces. **P11 was never a count.** It is: amber is RESERVED, the list is SHORT, and every entry is ARGUED IN PLACE. Adding a consumer is a structural amendment — log it in DECISIONS.md and write the argument into the register beside the entry. Note also what does NOT earn amber, because the register draws that line explicitly: “not yet reported” (an unprovisioned key) and “source unreachable tonight” (one failed fetch) both render quiet. An app that shouts about a missing API key has nothing left to say on the night its numbers are wrong.
 
 ### 3.4 Space, shape, elevation
 
@@ -494,6 +498,12 @@ Write the failing test before the implementation for: every indicator; every pat
 5  Anti-drift checklist (§3.10) against fresh screenshots
 6  Update PROGRESS.md · append DECISIONS/LESSONS · git tag phase-N · push
 ```
+
+**Correction, 2026-07-13 (GATE-EFFICIENCY-PLAN G4 · structural · analysis §3.5).** **The gate above is HISTORY, not law. Do not run it.** It is the original P-phase gate, and three of its six steps now describe a build that no longer exists. Every later plan declared its own gate by naming this one as parent — so this block sat at the bottom of the chain being cited by CLAUDE.md as “the” gate, while nothing in it had been executable for a month.
+
+**What is wrong with it, step by step.** Step 3’s bare `npx playwright test` cannot pass on the developer’s machine: the visual baselines are born in CI on Linux, and macOS rasterizes text differently enough to red roughly 46 screenshots on font smoothing alone — plus 16 of the 22 e2e specs need a seeded Postgres this Mac cannot run. The local command is `npm run e2e:local` (`--ignore-snapshots`); **CI is the pixel oracle, and that is deliberate.** Step 4 names `lhci`, an instrument this repo has never contained — no `@lhci/cli` dependency, no config, no CI job has ever existed; the real one is `npm run check:lighthouse` (`app/scripts/lighthouse-check.mjs`), run locally against the Vercel deployment. Step 5’s “checklist against fresh screenshots” is now mechanical: `npm run check:drift`, 21 rules, and it runs in CI. And step 6 has the ORDER backwards — the reformed ritual tags first and lands the documentation afterwards, in one commit, precisely so that a green tag never gets re-pointed onto trailing prose.
+
+**Where the live gate actually lives:** the standing-gate block of *the plan you are currently executing* (today POLISH-AND-DEPTH-PLAN.md), run in the order CLAUDE.md’s “The Endgame” section sets out. The one step that section adds and no older text contains is the **rehearsal**: `gh workflow run ci.yml -f job=e2e` runs the full browser oracle on any ref with no tag involved, so the oracle is consulted *before* the tag exists rather than after. That single move is what this plan’s successor was written to install; 52% of tag runs used to fail, because the tag run was the first time the suite had ever run.
 
 ---
 
@@ -942,6 +952,8 @@ ticker · bid–ask spread · market order · limit order · pre-market · after
 | update.ready | “Updated — refresh when convenient.” |
 
 ### K · CLAUDE.md template (initialize verbatim at P0, then maintain)
+
+**Correction, 2026-07-13 (GATE-EFFICIENCY-PLAN G4).** **This is the P0 SEED, not the constitution.** It was copied into `CLAUDE.md` once, at P0, and `CLAUDE.md` has been maintained ever since — through four completed builds. This appendix has not. **Read the live file at the repo root; never copy from here.** Two clauses below are known-stale and are corrected in the live file: the “Phase exit: plan §6.4 gate” line (§6.4 is history — see its own correction block, and the live gate is the active plan’s standing-gate block), and “checklist §3.10 v2” (mechanized as `check-drift.mjs`, 21 rules; the script is the truth). The template is kept verbatim because it is a record of what P0 was handed, and a record that gets edited is not a record.
 
 ```
 # myStockMarket — constitution

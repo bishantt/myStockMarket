@@ -921,3 +921,53 @@ by the manifest's `navBudget: "pending"`, for the next route that gets probed be
 a behavior change in a phase whose banner is "zero behavior change", so it is named here rather than
 buried. It cannot affect the sweeps or the pixels; `check:nav` is a local instrument and B2 is in
 report mode.
+
+---
+
+## Q-G4-1 — [VETO?] the movers delta chip: I made it hold still, and that costs it its hover
+
+**The decision, and it is an assumption.** PD5 introduces `TickerChip` — one consistent chip for
+every ticker symbol that navigates. It has an optional trailing move (`+2.1% · 1D`). That trailing
+move is a **market figure**, and TickerChip is the first component in this whole build where a
+*hoverable, interactive* element and a *probability/money figure* are literally the same piece of
+UI. The collision has been deferred twice. PD5 forces it, and PD5 has not started, so I decided it
+now rather than let it detonate at PD5's exit.
+
+**What I ruled, and PD5 is written on it:**
+1. The delta chip carries `data-p2`. It is a market figure — exactly what P2 exists to hold still.
+2. Any hover TickerChip keeps must be **non-animating on the figure**: opacity and underline only.
+   No transform, no scale, no translate, no color transition on the number itself. The accent wash
+   on hover stays — that is chrome, and it correctly signals "this is a door."
+
+**Why I chose it this way.** The alternative is to drop `data-p2` so the chip can animate freely.
+That trades a permanent honesty guarantee for a hover effect. P2 is not a style rule: a number that
+reacts to the cursor is a number that *looks like it is doing something*, and the entire thesis of
+this app is that it isn't. So where the two cannot be reconciled, the figure wins and the
+interactivity goes. Here they reconcile fine — a wash is not a transform.
+
+**What a veto changes.** If you want the delta chip to be a fully live, animating hover target, say
+so and PD5 drops `data-p2` from it — but understand that this is the first crack in P2, and the
+next surface will cite it. I would not do it. **Nothing is built on this yet** — PD has not started;
+only the plan text carries the ruling. Changing it now costs one paragraph. Changing it at PD5's
+exit costs a phase.
+
+---
+
+## Q-G4-2 — [FYI, decision made, easily reversed] I pre-decided one new rung on the font drop-order
+
+**What I found.** `check-font-budget.mjs` carries an emergency drop-order — "fixed in advance so the
+decision is not made at 2am under pressure." It named **Inter 500 first, then Playfair 600**. Both of
+those were **already dropped, at R6.** That is *why* there is font headroom today. So the ladder was
+empty, and the way you would have discovered that is by reaching for it at 2am.
+
+**What I did.** Marked both rungs SPENT (with their `lib/fonts.ts` line numbers), and pre-decided one
+new rung so the ladder is not a blank page: **JetBrains Mono 600.** Reasoning: 500 carries the chips
+and the inline `KeyFigure`s that PD5's kit is about to lean on heavily, and 400 is the body numeral —
+which leaves 600 as the one mono weight whose work another weight can absorb. I also added
+**Newsreader italic** to the NEVER list (the setup-card pattern names and folklore labels are set in
+it, and its `opsz` axis already cost 153KB and is gone).
+
+**Why this is low-stakes.** There is substantial headroom and no new weights planned, so the ladder
+is not currently needed by anyone. This is a comment, not a behavior change — no font was touched.
+If you disagree with the rung, it is a one-line edit. I deliberately did **not** write the current
+total into the comment: that is the number that rots, and `npm run check:fonts` prints it live.

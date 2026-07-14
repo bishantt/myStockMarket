@@ -7,8 +7,25 @@
  * which is the device the phase-exit Lighthouse run measures.
  *
  * If the total ever exceeds it, the drop order is fixed in advance so the decision is not made at
- * 2am under pressure: Inter 500 first (600 covers emphasis), then Playfair 600 (700 covers titles).
- * NEVER Playfair italic 400 — the login headline and the pull quotes are set in it.
+ * 2am under pressure. THE LADDER, corrected 2026-07-13 (G4) — and read the next paragraph before
+ * you use it, because the first two rungs are already gone:
+ *
+ *   [SPENT at R6] Inter 500      — dropped; 600 covers emphasis.      (lib/fonts.ts:63)
+ *   [SPENT at R6] Playfair 600   — dropped; 700 sets every title.     (lib/fonts.ts:47)
+ *   [rung 1]      JetBrains Mono 600 — emphasis-in-numerals. 500 carries the chips and inline
+ *                 KeyFigures the PD5 kit is about to lean on; 400 is the body numeral. 600 is the
+ *                 one mono weight whose work another weight can absorb. [claude judgment, G4 —
+ *                 logged in QUESTIONS-FOR-BISHANT.md for veto; no rung below it is pre-decided.]
+ *   [NEVER]       Playfair italic 400 — the login headline and the pull quotes are set in it.
+ *   [NEVER]       Newsreader italic — the setup-card pattern names and folklore labels are set in
+ *                 it; the opsz axis is already gone (it cost 153 KB alone).
+ *
+ * WHY THE LADDER READS LIKE THIS. It used to name Inter 500 and Playfair 600 as the first two
+ * rungs — both of which had ALREADY BEEN DROPPED at R6, which is precisely why there is headroom
+ * today. So the emergency ladder was empty, and the way you would have discovered that is by
+ * reaching for it at 2am. That is the same silence class as a guard that cannot fail: it looked
+ * like a plan and it was a blank page. Do not restate the current total here — it rots. Run
+ * `npm run check:fonts`; it prints the live per-file sizes and the headroom.
  *
  * "What a latin reader downloads" is the honest way to count. next/font emits a woff2 for
  * every unicode-range Google offers (cyrillic, vietnamese, greek...), but a browser fetches
