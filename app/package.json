@@ -16,7 +16,7 @@
     "db:migrate": "prisma migrate dev",
     "db:seed": "node prisma/seed.mjs",
     "db:studio": "prisma studio",
-    "icons": "node scripts/icons.mjs",
+    "icons": "npm run brand",
     "check:lighthouse": "node scripts/lighthouse-check.mjs",
     "check:migrations": "node scripts/check-migrations.mjs",
     "check:drift": "node scripts/check-drift.mjs",
@@ -24,7 +24,8 @@
     "check:nav": "node scripts/check-nav.mjs",
     "check:live": "node scripts/check-live.mjs",
     "check:bundles": "node scripts/check-bundles.mjs",
-    "e2e:local": "playwright test --ignore-snapshots"
+    "e2e:local": "playwright test --ignore-snapshots",
+    "brand": "node scripts/brand-assets.mjs"
   },
   "prisma": {
     "seed": "node prisma/seed.mjs"
@@ -58,6 +59,8 @@
     "eslint": "^9",
     "eslint-config-next": "16.2.10",
     "jsdom": "^29.1.1",
+    "opentype.js": "^2.0.0",
+    "png-to-ico": "^3.0.2",
     "prisma": "^6.19.3",
     "serwist": "^9.5.11",
     "sharp": "^0.35.3",

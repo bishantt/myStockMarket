@@ -71,8 +71,18 @@ export default process.env.TURBOPACK
       reloadOnOnline: true,
       // The two force-static routes, precached by URL so they are available offline. Everything
       // else in the precache comes from the build manifest Serwist injects (plan §5.2).
+      //
+      // The login's brand mark joins them (PD2, plan 5.4). /login is the page a reader reaches when
+      // a month-old cookie finally expires on a train with no signal, and it is precached precisely
+      // so that it works there. Its mark is a file in public/, which the build manifest does NOT
+      // cover — so without this line the offline login would render with a hole where the identity
+      // is. The revision is the image's own bytes, so it re-precaches exactly when the logo changes.
       additionalPrecacheEntries: [
         { url: "/offline", revision: revisionOf("app/offline/page.tsx") },
         { url: "/login", revision: revisionOf("app/login/page.tsx", "app/login/LoginForm.tsx") },
+        {
+          url: "/icons/brandmark-192.webp",
+          revision: revisionOf("public/icons/brandmark-192.webp"),
+        },
       ],
     })(nextConfig);

@@ -25,9 +25,31 @@ export default function manifest(): MetadataRoute.Manifest {
     background_color: PAPER,
     theme_color: PAPER,
     description: "US-market command center & learning hub",
+    /**
+     * The icon set, all generated from one master by scripts/brand-assets.mjs (PD2, plan 5.2).
+     *
+     * The three PURPOSES are three different promises, and mixing them up is how an installed app
+     * ends up with a mark floating in a white box:
+     *   - `any`       — the icon as it is. Transparent, because the mark is a circle and the OS
+     *                   should see a circle.
+     *   - `maskable`  — the OS may crop this to ANY shape it likes and guarantees only that a
+     *                   centred circle of radius 40% survives. So it is OPAQUE, on the brand field,
+     *                   with the mark inset to 77% — whatever shape gets carved, it carves field.
+     *                   Both sizes are listed now: Android picks the nearest, and offering only 512
+     *                   made a 192px launcher downscale a 512 every time it drew the icon.
+     *   - `monochrome`— Android tints this one itself, so it must be a single flat colour on
+     *                   transparency. A rendered logo cannot be that, so it stays the old drawn
+     *                   glyph (public/mark-glyph.svg) — the one place that letterform survives.
+     */
     icons: [
       { src: "/icons/icon-192.png", sizes: "192x192", type: "image/png", purpose: "any" },
       { src: "/icons/icon-512.png", sizes: "512x512", type: "image/png", purpose: "any" },
+      {
+        src: "/icons/icon-maskable-192.png",
+        sizes: "192x192",
+        type: "image/png",
+        purpose: "maskable",
+      },
       {
         src: "/icons/icon-maskable-512.png",
         sizes: "512x512",

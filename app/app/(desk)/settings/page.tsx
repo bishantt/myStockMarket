@@ -1,5 +1,6 @@
 import { db } from "@/lib/db";
 import { Surface } from "@/components/Surface";
+import { BrandMark } from "@/components/BrandMark";
 import { FOCUS_CAP } from "@/lib/watchlist";
 import { ThemeToggle } from "@/components/desk/ThemeToggle";
 import { PipelinePanel } from "@/components/settings/PipelinePanel";
@@ -201,6 +202,22 @@ export default async function SettingsPage() {
           </Surface>
         ) : null}
       </div>
+
+      {/*
+       * The about line (PD2, plan 5.5) — the one place the mark appears INSIDE a room, and it
+       * appears quietly. Not a card, not a section: a single line at the foot of the one room that
+       * is about the app itself rather than about the market.
+       *
+       * It says what the product is and nothing more. There is deliberately no version number here:
+       * this app does not have one, and inventing a string to fill the space would be the smallest
+       * possible lie in a product whose whole argument is that it does not tell them.
+       */}
+      <footer className="flex items-center gap-2.5 pt-2">
+        <BrandMark size="inline" />
+        <p className="font-mono text-2xs uppercase tracking-[0.08em] text-muted">
+          myStockMarket — US equities, after the close.
+        </p>
+      </footer>
     </div>
   );
 }

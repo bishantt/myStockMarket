@@ -37,7 +37,7 @@ import {
  *   /sw.js                  same: the service worker registers on /login, pre-auth
  *   /offline                the offline fallback must render when nothing else can
  *   /_next/*                build assets; they carry no data
- *   icons + favicon + mark  install UX needs them to resolve without a cookie (§5.5.1 asserts it)
+ *   icons + favicon        install UX needs them to resolve without a cookie (§5.5.1 asserts it)
  *
  * Note what is NOT here: every route that renders data stays behind the wall, including
  * /styleguide, because the licensing wall covers previews too (§1.5, rule 15).
@@ -50,7 +50,11 @@ const PUBLIC_PATHS = new Set([
   "/sw.js",
   "/favicon.ico",
   "/apple-touch-icon.png",
-  "/mark.svg",
+  // "/mark.svg" was here until PD2 and is gone with the file. It was the old placeholder tile —
+  // a gradient square with a letter "M" in it — and nothing rendered it: the real logo arrived,
+  // scripts/brand-assets.mjs generates every icon from that master, and the tile retired. Its
+  // glyph-only sibling (mark-glyph.svg) survives as the monochrome icon's source, but that is a
+  // BUILD input, never fetched by a browser, so it needs no door through the wall.
 ]);
 
 /**

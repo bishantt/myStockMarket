@@ -34,21 +34,22 @@ test.describe("installability", () => {
     expect(purposes).toContain("maskable");
   });
 
-  test("every icon resolves without the auth cookie, so the app stays installable pre-login", async ({
-    request,
-  }) => {
+  test("every icon the manifest names is actually served", async ({ request }) => {
     // If an icon 302'd to /login, the OS install prompt would fail. The proxy must let them
     // through unauthenticated (plan §4.4, §5.5.1).
-    for (const path of [
-      "/icons/icon-192.png",
-      "/icons/icon-512.png",
-      "/icons/icon-maskable-512.png",
-      "/icons/icon-monochrome-96.png",
-      "/apple-touch-icon.png",
-    ]) {
-      const response = await request.get(path, { maxRedirects: 0 });
-      expect(response.status(), `${path} should resolve without a cookie`).toBe(200);
-      expect(response.headers()["content-type"]).toContain("image/png");
+    //
+    // This reads the icon list OUT OF THE MANIFEST rather than restating it. A hand-kept copy of
+    // the list is a copy that rots: PD2 added a maskable-192, and a literal list here would have
+    // gone on passing while the new icon was never fetched by anything. The manifest is the claim;
+    // this test is the audit of the claim. (e2e/brand.spec.ts covers the paths the manifest does
+    // NOT name — the favicon, the in-app lockups, the OG card.)
+    const manifest = await (await request.get("/manifest.webmanifest")).json();
+    expect(manifest.icons.length).toBeGreaterThanOrEqual(5);
+
+    for (const icon of manifest.icons as Array<{ src: string; type: string }>) {
+      const response = await request.get(icon.src, { maxRedirects: 0 });
+      expect(response.status(), `${icon.src} should resolve without a cookie`).toBe(200);
+      expect(response.headers()["content-type"]).toContain(icon.type);
     }
   });
 

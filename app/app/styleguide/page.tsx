@@ -1,4 +1,5 @@
 import { AppWash } from "@/components/AppWash";
+import { BrandMark } from "@/components/BrandMark";
 import { MacroBoard } from "@/components/desk/MacroBoard";
 import { PipelineStrip } from "@/components/desk/PipelineStrip";
 import { buildMacroBoard, type MacroStatRow } from "@/lib/macro-board";
@@ -50,6 +51,7 @@ export default function StyleguidePage() {
             </p>
           </header>
 
+          <Identity />
           <Colours />
           <Surfaces />
           <Typography />
@@ -94,6 +96,65 @@ function Section({
 }
 
 /* ────────────────────────────────────────────────────────────────────────────────────────── */
+
+/**
+ * THE IDENTITY (PD2, plan 5.7) — the mark, the three lockups it is allowed to appear in, and the
+ * one public face this product has.
+ *
+ * This section is the permanent visual spec, and it is also a TEST. Every image below is generated
+ * by scripts/brand-assets.mjs from a single master, and this page is photographed by the visual
+ * regression suite in both themes — so the identity cannot change without a baseline moving and a
+ * person explaining why. That matters most for the OG card, which no product page renders: without
+ * this section, the generator could quietly start producing a different link preview and the first
+ * anyone would know is a stranger's Slack.
+ *
+ * The mark is shown at the sizes the app is actually ALLOWED to render it at — the three named
+ * lockups in components/BrandMark.tsx, and nothing else. A specimen sheet showing arbitrary sizes
+ * would be advertising a freedom that does not exist.
+ */
+function Identity() {
+  const lockups = [
+    { size: "inline" as const, label: "inline · 20px", where: "the settings about line" },
+    { size: "bar" as const, label: "bar · 28px", where: "the top bar, every room" },
+    { size: "panel" as const, label: "panel · 96px", where: "the login panel" },
+  ];
+
+  return (
+    <Section
+      id="identity"
+      index={15}
+      title="Identity"
+      intro="One mark, one master, one generator. A circular mark — a white M with a candlestick ascent and an open book, on a deep indigo field inside a violet ring. It appears in exactly three places in the product, and it never appears on the Desk masthead: the masthead is the DATE, which is the product's hero, and the mark lives in the chrome above it. Restraint is the brand here."
+    >
+      <div className="flex flex-col gap-8">
+        <div className="flex flex-wrap items-end gap-10">
+          {lockups.map((lockup) => (
+            <figure key={lockup.size} className="flex flex-col items-start gap-3">
+              <BrandMark size={lockup.size} />
+              <figcaption className="font-mono text-2xs uppercase tracking-[0.08em] text-muted">
+                {lockup.label}
+                <span className="block pt-1 font-ui text-xs normal-case tracking-normal text-ink-2">
+                  {lockup.where}
+                </span>
+              </figcaption>
+            </figure>
+          ))}
+        </div>
+
+        <figure className="flex flex-col items-start gap-3">
+          <BrandMark size="card" className="max-w-full rounded-card" />
+          <figcaption className="max-w-[70ch] font-ui text-xs text-ink-2">
+            The link preview (1200×630, shown at half size). Every page in this app is behind the
+            login wall, so a link pasted into Slack can never show a page — this is what it shows
+            instead. It carries no data, no numbers and no screenshot of the interface: a screenshot
+            would go stale the day the design moved, and it would be advertising a page the reader
+            cannot open.
+          </figcaption>
+        </figure>
+      </div>
+    </Section>
+  );
+}
 
 /**
  * Every colour token, with the RULE that governs where it may be used — because the rules, not the

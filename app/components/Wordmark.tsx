@@ -1,13 +1,19 @@
 import Link from "next/link";
+import { BrandMark } from "@/components/BrandMark";
 
 /**
- * Wordmark — the gradient "M" tile and the product's name (D3).
+ * Wordmark — the house mark and the product's name (D3).
  *
- * The name stays "myStockMarket". The mark is one of exactly TWO places in the entire app allowed
- * to use `--gradient-brand` — the other is the primary button. That scarcity is the point: a
- * gradient used twice is a signature, and a gradient used everywhere is a template.
+ * PD2 replaced the placeholder here. This used to be a gradient tile with a mono letter "M" set
+ * inside it — a stand-in for a logo that did not exist yet. It does now, so the tile is gone and
+ * the real mark takes its place at the same 28px. The NAME is untouched: same mono, same uppercase,
+ * same tracking, same accent, still hidden below `sm`.
  *
- * On a phone the wordmark shrinks to the tile alone. A 375px row has to hold five things, and the
+ * That retirement cost `--gradient-brand` one of its two sanctioned consumers. The token's contract
+ * is scarcity — a gradient used twice is a signature, a gradient used everywhere is a template — and
+ * it now has exactly two again: the login panel and the primary button.
+ *
+ * On a phone the wordmark shrinks to the mark alone. A 375px row has to hold five things, and the
  * product's name is the one thing the reader already knows.
  */
 export function Wordmark() {
@@ -17,12 +23,7 @@ export function Wordmark() {
       aria-label="myStockMarket — the Desk"
       className="flex min-h-11 shrink-0 items-center gap-2"
     >
-      <span
-        aria-hidden="true"
-        className="flex size-7 items-center justify-center rounded-chip bg-[image:var(--gradient-brand)] font-mono text-sm font-semibold text-white"
-      >
-        M
-      </span>
+      <BrandMark size="bar" />
       <span className="hidden font-mono text-xs font-medium uppercase tracking-[0.12em] text-accent-deep sm:inline">
         myStockMarket
       </span>

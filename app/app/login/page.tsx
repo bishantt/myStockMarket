@@ -1,6 +1,7 @@
 import { Suspense } from "react";
 import { LoginForm } from "./LoginForm";
 import { AppWash } from "@/components/AppWash";
+import { BrandMark } from "@/components/BrandMark";
 import { copy } from "@/lib/copy";
 
 /**
@@ -74,15 +75,22 @@ function BrandPanel() {
       />
 
       <div className="relative flex items-center gap-2.5">
-        <span className="flex size-7 items-center justify-center rounded-chip bg-on-brand-tile font-mono text-sm font-semibold text-on-brand">
-          M
-        </span>
+        <BrandMark size="inline" />
         <span className="font-mono text-xs font-medium uppercase tracking-[0.12em] text-on-brand">
           myStockMarket
         </span>
       </div>
 
       <div className="relative">
+        {/*
+         * The mark, at the size it is meant to be seen (PD2, plan 5.5). This is the one surface in
+         * the product where the identity is allowed to be large, and it is the first thing anyone
+         * ever sees of this app — the OG card echoes this exact composition on purpose, so a link
+         * previewed in Slack and the page it opens read as the same product.
+         *
+         * The wordmark BELOW stays type, not an image: it is part of the headline's typography.
+         */}
+        <BrandMark size="panel" className="mb-6" />
         <h1 className="max-w-[16ch] font-display text-display-hero font-bold text-on-brand">
           Your personal <em className="font-normal italic">broadsheet</em> for the market.
         </h1>

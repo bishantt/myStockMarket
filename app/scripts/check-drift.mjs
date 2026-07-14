@@ -152,6 +152,28 @@ function fuseFiles() {
 }
 
 /**
+ * The files rule 23 polices: the brand's other two homes.
+ *
+ * These sit outside SEARCH_DIRS for the same reason the fuse files do — they are not the app's
+ * shipped React surface. But the brand's colours live here as surely as they live in globals.css:
+ * public/*.svg is rasterised into every monochrome icon, and scripts/*.mjs is what does the
+ * rasterising. A hex that lands in either one tints a real pixel a reader will see.
+ *
+ * The generator's own test file is excluded along with every other test, by the same argument rule
+ * 1 makes: a test's job is often to NAME the thing being policed.
+ */
+function brandFiles() {
+  const files = [];
+  for (const entry of readdirSync(join(ROOT, "scripts"))) {
+    if (extname(entry) === ".mjs") files.push(`scripts/${entry}`);
+  }
+  for (const entry of readdirSync(join(ROOT, "public"))) {
+    if (extname(entry) === ".svg") files.push(`public/${entry}`);
+  }
+  return files.sort();
+}
+
+/**
  * The two files allowed to say a date out loud — one per world, and they must agree with each other.
  *
  * Everything else derives from these. That is the entire rule: not "never write a date" (the seeded
@@ -390,7 +412,26 @@ const RULES = [
      * `next/image` and `<img>` are both caught: the point is that the news bucket has one door, not
      * that one API is safer than the other.
      */
-    skip: ["components/news/NewsImage.tsx"],
+    /*
+     * THE SECOND DOOR, ADDED AT PD2, AND IT IS ARGUED RATHER THAN ASSUMED.
+     *
+     * components/BrandMark.tsx renders the house mark, and it is an <img>, so this rule would catch
+     * it. It is allowed through because NOT ONE of the three reasons above applies to it:
+     *
+     *   - ETIQUETTE. There is no publisher. The mark is our own file, committed to this repo and
+     *     generated from one master by scripts/brand-assets.mjs. Nothing is hotlinked, because there
+     *     is nothing to hotlink.
+     *   - LAYOUT SHIFT. BrandMark's width and height are not read from a database row that might be
+     *     null — they are constants in the component, one per named size. CLS is zero for the same
+     *     reason NewsImage's is, by construction rather than by luck.
+     *   - THE FALLBACK RUNGS. There are none, and there should be none. A news card without a photo
+     *     has a designed answer; a brand without its mark is not a state the product has.
+     *
+     * A second consumer of the mark would still be wrong — it would size it by hand and drift from
+     * the generated assets — which is why the door is a COMPONENT and not an exemption. One door,
+     * not a hole in the wall. Logged in DECISIONS.md.
+     */
+    skip: ["components/news/NewsImage.tsx", "components/BrandMark.tsx"],
     match: (line, file) =>
       /^(components|app)\//.test(file) &&
       (/<img[\s>]/.test(line) || /from ["']next\/image["']/.test(line)),
@@ -508,6 +549,34 @@ const RULES = [
     skip: [],
     match: (line) =>
       /<a\s+href=["']\/(?!\/)/.test(line) || /<a\s+href=\{/.test(line) || /prefetch=\{false\}/.test(line),
+  },
+  {
+    id: 23,
+    name: "the brand's hexes have exactly one door outside the token sheet — scripts/brand-assets.mjs",
+    /*
+     * THE HOLE THIS CLOSES, found while building the identity kit in PD2.
+     *
+     * Rule 1 bans a raw hex outside the two token files. But rule 1 only ever looked at app/,
+     * components/ and lib/ (see SEARCH_DIRS), and the brand does not only live there: it also lives
+     * in the SVGs under public/ and in the generator that rasterises them. Those two places have
+     * been free to state any colour they liked, and nothing would have said a word. That was fine
+     * while the icons came from a flat SVG tile with the gradient written into it. It stopped being
+     * fine the moment a generator started stamping a brand colour into ten binary files that no
+     * grep can read afterwards.
+     *
+     * So the scan is extended to the two directories rule 1 never covered, and exactly ONE door is
+     * cut: scripts/brand-assets.mjs, which declares BRAND_FIELD at the top with its provenance —
+     * and, crucially, does not merely STATE the colour but ASSERTS it, by re-sampling the master and
+     * refusing to run if the pixels disagree. That is the difference between a constant and a claim,
+     * and it is why this file is allowed to hold one.
+     *
+     * Comments are exempt, exactly as in rule 1: the prose has to be able to name the colour it is
+     * talking about, and a hex in a comment tints nothing.
+     */
+    only: brandFiles(),
+    skip: ["scripts/brand-assets.mjs"],
+    match: (line) =>
+      /#[0-9a-fA-F]{3,8}\b/.test(line) && !/^\s*(\*|\/\/|\/\*|<!--)/.test(line),
   },
 ];
 
