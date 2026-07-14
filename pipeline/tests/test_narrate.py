@@ -933,3 +933,30 @@ def test_effort_rides_inside_output_config_where_the_api_expects_it() -> None:
     assert sent["output_config"]["effort"] == "medium"
     assert sent["output_config"]["format"]["type"] == "json_schema"
     assert "effort" not in sent, "effort is not a top-level parameter — it belongs in output_config"
+
+
+def test_a_SILENT_narrator_on_a_cluster_OUTSIDE_the_budget_says_out_of_budget() -> None:
+    """The `sections` map exists to distinguish absences that print identically, so it may not be
+    sloppy about WHICH absence this is.
+
+    A cluster outside the top 8 was never ASKED for a context. "The narrator had nothing to add" is
+    not what happened to it — nobody put the question. The first live run made the bug visible in
+    arithmetic: 13 sections came back `silent` on a page where only 8 clusters are ever deep.
+    """
+    result = _gate_v2(cluster=_cluster())  # not deep, and the narrator wrote nothing at all
+
+    sections = result.decisions["c1"].verification["sections"]
+    assert result.silent == 1
+    assert sections["why_it_matters"]["status"] == "silent"   # it WAS asked, and had nothing
+    assert sections["context"]["status"] == "out_of_budget"   # it was never asked
+    assert sections["watch"]["status"] == "out_of_budget"
+
+
+def test_a_SILENT_narrator_on_a_DEEP_cluster_really_is_silent() -> None:
+    """The other half. A deep cluster was handed its stat block and still had nothing to say — that
+    IS an honest silence, and the record must not cry budget over it."""
+    result = _gate_v2()  # deep, narrator wrote nothing
+
+    sections = result.decisions["c1"].verification["sections"]
+    assert sections["context"]["status"] == "silent"
+    assert sections["watch"]["status"] == "silent"

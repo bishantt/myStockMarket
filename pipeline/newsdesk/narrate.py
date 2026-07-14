@@ -534,6 +534,17 @@ def gate_notes(
 
         if not any((note.why_it_matters, note.affected_note, note.context, note.watch)):
             # An honest null: "nothing to add beyond the headline". The system working, not failing.
+            #
+            # BUT THE REASON MUST STILL BE THE TRUE ONE, PER SECTION. A cluster outside the depth
+            # budget was never ASKED for a context, so "the narrator had nothing to add" is not what
+            # happened to it — nobody ever put the question. Marking it `silent` would have PD8's
+            # story page tell the reader the narrator was stumped by a section it was never shown,
+            # which is a different sentence and a false one. The first live run made this visible:
+            # 13 sections came back `silent` on a page where only 8 clusters are ever deep.
+            #
+            # This whole `sections` map exists to distinguish absences that print identically. It has
+            # no business being sloppy about which absence this is.
+            budgeted = "silent" if cluster.deep else "out_of_budget"
             result.decisions[note.cluster_id] = NoteDecision(
                 why_it_matters=None,
                 affected_note=None,
@@ -542,8 +553,10 @@ def gate_notes(
                     "note_version": NOTE_VERSION,
                     "reason": "the narrator had nothing to add",
                     "sections": {
-                        name: {"status": "silent"}
-                        for name in ("why_it_matters", "affected_note", "context", "watch")
+                        "why_it_matters": {"status": "silent"},
+                        "affected_note": {"status": "silent"},
+                        "context": {"status": budgeted},
+                        "watch": {"status": budgeted},
                     },
                 },
             )
