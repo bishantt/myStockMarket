@@ -150,7 +150,33 @@ export function RangeBands({ bands }: { bands: LadderBand[] }) {
   );
 }
 
-/** One horizon, in words and numbers — the text the SVG is a picture of. */
+/**
+ * One horizon, in words and numbers — the text the SVG is a picture of.
+ *
+ * THE SENTENCE HAS A FLOOR, AND IT IS LOAD-BEARING (fixed in PD3, found by the pixel oracle).
+ *
+ * This row is a `flex-wrap` line of four things: the horizon, the range, the plain-English sentence,
+ * and the sample size. The sentence used to be `min-w-0 flex-1` — which is `flex: 1 1 0%`, a
+ * flex-basis of **zero**. A flex item whose hypothetical size is zero can never cause the line to
+ * WRAP; it can only be CRUSHED. So the row's behaviour depended on a knife edge:
+ *
+ *   · narrow enough, and the `shrink-0` sample-size caption wrapped to its own line, leaving the
+ *     sentence the full width. Three tidy lines. This is what every baseline in the suite showed.
+ *   · eight pixels wider, and the row decided all four items "fitted" — because the sentence could
+ *     shrink to nothing to make room — so the caption stayed put and the sentence was squeezed into
+ *     a column about one word across. "In / the / past, / 8 / in / 10 / 5- / day / paths / from /
+ *     here..." rendered vertically, one word per line, for every horizon.
+ *
+ * PD3 moved the styleguide's gutter by four pixels and the Range Ladder fell straight into the bad
+ * band — which is how a fragility that had been sitting in a P2 PROBABILITY VISUAL the whole time
+ * finally showed itself. The ticker's own baselines never moved, so nothing had ever failed. The
+ * component was one browser resize away from turning the app's honesty surface into word soup.
+ *
+ * `min-w-[18ch]` gives the sentence a real minimum, and a flex item's min-width DOES participate in
+ * line breaking (the hypothetical main size is the flex base size clamped by min/max). So when there
+ * is no longer room for eighteen characters of sentence beside everything else, the line WRAPS —
+ * which is what it always meant to do — instead of crushing the one part of the row a human reads.
+ */
 function RowText({ row }: { row: LadderRow }) {
   return (
     <li className="flex flex-wrap items-baseline gap-x-3 gap-y-1 border-t border-hairline pt-2">
@@ -158,7 +184,7 @@ function RowText({ row }: { row: LadderRow }) {
       <span className="font-mono text-sm text-ink-2">
         {signedPercent(row.lo)} to {signedPercent(row.hi)}
       </span>
-      <span className="min-w-0 flex-1 font-ui text-2xs text-muted">
+      <span className="min-w-[18ch] flex-1 font-ui text-2xs text-muted">
         {fill(copy.volband.label, { h: String(row.horizonDays) })}
       </span>
       <span className="shrink-0 font-mono text-2xs text-muted">
