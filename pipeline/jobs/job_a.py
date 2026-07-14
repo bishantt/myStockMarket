@@ -16,7 +16,7 @@ from __future__ import annotations
 import os
 import sys
 from datetime import UTC, date, datetime, timedelta
-from typing import Callable
+from typing import Callable, Iterable
 from zoneinfo import ZoneInfo
 
 import httpx
@@ -32,7 +32,9 @@ from adapters.fred import FredAdapter
 from adapters.goldapi import GoldApiAdapter
 from adapters.marketaux import MarketauxAdapter
 from adapters.nrb import NrbAdapter
+from briefing.depth import Bar, build_calendar_refs, build_ticker_depth
 from briefing.extract import submit_batch
+from briefing.stats import build_calendar_stats, build_cluster_stats, build_depth_stats
 from catalyst_ingest import build_catalyst_fetcher
 from config import Settings, load_settings
 from macro_stats import MacroStatRow
@@ -691,6 +693,120 @@ def _read_sectors(conn) -> dict[str, str]:
         return {row[0]: row[1] for row in cur.fetchall()}
 
 
+# ----- PD7: the depth readers (plan 9.2) -----
+#
+# WHY THESE READ POSTGRES AND NOT THE PARQUET LAKE, which is what 9.2's table says ("Computed from:
+# lake bars ... the pipeline sees ALL bars"). The plan is describing a stage that does not exist:
+# `_build_front_page` is a POSTGRES CLOSURE, and it is the same closure in BOTH modes. The full
+# nightly has the lake in memory, but it never hands it to the newsdesk; `news` mode has no lake at
+# all — it syncs nothing from R2, which is precisely what makes it safe to run at any hour, because
+# it calls no provider.
+#
+# Giving the news stage a second data path (sync the lake down from R2 just to compute a 52-week
+# range) would buy vocabulary about symbols the app cannot chart anyway, and would pay for it by
+# BREAKING `news` mode's central promise. So the depth reads `price_bar`, which holds 260 bars per
+# SERVED symbol — exactly enough for the 252-session window, and exactly the set of names the app can
+# show a reader a chart of. A non-served symbol simply has no depth stats, the narrator has less
+# vocabulary about it, and nothing anywhere invents a number. That is 9.2's own closing rule
+# ("absence over invention") applied to 9.2's own premise. Amended in DECISIONS.
+
+def _read_depth_bars(conn, symbols: Iterable[str]) -> dict[str, list[Bar]]:
+    """The trailing bars for the named symbols, ascending, from the serving table.
+
+    One query for every symbol on the page rather than one per symbol: the news stage already makes
+    a handful of round trips, and a story with eight tickers must not turn into eight more.
+    """
+    wanted = sorted({symbol for symbol in symbols})
+    if not wanted:
+        return {}
+    with conn.cursor() as cur:
+        cur.execute(
+            """
+            SELECT symbol, date, high, low, close
+            FROM price_bar
+            WHERE symbol = ANY(%s)
+            ORDER BY symbol, date
+            """,
+            (wanted,),
+        )
+        bars: dict[str, list[Bar]] = {}
+        for symbol, bar_date, high, low, close in cur.fetchall():
+            bars.setdefault(symbol, []).append(
+                Bar(date=bar_date, high=float(high), low=float(low), close=float(close))
+            )
+        return bars
+
+
+def _read_cluster_history(conn, run_date: date, symbols: Iterable[str]) -> dict[str, int]:
+    """How many stories each name has carried in the last 7 sessions, tonight's included.
+
+    "The third story on this name this week" is context a reader cannot get from a single card, and
+    it is the kind of thing a front page is FOR. Counted from our own table — the one place that
+    knows what this app has already told its reader.
+    """
+    wanted = sorted({symbol for symbol in symbols})
+    if not wanted:
+        return {}
+    with conn.cursor() as cur:
+        cur.execute(
+            """
+            SELECT ticker, COUNT(DISTINCT id)
+            FROM news_cluster, UNNEST(tickers) AS ticker
+            WHERE ticker = ANY(%s) AND run_date > %s - INTERVAL '7 days' AND run_date <= %s
+            GROUP BY ticker
+            """,
+            (wanted, run_date, run_date),
+        )
+        return {row[0]: int(row[1]) for row in cur.fetchall()}
+
+
+def _read_calendar_ahead(conn, run_date: date, days: int = 14) -> list[dict]:
+    """The scheduled, dated events in the next fortnight, earliest first.
+
+    9.1 asks for "the next 10 SESSIONS"; this reads 14 calendar days, which covers ten sessions with
+    room for a holiday and needs no trading-calendar walk inside a SQL query. The narrator only ever
+    sees the NEXT event per name anyway (`build_calendar_refs`), so a slightly wider window changes
+    what is offered, never what is claimed.
+    """
+    with conn.cursor() as cur:
+        cur.execute(
+            """
+            SELECT symbol, code, kind, title, date
+            FROM calendar_event
+            WHERE date >= %s AND date <= %s + INTERVAL '%s days'
+            ORDER BY date
+            """,
+            (run_date, run_date, days),
+        )
+        return [
+            {"symbol": row[0], "code": row[1], "kind": row[2], "title": row[3], "date": row[4]}
+            for row in cur.fetchall()
+        ]
+
+
+# THE EIGHTH STAT IS NOT HERE, AND ITS ABSENCE IS THE POINT (9.2's `sector:{key}:breadth1d`).
+#
+# "Advancers/decliners within the sector's scan universe tonight" cannot be computed in this stage,
+# and it took actually looking at the two candidate tables to find out:
+#
+#   · `scan_result` holds only the preset MATCHES, not the universe. A breadth count over the names
+#     that matched a scan is not the sector's breadth — NEAR_52W_HIGH alone skews it advancing —
+#     and it would have been a confidently wrong number wearing a computed number's clothes. That is
+#     the worst thing this pipeline can publish, because the gate would then CERTIFY it.
+#   · `price_bar` holds only the SERVED symbols: 15 ETFs plus the watchlist. There is no per-sector
+#     stock population in it to count.
+#
+# The per-symbol returns for the whole universe exist in exactly one place — the in-memory lake,
+# during the full nightly — and the newsdesk never sees it (see the note above the depth readers).
+# So the honest options are to thread the lake into the newsdesk seam, or to store a per-sector
+# breadth in its own column. Appendix B already ruled on the second: "if PD7 discovers it needs one
+# more column, it lands with its OWN migration and a DECISIONS line, never by widening this one
+# silently." A second migration is a deliberate act, not something a long phase slips in at its end.
+#
+# So the stat is ABSENT, the narrator has one less word, and nothing invents a number — which is
+# 9.2's own closing rule turned on 9.2's own premise. Booked for PD8 (Q-PD7-1).
+
+
 def _read_moves(conn, run_date: date) -> dict[str, TickerMove]:
     """
     Tonight's price evidence, per symbol — the only input to the significance formula's magnitude
@@ -848,6 +964,42 @@ def _build_front_page(settings: Settings, conn, run_date: date) -> Callable[[], 
         if not media_base:
             status["news-images"] = "not_configured"
 
+        # THE DEPTH BLOCK (PD7, 9.2), built for the top-8 clusters ONLY — the budget is a budget, and
+        # a stat block costs prompt tokens whether or not the model uses it.
+        deep = night.deep_clusters
+        deep_symbols = [symbol for cluster in deep for symbol in cluster.tickers]
+        bars = _read_depth_bars(conn, deep_symbols)
+        history = _read_cluster_history(conn, run_date, deep_symbols)
+        calendar_rows = _read_calendar_ahead(conn, run_date)
+        refs_by_key = {ref.key: ref for ref in build_calendar_refs(calendar_rows)}
+
+        depth_stats: dict[str, list] = {}
+        cluster_calendar: dict[str, list] = {}
+        for cluster in deep:
+            depths = [
+                build_ticker_depth(
+                    symbol,
+                    bars.get(symbol, []),
+                    ret1=getattr(moves.get(symbol), "ret1", None),
+                    atr14_pct=getattr(moves.get(symbol), "atr14_pct", None),
+                )
+                for symbol in cluster.tickers
+            ]
+            depth_stats[cluster.id] = [
+                *build_depth_stats(depth for depth in depths if depth.any_measure()),
+                *build_cluster_stats(
+                    cluster.id,
+                    sources=cluster.sources,
+                    history7d=max((history.get(s, 0) for s in cluster.tickers), default=None) or None,
+                ),
+            ]
+            # A story is exposed to its own names' dated events AND to the market-wide ones (a CPI
+            # print lands on everything). The narrator picks at most two; it can author none.
+            keys = [*cluster.tickers, *(ref.key for ref in refs_by_key.values() if ref.code)]
+            calendar = [refs_by_key[key] for key in dict.fromkeys(keys) if key in refs_by_key]
+            cluster_calendar[cluster.id] = calendar
+            depth_stats[cluster.id].extend(build_calendar_stats(calendar))
+
         narration = _narrate_front_page(
             settings,
             night=night,
@@ -857,6 +1009,9 @@ def _build_front_page(settings: Settings, conn, run_date: date) -> Callable[[], 
             instruments=list(sectors_by_symbol),
             run_date=run_date,
             status=status,
+            deep_ids=[cluster.id for cluster in deep],
+            depth_stats=depth_stats,
+            calendar=cluster_calendar,
         )
 
         default_note = NoteDecision(
@@ -865,6 +1020,13 @@ def _build_front_page(settings: Settings, conn, run_date: date) -> Callable[[], 
             # Prose is written only for the narrated top of the page. Everywhere else this is an
             # honest null, and a null prints NOTHING on the card — never a placeholder (P9).
             verification={"narrated": False, "reason": "outside the narrated top of the page"},
+        )
+        model_meta = (
+            narration.model_meta(
+                model_extract=settings.model_extract, model_synth=settings.model_synth
+            )
+            if narration.usage
+            else None
         )
 
         cluster_rows = [
@@ -883,6 +1045,11 @@ def _build_front_page(settings: Settings, conn, run_date: date) -> Callable[[], 
                 "affected_note": narration.decisions.get(cluster.id, default_note).affected_note,
                 "extract": narration.extracts.get(cluster.id, {}),
                 "verification": narration.decisions.get(cluster.id, default_note).verification,
+                # PD7's three new columns. `context` is null for every cluster outside the top 8, and
+                # the verification's `sections` map says WHY — "out_of_budget", not "the gate held it".
+                "context": narration.decisions.get(cluster.id, default_note).context,
+                "watch": narration.decisions.get(cluster.id, default_note).watch,
+                "model_meta": model_meta,
                 # The articles behind the story, snapshotted. `sources` is only a count, and a
                 # corroboration count the reader cannot open is a claim they have to take on trust.
                 "articles": [
@@ -932,6 +1099,9 @@ def _narrate_front_page(
     instruments: list[str],
     run_date: date,
     status: dict[str, str],
+    deep_ids: list[str] | None = None,
+    depth_stats: dict[str, list] | None = None,
+    calendar: dict[str, list] | None = None,
 ) -> NarrationResult:
     """
     Write the front page's context lines — or don't, and say so (plan 7.5).
@@ -999,6 +1169,9 @@ def _narrate_front_page(
             run_date=run_date,
             model_extract=settings.model_extract,
             model_synth=settings.model_synth,
+            deep_ids=deep_ids or [],
+            depth_stats=depth_stats or {},
+            calendar=calendar or {},
         )
     except Exception as error:  # noqa: BLE001 — the narrator's outage is not the page's
         status["news-narration"] = "degraded"
@@ -1006,6 +1179,10 @@ def _narrate_front_page(
         return NarrationResult()
 
     status["news-narration"] = "ok"
+    # THE COST INSTRUMENT (9.5). Printed every night, from the API's own usage numbers, whether or
+    # not anyone is reading — because a budget nobody measures is a number somebody made up, and
+    # 0.2.3 made one up on purpose and said so ("measured at PD7's gate, not promised").
+    print(f"job_a: {result.cost_summary()}.")
     return result
 
 

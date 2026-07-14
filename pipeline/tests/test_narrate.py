@@ -250,13 +250,32 @@ def test_a_fabricated_number_deletes_the_whole_note() -> None:
 
 def test_a_note_with_no_numbers_at_all_publishes() -> None:
     """The best "why it matters" lines carry no figures — they name a mechanism. Nothing to verify
-    is not the same as nothing verified, and the gate must not confuse them."""
-    result = _gate(why="Regulatory clearance usually re-prices a whole segment, not one ticker.")
+    is not the same as nothing verified, and the gate must not confuse them.
+
+    AMENDED AT PD7. This test's sentence used to read "Regulatory clearance USUALLY re-prices a whole
+    segment" — and E4's new lexicon check correctly kills it, because an uncited "usually" is a
+    frequency claim with no base rate behind it. The RULE this test names is untouched and still
+    true; its example sentence was quietly making a second claim nobody had noticed. The frequency
+    half is now pinned by the test below.
+    """
+    result = _gate(why="Regulatory clearance re-prices a whole segment, not one ticker.")
 
     decision = result.decisions["c1"]
     assert decision.why_it_matters is not None
     assert decision.verification["narrated"] is True
     assert decision.verification["checked"] == 0
+
+
+def test_an_uncited_frequency_claim_deletes_the_note() -> None:
+    """E4, on the v1 note. The lexicon runs on EVERY prose section, not just the new ones — "the gate
+    extends, not relaxes" — so a "usually" with no computed stat behind it costs the note its line,
+    exactly as a fabricated number does. It is the same offence: a claim the pipeline cannot support."""
+    result = _gate(why="Regulatory clearance usually re-prices a whole segment, not one ticker.")
+
+    decision = result.decisions["c1"]
+    assert decision.why_it_matters is None
+    assert decision.verification["dropped"] is True
+    assert decision.verification["flags"][0]["kind"] == "frequency"
 
 
 def test_the_numbers_of_ANOTHER_cluster_are_not_a_source_for_this_one() -> None:
@@ -552,3 +571,325 @@ def test_the_model_is_TOLD_the_limit_it_is_being_held_to() -> None:
 
     assert str(WHY_MAX_CHARS) in system
     assert str(AFFECTED_MAX_CHARS) in system
+
+
+# ===== PD7: the v2 insight — sections, not license (plan 9.3, 9.8) =====
+#
+# The gate EXTENDS, it does not relax. The v1 pair (why_it_matters + affected_note) stays COUPLED —
+# decoupling it would let a note that is dropped whole today start publishing half of itself, which
+# is a relaxation by any reading. The NEW sections are gated independently, because there was nothing
+# there before to relax: E3's guard names exactly this — "that section, AND ONLY THAT SECTION, is
+# dropped and counted".
+
+from briefing.depth import CalendarRef  # noqa: E402
+from briefing.stats import build_calendar_stats, build_depth_stats  # noqa: E402
+from briefing.depth import Position52w, TickerDepth  # noqa: E402
+from newsdesk.narrate import (  # noqa: E402
+    CONTEXT_MAX_CHARS,
+    NOTE_VERSION,
+    Usage,
+    notes_json_schema,
+)
+
+_CAL = CalendarRef(
+    stat_id="cal:BKR:next", key="BKR", code=None, kind="earnings",
+    title="BKR earnings", date=date(2026, 7, 15),
+)
+
+
+def _deep_cluster(cluster_id: str = "c1") -> NoteInput:
+    """A cluster inside the depth budget, carrying its own stat block and its own calendar row."""
+    depth = TickerDepth(
+        symbol="BKR",
+        pos52w=Position52w(pct=63.2, low=142.30, high=205.80),
+        move_atr=2.8,
+        from50d=4.2,
+    )
+    return NoteInput(
+        cluster_id=cluster_id,
+        headline="Baker Hughes wins E.U. approval for Chart Industries deal",
+        event_type="ma",
+        sectors=["Energy"],
+        tickers=("BKR",),
+        sources=2,
+        extract=_extract(),
+        deep=True,
+        stats=tuple(build_depth_stats([depth]) + build_calendar_stats([_CAL])),
+        calendar=(_CAL,),
+    )
+
+
+def _gate_v2(*, why=None, affected=None, context=None, watch=(), cluster=None):
+    note = ClusterNote(
+        cluster_id="c1", why_it_matters=why, affected_note=affected,
+        context=context, watch=list(watch), citations=["a1"],
+    )
+    return gate_notes(
+        [note],
+        clusters=[cluster if cluster is not None else _deep_cluster()],
+        stats=_stats(),
+        instruments=["BKR"],
+        run_date=RUN_DATE,
+    )
+
+
+# ----- the schema round-trip -----
+
+def test_the_v2_schema_survives_the_api_and_parses_back() -> None:
+    """`api_schema` strips what the structured-output layer forbids (maxLength), and the response
+    must still parse back into the model that DOES enforce it. That gap is where PD-era production
+    threw away every note the narrator wrote, for breaking a rule it had never been given."""
+    schema = notes_json_schema()
+    fields = schema["$defs"]["ClusterNote"]["properties"]
+
+    assert "context" in fields and "watch" in fields
+    # The cap lives in pydantic, NOT in the wire schema — `api_schema` strips maxLength because the
+    # structured-output layer rejects it. Which is exactly why the cap is also stated in the PROMPT:
+    # it is the only place the model can learn a rule the schema is not allowed to carry.
+    assert "maxLength" not in str(fields["context"]), "the API rejects maxLength; it must be stripped"
+
+    note = ClusterNote.model_validate(
+        {"cluster_id": "c1", "context": "Two sentences.", "watch": ["cal:BKR:next"]}
+    )
+    assert note.context == "Two sentences."
+    assert note.watch == ["cal:BKR:next"]
+
+
+def test_a_context_longer_than_its_cap_is_not_a_context() -> None:
+    with pytest.raises(ValidationError):
+        ClusterNote(cluster_id="c1", context="x" * (CONTEXT_MAX_CHARS + 1))
+
+
+# ----- the context section, gated on its own -----
+
+def test_a_context_quoting_the_depth_registry_publishes() -> None:
+    """The whole point of 9.2: the narrator's vocabulary grew because the PIPELINE computed more."""
+    result = _gate_v2(
+        why="A cleared deal this size re-prices the segment.",
+        context=(
+            "The move is 2.8x its normal daily range (ATR14). BKR sits 63.2% of the way up its "
+            "52-week range, between 142.30 and 205.80, and 4.2% above its 50-day average."
+        ),
+    )
+
+    decision = result.decisions["c1"]
+    assert decision.context is not None
+    assert decision.verification["sections"]["context"]["status"] == "narrated"
+    assert decision.verification["note_version"] == NOTE_VERSION
+
+
+def test_a_fabricated_number_in_context_drops_THAT_SECTION_AND_ONLY_THAT_SECTION() -> None:
+    """E3's guard, verbatim. The why-line is a DIFFERENT claim, checked separately and true — killing
+    it because a longer, harder section failed would make adding depth a regression for the feed,
+    which renders that why-line on every card."""
+    result = _gate_v2(
+        why="A cleared deal this size re-prices the segment.",
+        context="BKR sits 91.7% of the way up its 52-week range.",  # 91.7 is nobody's number
+    )
+
+    decision = result.decisions["c1"]
+    assert decision.context is None
+    assert decision.why_it_matters is not None, "the sibling section was killed too"
+    assert decision.verification["sections"]["context"]["status"] == "dropped"
+    assert decision.verification["sections"]["why_it_matters"]["status"] == "narrated"
+    assert result.sections_dropped == 1
+    assert result.narrated == 1, "the cluster still published something"
+
+
+def test_an_uncited_frequency_adverb_in_context_drops_the_context() -> None:
+    """E4 on the new section. No stat in the sentence, no permission to say "usually"."""
+    result = _gate_v2(context="Deals of this kind usually re-price the whole segment.")
+
+    decision = result.decisions["c1"]
+    assert decision.context is None
+    assert decision.verification["sections"]["context"]["flags"][0]["kind"] == "frequency"
+
+
+def test_an_advice_verb_in_context_drops_the_context() -> None:
+    result = _gate_v2(context="Investors should buy the dip on any weakness here.")
+
+    decision = result.decisions["c1"]
+    assert decision.context is None
+    assert decision.verification["sections"]["context"]["flags"][0]["kind"] == "advice"
+
+
+def test_a_context_on_a_cluster_OUTSIDE_the_depth_budget_never_publishes() -> None:
+    """The budget is a budget. 0.2.3 pays for the top 8; a ninth cluster's context was not bought,
+    and a model that volunteers one does not get to spend money nobody allocated."""
+    result = _gate_v2(
+        why="A cleared deal this size re-prices the segment.",
+        context="The move is 2.8x its normal daily range (ATR14).",
+        cluster=_cluster(),  # deep=False
+    )
+
+    decision = result.decisions["c1"]
+    assert decision.context is None
+    assert decision.verification["sections"]["context"]["status"] == "out_of_budget"
+    assert decision.why_it_matters is not None
+
+
+# ----- watch: verified structurally -----
+
+def test_a_watch_ref_that_resolves_is_snapshotted_as_a_ROW() -> None:
+    """Not a bare ref. The story page renders from this without a second query, and it can therefore
+    never disagree with the feed about what is scheduled — the `articles` argument, again."""
+    result = _gate_v2(watch=["cal:BKR:next"])
+
+    watch = result.decisions["c1"].watch
+    assert watch == [
+        {
+            "stat_id": "cal:BKR:next", "key": "BKR", "code": None,
+            "kind": "earnings", "title": "BKR earnings", "date": "2026-07-15",
+        }
+    ]
+
+
+def test_a_DANGLING_watch_ref_is_dropped_and_counted() -> None:
+    """THE RULE THAT MAKES E4 STRUCTURAL. The narrator may SELECT a calendar id; it may never author
+    one. An id that resolves to no row this cluster was shown is not a calendar event — it is the
+    model writing a date — and it never reaches the page."""
+    result = _gate_v2(watch=["cal:BKR:next", "cal:INVENTED:next"])
+
+    watch = result.decisions["c1"].watch
+    assert [entry["stat_id"] for entry in watch] == ["cal:BKR:next"]
+    assert result.decisions["c1"].verification["sections"]["watch"]["dangling"] == [
+        "cal:INVENTED:next"
+    ]
+    assert result.sections_dropped == 1
+
+
+def test_the_watch_list_is_capped_at_two() -> None:
+    """A "what's coming" list of six is a diary, not a signal."""
+    extra = CalendarRef(
+        stat_id="cal:CPI:next", key="CPI", code="CPI", kind="macro",
+        title="CPI print", date=date(2026, 7, 16),
+    )
+    third = CalendarRef(
+        stat_id="cal:FOMC:next", key="FOMC", code="FOMC", kind="macro",
+        title="FOMC minutes", date=date(2026, 7, 17),
+    )
+    cluster = _deep_cluster()
+    cluster = NoteInput(**{**cluster.__dict__, "calendar": (_CAL, extra, third)})
+
+    result = gate_notes(
+        [ClusterNote(cluster_id="c1", watch=["cal:BKR:next", "cal:CPI:next", "cal:FOMC:next"])],
+        clusters=[cluster], stats=_stats(), instruments=["BKR"], run_date=RUN_DATE,
+    )
+
+    assert len(result.decisions["c1"].watch) == 2
+
+
+def test_a_watch_on_a_cluster_outside_the_budget_never_publishes() -> None:
+    result = _gate_v2(watch=["cal:BKR:next"], cluster=_cluster())
+
+    assert result.decisions["c1"].watch == []
+    assert result.decisions["c1"].verification["sections"]["watch"]["status"] == "out_of_budget"
+
+
+# ----- the silent case, and the counts -----
+
+def test_a_narrator_with_nothing_to_say_in_ANY_section_is_silent_not_dropped() -> None:
+    result = _gate_v2()
+
+    decision = result.decisions["c1"]
+    assert result.silent == 1
+    assert result.dropped == 0
+    assert all(
+        section["status"] == "silent" for section in decision.verification["sections"].values()
+    )
+
+
+def test_the_cleared_list_covers_every_section_that_survived() -> None:
+    """Q-PD5-1, on the news side. The story page emphasizes a figure in the context prose only if it
+    is in HERE — the gate's own record of what it checked and cleared."""
+    result = _gate_v2(
+        why="The $13.6B deal clears.",
+        context="The move is 2.8x its normal daily range (ATR14).",
+    )
+
+    verification = result.decisions["c1"].verification
+    assert "$13.6B" in verification["cleared"]
+    assert "2.8x" in verification["cleared"]
+    assert "2.8x" in verification["sections"]["context"]["cleared"]
+
+
+def test_a_dropped_section_contributes_NOTHING_to_the_allow_list() -> None:
+    """An allow-list built from prose that never published would license the app to emphasize a
+    figure the reader cannot see — and, worse, would carry the numbers out of a section the gate
+    threw away."""
+    result = _gate_v2(
+        why="The $13.6B deal clears.",
+        context="The move is 2.8x its normal range, and it sits 91.7% up its 52-week range.",
+    )
+
+    verification = result.decisions["c1"].verification
+    assert verification["sections"]["context"]["status"] == "dropped"
+    assert "2.8x" not in verification["cleared"], "a dropped section leaked into the allow-list"
+    assert "$13.6B" in verification["cleared"]
+
+
+# ----- 9.5: the cost instrument -----
+
+def test_usage_is_priced_from_the_api_s_own_numbers() -> None:
+    usage = Usage(calls=1, in_tokens=1_000_000, out_tokens=1_000_000)
+
+    assert usage.dollars("claude-haiku-4-5") == pytest.approx(1.00 + 5.00)
+    assert usage.dollars("claude-sonnet-5") == pytest.approx(3.00 + 15.00)
+
+
+def test_a_model_with_no_price_costs_a_visible_nothing() -> None:
+    """A guessed rate is a lie the reader cannot check. A missing one is visibly missing."""
+    assert Usage(calls=1, in_tokens=1_000_000).dollars("claude-unknown-9") == 0.0
+
+
+def test_run_narration_meters_BOTH_stages_from_the_api_s_usage_block() -> None:
+    """The metering proxy sees every call either stage makes, and `briefing/extract.py` never learns
+    it is being counted — which is the right outcome: a module that reads articles should not also
+    be a ledger."""
+
+    class _Usage:
+        def __init__(self, i, o):
+            self.input_tokens = i
+            self.output_tokens = o
+
+    class _MeteredMessage(_Message):
+        def __init__(self, text, i, o):
+            super().__init__(text)
+            self.usage = _Usage(i, o)
+
+    class _Client:
+        def __init__(self):
+            self.messages = self
+            self.calls = 0
+
+        def create(self, **kwargs):
+            self.calls += 1
+            if kwargs["model"] == "claude-haiku-4-5":
+                return _MeteredMessage(_EXTRACT_JSON, 500, 100)
+            return _MeteredMessage(_noteset_json(), 2000, 400)
+
+    story = Story(
+        cluster_id="c1", headline="H", event_type="ma", sectors=["Energy"],
+        tickers=("BKR",), sources=2,
+        article={"id": "a1", "headline": "H", "snippet": "s", "url": "u", "tickers": ["BKR"]},
+    )
+    result = run_narration(
+        _Client(), stage_a=[story], stage_b_ids=["c1"],
+        moves={"BKR": TickerMove(symbol="BKR", ret1=0.034, atr14_pct=0.02)},
+        rvol={"BKR": 1.2}, instruments=["BKR"], run_date=RUN_DATE,
+        model_extract="claude-haiku-4-5", model_synth="claude-sonnet-5",
+    )
+
+    assert result.usage["claude-haiku-4-5"].in_tokens == 500
+    assert result.usage["claude-sonnet-5"].out_tokens == 400
+    meta = result.model_meta(model_extract="claude-haiku-4-5", model_synth="claude-sonnet-5")
+    assert meta["note_version"] == NOTE_VERSION
+    assert meta["usage"]["claude-sonnet-5"]["out_tokens"] == 400
+    assert "$" in result.cost_summary()
+
+
+_EXTRACT_JSON = (
+    '{"doc_id": "a1", "headline_neutral": "Baker Hughes wins EU approval", '
+    '"summary": "The Commission cleared it.", "tickers": ["BKR"], "event_type": "ma", '
+    '"sentiment": 0.2, "key_numbers": [{"value_str": "$13.6B", "what": "deal value"}], "quote": null}'
+)

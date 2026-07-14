@@ -38,7 +38,10 @@ from typing import Any, Callable, Iterable
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from briefing.depth import CalendarRef
 from briefing.extract import sync_extract
+from config import price_per_mtok
+from briefing.lexicon import lexicon_flags
 from briefing.schema import ExtractResult, api_schema
 from briefing.stats import build_ticker_stats
 from briefing.verify import Stat, build_source_set, check_text
@@ -47,6 +50,21 @@ from briefing.verify import Stat, build_source_set, check_text
 # schema as a hint and pydantic treats it as a contract.
 WHY_MAX_CHARS = 160
 AFFECTED_MAX_CHARS = 120
+
+# PD7 (plan 9.3): the v2 insight's two new sections.
+#
+# `context` is 2–3 mechanical sentences, so it gets ~3x the room of a why-line — enough to place the
+# move against the name's own volatility, its 52-week position and its sector's night, and no more.
+# A cap is a promise about the shape of the thing: 420 characters cannot hold an essay, and the story
+# page's layout is built for a paragraph, not a column.
+CONTEXT_MAX_CHARS = 420
+# At most two dated facts. A "what's coming" list of six is a diary, not a signal, and the reader is
+# being told what is SCHEDULED — a fact with a date — never what to do about it (E4).
+WATCH_MAX_REFS = 2
+
+# The note schema's version, stamped into model_meta so a row can always say which contract wrote it.
+# A pre-PD7 row carries no version at all, and that absence is itself the answer (v1).
+NOTE_VERSION = 2
 
 # One note per story for the whole page; the page is capped at 20 stories upstream.
 #
@@ -93,18 +111,45 @@ _SYSTEM = (
     # note the narrator wrote was thrown away for breaking a rule it had never been given.
     f"HARD LIMITS: why_it_matters is at most {WHY_MAX_CHARS} characters and affected_note at most "
     f"{AFFECTED_MAX_CHARS} characters, INCLUDING spaces. A note that runs past its limit is dropped "
-    "and the story publishes with no note at all, so a shorter true sentence always beats a longer one."
+    "and the story publishes with no note at all, so a shorter true sentence always beats a longer one. "
+    # --- PD7, the v2 sections (Appendix C, verbatim contract) ---
+    #
+    # DEPTH IS PERMISSION TO SAY MORE, NOT PERMISSION TO KNOW MORE. Every rule the one-liner obeyed
+    # applies here unchanged; the only thing that grew is the VOCABULARY, and it grew because the
+    # pipeline computed more (9.2), not because the model was trusted more.
+    "SOME clusters are marked DEEP and carry a per-ticker stat block and dated calendar rows. For "
+    f"those, ALSO write: context (at most {CONTEXT_MAX_CHARS} characters) — 2 to 3 mechanical "
+    "sentences placing tonight's move: its scale against the name's OWN normal daily range, where "
+    "the name sits in its 52-week range, its recent streak or distance from its 50-day average, what "
+    "its sector did tonight, and how often this story has recurred this week. EVERY number in it "
+    "must appear VERBATIM in the stats you were given and be cited by its stat_id. "
+    f"AND: watch (at most {WATCH_MAX_REFS} entries) — the stat_ids of already-scheduled calendar "
+    "events a reader should know are dated. You may ONLY SELECT ids from the calendar rows provided "
+    "to you; you may NEVER write a calendar entry, a threshold, or a level. "
+    "RULES FOR EVERY SECTION, without exception: no advice verbs (buy, sell, should, add, trim, take "
+    "profits, accumulate, avoid); no directional forecasts of any kind; frequency words (usually, "
+    "often, rarely, typically, tends) ONLY in a sentence that also cites a computed stat_id — an "
+    "uncited 'usually' is a probability claim with no evidence and it will be deleted. If the inputs "
+    "give you nothing beyond the headline, return null. An honest null beats padding."
 )
 
 
 class ClusterNote(BaseModel):
-    """One story's context line, as the model returns it — before the gate has looked at it."""
+    """One story's insight, as the model returns it — before the gate has looked at it.
+
+    v2 (PD7) adds `context` and `watch`. Both are OPTIONAL at the schema level even for the deep
+    clusters, because "I had nothing to add" must remain a legal answer at every level of depth —
+    the moment a section becomes mandatory, the model starts padding to fill it, and padding is
+    exactly what the honest-null rule exists to prevent.
+    """
 
     model_config = ConfigDict(extra="forbid")
 
     cluster_id: str = Field(min_length=1)
     why_it_matters: str | None = Field(default=None, max_length=WHY_MAX_CHARS)
     affected_note: str | None = Field(default=None, max_length=AFFECTED_MAX_CHARS)
+    context: str | None = Field(default=None, max_length=CONTEXT_MAX_CHARS)
+    watch: list[str] = Field(default_factory=list)
     citations: list[str] = Field(default_factory=list)
 
 
@@ -116,10 +161,74 @@ class NoteSet(BaseModel):
     notes: list[ClusterNote] = Field(default_factory=list)
 
 
+@dataclass
+class Usage:
+    """What one model actually cost, from the API's OWN usage fields. Never estimated, never counted
+    by us — a token count this pipeline computed for itself would be a guess with a decimal point."""
+
+    calls: int = 0
+    in_tokens: int = 0
+    out_tokens: int = 0
+
+    def dollars(self, model: str) -> float:
+        """The bill, in dollars. The only arithmetic here; the token counts are measured."""
+        price_in, price_out = price_per_mtok(model)
+        return (self.in_tokens / 1e6) * price_in + (self.out_tokens / 1e6) * price_out
+
+    def to_json(self) -> dict:
+        return {"calls": self.calls, "in_tokens": self.in_tokens, "out_tokens": self.out_tokens}
+
+
+class _MeteredClient:
+    """A thin proxy over the Anthropic client that records the usage of every call made through it.
+
+    Why a proxy rather than threading a counter through both stages: BOTH stages call
+    `client.messages.create(model=...)` — Stage A once per article in `briefing/extract.py`, Stage B
+    once for the whole page here — so ONE interception point sees the entire night's spend, and
+    neither stage has to learn about accounting. `extract.py` is untouched by 9.5, which is the right
+    outcome: a module that reads articles should not also be a ledger.
+
+    It buckets by the `model` argument, so the extract model and the synth model are priced apart
+    without anyone having to tell it which is which.
+
+    It is deliberately forgiving of a response with no `usage` block: the fake clients in the test
+    suite return bare objects, and a metering wrapper that CRASHED the narration stage over a missing
+    accounting field would be a cost instrument that takes the front page down. The prose is the least
+    important thing in the pipeline; its bookkeeping is even less important than that.
+    """
+
+    def __init__(self, inner: Any, usage: dict[str, Usage]) -> None:
+        self._inner = inner
+        self.messages = _MeteredMessages(inner.messages, usage)
+
+
+class _MeteredMessages:
+    def __init__(self, inner: Any, usage: dict[str, Usage]) -> None:
+        self._inner = inner
+        self._usage = usage
+
+    def create(self, **kwargs: Any) -> Any:
+        response = self._inner.create(**kwargs)
+        model = str(kwargs.get("model", "unknown"))
+        bucket = self._usage.setdefault(model, Usage())
+        bucket.calls += 1
+        reported = getattr(response, "usage", None)
+        if reported is not None:
+            bucket.in_tokens += int(getattr(reported, "input_tokens", 0) or 0)
+            bucket.out_tokens += int(getattr(reported, "output_tokens", 0) or 0)
+        return response
+
+
 @dataclass(frozen=True)
 class NoteInput:
     """What the narrator is allowed to know about one story. Note what is absent: the significance
-    score, its rank, and its position on the page."""
+    score, its rank, and its position on the page.
+
+    `deep` says whether this cluster is inside the depth budget (top 8) and therefore gets the v2
+    treatment. `stats` is this cluster's OWN stat block and `calendar` its OWN dated rows — both are
+    per-cluster, because the gate is per-cluster: a figure lifted from another story is a real number
+    in the world and still a fabrication on THIS card.
+    """
 
     cluster_id: str
     headline: str
@@ -128,15 +237,27 @@ class NoteInput:
     tickers: tuple[str, ...]
     sources: int
     extract: ExtractResult | None
+    deep: bool = False
+    stats: tuple[Stat, ...] = ()
+    calendar: tuple[CalendarRef, ...] = ()
 
 
 @dataclass(frozen=True)
 class NoteDecision:
-    """What actually publishes for one cluster, and the record of why."""
+    """What actually publishes for one cluster, and the record of why.
+
+    `verification` carries a `sections` map in v2 — a per-field verdict of narrated / dropped /
+    silent / out_of_budget. That map is the whole reason the story page can tell the reader WHY a
+    section is absent instead of guessing, and it exists because of the N5 lesson: a section the gate
+    deleted and a section the narrator had nothing to say in print the identical nothing, and no
+    screen can tell them apart unless the pipeline writes down which one it was.
+    """
 
     why_it_matters: str | None
     affected_note: str | None
     verification: dict
+    context: str | None = None
+    watch: list[dict] = field(default_factory=list)
 
 
 @dataclass
@@ -156,10 +277,17 @@ class NarrationResult:
     narrated: int = 0
     dropped: int = 0
     silent: int = 0
+    # PD7: the SECTION-level instrument. A v2 note has four sections and they are gated separately, so
+    # the cluster-level counts above can no longer see everything — a story whose `context` the gate
+    # deleted still counts as `narrated` if its why-line survived, and that is correct, and it is also
+    # exactly how a broken depth stage would hide. This counter is what makes the deletion visible.
+    sections_dropped: int = 0
     extracted: int = 0
     extract_attempted: int = 0
     extract_timed_out: bool = False
     narration_failed: bool = False
+    # What the models actually cost tonight, from the API's OWN usage fields, bucketed by model (9.5).
+    usage: dict[str, "Usage"] = field(default_factory=dict)
 
     def summary(self) -> str:
         """One plain-English line for the night's log. It states what was attempted as well as what
@@ -170,11 +298,51 @@ class NarrationResult:
                 f"narration: {self.extracted}/{self.extract_attempted} extracted{gave_up}, "
                 f"the narrator failed its schema twice — the page publishes without prose"
             )
+        deep = sum(
+            1 for decision in self.decisions.values() if decision.context is not None
+        )
         return (
             f"narration: {self.extracted}/{self.extract_attempted} extracted{gave_up}, "
             f"{self.narrated} notes written, {self.dropped} dropped by the gate, "
-            f"{self.silent} left blank by the narrator"
+            f"{self.silent} left blank by the narrator; "
+            f"{deep} context sections published, {self.sections_dropped} sections dropped"
         )
+
+    def cost_summary(self) -> str:
+        """The night's LLM bill, in tokens and dollars, per model (9.5).
+
+        MEASURED, NEVER ESTIMATED. The token counts come from the API's own `usage` block on each
+        response; only the dollars are arithmetic, and the per-MTok prices they use are constants
+        with a provenance comment in config.py. Plan 0.2.3 priced this phase's depth delta at
+        ≈$0.03–0.06/night on top of ~$0.33 and explicitly said "measured at PD7's gate, not
+        promised" — so this line is what does the measuring, every single night, forever.
+        """
+        if not self.usage:
+            return "news LLM cost: nothing was spent (no model call ran tonight)"
+        parts = []
+        total = 0.0
+        for model, usage in sorted(self.usage.items()):
+            dollars = usage.dollars(model)
+            total += dollars
+            parts.append(
+                f"{model}: {usage.calls} calls, {usage.in_tokens:,} in / "
+                f"{usage.out_tokens:,} out = ${dollars:.4f}"
+            )
+        return f"news LLM cost: ${total:.4f} — " + " · ".join(parts)
+
+    def model_meta(self, *, model_extract: str, model_synth: str) -> dict:
+        """The per-night provenance block stamped onto every cluster this run wrote (9.5).
+
+        The story page's provenance footer has been HARDCODING "Claude Haiku" — a claim the row could
+        not support and nobody could check. Now the row carries what actually ran.
+        """
+        return {
+            "model_extract": model_extract,
+            "model_synth": model_synth,
+            "extract_count": self.extracted,
+            "note_version": NOTE_VERSION,
+            "usage": {model: usage.to_json() for model, usage in sorted(self.usage.items())},
+        }
 
 
 def notes_json_schema() -> dict:
@@ -244,9 +412,11 @@ def build_notes_prompt(clusters: list[NoteInput], stats: list[Stat]) -> tuple[st
     for cluster in clusters:
         tickers = ", ".join(cluster.tickers) or "(none named)"
         sectors = ", ".join(cluster.sectors) or "(none)"
+        depth_marker = " | DEEP (also write context + watch)" if cluster.deep else ""
         lines.append(
             f"- cluster_id={cluster.cluster_id} | {cluster.event_type} | tickers={tickers} | "
             f"sectors={sectors} | outlets={cluster.sources} | headline={cluster.headline}"
+            f"{depth_marker}"
         )
         extract = cluster.extract
         if extract is None:
@@ -254,11 +424,28 @@ def build_notes_prompt(clusters: list[NoteInput], stats: list[Stat]) -> tuple[st
             # narrator with its headline and nothing else. The model may still write from that — or
             # honestly return null.
             lines.append("    (no extract — write from the headline alone, or return null)")
-            continue
-        numbers = "; ".join(f"{kn.value_str} ({kn.what})" for kn in extract.key_numbers) or "(none)"
-        lines.append(
-            f"    doc_id={extract.doc_id} | numbers={numbers} | summary={extract.summary}"
-        )
+        else:
+            numbers = "; ".join(f"{kn.value_str} ({kn.what})" for kn in extract.key_numbers) or "(none)"
+            lines.append(
+                f"    doc_id={extract.doc_id} | numbers={numbers} | summary={extract.summary}"
+            )
+
+        # The per-cluster depth block. Only a DEEP cluster gets one, and it sits UNDER its story
+        # rather than in the shared table below — a stat about SMCI's 52-week range has no business
+        # being reachable from a note about the Fed, and the gate would refuse it anyway (it checks
+        # each note against its OWN cluster's sources). Putting it here makes the prompt say the same
+        # thing the gate enforces, which is the only way the model can succeed on purpose.
+        if cluster.deep:
+            for stat in cluster.stats:
+                label = f" ({stat.label})" if stat.label else ""
+                lines.append(f"    stat_id={stat.stat_id} = {stat.value}{label}")
+            for ref in cluster.calendar:
+                lines.append(
+                    f"    cal_id={ref.stat_id} = {ref.date.isoformat()} ({ref.title}) "
+                    f"— SELECT this id in `watch`; never write your own"
+                )
+            if not cluster.stats and not cluster.calendar:
+                lines.append("    (no computed depth for this story — return context as null)")
 
     lines.append("")
     lines.append("STATS (cite by stat_id; copy the value verbatim):")
@@ -304,64 +491,202 @@ def gate_notes(
             # not a story, and it never reaches the publish transaction.
             continue
 
-        if note.why_it_matters is None and note.affected_note is None:
+        if not any((note.why_it_matters, note.affected_note, note.context, note.watch)):
             # An honest null: "nothing to add beyond the headline". The system working, not failing.
-            result.decisions[note.cluster_id] = NoteDecision(
-                why_it_matters=None,
-                affected_note=None,
-                verification={"narrated": False, "reason": "the narrator had nothing to add"},
-            )
-            result.silent += 1
-            continue
-
-        sources = build_source_set(
-            extracts=[cluster.extract] if cluster.extract is not None else [],
-            stats=stats,
-            instruments=instruments,
-            run_date=run_date,
-        )
-
-        flags: list = []
-        checked = 0
-        for location, text in (
-            ("why_it_matters", note.why_it_matters),
-            ("affected_note", note.affected_note),
-        ):
-            if not text:
-                continue
-            found, count = check_text(sources, text, location=location)
-            flags.extend(found)
-            checked += count
-
-        if flags:
             result.decisions[note.cluster_id] = NoteDecision(
                 why_it_matters=None,
                 affected_note=None,
                 verification={
                     "narrated": False,
-                    "dropped": True,
-                    "reason": "an entity in the note traced back to no source",
-                    "checked": checked,
-                    "citations": list(note.citations),
-                    "flags": [flag.to_json() for flag in flags],
+                    "note_version": NOTE_VERSION,
+                    "reason": "the narrator had nothing to add",
+                    "sections": {
+                        name: {"status": "silent"}
+                        for name in ("why_it_matters", "affected_note", "context", "watch")
+                    },
                 },
             )
-            result.dropped += 1
+            result.silent += 1
             continue
 
-        result.decisions[note.cluster_id] = NoteDecision(
-            why_it_matters=note.why_it_matters,
-            affected_note=note.affected_note,
-            verification={
-                "narrated": True,
-                "checked": checked,
-                "citations": list(note.citations),
-                "flags": [],
-            },
+        # THE SOURCES ARE PER-CLUSTER, and in v2 that now includes the cluster's OWN depth stats.
+        # A figure lifted from another story is a real number in the world and still a fabrication on
+        # this card — the same shape as the VHI bug, where every number on the card was true and the
+        # card was a lie.
+        cluster_stats = [*stats, *cluster.stats]
+        sources = build_source_set(
+            extracts=[cluster.extract] if cluster.extract is not None else [],
+            stats=cluster_stats,
+            instruments=instruments,
+            run_date=run_date,
         )
-        result.narrated += 1
+        # E4's frequency rule is earned by a COMPUTED stat, never by a number the article happened to
+        # contain — so the lexicon gets a source set built from the registry ALONE. See lexicon.py.
+        stat_sources = build_source_set(
+            extracts=[], stats=cluster_stats, instruments=[], run_date=run_date
+        )
+
+        sections: dict[str, dict] = {}
+        flags: list = []
+        cleared: list[str] = []
+        checked = 0
+
+        def review(location: str, text: str | None) -> tuple[list, list[str], int]:
+            """Run BOTH gates over one prose section: the number gate and E4's lexicon."""
+            if not text:
+                return [], [], 0
+            numbers = check_text(sources, text, location=location)
+            words = lexicon_flags(text, stat_sources=stat_sources, location=location)
+            return [*numbers.flags, *words], list(numbers.cleared), numbers.checked
+
+        # ----- the v1 pair: why_it_matters + affected_note, still COUPLED -----
+        #
+        # 9.3's rule is that THE GATE EXTENDS, NOT RELAXES, and that decides this. Decoupling the
+        # pair would be a RELAXATION: a note that is dropped whole today would start publishing half
+        # of itself. The N5 argument that coupled them stands untouched — they are one thought (a
+        # mechanism and its spillover clause), and a model that invented a figure in one has not
+        # earned the benefit of the doubt in the other. What v2 adds is new sections, and a new
+        # section may be gated independently without relaxing anything, because there was nothing
+        # there before.
+        pair_flags: list = []
+        pair_cleared: list[str] = []
+        for location, text in (
+            ("why_it_matters", note.why_it_matters),
+            ("affected_note", note.affected_note),
+        ):
+            found, cleared_here, count = review(location, text)
+            pair_flags.extend(found)
+            pair_cleared.extend(cleared_here)
+            checked += count
+
+        pair_dropped = bool(pair_flags)
+        why = None if pair_dropped else note.why_it_matters
+        affected = None if pair_dropped else note.affected_note
+        for location, text in (("why_it_matters", why), ("affected_note", affected)):
+            if pair_dropped:
+                sections[location] = {"status": "dropped"}
+            elif text:
+                sections[location] = {"status": "narrated"}
+            else:
+                sections[location] = {"status": "silent"}
+        if pair_dropped:
+            flags.extend(pair_flags)
+            result.sections_dropped += 1
+        else:
+            cleared.extend(pair_cleared)
+
+        # ----- context: a NEW section, gated on its own (E3's guard names this exactly:
+        # "that section — and only that section — is dropped and counted") -----
+        context: str | None = None
+        if not cluster.deep:
+            # The depth budget is a budget. A context section on a cluster outside the top 8 was not
+            # paid for and does not publish, even if the model volunteered one.
+            sections["context"] = {"status": "out_of_budget"}
+        elif not note.context:
+            sections["context"] = {"status": "silent"}
+        else:
+            found, cleared_here, count = review("context", note.context)
+            checked += count
+            if found:
+                flags.extend(found)
+                sections["context"] = {
+                    "status": "dropped",
+                    "checked": count,
+                    "flags": [flag.to_json() for flag in found],
+                }
+                result.sections_dropped += 1
+            else:
+                context = note.context
+                cleared.extend(cleared_here)
+                sections["context"] = {
+                    "status": "narrated",
+                    "checked": count,
+                    # The allow-list for THIS section's prose (Q-PD5-1). The story page emphasizes a
+                    # figure only if it is in here.
+                    "cleared": cleared_here,
+                }
+
+        # ----- watch: verified STRUCTURALLY, not textually -----
+        #
+        # There is no prose to check. The narrator SELECTED ids, and the only question is whether each
+        # one resolves to a calendar row this cluster was actually shown. A dangling ref is dropped —
+        # never rendered, never guessed at. This is what makes "the LLM cannot author a calendar
+        # entry" a property of the system rather than a request in a prompt.
+        watch: list[dict] = []
+        if not cluster.deep:
+            sections["watch"] = {"status": "out_of_budget"}
+        else:
+            allowed = {ref.stat_id: ref for ref in cluster.calendar}
+            dangling: list[str] = []
+            for ref_id in note.watch:
+                if len(watch) >= WATCH_MAX_REFS:
+                    break
+                ref = allowed.get(ref_id)
+                if ref is None:
+                    dangling.append(ref_id)
+                    continue
+                if any(entry["stat_id"] == ref.stat_id for entry in watch):
+                    continue  # the same date twice is one fact, not two
+                watch.append(ref.to_json())
+            if dangling:
+                result.sections_dropped += 1
+            sections["watch"] = {
+                "status": "narrated" if watch else ("dropped" if dangling else "silent"),
+                "kept": len(watch),
+                "dangling": dangling,
+            }
+
+        published = any((why, affected, context, watch))
+        verification: dict = {
+            "narrated": published,
+            "note_version": NOTE_VERSION,
+            "checked": checked,
+            "citations": list(note.citations),
+            "flags": [flag.to_json() for flag in flags],
+        }
+        if pair_dropped:
+            # **THE v1 KEY STAYS, AND IT IS LOAD-BEARING IN PRODUCTION RIGHT NOW.**
+            #
+            # `lib/news.ts` reads `verification.dropped === true` to set `noteDropped`, which is how
+            # the story page tells the reader "the gate held this line" instead of "the narrator had
+            # nothing to add" — the N5 distinction, and the whole reason that field exists. PD7 is a
+            # PIPELINE phase: it ships to production BEFORE PD8 builds the surfaces that read
+            # `sections`. Replacing this key with the richer map would have blinded the live story
+            # page the first night this ran, and NOTHING would have failed — the app reads an absent
+            # key as `false` and says "the narrator had nothing to add" about a line the gate killed.
+            #
+            # So the new map is added ALONGSIDE the old key, not instead of it. `dropped` keeps its
+            # exact v1 meaning — the why/affected PAIR was deleted — which is precisely what the app
+            # means by it. PD8 may migrate to `sections` and retire this line; until it does, it stays.
+            verification["dropped"] = True
+            verification["reason"] = "an entity in the note traced back to no source"
+
+        # The allow-list (Q-PD5-1), across every section that SURVIVED. A cluster already had
+        # something that looked like one — its extract's `key_numbers` — but that is the list of
+        # numbers the ARTICLE contained, not the list this gate CLEARED, and the two are not the
+        # same claim. This one is.
+        verification["cleared"] = _dedupe(cleared)
+        verification["sections"] = sections
+
+        result.decisions[note.cluster_id] = NoteDecision(
+            why_it_matters=why,
+            affected_note=affected,
+            context=context,
+            watch=watch,
+            verification=verification,
+        )
+        if published:
+            result.narrated += 1
+        else:
+            result.dropped += 1
 
     return result
+
+
+def _dedupe(values: Iterable[str]) -> list[str]:
+    """Order-preserving de-duplication. The cleared list is a set of PERMISSIONS — the same figure
+    quoted twice is one permission, not two."""
+    return list(dict.fromkeys(values))
 
 
 def run_narration(
@@ -375,6 +700,9 @@ def run_narration(
     run_date: date,
     model_extract: str,
     model_synth: str,
+    deep_ids: Iterable[str] = (),
+    depth_stats: dict[str, list[Stat]] | None = None,
+    calendar: dict[str, list[CalendarRef]] | None = None,
     clock: Callable[[], float] = time.monotonic,
     extract_budget: float = EXTRACT_BUDGET_SECONDS,
 ) -> NarrationResult:
@@ -398,6 +726,12 @@ def run_narration(
     the extractor stops, the remaining stories go to the narrator with their headlines, and the page
     ships. The night says how many it gave up on.
     """
+    # EVERY model call in both stages goes through this wrapper, which is the whole point: it is the
+    # one place the night's token spend can be counted, and neither stage has to know it is being
+    # counted (9.5). `sync_extract` below is completely untouched by the cost instrument.
+    usage: dict[str, Usage] = {}
+    client = _MeteredClient(client, usage)
+
     started = clock()
     extracts = sync_extract(
         client,
@@ -407,6 +741,7 @@ def run_narration(
     )
 
     result = NarrationResult()
+    result.usage = usage
     result.extracted = len(extracts)
     result.extract_attempted = len(stage_a)
     result.extract_timed_out = len(extracts) < len(stage_a) and clock() - started >= extract_budget
@@ -417,8 +752,20 @@ def run_narration(
     }
 
     narrated_ids = set(stage_b_ids)
+    deep = set(deep_ids)
+    depth_stats = depth_stats or {}
+    calendar = calendar or {}
+
     narrated_stories = [story for story in stage_a if story.cluster_id in narrated_ids]
-    inputs = [story.to_note_input(extracts.get(story.article["id"])) for story in narrated_stories]
+    inputs = [
+        story.to_note_input(
+            extracts.get(story.article["id"]),
+            deep=story.cluster_id in deep,
+            stats=tuple(depth_stats.get(story.cluster_id, ())),
+            calendar=tuple(calendar.get(story.cluster_id, ())),
+        )
+        for story in narrated_stories
+    ]
     if not inputs:
         return result
 
@@ -442,6 +789,7 @@ def run_narration(
     gated.extracted = result.extracted
     gated.extract_attempted = result.extract_attempted
     gated.extract_timed_out = result.extract_timed_out
+    gated.usage = usage
     return gated
 
 
@@ -457,7 +805,14 @@ class Story:
     sources: int
     article: dict  # the representative, in the {id, headline, snippet, url, tickers} extract shape
 
-    def to_note_input(self, extract: ExtractResult | None) -> NoteInput:
+    def to_note_input(
+        self,
+        extract: ExtractResult | None,
+        *,
+        deep: bool = False,
+        stats: tuple[Stat, ...] = (),
+        calendar: tuple[CalendarRef, ...] = (),
+    ) -> NoteInput:
         return NoteInput(
             cluster_id=self.cluster_id,
             headline=self.headline,
@@ -466,6 +821,9 @@ class Story:
             tickers=self.tickers,
             sources=self.sources,
             extract=extract,
+            deep=deep,
+            stats=stats,
+            calendar=calendar,
         )
 
 

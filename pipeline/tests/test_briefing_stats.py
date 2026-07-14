@@ -69,3 +69,137 @@ def test_missing_vix_and_ten_year_are_skipped():
     assert "macro-vix" not in ids
     assert "macro-10y" not in ids
     assert "breadth-advancers" in ids
+
+
+# ----- PD7: the depth registry (Part 9.2) -----
+#
+# The rendered VALUE of a stat is not decoration — it is the gate's source of truth. `verify.py`
+# parses each value into the allowed set, so whatever numbers a value contains are the numbers the
+# narrator is licensed to write. That makes the exact wording of a value load-bearing in a way the
+# scalar stats (a VIX of "18.20") never made obvious, and these tests pin it.
+#
+# The clearest case is the WINDOW. A narrator writing about a 52-week range will write the words
+# "52-week", and "52" is a number — so unless "52" traces to a source, an honest sentence gets
+# flagged for the window it was asked to describe. The value states the window in the same words the
+# narrator will use, which licenses it through the ordinary mechanism rather than a magic exception.
+
+from briefing.depth import (  # noqa: E402
+    CalendarRef,
+    Position52w,
+    Streak,
+    TickerDepth,
+)
+from briefing.stats import (  # noqa: E402
+    build_calendar_stats,
+    build_cluster_stats,
+    build_depth_stats,
+)
+
+
+def _by_id(stats) -> dict[str, str]:
+    return {stat.stat_id: stat.value for stat in stats}
+
+
+def test_the_52_week_position_is_three_numbers_under_one_id():
+    depth = TickerDepth(symbol="AAPL", pos52w=Position52w(pct=63.2, low=142.30, high=205.80))
+
+    value = _by_id(build_depth_stats([depth]))["tkr:AAPL:pos52w"]
+
+    assert "63.2%" in value
+    assert "142.30" in value and "205.80" in value
+
+
+def test_the_position_value_licenses_the_words_the_narrator_will_write():
+    """THE WINDOW IS A NUMBER TOO. "52-week" scans as the number 52, so if the value does not carry
+    it, the gate flags an honest sentence for the very window it asked for."""
+    from briefing.verify import build_source_set, check_text
+
+    depth = TickerDepth(symbol="AAPL", pos52w=Position52w(pct=63.2, low=142.30, high=205.80))
+    sources = build_source_set(
+        extracts=[], stats=build_depth_stats([depth]), instruments=[], run_date=date(2026, 7, 9)
+    )
+
+    result = check_text(
+        sources,
+        "AAPL sits 63.2% of the way up its 52-week range, between 142.30 and 205.80.",
+        location="context",
+    )
+
+    assert result.flags == (), f"the gate flagged an honest sentence: {result.flags}"
+    assert "52" not in [flag.entity for flag in result.flags]
+
+
+def test_the_fifty_day_distance_is_unsigned_with_the_direction_in_words():
+    """The movers' precedent, and for the movers' reason: the gate matches NUMBERS, not signs. A
+    source of -4.2 would refuse an honest sentence that says a stock trades "4.2% below" its average."""
+    below = TickerDepth(symbol="AAPL", from50d=-4.2)
+    above = TickerDepth(symbol="MSFT", from50d=4.2)
+
+    values = _by_id(build_depth_stats([below, above]))
+
+    assert values["tkr:AAPL:from50d"] == "4.2% below its 50-day average"
+    assert values["tkr:MSFT:from50d"] == "4.2% above its 50-day average"
+
+
+def test_the_atr_relative_move_renders_as_a_multiple():
+    depth = TickerDepth(symbol="SMCI", move_atr=2.83)
+
+    assert _by_id(build_depth_stats([depth]))["tkr:SMCI:move_atr"].startswith("2.8x")
+
+
+def test_a_streak_puts_its_count_in_the_value_and_its_direction_in_the_label():
+    depth = TickerDepth(symbol="AAPL", streak=Streak(length=3, direction="up"))
+
+    stat = next(s for s in build_depth_stats([depth]) if s.stat_id == "tkr:AAPL:streak")
+
+    assert stat.value.startswith("3")
+    assert "up" in stat.value or "up" in stat.label
+
+
+def test_a_symbol_with_nothing_measurable_renders_no_stats_at_all():
+    """Absence over invention, at the registry's own door. An empty depth object must not become an
+    empty stat — a stat with no number is vocabulary that says nothing and can only mislead."""
+    assert build_depth_stats([TickerDepth(symbol="NEWLY")]) == []
+
+
+def test_cluster_stats_make_the_corroboration_count_citable():
+    stats = _by_id(build_cluster_stats("nc-fed-hold", sources=4, history7d=2))
+
+    assert stats["cls:nc-fed-hold:corroboration"].startswith("4")
+    assert stats["cls:nc-fed-hold:history7d"].startswith("2")
+
+
+def test_the_recurrence_stat_licenses_its_own_window():
+    """Same trap as the 52-week one: "in the last 7 sessions" contains the number 7."""
+    from briefing.verify import build_source_set, check_text
+
+    sources = build_source_set(
+        extracts=[],
+        stats=build_cluster_stats("nc-x", sources=4, history7d=2),
+        instruments=[],
+        run_date=date(2026, 7, 9),
+    )
+    result = check_text(
+        sources, "This is the 2nd story on this name in the last 7 sessions.", location="context"
+    )
+
+    assert result.flags == ()
+
+
+def test_a_cluster_with_no_history_emits_no_recurrence_stat():
+    stats = _by_id(build_cluster_stats("nc-x", sources=4, history7d=None))
+
+    assert "cls:nc-x:history7d" not in stats
+    assert "cls:nc-x:corroboration" in stats
+
+
+def test_a_calendar_stat_is_a_date_and_carries_its_event_in_the_label():
+    ref = CalendarRef(
+        stat_id="cal:CPI:next", key="CPI", code="CPI", kind="macro",
+        title="CPI print", date=date(2026, 7, 15),
+    )
+    stat = build_calendar_stats([ref])[0]
+
+    assert stat.stat_id == "cal:CPI:next"
+    assert stat.value == "2026-07-15"
+    assert "CPI print" in stat.label

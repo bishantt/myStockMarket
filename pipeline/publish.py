@@ -820,12 +820,12 @@ def publish_news(
                     INSERT INTO news_cluster (
                         id, run_date, first_seen, headline, event_type, sectors, themes, tickers,
                         significance, sources, why_it_matters, affected_note, extract, verification,
-                        articles, image_id
+                        articles, context, watch, model_meta, image_id
                     ) VALUES (
                         %(id)s, %(run_date)s, %(first_seen)s, %(headline)s, %(event_type)s,
                         %(sectors)s, %(themes)s, %(tickers)s, %(significance)s, %(sources)s,
                         %(why_it_matters)s, %(affected_note)s, %(extract)s, %(verification)s,
-                        %(articles)s, %(image_id)s
+                        %(articles)s, %(context)s, %(watch)s, %(model_meta)s, %(image_id)s
                     )
                     ON CONFLICT (id) DO UPDATE SET
                         run_date = EXCLUDED.run_date,
@@ -838,6 +838,9 @@ def publish_news(
                         sources = EXCLUDED.sources,
                         why_it_matters = EXCLUDED.why_it_matters,
                         affected_note = EXCLUDED.affected_note,
+                        context = EXCLUDED.context,
+                        watch = EXCLUDED.watch,
+                        model_meta = EXCLUDED.model_meta,
                         extract = EXCLUDED.extract,
                         verification = EXCLUDED.verification,
                         articles = EXCLUDED.articles,
@@ -846,7 +849,20 @@ def publish_news(
                     {**cluster,
                      "extract": Json(_json_safe(cluster.get("extract") or {})),
                      "verification": Json(_json_safe(cluster.get("verification") or {})),
-                     "articles": Json(_json_safe(cluster.get("articles") or []))},
+                     "articles": Json(_json_safe(cluster.get("articles") or [])),
+                     # PD7 (9.3, 9.5). `.get` with a default on every one of them, because a caller
+                     # written before these columns existed must keep working: a missing context is
+                     # NULL, a missing watch is the empty list its DEFAULT already promises, and a
+                     # missing model_meta is NULL. The night that publishes without a narrator — no
+                     # API key, a failed call, a schema violation twice over — takes exactly that
+                     # path, and it is the path this table has always been built to survive.
+                     "context": cluster.get("context"),
+                     "watch": Json(_json_safe(cluster.get("watch") or [])),
+                     "model_meta": (
+                         Json(_json_safe(cluster["model_meta"]))
+                         if cluster.get("model_meta")
+                         else None
+                     )},
                 )
                 written += 1
 

@@ -111,6 +111,25 @@ class Flag:
 
 
 @dataclass(frozen=True)
+class CheckResult:
+    """What the gate decided about ONE string: what failed, what passed, and how much it looked at.
+
+    `cleared` is the half this gate spent its whole life throwing away (PD7, Q-PD5-1). The scan
+    already knows which entities matched a source — that is precisely what "not flagged" means — and
+    it used to discard that knowledge and report only the failures. But ruling E5 says a number is
+    set in mono, the "this was checked" typeface, ONLY if the gate cleared it, and that needs an
+    ALLOW-LIST. Publishing only the flags leaves the app one option: a DENY-list — emphasize
+    everything number-shaped except the flagged — which would make the APP decide what counts as a
+    number, with its own regex, when this module already answers that question. See the module
+    header for what a second answer costs. So the gate answers it once, and says both halves out loud.
+    """
+
+    flags: tuple[Flag, ...]
+    cleared: tuple[str, ...]
+    checked: int
+
+
+@dataclass(frozen=True)
 class VerificationResult:
     """The gate's outcome. `status` is "ok" (publish, possibly with inline flags) or "held" (show
     the unavailable banner). Everything is serialized into the briefing's verification JSON."""
@@ -119,6 +138,11 @@ class VerificationResult:
     flags: tuple[Flag, ...]
     checked: int
     held_reason: str | None
+    # The allow-list: every entity that traced back to a source, as it was WRITTEN in the prose, so
+    # the app can match it against the text it renders without re-deciding what a number is. A held
+    # night reports one too — "which numbers were fine?" is half of "why was this held?", and the
+    # record used to answer only the other half.
+    cleared: tuple[str, ...] = ()
 
     def to_json(self) -> dict:
         return {
@@ -126,6 +150,7 @@ class VerificationResult:
             "checked": self.checked,
             "held_reason": self.held_reason,
             "flags": [flag.to_json() for flag in self.flags],
+            "cleared": list(self.cleared),
         }
 
 
@@ -161,20 +186,29 @@ def build_source_set(
     )
 
 
-def check_text(sources: SourceSet, text: str, *, location: str) -> tuple[tuple[Flag, ...], int]:
-    """Scan ONE string and return (flags, entities_checked).
+def check_text(sources: SourceSet, text: str, *, location: str) -> CheckResult:
+    """Scan ONE string and return what failed, what passed, and how many entities were looked at.
 
     The count comes back with the flags on purpose. A gate that reports "0 flags" without saying how
     many entities it looked at cannot be distinguished from a gate that looked at nothing — and this
     build has shipped seven guards that passed because the thing they measured was absent.
+
+    The cleared list comes back for the reason `CheckResult` explains: it is the allow-list ruling E5
+    needs, and it is free — the scan has already made the decision, it merely used to keep half of it.
+    It is de-duplicated in reading order, because it is a set of PERMISSIONS: the same figure quoted
+    twice is one permission, not two.
     """
     flags: list[Flag] = []
+    cleared: list[str] = []
     checked = 0
     for kind, raw, value in _entities(text, sources.run_date):
         checked += 1
-        if not _matches(kind, value, sources.numbers, sources.tickers):
+        if _matches(kind, value, sources.numbers, sources.tickers):
+            if raw not in cleared:
+                cleared.append(raw)
+        else:
             flags.append(Flag(location=location, entity=raw, kind=kind, reason="no source match"))
-    return tuple(flags), checked
+    return CheckResult(flags=tuple(flags), cleared=tuple(cleared), checked=checked)
 
 
 def verify(
@@ -196,15 +230,29 @@ def verify(
     )
 
     flags: list[Flag] = []
+    cleared: list[str] = []
     checked = 0
     for location, text in _draft_fields(draft):
-        found, count = check_text(sources, text, location=location)
-        flags.extend(found)
-        checked += count
+        result = check_text(sources, text, location=location)
+        flags.extend(result.flags)
+        checked += result.checked
+        # Flat and de-duplicated across the whole draft, which is sound because the source set is
+        # too: a figure that cleared in one field would clear in any other, since it is the same
+        # string checked against the same sources. The app renders the brief as one article and asks
+        # one question of it — "may I emphasize this?" — so it gets one list.
+        for entity in result.cleared:
+            if entity not in cleared:
+                cleared.append(entity)
 
     held_reason = _verdict(flags)
     status = "held" if held_reason else "ok"
-    return VerificationResult(status=status, flags=tuple(flags), checked=checked, held_reason=held_reason)
+    return VerificationResult(
+        status=status,
+        flags=tuple(flags),
+        checked=checked,
+        held_reason=held_reason,
+        cleared=tuple(cleared),
+    )
 
 
 # ----- internals -----

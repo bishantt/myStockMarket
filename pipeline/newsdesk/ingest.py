@@ -47,6 +47,20 @@ STAGE_A_CLUSTER_CAP = 60
 # is a sentence nobody reads, written at a cost.
 STAGE_B_CLUSTER_CAP = 20
 
+# THE DEPTH BUDGET (PD7, plan 0.2.3). The v2 insight — the `context` section and the `watch` rows —
+# is written for the top 8 stories only; the other twelve narrated clusters keep their v1 one-liner.
+#
+# This is a COST cap, and it is deliberately a constant with a test rather than a comment, for the
+# same reason MODE_STAGES is: depth is the expensive half of the night (a context section is ~3x the
+# tokens of a why-line, and it carries a per-cluster stat block into the prompt on top). 0.2.3 priced
+# the delta at ≈$0.03–0.06/night against a ~$0.33 baseline and said "measured at PD7's gate, not
+# promised" — so PD7 measures it, and the number lands in the evidence file beside this estimate.
+#
+# Raising it is a one-constant change plus a DECISIONS line. Lowering it costs the reader depth on
+# stories they are actually likely to open, which is why 8 and not 5: the top 8 is roughly "what a
+# reader scrolls past before deciding the night is uninteresting".
+DEEP_CLUSTER_CAP = 8
+
 
 @dataclass(frozen=True)
 class RankedCluster:
@@ -113,6 +127,17 @@ class NightResult:
         """The clusters the narrator will write a context line for. A subset of stage_a_clusters —
         see the note there, and the test that holds it."""
         return self.clusters[:STAGE_B_CLUSTER_CAP]
+
+    @property
+    def deep_clusters(self) -> list[RankedCluster]:
+        """The clusters that get the v2 insight — the `context` section and the `watch` rows (PD7).
+
+        A subset of stage_b_clusters by construction, at any cap sizes, because all three caps rank
+        by the same measure. Every story the app puts first is a story the app has READ (stage A),
+        NARRATED (stage B), and now placed IN CONTEXT (this one) — the three caps nest, and nothing
+        can be deep without being narrated without being read.
+        """
+        return self.clusters[:DEEP_CLUSTER_CAP]
 
 
 def build_night(

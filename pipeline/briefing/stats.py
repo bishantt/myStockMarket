@@ -70,6 +70,109 @@ def build_ticker_stats(
     return _mover_stats(movers)
 
 
+# ----- PD7: the depth registry (Part 9.2) -----
+#
+# THE RENDERED VALUE IS THE GATE'S SOURCE OF TRUTH, and PD7 is where that stopped being a detail.
+# `verify.py` parses each value into the allowed set, so the numbers a value CONTAINS are exactly the
+# numbers the narrator is licensed to write. For a scalar stat ("18.20") that is invisible. For these
+# it is not, because of the WINDOW.
+#
+# A narrator describing a 52-week range writes the words "52-week" — and "52" is a number. Unless it
+# traces to a source, the gate flags an honest sentence for the very window it was asked to describe.
+# The same trap sits in "50-day average" and "the last 7 sessions". So each value STATES ITS WINDOW,
+# in the words the narrator will use, and the window is licensed through the ordinary mechanism
+# rather than by a special case carved into the gate. A stat that describes a window is a stat that
+# must say the window out loud.
+
+def build_depth_stats(depths: Iterable[Any]) -> list[Stat]:
+    """Render the per-ticker depth measures into quotable stats (Part 9.2).
+
+    A name with nothing measurable renders NOTHING — not an empty stat, not a zero. A stat with no
+    number is vocabulary that says nothing and can only mislead the narrator into reaching for it.
+    """
+    out: list[Stat] = []
+    for depth in depths:
+        symbol = depth.symbol
+
+        if depth.pos52w is not None:
+            position = depth.pos52w
+            out.append(
+                Stat(
+                    f"tkr:{symbol}:pos52w",
+                    f"{position.pct:.1f}% of the way up its 52-week range "
+                    f"(low {position.low:.2f}, high {position.high:.2f})",
+                    label=f"{symbol} position in its 52-week range",
+                )
+            )
+
+        if depth.move_atr is not None:
+            # UNSIGNED, like the movers, and for the movers' reason: the gate checks numbers, not
+            # direction words. Direction rides the label and the data.
+            out.append(
+                Stat(
+                    f"tkr:{symbol}:move_atr",
+                    f"{depth.move_atr:.1f}x its normal daily range (ATR14)",
+                    label=f"{symbol} move in units of its own average daily range",
+                )
+            )
+
+        if depth.streak is not None:
+            streak = depth.streak
+            out.append(
+                Stat(
+                    f"tkr:{symbol}:streak",
+                    f"{streak.length} consecutive {streak.direction} sessions",
+                    label=f"{symbol} closing streak through tonight",
+                )
+            )
+
+        if depth.from50d is not None:
+            direction = "above" if depth.from50d >= 0 else "below"
+            out.append(
+                Stat(
+                    f"tkr:{symbol}:from50d",
+                    f"{abs(depth.from50d):.1f}% {direction} its 50-day average",
+                    label=f"{symbol} distance from its 50-day average",
+                )
+            )
+    return out
+
+
+def build_cluster_stats(cluster_id: str, *, sources: int, history7d: int | None) -> list[Stat]:
+    """The story's own two numbers: how many outlets carried it, and how often this name has been in
+    the news lately. Corroboration is evidence; recurrence is context. Neither was citable before.
+
+    `history7d` is None when the count is unknown, and then no stat is emitted — the narrator cannot
+    say "the third story this week" about a name whose week nobody counted.
+    """
+    out = [
+        Stat(
+            f"cls:{cluster_id}:corroboration",
+            f"{int(sources)} outlets",
+            label="distinct outlets carrying this story",
+        )
+    ]
+    if history7d is not None:
+        out.append(
+            Stat(
+                f"cls:{cluster_id}:history7d",
+                f"{int(history7d)} stories on this name in the last 7 sessions",
+                label="how often this name has been in the news this week",
+            )
+        )
+    return out
+
+
+def build_calendar_stats(refs: Iterable[Any]) -> list[Stat]:
+    """The dated facts the watch section may point at. The VALUE is the date and nothing else, so the
+    gate matches it exactly (dates are never approximate); the event's NAME rides the label, where
+    the narrator can read it and the gate ignores it."""
+    return [
+        Stat(ref.stat_id, ref.date.isoformat(), label=f"{ref.key} next scheduled event: {ref.title}")
+        for ref in refs
+    ]
+
+
 def _macro_stats(market_context: Mapping[str, Any] | None) -> list[Stat]:
     if market_context is None:
         return []

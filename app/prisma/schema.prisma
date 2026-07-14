@@ -557,6 +557,21 @@ model NewsCluster {
   /// is an unverifiable claim. This is what the card's outlet line and the story page's source list
   /// render from, and it is why "3 sources" can be opened rather than merely believed.
   articles     Json     @default("[]")
+  /// PD7 (Part 9.3) — the v2 insight's context section: 2–3 mechanical sentences placing tonight's
+  /// move, narrated ONLY from cited registry stats. Null when the gate dropped it, when the narrator
+  /// had nothing to add, or when the cluster sat outside the depth budget's top 8. Which of the three
+  /// it was is recorded in `verification.sections`, so the page can say WHY it is absent rather than
+  /// guessing — the N5 distinction, per section.
+  context      String?
+  /// PD7 — the watch section: the already-scheduled calendar facts a reader should know are dated.
+  /// SNAPSHOTTED rows, not bare refs: [{ stat_id, key, code, title, date, kind }]. The narrator may
+  /// only SELECT from the calendar rows it was shown; it can never author one (E4).
+  watch        Json     @default("[]")
+  /// PD7 (Part 9.5) — what the models actually cost this story: {model_extract, model_synth,
+  /// extract_count, note_version, usage:{in_tokens, out_tokens} per stage}. Written from the API's
+  /// OWN usage fields, never estimated. The story page's provenance footer prints from this instead
+  /// of hardcoding a model name it cannot know.
+  modelMeta    Json?    @map("model_meta")
   imageId      String?  @map("image_id")
 
   image NewsImage?     @relation(fields: [imageId], references: [id])

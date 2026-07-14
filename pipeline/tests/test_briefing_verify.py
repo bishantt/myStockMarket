@@ -227,3 +227,80 @@ def test_an_ordinal_is_still_not_a_number():
 
     assert result.flags == ()
     assert result.checked == 0
+
+
+# ----- PD7: the gate publishes what it CLEARED, not only what it flagged (Q-PD5-1) -----
+#
+# The gate has always recorded its FLAGS — the numbers that traced back to nothing. It never
+# recorded the other side of the same decision: the numbers it CHECKED and MATCHED. So a published
+# brief carried a list of what FAILED and no list of what PASSED, and ruling E5 ("a number is set in
+# mono — the 'this was checked' typeface — only if the deterministic gate cleared it") had no
+# allow-list to consult. The Desk's brief therefore rendered NOT ONE emphasized figure.
+#
+# The alternative was a DENY-list: emphasize everything number-shaped except the flagged. That would
+# make the APP decide what counts as a number, with its own regex, and this module already answers
+# that question. Its header names the cost of a second answer. So the gate answers it once, out loud.
+
+def test_the_gate_reports_what_it_cleared():
+    """The fix. A figure that traced to a source comes back NAMED, not merely uncounted."""
+    stats = [Stat("breadth-pct50", "62.40%", label="above the 50-day")]
+    draft = _draft(focus_body="Some 62.4% of the universe sits above its long-run average.")
+
+    result = verify(draft, extracts=[], stats=stats, instruments=INSTRUMENTS, run_date=RUN_DATE)
+
+    assert result.flags == ()
+    assert result.checked == 1
+    assert "62.4%" in result.cleared
+
+
+def test_a_flagged_entity_is_never_cleared():
+    """The two lists are complements, not overlapping opinions. A number cannot be both."""
+    stats = [Stat("breadth-pct50", "62.40%", label="above the 50-day")]
+    draft = _draft(
+        focus_headline="A quiet session",
+        items=[_item(by_the_numbers="Breadth was 62.4%, and margins hit 3.1%.")],
+    )
+
+    result = verify(draft, extracts=[], stats=stats, instruments=INSTRUMENTS, run_date=RUN_DATE)
+
+    assert [flag.entity for flag in result.flags] == ["3.1%"]
+    assert "62.4%" in result.cleared
+    assert "3.1%" not in result.cleared
+
+
+def test_the_cleared_list_is_deduplicated_and_ordered():
+    """It is an ALLOW-LIST the app matches prose against, so it is a set of strings, in reading
+    order. The same figure quoted twice is one permission, not two."""
+    stats = [Stat("macro-vix", "18.20", label="VIX"), Stat("macro-10y", "4.35%", label="10-year")]
+    draft = _draft(
+        focus_body="The VIX closed at 18.20.",
+        items=[_item(by_the_numbers="The VIX closed at 18.20 and the 10-year at 4.35%.")],
+    )
+
+    result = verify(draft, extracts=[], stats=stats, instruments=INSTRUMENTS, run_date=RUN_DATE)
+
+    assert result.cleared == ("18.20", "4.35%")
+
+
+def test_a_held_briefing_still_reports_what_it_cleared():
+    """A held night is the one a human most wants to audit. "Which numbers were fine?" is half of
+    "why was this held?", and the record answered only the other half."""
+    stats = [Stat("macro-vix", "18.20", label="VIX")]
+    draft = _draft(focus_body="The VIX closed at 18.20, up from a fabricated 11.50.")
+
+    result = verify(draft, extracts=[], stats=stats, instruments=INSTRUMENTS, run_date=RUN_DATE)
+
+    assert result.status == "held"
+    assert "18.20" in result.cleared
+
+
+def test_the_cleared_list_survives_serialization():
+    """It only unlocks E5 if it reaches the app, and it reaches the app as JSON."""
+    stats = [Stat("macro-vix", "18.20", label="VIX")]
+    draft = _draft(focus_body="The VIX closed at 18.20.")
+
+    payload = verify(
+        draft, extracts=[], stats=stats, instruments=INSTRUMENTS, run_date=RUN_DATE
+    ).to_json()
+
+    assert payload["cleared"] == ["18.20"]

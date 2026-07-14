@@ -127,3 +127,41 @@ class Settings(BaseSettings):
 def load_settings() -> Settings:
     """Build the settings object. Kept as a function so tests can construct it in isolation."""
     return Settings()
+
+
+# ----- The price table (PD7, plan 9.5 — the cost instrument) -----
+#
+# Dollars per MILLION tokens, (input, output), per model. THIS IS THE ONLY PLACE IN THE PIPELINE
+# WHERE A PRICE IS WRITTEN DOWN, and it is written down because 0.2.3 committed to a number:
+# "≈$0.03–0.06/night on top of the current ~$0.33 — measured at PD7's gate, not promised."
+# A promise nobody measures is a guess with a decimal point in it, so the night now MEASURES.
+#
+# PROVENANCE (checked 2026-07-14 against the Anthropic model catalogue, cached 2026-06-24):
+#   claude-haiku-4-5  — $1.00 in / $5.00  out per MTok
+#   claude-sonnet-5   — $3.00 in / $15.00 out per MTok  (list price)
+#
+# ONE HONEST WRINKLE, AND IT IS STATED RATHER THAN QUIETLY BAKED IN: Sonnet 5 is running an
+# INTRODUCTORY rate of $2.00/$10.00 per MTok through 2026-08-31. The constants below carry the LIST
+# price, not the intro price, which means every dollar figure this pipeline prints between now and
+# then is an UPPER BOUND on the real bill — too high, never too low.
+#
+# That is deliberate. The alternative is a table that silently becomes WRONG on 2026-09-01, in the
+# direction of under-reporting, on a night nobody is watching — and a cost instrument that
+# under-reports is worse than no cost instrument, because it is trusted. An upper bound that quietly
+# becomes exact is the failure mode to prefer. The evidence file records both numbers.
+#
+# TOKEN COUNTS ARE MEASURED, FROM THE API'S OWN `usage` BLOCK. Only the multiplication happens here.
+_PRICE_PER_MTOK: dict[str, tuple[float, float]] = {
+    "claude-haiku-4-5": (1.00, 5.00),
+    "claude-sonnet-5": (3.00, 15.00),
+}
+
+# A model we have no price for costs an UNKNOWN amount, and the honest rendering of an unknown
+# amount is zero dollars with the model named in the log — never a guessed rate. A wrong price is a
+# lie the reader cannot check; a missing price is visibly missing.
+_PRICE_UNKNOWN = (0.0, 0.0)
+
+
+def price_per_mtok(model: str) -> tuple[float, float]:
+    """The (input, output) dollars-per-million-tokens for a model, or zeroes if it is not priced."""
+    return _PRICE_PER_MTOK.get(model, _PRICE_UNKNOWN)

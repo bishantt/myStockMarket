@@ -1,0 +1,34 @@
+-- PD7 (POLISH-AND-DEPTH-PLAN Appendix B): a cluster carries its DEPTH, and the cost of writing it.
+--
+-- Part 9's thesis is that depth arrives in two moves and the pipeline goes first: the LLM narrates
+-- only what the pipeline computed, so the pipeline must compute MORE before any surface can show
+-- more. These three columns are where that "more" lands.
+--
+--   context    the v2 insight's 2–3 mechanical sentences — scale against the name's OWN volatility,
+--              where it sits in its 52-week range, what its sector did, how often this story has
+--              recurred. Every number in it appears verbatim in the registry stats and is cited by
+--              id, and the deterministic gate drops the section if it does not. NULL is a real and
+--              common answer, and it has THREE distinct causes (the gate held it · the narrator had
+--              nothing to add · the cluster sat outside the top-8 depth budget). Which one it was is
+--              recorded in verification.sections — because a section that is absent for a good
+--              reason and a section that is absent because something broke print the same nothing,
+--              and the N5 lesson is that nothing on the screen can tell them apart unless the
+--              pipeline says so.
+--
+--   watch      the dated calendar facts a reader should know are coming. SNAPSHOTTED ROWS, not bare
+--              refs — the same argument as `articles` above and catalyst_link's numbers: a story
+--              page that re-resolved a ref against a live calendar could disagree with the feed
+--              about what is scheduled, and the same fact with two values is the species of lie this
+--              app is built against. The narrator may only SELECT ids from the rows it was shown; it
+--              can never author a calendar entry (E4 — facts with dates, never levels to watch).
+--
+--   model_meta what the models actually cost this story, from the API's OWN usage fields. The story
+--              page's provenance footer has been hardcoding "Claude Haiku" — a claim the row could
+--              not support. Now it prints what ran.
+--
+-- One ALTER, three columns, all nullable or defaulted: no backfill, and every pre-PD7 row keeps
+-- working. An old cluster simply renders its absence states, which is exactly what the fixture
+-- night's pre-N5-shaped row exists to pin.
+ALTER TABLE "news_cluster" ADD COLUMN "context" TEXT;
+ALTER TABLE "news_cluster" ADD COLUMN "watch" JSONB NOT NULL DEFAULT '[]';
+ALTER TABLE "news_cluster" ADD COLUMN "model_meta" JSONB;
