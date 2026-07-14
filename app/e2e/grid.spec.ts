@@ -79,7 +79,37 @@ async function signIn(page: Page) {
  * single wrapper that the main column positions, and the three cards inside it have their own little
  * grid. It takes its index from the first masthead in it, which is 07.
  */
+/**
+ * WAIT FOR THE PAGE TO BE STYLED BEFORE MEASURING IT (PD4) — this is a bug fix, not a precaution.
+ *
+ * Every assertion in this file is a BOUNDING BOX, and a bounding box read before the stylesheet lands
+ * is a measurement of unstyled HTML: every block element starts at x = 0, so both columns report
+ * `left: 0` and the rail is, technically, not to the right of the main column.
+ *
+ * That is exactly how this file failed in CI — `mainRight: 0`, `railLeft: 0`, on a Desk that was
+ * perfectly fine. It reproduced on the retry and not at all locally, because it is a RACE and CI is a
+ * slower machine. `page.goto()` resolves on `load`, which does not guarantee that the CSSOM has been
+ * applied to a layout this test then forces.
+ *
+ * The tokens are the honest signal: `--color-paper` is defined in globals.css and is an empty string
+ * until that stylesheet is in effect. Fonts come next, because every height in this file (the dead
+ * gap, the empty band) depends on text having its real metrics.
+ *
+ * PD3's law says layout is asserted in bounding boxes. PD4's corollary: **a bounding box is only
+ * evidence once the thing that decides it has arrived.**
+ */
+async function waitForLayout(page: Page) {
+  await page.waitForFunction(
+    () => getComputedStyle(document.documentElement).getPropertyValue("--color-paper").trim() !== "",
+    undefined,
+    { timeout: 15_000 },
+  );
+  await page.evaluate(() => document.fonts.ready);
+}
+
 async function stations(page: Page, selector: string): Promise<Station[]> {
+  await waitForLayout(page);
+
   return page.evaluate((sel) => {
     const found: Station[] = [];
     for (const el of document.querySelectorAll<HTMLElement>(sel)) {
@@ -168,7 +198,16 @@ test.describe("The Desk's grid contract", () => {
     // collapsed into the main column would still pass the two assertions above.
     const mainRight = Math.max(...main.map((s) => s.left));
     const railLeft = Math.min(...rail.map((s) => s.left));
-    expect(railLeft, "the rail should sit to the right of the main column").toBeGreaterThan(mainRight);
+
+    // The numbers go IN the message. When this failed in CI it said only "expected > 0, received 0",
+    // and the two zeros were the whole diagnosis — an unstyled page, not a collapsed grid (see
+    // waitForLayout). A failure that does not report what it measured makes the next reader guess.
+    expect(
+      railLeft,
+      `the rail should sit to the right of the main column — main's left edge is ${mainRight}px, ` +
+        `the rail's is ${railLeft}px. If BOTH are 0, the page was measured before its stylesheet ` +
+        `applied and the Desk is fine.`,
+    ).toBeGreaterThan(mainRight);
   });
 
   /**
