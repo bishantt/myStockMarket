@@ -52,7 +52,20 @@ function WatchlistManagerRow({ item }: { item: ManagedItem }) {
 
   return (
     <li className="flex flex-col gap-1 border-b border-hairline py-3 last:border-b-0">
-      <div className="flex items-center gap-4">
+      {/*
+       * `flex-wrap`, AND IT IS A BUG FIX, NOT A TIDY-UP (PD6).
+       *
+       * Widening the symbol column to `w-32` (below) to hold a chip added 32px to a row that was
+       * already tight, and at **360px the room began scrolling sideways by 16px** — the exact bug
+       * PD4 spent a whole phase killing, reintroduced by a fix for something else. The 360 sweep
+       * caught it, on CI, on the phone leg, after three other legs had gone green.
+       *
+       * A fixed-width column plus two buttons cannot always fit a 328px interior, and the honest
+       * answer to "it does not fit" is to WRAP, never to overflow. At 412 there is room and nothing
+       * wraps; at 360 the controls drop to a second line. Vertical space on a phone is cheap.
+       * Horizontal space is the one thing you cannot borrow.
+       */}
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
         {/*
          * THE SYMBOL WAS SET IN THE UI SANS, BOLD (PD6). Every other symbol in this app is mono —
          * that is the type system's oldest rule, and this room was the one place that broke it, so
