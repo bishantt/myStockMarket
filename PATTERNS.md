@@ -690,3 +690,56 @@ notices because all the descriptions look authored and confident.
 
 **The tell that you need this:** you are about to type a number, a list, or a file set into a
 document that a *script* also knows. Don't. Type the script's name instead.
+
+## the-three-layer-invariant (a gate, a derivation, and a lock)
+Where it lives: `pipeline/jobs/job_a.py` (`full_run_edition`), `pipeline/nightly.py`
+(`edition_from_bars`), `pipeline/publish.py` (`_require_session`)
+Shape:
+```
+1. THE GATE       policy, at the job's door — "should this run happen at all?"
+                  Refuses the known bad case. Cheap, polite, exits cleanly.
+2. THE DERIVATION truth, at the point of knowledge — "what IS this, actually?"
+                  Asks the DATA, then cross-checks it against an independent authority.
+                  A disagreement is fatal, not something to shrug at and pick one.
+3. THE LOCK       law, at the choke point every writer passes — publish/save/commit.
+                  Raises BEFORE touching the resource. Cannot be reasoned around by a
+                  new caller, a refactor, or a backfill script written at 2am.
+```
+Use when: a wrong value would be *silently correct-looking* downstream. The reason for three layers
+is that the gate alone shipped, looked complete, and was not: it stopped every path anybody had
+thought of, and the bug came back through a door nobody had. **Modes are policy; publish is law.**
+The lock is the only one that survives a maintainer who does not know the story.
+
+## the-instrument-that-can-see-production
+Where it lives: `app/scripts/check-live.mjs` + `live-truth.mjs` (pure) + `live-truth.test.ts`
+Shape:
+```
+- Split the checker in HALF. The pure half takes rendered pages + an injected clock and
+  returns verdicts; the shell half fetches, authenticates, prints, and sets the exit code.
+- Test the pure half against a recording of the HEALTHY system AND a recording (or an
+  honestly-named reconstruction) of the DISEASE. A checker that cannot fail its fixtures
+  is decoration.
+- Verdicts are PASS / FAIL / PENDING. PENDING names the phase that owes the feature, so a
+  check written before its subject exists is measured from day one rather than remembered later.
+- Do not gate on a window where the correct system legitimately looks wrong (here: between the
+  closing bell and the night's publish). A guard that cries wolf is not there on the night it
+  is right.
+```
+Use when: every existing guard runs against a world it built itself thirty seconds earlier — so none
+of them can answer "is the deployed thing actually true?" CI cannot answer this **structurally**, and
+that is not a shortcoming to fix; it is the reason this instrument is local-only and belongs in the
+phase gate's post-deploy step.
+
+## one-list-many-readers (and where to put the prose)
+Where it lives: `app/lib/market-calendar.json` (the NYSE table) · `app/lib/routes-manifest.json` (the rooms)
+Shape:
+```
+When a THIRD thing needs to read a list, move the list to data — JSON — and let all of them
+read the one file. A table only one language can read is a table that gets COPIED, and a
+second copy of a fact is a second answer waiting to happen.
+Then write a test that holds the list against an independent authority (here: the real XNYS
+exchange calendar, walked day by day). Agreement is the property; the list is just where it lives.
+CAVEAT, MEASURED: if the JSON ships to the browser, its prose ships too. A `_comment` key is
+DATA. Keep the file bare and put the explanation in the module that imports it.
+```
+Use when: two implementations of the same fact exist in different languages and both are load-bearing.

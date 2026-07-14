@@ -8,6 +8,60 @@ Format: newest first. I mark each as [FYI], [VETO?], or [NEED] so you can scan.
 
 ---
 
+## 2026-07-13 — PD0 (the dating contract) — **the polish & depth build begins**
+
+**[WORTH YOUR EYES, and it is good news] Your Desk healed itself before I got there, and I have the
+receipts.** When I fetched production tonight, the masthead read **Monday, July 13, 2026**, the strip
+read *"Data through Mon Jul 13 close"*, and the macro board was **fully populated** — mortgage 6.49%,
+CPI 4.2%, gold 3,995.36, the rupee, and the Mood gauge at 56/100 with all five of its components. The
+index levels are the **real FRED ones** (S&P 7,575.39), not ETF prices wearing an index's name. The
+board you reported as "absent" was never broken; it was starving on a poisoned edition. PD1 verifies
+all of this formally.
+
+**[VETO?] I found something live in production that nobody had reported, and the plan said it would
+fix itself.** Your session calendar is **still showing "Coinbase Cryptocurrencies"** — rows written by
+the news ingest that was allowlisted away a month ago. The plan predicted the next nightly would
+rewrite them. **It didn't, and the reason is exact:** the calendar refresh replaces the **forward**
+window, and those rows have fallen **behind** it. A row behind the window is not in the window, so
+nothing ever touches it. They rot there.
+
+Two of them are also dated **Jul 11 and Jul 12** — a Saturday and a Sunday.
+
+**This is PD1's to clean** (it is the phase that repairs production), and I have not touched your
+database. I am flagging it because it is the first thing `check:live` found on its first run, and it
+is a good demonstration of why that instrument had to exist: **fixing a write path does not clean a
+table, and nothing that runs in CI could ever have told you.**
+
+**[FYI] I spent 1.2 KB of your remaining JavaScript headroom, and I want you to see the number
+because it is tight.** `/news` went from **195.1 → 196.3 KB** against a **200 KB ceiling that does not
+move**. The cause: the NYSE holiday table is now one JSON file instead of a TypeScript one, because
+three things need to read it (the app, the new production checker, and a test that holds it against
+the real exchange calendar) — and a table only TypeScript can read is a table that gets **copied**,
+which is how every duplicated calendar in this codebase has drifted.
+
+Worth knowing: **0.6 KB of that was a comment.** I had written an explanatory `_comment` key inside
+the JSON. JSON has no comments — a `_comment` key is *data*, and data in a bundle ships to every
+browser. It is gone; the prose lives in the TypeScript now.
+
+**Real headroom is now ≈3.7 KB, not the ≈4.9 KB the plan records.** PD5's shared kit and PD9's overlay
+both spend from that same pot. PD9's code-split was already pre-authorised for exactly this reason, so
+nothing is blocked — but plan against 3.7.
+
+**[FYI] The plan's own census was wrong, and I did not follow it.** It said there was "exactly one"
+local weekday formatter in the app to delete. There was one **display** formatter — and a second thing
+using the same mechanism that is *not* a duplicate: `market-hours.ts` asks New York what day it is in
+order to decide **whether the market is open**, and compares the answer to "Sat"/"Sun". No reader ever
+sees that string. The rule the plan specified ("zero matches outside `lib/time.ts`") would have failed
+the build on correct code. Drift rule 22 names **two** doors, each with its reason, and a third fails
+the build.
+
+**[FYI] Nothing in PD0 is blocked, and none of the questions below changed.** Q-G4-1 (the movers-chip
+ruling) is still open and still costs one paragraph to reverse — **PD5 has not started, so nothing is
+built on it yet.** Q-G3-2 (the Academy lesson that is neither swept nor pixel-locked) is still a
+one-line change and still worth doing early.
+
+---
+
 ## 2026-07-13 — G0 (the gate-efficiency build begins)
 
 **[FYI] One behaviour change you will notice with your own hands: a second push now kills the first

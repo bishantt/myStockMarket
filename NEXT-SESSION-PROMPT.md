@@ -2,171 +2,192 @@
 
 ---
 
-**STOP. Read this line first: `POLISH-AND-DEPTH-PLAN.md` does not start until Bishan says go.**
+# Your session: PD1 — Production made current. PD1 ONLY.
 
-The gate-efficiency reform is **complete and tagged `gate-final`** (CI green, first try). The next
-build is **POLISH-AND-DEPTH-PLAN.md, phase PD0** — but it is explicitly gated on **Bishan's word**,
-not merely on a green tag. **If he has not said go in this session's opening message, do not start
-PD0.** Ask him, and change nothing in the tree while you wait.
+**PD0 is done and tagged `pd-0` (CI green).** The polish & depth build is underway and is **no longer
+gated on Bishan's word** — he said go, and the plan runs PD0 → PD10, one phase per session.
 
-If he HAS said go: this is your prompt.
+Read `POLISH-AND-DEPTH-PLAN.md` **Part 4** (the PD1 playbook) and **Part 12's PD1 entry**. Part 1.3 is
+the diagnosis PD1 verifies. Your phase is **PD1 and PD1 only**.
+
+**PD1 is the phase that repairs production.** It is short by design — PD0 built the instrument that
+does most of the work, and it has already told you what is wrong.
 
 ---
 
-# Your session: PD0 — Session truth, the dating contract. PD0 ONLY.
-
-Read `POLISH-AND-DEPTH-PLAN.md` at the repo root **in full** before touching anything. Your phase is
-**PD0** (Part 12). Read **Part 1** (the claims to re-audit) and **Part 3** (the work) closely — Part 3
-*is* the phase. Then read **Part 12's standing gate**, which was rewritten on 2026-07-13 and is **not**
-the gate you may remember from the older plans.
-
-**PD0 blocks everything else** — it wires the truth (the dating contract) and builds the instruments.
-Do not skip ahead. **Do not run PD1's Saturday-row SQL; it is PD1's.**
-
 ## State of the tree
 
-- `main` is clean. `gate-final` is tagged and green. Everything is pushed.
-- App unit tests: **586 passing**. Pipeline: **464 local** / **490 in CI** (the extra 26 are
-  Postgres-backed and skip on this Mac). Anti-drift: **21 rules**.
-- Bundle worst case: **`/news` at 196.2 KB** against a **200 KB hard ceiling.** Read that number
-  twice — see the PD9 warning below. Fonts: **243 KB** of a 560 KB budget.
-- `check:migrations` is clean: the live database is running the schema in this repo.
+- `main` is clean, `pd-0` is tagged and green, everything is pushed.
+- App unit tests: **617**. Pipeline: **504 local / 533 in CI** (the extra 29 are Postgres-backed and
+  skip on this Mac). Anti-drift: **22 rules**.
+- **Bundle worst case: `/news` at 196.3 KB against a 200 KB HARD ceiling.** Real headroom is **≈3.7
+  KB** — PD0 spent 1.2 KB of it (the NYSE calendar now ships as JSON; see PROGRESS.md). **The plan's
+  "≈4.9 KB" is out of date. PD5's kit and PD9's overlay both spend from this pot.**
+- Fonts: 243 KB of 560. `check:migrations` was clean.
 - Nothing is blocked. Nothing is in flight.
 
 ---
 
-## THE EXIT RITUAL — this changed, and it is the entire point of the last five phases
+## What PD0 left you — this is most of your phase
 
-**Read CLAUDE.md's "The Endgame" block before your exit.** Every mechanism below is live and proven
-(evidence: `docs/gate-evidence/g0-dedup.md` … `g4-texts.md`). The short version:
+### `npm run check:live` — the instrument that can see production
+
+```bash
+set -a; source .env; set +a          # it needs AUTH_COOKIE_SECRET
+cd app && npm run check:live
+```
+
+Six checks against the deployed origin. It mints a session cookie exactly as `check-nav.mjs` does, so
+it does **not** need the app's password. It is **local-only by nature** — CI structurally cannot
+answer any of this, because CI builds a fresh database and a fresh deployment on every run. (Same
+reason `check:migrations` is local-only.)
+
+**Its verdict as of 2026-07-13 23:24 ET:**
+
+```
+✓ masthead · session truth      2026-07-13   (Monday — correct)
+✓ macro board · presence        mortgage · CPI · gold · rupee · mood   (ALL FIVE, populated)
+✓ macro pulse · index honesty   real FRED levels (S&P 7,575.39), not ETF prices under index names
+✗ session calendar · hygiene    still showing "Coinbase Cryptocurrencies"
+✓ news · press-time truth       2026-07-13
+… news · byline links           PENDING → PD8 (plan 9.4) — publisher names are plain text today
+✓ strip · next-edition promise  Tue
+```
+
+**Production has self-healed.** The macro board the user reported as "absent" was never broken — it
+was starving on a poisoned edition. Plan 1.3's diagnosis is confirmed. **Verify it formally; do not
+re-diagnose it.**
+
+### The ONE live defect — and the plan is WRONG about it
+
+The stale `Coinbase Cryptocurrencies` calendar rows **did not self-heal**, and plan 1.3 #2 predicted
+they would. **The reason is exact:** the calendar refresh replaces the **forward window**, and those
+rows have fallen **behind** it. A row behind the window is not in the window, so nothing ever touches
+it. **Fixing a write path does not clean a table.** Two of them are dated **Jul 11 and Jul 12** — a
+Saturday and a Sunday.
+
+This is yours. The write path is already correct (the allowlist landed a month ago), so it is a **data
+repair** — and the fence belongs where a row is written or read, so it cannot come back.
+
+---
+
+## Your phase, in order (plan Part 4)
+
+1. **`npm run check:migrations`** — expect clean. Record it.
+2. **Confirm the nightly ran green** (`gh run list --workflow=nightly-a --limit 5`). Record the run id.
+3. **`npm run check:live`** — the six assertions, table into `docs/pd-evidence/pd1-production.md`.
+4. **Screenshots** of the Desk (phone width + 1512 desktop) and `/news`, archived into the evidence
+   file. **You CAN take these now** — the login wall opens to a minted cookie (that is how `check:live`
+   and `check:nav` get in). An older note in QUESTIONS says production screenshots are impossible; it
+   predates the cookie-minting instruments and is **wrong**.
+5. **Execute Part 0.1 — THE DELETION BISHAN ALREADY AUTHORISED.** This is **his answer, not your
+   assumption** (recorded in the plan at commissioning, and in Q-N6-1):
+   ```sql
+   DELETE FROM market_context WHERE run_date = '2026-07-11';
+   DELETE FROM scan_result    WHERE run_date = '2026-07-11';
+   DELETE FROM pipeline_run   WHERE run_date = '2026-07-11';
+   ```
+   Run it **only after step 3 passes.** Record row counts **before and after**. **`signal_log` is
+   untouchable by design** — trigger-guarded, insert-only, deliberately not in that list: signals that
+   fired are a historical fact about what the app told the reader, and the ledger is the one thing in
+   this product that may never be rewritten.
+   Log it in DECISIONS.md as **user-authored**, and close Q-N6-1 in QUESTIONS with a pointer.
+6. **Fix the calendar rows** (the live defect above).
+7. **Re-run `check:live` — it must be ALL GREEN** (bar the PD8 pending). Then **wire it into the
+   standing gate's post-deploy step** (gate step 7) for every later phase, and into CLAUDE.md's
+   command list.
+
+**Exit gate:** every 3.6 assertion green against production on real Monday-or-later data · 0.1 executed
+and logged · the evidence file's **before/after pair** · `check:live` in the gate text.
+
+---
+
+## The exit ritual — unchanged, and it works (six tags, six first-try greens)
+
+Read **CLAUDE.md's "The Endgame"** block before you exit.
 
 1. **Local gate:** `typecheck && lint && test` · `uv run pytest` · `build` + `check:routes` +
-   `check:bundles` + `check:fonts` · `e2e:local` · `check:drift`. Once per phase:
-   **`check:migrations`** (local only — CI structurally cannot answer it).
+   `check:bundles` + `check:fonts` · `e2e:local` · `check:drift`. Once per phase: `check:migrations`.
 2. **Push to main.** Confirm the branch run green.
-3. **REHEARSE — this is the reform.** `gh workflow run ci.yml -f job=e2e` runs the **full browser
-   oracle** (all three shards, ~8 min) on any ref with **no tag involved.** It is **the same job the
-   tag runs**, so a green rehearsal is not evidence *about* the tag run — it is the same evidence,
-   collected before the tag exists. **Rehearse the exact SHA you are about to tag.**
-   In parallel (they overlap deliberately — push and rehearsal share a ref and must): wait for the
-   Vercel deploy, then `check:nav` and `check:lighthouse`.
-4. **Rehearsal red on pixels?** The run mints its own candidate baselines
-   (`vrt-baselines-candidate-<leg>`). Download, **OPEN EVERY IMAGE**, commit only an explained diff.
-   **Read `.claude/skills/vrt-update/SKILL.md` FIRST.** An unexplained diff is a **bug**, not a
-   re-bake.
-5. **Rehearsal green → `git tag pd-0 <the rehearsed SHA>`** — **BY SHA, never `HEAD`.** The nightly
-   pushes a heartbeat commit; **main moves under you.** Push the tag, confirm the tag run green.
-6. **THE TAG STAYS PUT.** A suspected flake gets `gh run rerun <id> --failed` — **never a re-point.**
-   But **read the failure first**: G2's "flake" was a real race that had failed its retry too.
-7. **ONE docs commit, AFTER the tag:** intelligence files + `docs/pd-evidence/pd0-dates.md` + this
-   prompt, rewritten. **That commit is FREE** — a prose-only commit starts no CI run.
-8. **Every evidence file ends with the gate-size line.** At `gate-final`: **21 drift rules · 76 VRT
-   baselines · 22 e2e specs · 586 unit tests · 16 bundle baselines · 14 manifest rooms.** If PD0
-   grows the gate, **book the growth with its reason.**
+3. **REHEARSE:** `gh workflow run ci.yml -f job=e2e --ref main` — the **same job the tag runs**, on the
+   exact SHA you will tag, before the tag exists. ~8 min, three shards. In parallel: wait for the
+   Vercel deploy, then `check:nav`, `check:live`, `check:lighthouse`.
+4. **Rehearsal red on pixels?** It mints its own candidates (`vrt-baselines-candidate-<leg>`).
+   Download, **OPEN EVERY IMAGE**, commit only an explained diff. Read
+   `.claude/skills/vrt-update/SKILL.md` FIRST. An unexplained diff is a **bug**, not a re-bake.
+5. **Green → `git tag pd-1 <the rehearsed SHA>` — BY SHA, never `HEAD`.** The nightly pushes a
+   heartbeat commit; main moves under you. Push the tag, confirm it green.
+6. **THE TAG STAYS PUT.** A suspected flake gets `gh run rerun <id> --failed` — never a re-point. But
+   **read the failure first**: G2's "flake" was a real race that had failed its retry too.
+7. **ONE docs commit, AFTER the tag** — intelligence files + `docs/pd-evidence/pd1-production.md` +
+   this prompt rewritten, together. **It is free:** `paths-ignore` means a prose-only commit starts no
+   CI run at all.
+8. **The evidence file ends with the gate-size line.** At `pd-0`: **22 drift rules · 76 VRT baselines ·
+   22 e2e specs · 617 unit tests · 16 bundle baselines · 14 manifest rooms.** Growth of the gate is a
+   booked decision with a reason, never an accident.
 
-**THE TRAP AIMED AT YOU:** `on.push` carries `paths-ignore: ['**/*.md', 'docs/**', '.claude/**']`, so
-documentation is free. **Nothing in the gate currently READS those paths — that is the only reason
-the filter is safe. If you write a guard that reads a document, put its path back in the trigger
-FIRST, or the guard breaks silently.**
+**THE TRAP:** nothing in the gate reads a `paths-ignore`d path (`**/*.md`, `docs/**`, `.claude/**`) —
+that is the only reason the filter is safe. **If you write a guard that reads a document, put its path
+back in the trigger FIRST**, or the guard breaks silently.
 
 ---
 
-## What the last five phases built (do not redo or distrust any of it)
+## Two traps PD0 walked into, so you do not
 
-- **A tag runs exactly ONE job — the browser oracle.** `app` and `pipeline` sit out tag runs and
-  dispatch runs (they already ran green on main minutes earlier). Verified `skipped` on all five gate
-  tags. **`pd-*` IS ALREADY WIRED** into `on.push.tags` **and** the e2e job's `if:`, and
-  `pipeline/tests/test_ci_tag_families.py` fails the build if those two ever drift apart. **PD0's own
-  plan text tells you to wire it — VERIFY it, do not redo it.** (There is exactly **ONE** tag-gated
-  job, not two: `vrt-baselines` is dispatch-only.) **The TZ-matrix leg IS still PD0's to build.**
-- **The oracle is SHARDED** into three legs (`desktop`, `phone`, `wide`), one Postgres each. ~8 min.
-- **THERE IS ONE LIST OF ROOMS: `app/lib/routes-manifest.json`.** 14 rooms. The sweeps (a11y,
-  hardening), the pixel oracle (vrt), the nav budget and the bundle budget **all read it**.
-  `app/lib/routes-manifest.test.ts` walks `app/app/**/page.tsx` and **REDS `npm test`** if the
-  filesystem and the manifest disagree **in either direction**. **Add a room? Add it there.**
-- **DRIFT RULE 21 — the fuse-finder.** No absolute date literal in `prisma/seed.mjs`,
-  `prisma/fixtures/*.mjs` or `e2e/**/*.ts` outside **two anchors**: `app/prisma/fixtures/clock.mjs`
-  (the seeded world) and `app/e2e/seeded-clock.ts` (the browser suite). **PD0 IS A DATING PHASE —
-  this rule will bite you.** Derive from the anchor; never write a second date. Comments are exempt,
-  so every derived call site carries its answer (`sessionPlus(3)  // 2026-07-12`).
-- **The texts no longer contradict the machine (G4).** CLAUDE.md now carries the reformed ritual and
-  one sentence stating that **this repo overrides the `~/.claude` global rules** — no 80%-coverage
-  chase (this repo has no coverage tooling at all, deliberately), no planner/reviewer agent ceremony.
-  **Follow the plan.**
+- **A LOCAL GREEN WITH A SKIP COUNT IS NOT A GREEN.** Every Postgres-backed pipeline test **skips on
+  this Mac** (29 of them). PD0's first push went red in CI on a test that passed locally — and the
+  cause turned out to be that the `db` fixture's docstring promised to truncate "every table" while it
+  truncated **9 of 23**, so rows leaked from one test into the next. Fixed. But the shape recurs:
+  **when a harness can only run in one environment, its bugs live in that environment and nowhere
+  else.** Distrust any local green that comes with a skip count.
+- **A comment inside a bundled JSON ships to every browser.** A `_comment` key in
+  `lib/market-calendar.json` cost `/news` **0.6 KB** against a 200 KB hard ceiling. JSON has no
+  comments; a `_comment` key is *data*. Prose belongs in the module that imports it.
 
----
+## Known-and-fine (do not chase)
 
-## Four things pre-decided FOR you, so they cost a paragraph instead of a phase
-
-Logged at G4 as dated amendments inside `POLISH-AND-DEPTH-PLAN.md`. **Read them where they sit; do
-not re-litigate them.**
-
-1. **PD9's `/news` budget sentence was arithmetically impossible, and is corrected.** The plan said
-   the overlay must "hold baseline+10KB." `/news` baselines at **195.1 KB** against a **200 KB
-   ceiling that is explicitly NOT re-baselinable** ("Ship less JavaScript") — so baseline+10 =
-   **205.1 KB, over the ceiling.** A PD9 that spent its documented slack would have **passed the
-   slack check and failed the build.** Real headroom is **≈4.9 KB**, and **PD5's shared kit spends
-   from the same pot.** The overlay's code-split is now **pre-authorized, not a fallback.** **The
-   ceiling does not move.**
-2. **The PD9 sheet's transition is a pre-authorized P2-walk exemption — OPACITY ONLY.** Which means
-   **a slide-up sheet is NOT permitted**: `translateY` on an ancestor of a `[data-p2]` node moves the
-   figure. The exemption goes in **by name**, beside its reason, the way `.route-fade` did. A blanket
-   exemption or a widened selector is a **veto**.
-3. **PD5's movers delta chip carries `data-p2`, and any hover is opacity/underline only** — no
-   transform. **This is a MARKED ASSUMPTION (Q-G4-1) and Bishan may veto it.** Check
-   `QUESTIONS-FOR-BISHANT.md` and `DECISIONS.md` for a non-`[claude]` line before building on it.
-4. **`check:migrations` runs LOCALLY, not in CI.** The plan used to claim `nc-6`'s tag CI ran it. **CI
-   has never run it and structurally cannot** (it migrates a fresh throwaway container every run).
-
----
+- **Node 20 shadowing.** Claude Code exports its own Node 20 into every shell it spawns; `check:fonts`
+  then dies with a `globSync` export error. **Not a regression.** Prepend Node 24 in every shell:
+  `export PATH="$HOME/.nvm/versions/node/v24.18.0/bin:$PATH"`.
+- **`uv run pytest` fails `test_missing_database_url_fails_loudly` if you have sourced the root `.env`**
+  — the test asserts a *missing* `DATABASE_URL` fails loudly, and sourcing `.env` sets one. **Not a
+  regression.** Run it clean: `env -u DATABASE_URL uv run pytest`.
+- **`check:lighthouse` needs** `export CHROME_PATH="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"`
+  and the root `.env` sourced.
+- **`/settings` answers in ~400–510 ms, every sample a cache MISS.** Correct, not a regression — it is
+  the app's one *writer* room, `force-dynamic` by design, with an argued exemption in
+  `check-routes.mjs`. B2 is in report mode for exactly this. Every cached room answers in 41–96 ms.
+- **Lighthouse: performance 87, LCP 3.86 s.** Advisory only (synthetic 4G), logged in DECISIONS. The
+  two **hard** gates pass: **CLS 0.000** and **first-load JS ≤ 200 KB**. Accessibility 100.
+- **P-2 (a GitHub PAT with `workflow` scope) is still NOT PROVISIONED**, so the control room's buttons
+  are dark in production. The whole path is proven working. It is a secret and nothing else.
+- **Three untracked files** (`UI-LIBRARY-EVALUATION.md` + its PDF/HTML) are a finished research
+  deliverable from an earlier session, deliberately left uncommitted. **Not yours; leave them.**
 
 ## Questions waiting for Bishan — none of them blocks you
 
-**Read `QUESTIONS-FOR-BISHANT.md`, and diff `DECISIONS.md` for any non-`[claude]` line (= a user veto,
+Read `QUESTIONS-FOR-BISHANT.md`, and **diff `DECISIONS.md` for any non-`[claude]` line (= a user veto,
 rank 2.5 — honor it FIRST).**
 
-- **Q-G2-1 [VETO?]** G2 edited `news.spec.ts` (a scope deviation) because the rehearsal went red and
-  "red CI blocks a phase exit" is an untouchable.
-- **Q-G3-2 [WORTH HIS EYES]** an Academy lesson (`/academy/[slug]`) is **neither swept nor
-  pixel-locked.** The manifest made the gap visible. **It is now a one-line change** (`"sweeps":
-  ["touch","scroll","axe"]` on that manifest entry). If he says yes, this is a good, cheap thing to
-  do early in PD.
-- **Q-G4-1 [VETO?]** the movers-chip ruling above.
-- **Q-G4-2 [FYI]** I pre-decided one new rung on the font drop-order (JetBrains Mono 600), because the
-  old ladder's first two rungs turned out to be already spent. Easily reversed; nothing is built on it.
-- **Q-G3-1 · Q-G3-3 · Q-G3-4 · Q-G2-2** — all `[FYI]`, decisions made, no action needed.
-
----
-
-## Known-and-fine, so you do not chase them
-
-- **A Node-version trap on this Mac.** Claude Code runs on **Node 20** and exports its own bin
-  directory into every shell it spawns, shadowing the repo's Node 24. `check:fonts` then dies with
-  `SyntaxError: ... does not provide an export named 'globSync'` — **not a regression.** Prepend Node
-  24 in every shell: `export PATH="$HOME/.nvm/versions/node/v24.18.0/bin:$PATH"`.
-- **`check:nav` reports `/settings` at ~400–510 ms, every sample a cache `MISS`.** Correct, not a
-  regression: it is the app's one *writer* room and is `force-dynamic` by design, with an argued
-  exemption in `check-routes.mjs`. **B2 is in report mode for exactly this reason.** Every cached room
-  answers in 41–96 ms.
-- **Lighthouse: performance 87, LCP 3.86 s.** Advisory only (synthetic-4G), logged in DECISIONS. The
-  two **hard** gates pass: **CLS 0.000** and **first-load JS 178 KB** (≤ 200 KB). Accessibility 100.
-- **`check:lighthouse` needs** `export CHROME_PATH="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"`
-  and the root `.env` sourced for `AUTH_COOKIE_SECRET`.
-- **Three untracked files** (`UI-LIBRARY-EVALUATION.md` and its PDF/HTML) are a completed research
-  deliverable from an earlier session, deliberately left uncommitted. **Not yours; leave them.**
-- **P-2 (a GitHub PAT with `workflow` scope) is still NOT PROVISIONED**, so the control room's buttons
-  are dark in production. The whole path is proven working. It is a secret and nothing else.
+- **Q-PD0-1 [VETO?]** the live `Coinbase Cryptocurrencies` calendar rows — **yours to clean.**
+- **Q-PD0-2 [FYI]** the 1.2 KB of bundle headroom PD0 spent, and why.
+- **Q-G4-1 [VETO?]** PD5's movers delta chip carries `data-p2` (hover = opacity/underline only).
+  **PD5 has not started; nothing is built on it. Reversing it still costs one paragraph.**
+- **Q-G3-2 [WORTH HIS EYES]** `/academy/[slug]` is neither swept nor pixel-locked. A one-line manifest
+  change (`"sweeps": ["touch","scroll","axe"]`). Cheap, and worth doing early in PD.
+- Q-G2-1 · Q-G4-2 · Q-G3-1 · Q-G3-3 · Q-G3-4 · Q-G2-2 — all decided, no action needed.
 
 ---
 
 ## The rhythm — non-negotiable
 
-**ONE PHASE PER SESSION.** Finish PD0, tag `pd-0`, bring every intelligence file current as **ONE**
-commit, rewrite this file to point at **PD1**, **report to Bishan in plain English, and STOP.**
+**ONE PHASE PER SESSION.** Finish PD1, tag `pd-1`, bring every intelligence file current as **ONE**
+commit, rewrite this file to point at **PD2**, **report to Bishan in plain English, and STOP.**
+
 Within the phase the Autonomy Contract holds in full: never ask, never wait, never end a phase with a
 question — anything that needs Bishan goes to `QUESTIONS-FOR-BISHANT.md` with the most reasonable
 assumption made and marked.
 
-Run the CLAUDE.md session ritual first (git pull, read the constitution + PROGRESS.md + LESSONS.md,
-diff DECISIONS.md for user vetoes, `npm test` from `app/` and `uv run pytest` from `pipeline/`,
-announce the checkpoint), then begin PD0.
+Run the CLAUDE.md session ritual first (git pull → constitution + PROGRESS.md + LESSONS.md → diff
+DECISIONS.md for user vetoes → `npm test` from `app/` and `uv run pytest` from `pipeline/` → announce
+the checkpoint), then begin PD1.

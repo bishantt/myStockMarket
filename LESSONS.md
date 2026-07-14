@@ -233,3 +233,100 @@ to get wrong.
 2026-07-13 · An empty fallback and a guard that cannot fail are the same bug — both answer "nothing to report", and that is indistinguishable from working → `check-font-budget.mjs` carries an emergency drop-order and states its own purpose: "the drop order is fixed in advance so the decision is not made at 2am under pressure" · it named Inter 500 first, then Playfair 600 · BOTH HAD ALREADY BEEN DROPPED AT R6 — which is precisely WHY there is 317KB of headroom today · so the ladder that exists to prevent a panicked 2am decision was A BLANK PAGE, and the only way to discover that was to reach for it at 2am · this is G3's finding in a different costume: G3 found a route whose bundle baseline was `undefined`, so the verdict column printed an empty string and the room was REPORTED WITHOUT EVER BEING JUDGED · a silence in a gate is indistinguishable from a pass; an escape hatch with no rungs is indistinguishable from a plan · guard: when you write a fallback, a drop-order, a code-split hatch or a "if this fails, do X" — ASK WHAT WOULD ACTUALLY HAPPEN IF SOMEBODY REACHED FOR IT, and if the answer is "nothing, it's already spent", say so IN THE COMMENT with the line numbers · and never write the current total into the prose (`npm run check:fonts` prints it live) — the number in the comment is the thing that rots
 
 2026-07-13 · The tree wins on the detail, and the exit greps are the phase — not ceremony at the end of it → G4's Appendix A was a 22-row checklist, written the same day, by a session that had just read every one of those files · it still MISSED FOUR LIVE INSTANCES of the defect it was hunting, and one of them was the most authoritative statement of the rule in the entire repo: DEVELOPMENT-PLAN's `--alert` token row, reading "Exactly two consumers exist" · the other three were shipped source comments · the plan's own exit criterion (`grep -rn "two consumers"` returns only register-pointers) is what found them, ten minutes before the tag · guard: when a phase's exit criteria contain a grep, RUN IT AND READ WHAT IT RETURNS — not what you expected it to return · and expect it to return more than the plan enumerated, because a plan is a snapshot and the tree is the truth · corollary, learned the same hour: the grep will also return FALSE POSITIVES that are different rules wearing the same words (the brand gradient's "exactly two consumers" is TRUE; the scan presets' "one definition, two consumers" is TRUE and about preset keys) — so the honest exit report says WHICH instances survive and WHY each is correct, rather than claiming a grep came back clean when it did not
+
+---
+
+## PD0 (2026-07-13) — session truth
+
+### A fixture that can certify what production forbids is not a fixture. It is a trap with a green tick on it.
+
+**What happened.** PD0 made `publish` refuse a non-session `run_date`, and made the nightly derive
+its edition from the bars. Then the nightly's OWN TEST FIXTURES turned out to be guilty of the exact
+bug: `_history()` walked *calendar* days (so a fake night could end on a Saturday) and was anchored at
+the START, while the night's `run_date` sat beside it as a hard-coded `date(2026, 6, 10)` that did not
+move when a history's length changed. So a fixture night described one session and CLAIMED another —
+the production bug of 2026-07-11, reproduced inside the test suite, green, for months.
+
+**Why it matters more than it sounds.** The seeded world is what every e2e journey and all 76 pixel
+baselines are photographed against. A guard that production obeys and the fixtures do not is a guard
+with a hole in it: the tests would be green, the app would be right, and they would be describing
+different worlds.
+
+**The guard.** Fixtures walk trading sessions and anchor on the session they END on (a night IS a
+session, with however much history behind it). `prisma/fixtures/sessions.test.ts` holds the seeded
+world to the same calendar as production, and is negative-controlled so a sweep that finds nothing
+fails itself.
+
+### Drift rule 21 made the seed's dates AGREE. It could not make them LAWFUL.
+
+G3 anchored every seeded date to one clock (`fixtures/clock.mjs`), which is what stopped them drifting
+apart. But the offsets are **calendar days, not sessions**: from Thursday 2026-07-09, `sessionPlus(-15)`
+lands on a Wednesday and is fine, and `sessionPlus(-12)` would land on a **Saturday** and is not.
+Nothing about the anchor tells you which. Today every offset happens to be lawful; the next one
+somebody writes is a coin flip, and the failure would have surfaced as a VRT diff in a room nobody
+was editing. **One-source-of-truth is not the same property as correct-by-construction.** Both need a
+guard.
+
+### The plan's own census was wrong, and the shape of the error is worth remembering.
+
+Plan 3.3 said the app had "exactly one" local weekday formatter to delete. It had one **display**
+formatter — and a **second** thing using `{weekday}` that was not a duplicate at all: `market-hours.ts`
+asks New York what day it is in order to DECIDE whether the market is open, and compares the answer
+against `"Sat"/"Sun"`. No reader ever sees that string.
+
+A rule written to the census ("`weekday:` outside lib/time.ts — zero matches") would have failed the
+build on correct code, and the obvious fix — make the market-state check import a display formatter to
+do arithmetic with — is worse than the thing the rule prevents. **Drift rule 22 names two doors, each
+with its reason, and a third fails the build.** A census counts what it was looking for; ask what else
+uses the mechanism.
+
+### A comment inside a bundled JSON is a comment shipped to every browser.
+
+Moving the holiday table to `lib/market-calendar.json` (one list, three readers) cost `/news` 1.8 KB
+against a **200 KB hard ceiling with ~4.9 KB of headroom left**. 0.6 KB of that was an explanatory
+`_comment` key I had put inside the JSON to explain itself. JSON has no comments; a `_comment` key is
+DATA, and data in a client bundle ships. The prose moved to `market-hours.ts`, where the compiler
+strips it. **Measure, do not assume:** the remaining 1.2 KB is real and is now booked, and PD5/PD9
+must plan against **3.7 KB**, not 4.9.
+
+### The instruments that can see production are local-only BY NATURE, and that is the whole point.
+
+`check:migrations` asks "does the live database run the schema in this repo?" `check:live` (new) asks
+"is the live app telling the truth?" **CI can answer neither, structurally** — it builds a fresh
+database and a fresh deployment on every run, so every question it can ask, it asks of itself.
+
+That gap is not theoretical. It is how production ran for days without N0's migration, and it is how
+this app spent two days claiming a Saturday close with green CI on every commit. **On its very first
+run against production, `check:live` found a live defect nobody had reported** (the retired-provider
+calendar rows — see below). Every other guard in this repo asks whether the code is correct. Something
+has to ask whether the answer is true.
+
+### "It will self-heal on the next run" is a hypothesis, not a fix.
+
+The plan predicted the stale `Coinbase Cryptocurrencies` calendar rows would be rewritten by the next
+nightly (the write path was allowlisted a month ago). They were not, and the reason is exact: the
+calendar refresh **replaces the forward window**, and a row that has fallen **behind** the window is
+not in the window, so the replace never touches it. The rows rot in place.
+
+**Fixing the write path does not clean the table.** Nothing that ran in CI could ever have told you —
+only something that reads production. PD1 repairs it.
+
+### A fixture whose docstring is a promise it does not keep is worse than no fixture.
+
+**What happened.** The pipeline's `db` fixture says, in as many words, "every table, truncated
+between tests." Its list named **9 of the schema's 23**. Fourteen tables — `briefing`, the analytics
+set, the news set, the macro board, the paper ledger — were never cleared, so rows accumulated across
+a whole pytest session and leaked from one test into the next. A new PD0 test asked
+`SELECT run_date FROM briefing` and read back a row written twelve tests earlier.
+
+**Why nobody had ever seen it, which is the real lesson.** Every db-backed test **SKIPS on a machine
+with no Postgres.** The local suite is green, always. So the defect was structurally invisible to the
+person most likely to introduce it, and could only ever have been caught in CI — which is exactly
+where it was caught, on the first push of a phase that added the first new db-backed tests in months.
+
+**Two guards, because either alone leaves the trap.** The fixture truncates all 23 tables now. And
+the test asks for **the row it wrote**, not for "the only row in the table" — *a test that depends on
+a table being otherwise empty depends on every other test in the suite, and on their order.*
+
+**The general shape:** when a test harness can only run in one environment, its bugs live in that
+environment and nowhere else. Distrust any local green that comes with a skip count.
