@@ -140,8 +140,8 @@ def test_publish_accepts_a_real_session(db):
     pub.publish(db, run_date=SESSION, stage_status={"ingest": "ok"}, source_status={"alpaca": "ok"})
 
     with db.cursor() as cur:
-        cur.execute("SELECT run_date FROM pipeline_run")
-        assert cur.fetchone()[0] == SESSION
+        cur.execute("SELECT count(*) FROM pipeline_run WHERE run_date = %s", (SESSION,))
+        assert cur.fetchone()[0] == 1
 
 
 def test_publish_briefing_accepts_a_real_session(db):
@@ -151,9 +151,19 @@ def test_publish_briefing_accepts_a_real_session(db):
         status="published",
     )
 
+    # Ask for THE ROW THIS TEST WROTE, not for "the only row in the table".
+    #
+    # The first version of this test said `SELECT run_date FROM briefing` and asserted the single
+    # result. It passed on this Mac — where every db-backed test SKIPS for want of a Postgres — and
+    # failed in CI, where it read back 2026-06-30: a briefing row left behind by test_publish.py.
+    # The `db` fixture's docstring promises "every table, truncated between tests"; its list names 9
+    # of the schema's 23, and `briefing` is not among them (see conftest, now fixed).
+    #
+    # The fixture's bug is fixed. This assertion is scoped anyway, because a test that depends on a
+    # table being otherwise empty is a test that depends on every other test in the suite.
     with db.cursor() as cur:
-        cur.execute("SELECT run_date FROM briefing")
-        assert cur.fetchone()[0] == SESSION
+        cur.execute("SELECT count(*) FROM briefing WHERE run_date = %s", (SESSION,))
+        assert cur.fetchone()[0] == 1
 
 
 def test_publish_news_accepts_a_real_session(db):

@@ -17,9 +17,34 @@ import pytest
 
 TEST_DATABASE_URL = os.environ.get("TEST_DATABASE_URL")
 
-# Every serving table, truncated between tests. TRUNCATE bypasses signal_log's insert-only row
-# trigger (which fires per-row on UPDATE/DELETE, not on TRUNCATE), so the log can still be reset.
-_ALL_TABLES = "pipeline_run, instrument, price_bar, scan_result, signal_log, watchlist_item, market_context, news_item, calendar_event"
+# EVERY table, truncated between tests. TRUNCATE bypasses signal_log's insert-only row trigger
+# (which fires per-row on UPDATE/DELETE, not on TRUNCATE), so the log can still be reset.
+#
+# IT USED TO NAME NINE OF THESE TWENTY-THREE, and the docstring above said "every table" anyway.
+# Fourteen tables — briefing, the analytics set, the news set, the board, the paper ledger — were
+# never cleared, so their rows accumulated across the whole session and leaked from one test into the
+# next. PD0 found it the way these are always found: a new test asserted `SELECT run_date FROM
+# briefing` and read back a row written by test_publish.py, twelve tests earlier.
+#
+# It only showed up in CI, which is the part worth remembering. Every one of these tests SKIPS on a
+# machine with no Postgres — so the local suite was green, and the leak was invisible to the person
+# most likely to introduce it. A fixture whose docstring is a promise it does not keep is worse than
+# no fixture, because every test written against it believes the promise.
+_ALL_TABLES = ", ".join([
+    # the nightly's serving tables
+    "pipeline_run", "instrument", "price_bar", "scan_result", "signal_log", "signal_resolution",
+    "market_context", "calendar_event", "watchlist_item",
+    # the briefing
+    "briefing",
+    # the P4 honesty engine
+    "base_rate_stat", "setup_card", "vol_band",
+    # news (N4/N5)
+    "news_item", "news_cluster", "news_image", "catalyst_link",
+    # the macro board (N3) and the control room (N6)
+    "macro_stat", "manual_run",
+    # the reader's own state
+    "paper_trade", "journal_entry", "lesson_progress", "concept_state",
+])
 
 _MIGRATIONS = sorted(
     glob.glob(str(Path(__file__).resolve().parents[2] / "app" / "prisma" / "migrations" / "*" / "migration.sql"))
