@@ -60,7 +60,17 @@ function WatchlistManagerRow({ item }: { item: ManagedItem }) {
          * this watchlist. A door now, too: the row's controls are in sibling <form>s, so the anchor
          * nests inside nothing interactive.
          */}
-        <div className="w-24 shrink-0">
+        {/*
+         * `w-32`, not `w-24` — and this is PD4's law arriving in a new room. A bare word and a
+         * bordered chip are not the same width: "AAPL" as text is ~34px, and "AAPL" as a chip is
+         * ~48px once it has a border and its padding. Beside a FOCUS tag that came to ~101px in a
+         * 96px column, so the tag wrapped onto its own line and pushed the company name down — the
+         * whole of this room's +21px in the baseline.
+         *
+         * **Making a chip FIT is the LAYOUT's job, not the chip's.** The column is the thing that
+         * was wrong, so the column is the thing that changed.
+         */}
+        <div className="w-32 shrink-0">
           <div className="flex flex-wrap items-center gap-1.5">
             <TickerChip symbol={item.symbol} door />
             {item.isFocus ? <Tag variant="catalyst">focus</Tag> : null}
