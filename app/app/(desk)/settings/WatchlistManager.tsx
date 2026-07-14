@@ -52,20 +52,7 @@ function WatchlistManagerRow({ item }: { item: ManagedItem }) {
 
   return (
     <li className="flex flex-col gap-1 border-b border-hairline py-3 last:border-b-0">
-      {/*
-       * `flex-wrap`, AND IT IS A BUG FIX, NOT A TIDY-UP (PD6).
-       *
-       * Widening the symbol column to `w-32` (below) to hold a chip added 32px to a row that was
-       * already tight, and at **360px the room began scrolling sideways by 16px** — the exact bug
-       * PD4 spent a whole phase killing, reintroduced by a fix for something else. The 360 sweep
-       * caught it, on CI, on the phone leg, after three other legs had gone green.
-       *
-       * A fixed-width column plus two buttons cannot always fit a 328px interior, and the honest
-       * answer to "it does not fit" is to WRAP, never to overflow. At 412 there is room and nothing
-       * wraps; at 360 the controls drop to a second line. Vertical space on a phone is cheap.
-       * Horizontal space is the one thing you cannot borrow.
-       */}
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+      <div className="flex items-center gap-4">
         {/*
          * THE SYMBOL WAS SET IN THE UI SANS, BOLD (PD6). Every other symbol in this app is mono —
          * that is the type system's oldest rule, and this room was the one place that broke it, so
@@ -74,16 +61,29 @@ function WatchlistManagerRow({ item }: { item: ManagedItem }) {
          * nests inside nothing interactive.
          */}
         {/*
-         * `w-32`, not `w-24` — and this is PD4's law arriving in a new room. A bare word and a
-         * bordered chip are not the same width: "AAPL" as text is ~34px, and "AAPL" as a chip is
-         * ~48px once it has a border and its padding. Beside a FOCUS tag that came to ~101px in a
-         * 96px column, so the tag wrapped onto its own line and pushed the company name down — the
-         * whole of this room's +21px in the baseline.
+         * `w-24 md:w-32` — A CHIP IS WIDER THAN THE WORD IT REPLACES, AND THE COLUMN WAS SIZED FOR
+         * THE WORD (PD6). This took three goes, and the two failures are the useful part.
          *
-         * **Making a chip FIT is the LAYOUT's job, not the chip's.** The column is the thing that
-         * was wrong, so the column is the thing that changed.
+         * "AAPL" as bare text is ~34px. As a bordered chip it is ~48px, and beside its FOCUS tag
+         * that came to ~101px in a 96px column — so the tag wrapped onto its own line and shoved the
+         * company name down. **Making a chip FIT is the LAYOUT's job, not the chip's** (PD4's law).
+         *
+         *   ATTEMPT 1 — `w-32` everywhere. It fixed the desktop and **made /settings scroll sideways
+         *     by 16px at 360**: 32px added to a row that was already tight. That is the exact bug PD4
+         *     spent a phase killing, and the 360 sweep caught it.
+         *   ATTEMPT 2 — `flex-wrap` on the row, so the controls could drop to a second line instead
+         *     of overflowing. It fixed 360 and **broke 1366**: the reason text's flex-basis is `auto`
+         *     (its full, long width), so under `flex-wrap` it stops SHRINKING and starts PUSHING —
+         *     the buttons wrapped to a second line on the desktop too. `wide` passed and hid it, for
+         *     the only reason a wider viewport ever hides a wrap: it had 140px more room.
+         *
+         * The column is RESPONSIVE, which is what it always should have been. Below `md` the chip and
+         * its tag stack inside a 96px column — on a phone that is not a defect, it is the better
+         * layout, because it hands the reason text back the 32px it was taking. From `md` up there is
+         * room for both on one line, and the company names stop wrapping too (which is why the
+         * desktop baseline came back 35px SHORTER than the one it replaced).
          */}
-        <div className="w-32 shrink-0">
+        <div className="w-24 shrink-0 md:w-32">
           <div className="flex flex-wrap items-center gap-1.5">
             <TickerChip symbol={item.symbol} door />
             {item.isFocus ? <Tag variant="catalyst">focus</Tag> : null}
