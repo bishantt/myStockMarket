@@ -143,3 +143,38 @@ def test_the_flag_names_where_it_was_found():
 
 def test_empty_prose_is_not_a_violation():
     assert _flags("") == ()
+
+
+# ----- identifiers in prose (PD7's first real dispatch published one) -----
+
+def test_a_stat_id_in_the_prose_is_flagged():
+    """THE SENTENCE THAT SHIPPED. Every number in it was true, every citation correct, and it is a
+    sha1 hash in a newspaper:
+
+        "This story is carried by 1 outlet tonight (cls:798fa63d458eaeca...:corroboration)."
+
+    The model was told to cite each number "by its stat_id" and put the id where the reader could
+    see it. A prompt is a request; this is the rule."""
+    assert _flags(
+        "This story is carried by 1 outlet tonight (cls:798fa63d458eaeca83850221b351fe71ed9cddae:corroboration)."
+    )
+
+
+def test_every_registry_namespace_is_caught_in_prose():
+    for entity in ("tkr:AAPL:pos52w", "cls:nc-x:history7d", "cal:CPI:next", "sector:Technology:breadth1d"):
+        flags = _flags(f"The name sits mid-range ({entity}).")
+        assert flags and flags[0].kind == "id_in_prose", entity
+
+
+def test_a_bare_hash_in_prose_is_caught_however_it_arrived():
+    assert _flags("The cluster 798fa63d458eaeca83850221b351fe71ed9cddae covers it.")
+
+
+def test_the_VALUE_of_a_stat_is_exactly_what_prose_SHOULD_carry():
+    """The fix is not "say less" — it is "say the number, not its filing reference"."""
+    assert not _flags("The move is 2.3x its normal daily range, and the name sits 71.4% up its range.")
+
+
+def test_an_ordinary_colon_is_not_an_identifier():
+    """The guard must not fire on English. A colon in a sentence is punctuation."""
+    assert not _flags("The mechanism is simple: an approval changes the standard of care.")

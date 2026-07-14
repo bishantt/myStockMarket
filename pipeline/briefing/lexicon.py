@@ -82,6 +82,31 @@ _FREQUENCY = re.compile(
 # whitespace after the terminator — "2.83x" must not become two sentences.
 _SENTENCE = re.compile(r"(?<=[.!?])\s+")
 
+# AN IDENTIFIER IS NOT A WORD, AND THE READER SEES THE PROSE.
+#
+# PD7's first real dispatch published this, to production, having passed every check in this file and
+# every tolerance in the gate:
+#
+#   "This story is carried by 1 outlet tonight (cls:798fa63d458eaeca83850221b351fe71ed9cddae:corroboration)."
+#
+# The number was true. The citation was correct. The sentence is a sha1 hash in a newspaper. The
+# model was told to cite each number "by its stat_id" and reasonably concluded that meant writing the
+# id where the reader could see it — and the note carries a `citations` ARRAY whose entire purpose is
+# to hold those ids away from the prose.
+#
+# The prompt now says so explicitly. This says so DETERMINISTICALLY, because a prompt is a request
+# and a gate is a rule: any registry id, doc id or cluster id appearing in a prose section drops that
+# section. There is no sentence in which a reader benefits from seeing one.
+_ID_IN_PROSE = re.compile(
+    r"""
+      \b(?:tkr|cls|cal|sector)\s*:\s*[\w.-]+      # a registry stat id, in any of its four namespaces
+    | \bdoc_id\s*[:=]                             # an extract's doc id
+    | \bcluster_id\s*[:=]                         # a cluster id, named as one
+    | \b[0-9a-f]{16,}\b                           # a bare hash, however it arrived
+    """,
+    re.VERBOSE | re.IGNORECASE,
+)
+
 
 def lexicon_flags(text: str, *, stat_sources: SourceSet, location: str) -> tuple[Flag, ...]:
     """Read one prose section and return E4's flags — advice anywhere, unearned frequency claims.
@@ -96,6 +121,16 @@ def lexicon_flags(text: str, *, stat_sources: SourceSet, location: str) -> tuple
         return ()
 
     flags: list[Flag] = []
+
+    for match in _ID_IN_PROSE.finditer(text):
+        flags.append(
+            Flag(
+                location=location,
+                entity=match.group().strip(),
+                kind="id_in_prose",
+                reason="an identifier written where the reader can see it — cite in `citations`",
+            )
+        )
 
     for match in _ADVICE.finditer(text):
         flags.append(

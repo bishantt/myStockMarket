@@ -163,7 +163,15 @@ _SYSTEM = (
     "profits, accumulate, avoid); no directional forecasts of any kind; frequency words (usually, "
     "often, rarely, typically, tends) ONLY in a sentence that also cites a computed stat_id — an "
     "uncited 'usually' is a probability claim with no evidence and it will be deleted. If the inputs "
-    "give you nothing beyond the headline, return null. An honest null beats padding."
+    "give you nothing beyond the headline, return null. An honest null beats padding. "
+    # THE READER SEES THE PROSE. This sentence exists because the first live run did not have it, and
+    # published "carried by 1 outlet tonight (cls:798fa63d...:corroboration)" — a sha1 hash in a
+    # newspaper. Told to cite each number "by its stat_id", the model reasonably wrote the id where a
+    # reader could see it. The `citations` array is where ids live; the gate now enforces it.
+    "HOW TO CITE: put the stat_ids and doc_ids in the `citations` array. NEVER write a stat_id, a "
+    "doc_id, a cluster_id or any hash INSIDE the prose — a human reads the prose, and an identifier "
+    "in a sentence is not English. Write the VALUE (\"2.3x its normal daily range\"), and put the ID "
+    "in `citations`. A section containing an identifier is deleted."
 )
 
 
