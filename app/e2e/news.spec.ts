@@ -102,8 +102,23 @@ test.describe("The Front Page", () => {
     const total = 13; // the Today window; the 14th story broke on the prior session
     const chips = page.getByLabel("Catalyst filters").getByRole("button");
 
+    // `.all()` IS THE ONE LOCATOR CALL THAT DOES NOT AUTO-WAIT. It hands back whatever is in the
+    // DOM at that instant — and the filter row is rendered by NewsFeed, a "use client" component,
+    // inside a streamed Suspense boundary. `page.goto("/news")` resolves before that chunk lands,
+    // so enumerating the chips straight away can return an EMPTY list. The loop then sweeps nothing,
+    // reports 0 stories reachable, and the failure reads as "the filter row is broken" when what
+    // actually happened is that the test measured a page that had not arrived yet. Every other test
+    // in this file is safe by luck: they locate a chip by name and click it, and clicking auto-waits.
+    //
+    // This is the house rule in its third costume — a sweep that swept nothing is a failure, not a
+    // pass. So: wait for the row, then state how many chips we are about to sweep, and let the
+    // count fail loudly on its own if it is ever zero.
+    await expect(chips.first()).toBeVisible();
+    const row = await chips.all();
+    expect(row.length, "the filter row rendered no chips — this sweep would have measured nothing").toBeGreaterThan(0);
+
     let reachable = 0;
-    for (const chip of await chips.all()) {
+    for (const chip of row) {
       await chip.click();
       const line = await page.getByTestId("news-count").textContent();
       reachable += Number(line?.match(/^(\d+)/)?.[1] ?? 0);
