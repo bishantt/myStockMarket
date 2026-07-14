@@ -189,7 +189,7 @@ describe("the macro board", () => {
   });
 
   /**
-   * THE BUG THE PHOTOGRAPH FOUND, now held by a test.
+   * THE BUG THE PHOTOGRAPH FOUND, now held by a test — and PD4 did NOT make it safe.
    *
    * The gauge was briefly a fifth card on the shelf. A shelf stretches every card to the height of
    * its tallest, and the gauge — a score, a strip, two unfoldable sentences and a disclosure — is
@@ -199,23 +199,30 @@ describe("the macro board", () => {
    *
    * Every test passed. The DOM was right, the numbers were right. Only the picture showed it.
    *
-   * The category error underneath: F5's triage says GLANCE stations get bounded and READ stations
-   * stay vertical. The four stats are glances. The gauge is something you read.
+   * PD4 REPLACED THE SHELF WITH A GRID, AND A GRID ROW IS AS TALL AS ITS TALLEST CELL — which is the
+   * identical mechanism, and is precisely the thing PD3 spent a whole phase digging out of the Desk's
+   * columns. So this test does not retire with the shelf. It retargets. Put the gauge in the 2×2 and
+   * all four stat cards inherit its height, and the bug comes back wearing different CSS.
+   *
+   * The category error underneath, worth keeping written down: F5's triage says GLANCE stations get
+   * bounded and READ stations stay vertical. The four stats are glances. The gauge is something you
+   * read.
    */
-  it("keeps the gauge OFF the shelf — a read station is not a glance", () => {
+  it("keeps the gauge OUT of the money grid — a grid row is as tall as its tallest cell", () => {
     renderBoard();
 
-    const shelf = screen.getByRole("group", { name: "Money and mood" });
+    const grid = document.querySelector('[data-macro-group="money"]') as HTMLElement;
+    expect(grid).not.toBeNull();
 
     // The gauge's ownership line is the thing that makes it a read station rather than a figure.
-    expect(within(shelf).queryByText(copy.macroBoard.moodOwnership)).toBeNull();
-    expect(within(shelf).queryByText(copy.macroBoard.moodContext)).toBeNull();
+    expect(within(grid).queryByText(copy.macroBoard.moodOwnership)).toBeNull();
+    expect(within(grid).queryByText(copy.macroBoard.moodContext)).toBeNull();
 
     // It is still on the page, full width, below the stats — where it can be read.
     expect(screen.getAllByText(copy.macroBoard.moodOwnership).length).toBeGreaterThan(0);
 
-    // And the shelf counts what is ACTUALLY on it: four stats, not five.
-    expect(screen.getByText(/4 figures/)).toBeInTheDocument();
+    // And the grid holds what is ACTUALLY a glance: the four stats, and nothing else.
+    expect(grid.children).toHaveLength(4);
   });
 
   /**
@@ -230,10 +237,21 @@ describe("the macro board", () => {
   it("renders a household cost's delta in ink — down on a mortgage rate is not down on a stock", () => {
     renderBoard();
 
+    // The colour and the wash live on the CHIP; the delta text sits in an atom span inside it (PD4's
+    // wrap contract). Asserting against the atom would make every `not.toContain` below pass
+    // vacuously — an atom span carries no colour class in ANY direction, so the test would go green
+    // even if the mortgage went back to red. Assert against the element that actually holds the paint.
     const [delta] = screen.getAllByText("+0.06%");
-    expect(delta.className).not.toContain("text-down");
-    expect(delta.className).not.toContain("bg-down-wash");
-    expect(delta.textContent).not.toContain("▼");
+    const chip = delta.parentElement!;
+    expect(chip.className).not.toContain("text-down");
+    expect(chip.className).not.toContain("bg-down-wash");
+    expect(chip.textContent).not.toContain("▼");
+
+    // And prove the assertion has TEETH: gold, on the same board, does carry the colour. If the query
+    // above ever drifts onto an element that simply has no colour classes, this line still passes and
+    // the one above stops meaning anything — so they are checked together.
+    const [goldDelta] = screen.getAllByText("+0.33%");
+    expect(goldDelta.parentElement!.className).toContain("text-up");
 
     // The sign and the window still carry the whole fact — what is gone is the judgement.
     expect(screen.getAllByText(/vs prior week/).length).toBeGreaterThan(0);
@@ -242,7 +260,9 @@ describe("the macro board", () => {
   it("but GOLD keeps its direction colour — gold IS a market price", () => {
     renderBoard();
 
+    // The colour lives on the CHIP. The delta text sits in an atom span inside it (PD4's wrap
+    // contract: the signed delta and its window each move as one), so the chip is its parent.
     const [delta] = screen.getAllByText("+0.33%");
-    expect(delta.className).toContain("text-up");
+    expect(delta.parentElement!.className).toContain("text-up");
   });
 });

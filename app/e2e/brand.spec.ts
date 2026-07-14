@@ -54,13 +54,21 @@ test.describe("the brand assets are reachable without a session", () => {
 
 test.describe("the mark on the page", () => {
   /**
-   * The brand panel is `hidden lg:flex` — a 375px screen has room for a headline and a form, and
-   * that is all it needs — so the mark it carries is a DESKTOP lockup and the phone login has none.
-   * The test asserts that contract in both directions rather than asserting the easy half of it: an
-   * assertion that only ran where the mark exists would go green on the day the panel stopped
-   * rendering it anywhere at all.
+   * THE LOGIN SHOWS THE MARK AT EVERY WIDTH — and until PD4 it did not.
+   *
+   * The brand panel is `hidden lg:flex`, which is the right call for the PANEL: a 375px screen has
+   * room for a headline and a form, and little else. But the mark went out with it, so the first page
+   * anyone ever opens, on the device most people open it on, showed this product's name in text and
+   * nothing of its face. The one surface where a brand is genuinely load-bearing is the one where the
+   * reader has not seen the product yet.
+   *
+   * The previous version of this test asserted the ABSENCE below lg, and called it "the design, not a
+   * regression". It was neither — it was an oversight nobody had looked at. The test is now the other
+   * way round, and it still asserts BOTH halves rather than the easy one: each width must show its own
+   * lockup and NOT the other's, so a rule that collapsed into "render the mark everywhere at one size"
+   * would fail here.
    */
-  test("the login panel shows the mark above lg, and correctly does not below it", async ({
+  test("the login shows its mark at every width — 96px beside the panel, 48px above the form", async ({
     page,
   }) => {
     const wide = (page.viewportSize()?.width ?? 0) >= 1024;
@@ -69,25 +77,28 @@ test.describe("the mark on the page", () => {
       await page.emulateMedia({ colorScheme: theme });
       await page.goto("/login");
 
-      const mark = page.locator('img[src="/icons/brandmark-192.webp"]');
+      // BOTH lockups render from the SAME file — a `display:none` subtree still downloads its images,
+      // so the phone already fetches the 192px asset for the panel it cannot see, and a second file
+      // would be a second request to show a smaller picture. That makes the src ambiguous, so the size
+      // is what tells the two apart.
+      const panelMark = page.locator('img[src="/icons/brandmark-192.webp"][width="96"]');
+      const phoneMark = page.locator('img[src="/icons/brandmark-192.webp"][width="48"]');
 
-      if (!wide) {
-        // The panel collapses, and the mark goes with it. This is the design, not a regression.
-        await expect(mark).toBeHidden();
-        continue;
-      }
+      const shown = wide ? panelMark : phoneMark;
+      const hidden = wide ? phoneMark : panelMark;
 
-      // The panel's mark is the 96px lockup. /login is `force-static` and the asset is served from
-      // public/, so if it resolves here it resolves for a logged-out reader on a cold cache — which
-      // is the only reader who ever sees this page.
-      await expect(mark).toBeVisible();
+      // /login is `force-static` and the asset is served from public/, so if it resolves here it
+      // resolves for a logged-out reader on a cold cache — the only reader who ever sees this page.
+      await expect(shown).toBeVisible();
+      await expect(hidden).toBeHidden();
 
       // It must arrive with its box already reserved, or it shifts the headline under the reader.
-      await expect(mark).toHaveAttribute("width", "96");
-      await expect(mark).toHaveAttribute("height", "96");
+      const size = wide ? "96" : "48";
+      await expect(shown).toHaveAttribute("width", size);
+      await expect(shown).toHaveAttribute("height", size);
 
       // And it must actually have decoded — a broken image is still "visible" to the DOM.
-      const decoded = await mark.evaluate((img) => (img as HTMLImageElement).naturalWidth > 0);
+      const decoded = await shown.evaluate((img) => (img as HTMLImageElement).naturalWidth > 0);
       expect(decoded, "the mark rendered as a broken image").toBe(true);
     }
   });

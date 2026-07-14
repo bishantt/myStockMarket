@@ -447,3 +447,147 @@ test.describe("The macro board", () => {
     await expect(visible(page, "Remittance apps may differ.")).toBeVisible();
   });
 });
+
+/**
+ * THE PHONE'S MACRO GRIDS (PD4, §7.1) — the composition that replaced the two swipe-shelves.
+ *
+ * The Desk carried the app's only two horizontal rails, and they hid two figures each behind a swipe.
+ * PD4 replaced them with grids that show everything at once (amendment 0.2.1). These tests pin the
+ * three claims that change makes, and they are asserted in the BROWSER because the claim is about what
+ * is on the SCREEN — the jsdom suite can prove which cell a figure sits in, but only a real layout can
+ * prove the reader can see it.
+ */
+test.describe("The phone's macro grids", () => {
+  test.skip(process.env.MSM_SEEDED !== "1", "needs a seeded test database (MSM_SEEDED=1)");
+  test.skip(({ isMobile }) => !isMobile, "the grids only exist below md — phone project only");
+
+  test.beforeEach(async ({ page }) => {
+    await page.goto("/login");
+    await page.getByLabel("Username").fill(USER);
+    await page.getByLabel("Password").fill(PASSWORD);
+    await page.getByRole("button", { name: "Sign in" }).click();
+    await expect(page).toHaveURL("/");
+  });
+
+  test("shows all five market figures and all four money stats — nothing behind a swipe", async ({ page }) => {
+    // The count IS the change. Five macro figures (two risk gauges + three index slots) and four money
+    // stats used to be nine cells of which four started off-screen behind a swipe.
+    const risk = page.locator('[data-macro-group="risk"] > *');
+    const tape = page.locator('[data-macro-group="tape"] > *');
+    const money = page.locator('[data-macro-group="money"] > *');
+
+    await expect(risk).toHaveCount(2);
+    await expect(tape).toHaveCount(3);
+    await expect(money).toHaveCount(4);
+
+    /*
+     * EVERY CELL LIES WITHIN THE WIDTH OF THE PHONE — that is what "nothing is hidden" means here, and
+     * it is a narrower claim than it might look, deliberately.
+     *
+     * It is NOT `toBeInViewport`: these cells run down a long page and the money grid sits well below
+     * the fold, which is fine — the Desk is a page you scroll. Vertical distance is reading. Sideways
+     * distance is hiding.
+     *
+     * And it is NOT `toBeVisible`, which would prove nothing at all: an item parked off the end of a
+     * shelf is "visible" to Playwright in exactly the same way it is invisible to a reader. The old
+     * shelf would have passed that assertion on the very figures it was concealing.
+     *
+     * So the question is asked of the BOX: does this cell sit inside the phone's width? A grid cell
+     * does. A card sitting off the right-hand end of a rail does not.
+     */
+    const offscreen = await page.evaluate(() => {
+      const width = document.documentElement.clientWidth;
+      const bad: string[] = [];
+      for (const cell of document.querySelectorAll("[data-macro-group] > *")) {
+        const box = cell.getBoundingClientRect();
+        if (box.left < -1 || box.right > width + 1) {
+          bad.push(`"${(cell.textContent ?? "").trim().slice(0, 20)}" at [${Math.round(box.left)}, ${Math.round(box.right)}] vs width ${width}`);
+        }
+      }
+      return bad;
+    });
+    expect(offscreen, "a macro cell sits outside the width of the phone — is something back on a rail?").toEqual([]);
+
+    // And no rail survives on this module — the shelves' accessible names are gone from the Desk.
+    await expect(page.getByRole("group", { name: "Macro figures" })).toHaveCount(0);
+    await expect(page.getByRole("group", { name: "Money and mood" })).toHaveCount(0);
+  });
+
+  /**
+   * NOTHING INSIDE A MACRO CELL REACHES OUTSIDE IT.
+   *
+   * THIS GUARD EXISTS BECAUSE PD4's HEADLINE GUARD IS BLIND TO PD4's OWN BUG, and that is worth
+   * stating plainly rather than burying.
+   *
+   * The sideways-scroll sweep asks the DOCUMENT a question: `scrollWidth === clientWidth`. A cell that
+   * overflows into the cell NEXT DOOR never touches the document's scrollWidth — the spill lands
+   * inside the page, not past its edge. So the sweep reports a clean page while a figure sits under
+   * the border of the card beside it.
+   *
+   * That is not hypothetical. PD4's first 3-up tape did exactly this: at 360px the index levels
+   * overflowed their cards by 8px, the delta chips shattered into three lines, and the page-level
+   * sweep measured ZERO horizontal overflow and passed. Only a screenshot showed it.
+   *
+   * So the question has to be asked of the CELL, not the page: does anything inside this box reach
+   * past the box's content edge? Bounding boxes, per PD3's law — never the DOM.
+   */
+  test("nothing inside a macro cell reaches outside it — the sweep cannot see this", async ({ page }) => {
+    const spills = await page.evaluate(() => {
+      const offenders: string[] = [];
+
+      for (const group of document.querySelectorAll("[data-macro-group]")) {
+        const name = group.getAttribute("data-macro-group");
+
+        for (const cell of group.children) {
+          const style = getComputedStyle(cell);
+          const box = cell.getBoundingClientRect();
+          // The CONTENT edge, not the border edge: a figure sitting in the card's own padding is
+          // already touching the wall, and it is one character away from being outside it.
+          const left = box.left + parseFloat(style.paddingLeft);
+          const right = box.right - parseFloat(style.paddingRight);
+
+          for (const el of cell.querySelectorAll("*")) {
+            if (!el.textContent?.trim()) continue;
+            const b = el.getBoundingClientRect();
+            if (b.width === 0) continue;
+
+            const over = Math.max(b.right - right, left - b.left);
+            // A 1px allowance for sub-pixel rounding — the same tolerance the page sweep uses.
+            if (over > 1) {
+              offenders.push(`[${name}] "${el.textContent.trim().slice(0, 24)}" spills ${Math.round(over)}px`);
+            }
+          }
+        }
+      }
+      return offenders;
+    });
+
+    expect(spills, "content overflowing a macro cell — a figure under the edge of the card next door").toEqual([]);
+  });
+
+  test("keeps the Mood gauge OUT of the money grid — a grid row is as tall as its tallest cell", async ({ page }) => {
+    // The gauge was briefly a fifth card on the money shelf, and a shelf stretches every card to the
+    // height of its tallest: the four stat cards were padded with ~200px of dead space each and the
+    // phone Desk grew 347px. A GRID ROW DOES THE VERY SAME THING. The bug's mechanism survived the
+    // shelf's retirement, so this guard has to survive it too.
+    //
+    // It is asserted in BOUNDING BOXES, not the DOM — PD3's law. A DOM-order test passed happily
+    // through an entire rewrite while the screen changed underneath it.
+    const cells = page.locator('[data-macro-group="money"] > *');
+    await expect(cells).toHaveCount(4);
+
+    const heights = await cells.evaluateAll((els) => els.map((el) => el.getBoundingClientRect().height));
+
+    // THE THRESHOLD IS MEASURED, NOT GUESSED. The four stat cells measure 125–163px on the seeded
+    // night (the taller two carry a stale note and an attribution line). The Mood gauge — a score, a
+    // position strip, two unfoldable sentences and a disclosure — is well past 400px. 280 sits in the
+    // empty space between those two facts: comfortably above anything a real glance can grow to, and
+    // comfortably below what a gauge would drag every cell in its row up to.
+    for (const h of heights) {
+      expect(h, `a money cell is ${Math.round(h)}px tall — has the gauge been put back in the grid?`).toBeLessThan(280);
+    }
+
+    // The gauge is still on the page, full width, below the grid — where it can be READ.
+    await expect(visible(page, /not CNN's index/)).toBeVisible();
+  });
+});

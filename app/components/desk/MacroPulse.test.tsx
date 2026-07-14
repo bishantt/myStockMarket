@@ -1,7 +1,7 @@
 import { render, screen, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { MacroPulse } from "./MacroPulse";
-import { copy, fill } from "@/lib/copy";
+import { copy } from "@/lib/copy";
 
 /**
  * MacroPulse tests — the module renders its data and keeps two rules:
@@ -69,8 +69,8 @@ describe("MacroPulse", () => {
   it("shows the index row and the FRED context cells, in BOTH renderings", () => {
     render(<MacroPulse {...PROPS} />);
 
-    // Since F5 the figures render twice: once in the phone SHELF and once in the ≥md grid. Which one
-    // the reader sees is a CSS decision, so both are in the DOM and getAllByText is the honest query.
+    // The figures render TWICE: once in the phone grids (PD4) and once in the ≥md row. Which one the
+    // reader sees is a CSS decision, so both are in the DOM and getAllByText is the honest query.
     // Asserting exactly two of each is the useful form — it proves neither rendering has quietly lost
     // a figure.
     expect(screen.getAllByText("Nasdaq Composite")).toHaveLength(2);
@@ -80,45 +80,68 @@ describe("MacroPulse", () => {
     expect(screen.getAllByText("4.21%")).toHaveLength(2);
   });
 
-  it("puts the risk gauges FIRST on the shelf — position is visibility (§4.1)", () => {
+  it("splits the phone figures risk-first — the independent facts get the cards (PD4 §7.1)", () => {
     render(<MacroPulse {...PROPS} />);
 
-    // The hero above already states the equity tape, so the figures that merely echo it take the
-    // tail and the two carrying INDEPENDENT information ride first. The conventional indices-first
-    // order would bury exactly the two figures that are not redundant with the number above them.
-    const shelf = screen.getByRole("group", { name: "Macro figures" });
-    const labels = within(shelf)
-      .getAllByText(/VIX|10-year|Nasdaq Composite|Dow|Small caps/)
-      .map((el) => el.textContent);
-    expect(labels[0]).toBe("VIX");
-    expect(labels[1]).toBe("10-year");
+    // The shelf ordered these figures because in a rail, position IS visibility: whatever starts
+    // off-screen gets read least. PD4 keeps the same REASONING and spends FORM instead of position.
+    // The hero above already states the equity tape, so the two figures carrying information it does
+    // NOT have — the risk gauges — get CARDS, and the three that merely echo the hero get a compact
+    // LIST below them.
+    //
+    // This test is what stops that argument from being silently reshuffled back to indices-first.
+    const risk = document.querySelector('[data-macro-group="risk"]') as HTMLElement;
+    const tape = document.querySelector('[data-macro-group="tape"]') as HTMLElement;
+
+    expect(within(risk).getByText("VIX")).toBeInTheDocument();
+    expect(within(risk).getByText("10-year")).toBeInTheDocument();
+    expect(within(risk).queryByText("Nasdaq Composite")).toBeNull();
+
+    expect(within(tape).getByText("Nasdaq Composite")).toBeInTheDocument();
+    expect(within(tape).getByText("Small caps")).toBeInTheDocument();
+    expect(within(tape).queryByText("VIX")).toBeNull();
   });
 
-  it("states what is off the edge of the shelf (M8) — a shelf that hides an unstated number lies", () => {
+  it("hides NOTHING on a phone — every figure is on screen, so no count line claims otherwise (M8)", () => {
     render(<MacroPulse {...PROPS} />);
 
-    // N3 renamed this shelf ("Markets") to distinguish it from the new money-and-mood shelf below.
-    // The plan's own string for it was "Markets — swipe", with no count — and shipping that verbatim
-    // broke M8, which this test caught immediately. The count stays; the honesty rule outranks the
-    // plan's copy, and the authority order says so in as many words.
-    // And the count is COUNTED, not typed. These props carry two index slots, so the shelf holds
-    // four figures (the two risk gauges plus them) and says four — where the real Desk, with three
-    // index slots, says five. A hardcoded "5 figures" would pass a test written against the Desk and
-    // lie on every other shelf it was ever reused on.
-    expect(screen.getByText(fill(copy.pulse.marketsShelf, { n: 4 }))).toBeInTheDocument();
-    expect(screen.getByText(/4 figures/)).toBeInTheDocument();
+    // THE INVERSION OF THE OLD TEST, AND THE POINT OF PD4.
+    //
+    // This module used to carry a swipe-shelf, and M8 made it announce what it was hiding: "Markets —
+    // 4 figures, swipe". That string was honest, and the test that pinned it was right. But M8's real
+    // demand is that a surface not hide an unstated number of things, and there are two ways to
+    // satisfy it — say what you hide, or hide nothing. PD4 took the second, which is strictly better,
+    // and the count line went with the shelf (its copy keys are DELETED, not orphaned).
+    //
+    // So the assertion inverts: no rail, and no sentence promising anything off the edge.
+    expect(screen.queryByRole("group", { name: "Macro figures" })).toBeNull();
+    expect(screen.queryByText(/swipe/i)).toBeNull();
+
+    // And every figure the retired shelf used to carry is present in the phone rendering.
+    const risk = document.querySelector('[data-macro-group="risk"]') as HTMLElement;
+    const tape = document.querySelector('[data-macro-group="tape"]') as HTMLElement;
+    const shown = [...within(risk).getAllByText(/VIX|10-year/), ...within(tape).getAllByText(/Nasdaq Composite|Small caps/)];
+    expect(shown).toHaveLength(PROPS.indices.length + 2);
   });
 
-  it("keeps BREADTH off the shelf — the claim about the whole market may not be swiped away", () => {
+  it("keeps BREADTH out of the figure grids — the claim about the whole market is not a cell", () => {
     render(<MacroPulse {...PROPS} />);
-    const shelf = screen.getByRole("group", { name: "Macro figures" });
-    expect(within(shelf).queryByText(/advancing/)).toBeNull();
+
+    // Breadth is the module's summary anchor: the one line that generalises over every figure above
+    // it. It was kept off the shelf so it could never be swiped away, and it is kept out of the grids
+    // for the reason that outlives the shelf — it is not a sixth figure, it is the sentence ABOUT the
+    // figures, and a grid cell would make it look like one more number.
+    const risk = document.querySelector('[data-macro-group="risk"]') as HTMLElement;
+    const tape = document.querySelector('[data-macro-group="tape"]') as HTMLElement;
+    expect(within(risk).queryByText(/advancing/)).toBeNull();
+    expect(within(tape).queryByText(/advancing/)).toBeNull();
     expect(screen.getByText(/advancing/)).toBeInTheDocument();
   });
 
   it("marks an ETF slot with ONE chip — never the old double belt", () => {
     render(<MacroPulse {...PROPS} />);
-    // Two renderings (shelf + grid), so two chips — and the point is that NEITHER is silent.
+    // Two renderings (the phone grid + the ≥md row), so two chips — and the point is that NEITHER is
+    // silent.
     expect(screen.getAllByText("IWM · ETF price")).toHaveLength(2);
 
     // The old grammar said "ETF proxy" twice on every proxy row: once as a label suffix

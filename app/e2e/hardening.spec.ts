@@ -353,3 +353,78 @@ test.describe("no page scrolls sideways, anywhere", () => {
     });
   }
 });
+
+/**
+ * THE 360px SWEEP (PD4, §7.3) — the narrowest width this product honors.
+ *
+ * The sweep above already runs at every project's own viewport, and the `phone` project is a Pixel 7
+ * at 412px. That is a comfortable phone. 360px is not: it is the width of a Galaxy S-series in
+ * portrait and of essentially every budget Android sold, and it is the width at which a layout that
+ * merely FITS at 412 starts to spill.
+ *
+ * It gets ONE test rather than one-per-room, and that is deliberate: the count is the point. A sweep
+ * that measured nothing reports success — the lesson the 16px rule learned the hard way, and the
+ * reason `measureTargets` returns a tally. So this walks the rooms itself, counts them, and refuses
+ * to pass unless it actually visited the whole route map. A guard that cannot prove it looked is not
+ * a guard.
+ *
+ * WHY THERE IS NO 360 BASELINE TO GO WITH IT. Pixel truth costs a photograph per room per theme, and
+ * one width of it is enough when the other is asserted behaviorally: 412 is photographed, 360 is
+ * measured. What only 360 can tell us is whether anything overflows, and overflow is a NUMBER —
+ * `scrollWidth - clientWidth` — not a picture. Photographing it would buy a second opinion on a
+ * question that already has an exact answer.
+ */
+test.describe("the phone never scrolls sideways at 360px either", () => {
+  test.use({ viewport: { width: 360, height: 780 } });
+
+  test("every room stays on-axis at 360 — and the sweep proves it swept them", async ({ page }, testInfo) => {
+    // The phone project only. The other three are desk widths, and resizing one of them to 360 would
+    // measure a phone layout while pretending to be a desktop — a third opinion from a witness who
+    // was not there.
+    test.skip(testInfo.project.name !== "phone", "the 360 sweep is a phone-project rule");
+
+    await signIn(page);
+
+    /*
+     * The rooms this run can HONESTLY sweep. The seeded rooms only exist when the database is seeded;
+     * without it they 404, and `open()` would (correctly) fail rather than quietly measure an error
+     * page. CI seeds, so CI sweeps all of them.
+     */
+    const seededAvailable = process.env.MSM_SEEDED === "1";
+    const expected = seededAvailable ? [...SCROLL_ROUTES, ...SEEDED_SCROLL_ROUTES] : SCROLL_ROUTES;
+
+    const offenders: string[] = [];
+    let swept = 0;
+
+    for (const route of expected) {
+      await open(page, route);
+      const overflow = await page.evaluate(
+        () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+      );
+      swept += 1;
+      // A 1px allowance for sub-pixel rounding, the same tolerance the sweep above uses. Anything
+      // more is a real spill: something in the room is wider than the phone holding it.
+      if (overflow > 1) offenders.push(`${route} (+${overflow}px)`);
+    }
+
+    // THE SWEEP PROVES IT SWEPT. Both halves matter: the first catches a loop that silently visited
+    // nothing, the second catches a route list that quietly shrank away from the manifest — which is
+    // exactly how /news went through two tagged phases with no sweep ever looking at it.
+    expect(swept, "the 360 sweep visited NO rooms — it measured nothing and would have passed").toBeGreaterThan(0);
+    expect(
+      swept,
+      `the 360 sweep visited ${swept} rooms but its route list holds ${expected.length}`,
+    ).toBe(expected.length);
+
+    if (seededAvailable) {
+      const rooms = sweptBy("scroll").length;
+      expect(
+        swept,
+        `the 360 sweep visited ${swept} rooms; the manifest lists ${rooms} rooms carrying the scroll ` +
+          `sweep. A room nobody measures is a room that can break in silence.`,
+      ).toBeGreaterThanOrEqual(rooms);
+    }
+
+    expect(offenders, "rooms that scroll sideways at 360px").toEqual([]);
+  });
+});

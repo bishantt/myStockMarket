@@ -1,8 +1,7 @@
-import { Shelf, ShelfItem } from "@/components/Shelf";
 import { StatFigure } from "@/components/StatFigure";
 import { Surface } from "@/components/Surface";
 import { MoodGauge } from "@/components/desk/MoodGauge";
-import { copy, fill } from "@/lib/copy";
+import { copy } from "@/lib/copy";
 import { cx } from "@/lib/cx";
 import type { MacroBoard as MacroBoardData, MacroCell } from "@/lib/macro-board";
 
@@ -33,35 +32,47 @@ export function MacroBoard({ board }: { board: MacroBoardData }) {
   return (
     <div className="flex flex-col gap-4 border-t border-hairline pt-4">
       {/*
-       * BELOW md: THE MODULE'S SECOND SHELF — the four STATS, and only them.
+       * BELOW md: THE FOUR STATS AS A 2×2 GRID (PD4, amendment 0.2.1) — not a shelf.
        *
-       * THE GAUGE IS NOT ON THIS SHELF, AND THE FIRST BASELINE IS WHY. It was, briefly. A shelf
-       * stretches every card to the height of its tallest, and the gauge — a score, a position
-       * strip, two sentences that may never be folded away, and a disclosure — is roughly three
-       * times the height of "6.72% · wk of Jul 9". So the four stat cards were padded out with some
-       * two hundred pixels of white space each, and the phone Desk grew by 347px to display four
-       * short facts and a lot of nothing. That is the footprint disease this very plan was
-       * commissioned to cure, reintroduced two phases later, and it was invisible in every test:
-       * the DOM was correct, the numbers were right, and only the photograph showed it.
+       * This module carried the second of the app's two swipe-shelves. It is retired for the same
+       * reason as the first: the shelf's justification was that position buys visibility, and a grid
+       * that shows all four stats at once buys more of it than a rail that shows two. Two columns and
+       * two rows is the whole shape — mortgage and inflation above, gold and the rupee below, which
+       * keeps the household costs together on the first line and the market's own prices on the
+       * second, exactly the order the module already argued for.
        *
-       * The mistake underneath it was a category error. F5's triage says GLANCE stations get bounded
-       * and READ stations stay vertical. The four stats are glances — a label, a figure, a window.
-       * The gauge is something you READ. It was never shelf material.
+       * THE GAUGE IS STILL NOT IN THIS GRID, AND THE ORIGINAL REASON HAS ONLY GOTTEN STRONGER. A
+       * shelf stretched every card to the height of its tallest, and the gauge — a score, a position
+       * strip, two sentences that may never be folded away, and a disclosure — is roughly three times
+       * the height of "6.72% · wk of Jul 9". The four stat cards were padded out with two hundred
+       * pixels of white space each and the phone Desk grew by 347px to show four short facts and a
+       * lot of nothing. A CSS grid row does the very same thing (a row is as tall as its tallest
+       * cell — the lesson PD3 learned the hard way on the Desk's own columns), so moving from a shelf
+       * to a grid would have reintroduced the identical bug had the gauge come with it.
+       *
+       * The mistake underneath it was a category error, and it is worth keeping written down: F5's
+       * triage says GLANCE stations get bounded and READ stations stay vertical. The four stats are
+       * glances — a label, a figure, a window. The gauge is something you READ.
        */}
-      <div className="md:hidden">
-        {/* M8: the count states what is off the edge — the four stats. */}
-        <Shelf
-          label="Money and mood"
-          countLine={fill(copy.pulse.moneyShelf, { n: board.cells.length })}
-        >
-          {board.cells.map((cell) => (
-            <ShelfItem key={cell.key} className="w-[170px]">
-              <Surface className="h-full p-3">
-                <Cell cell={cell} />
-              </Surface>
-            </ShelfItem>
-          ))}
-        </Shelf>
+      {/*
+       * `dense` on the phone, and the RUPEE is why (PD4, found by looking at the screen).
+       *
+       * A 2-up cell is ~115px of interior at 360px. Three of these four values are short — "6.72%",
+       * "2.7%", "4,085.20" — and sat happily at the 21px `body` scale. The fourth is not a number, it
+       * is a PHRASE: "151.66 buy · 152.26 sell", because a rupee rate has a buy side and a sell side
+       * and quoting only one of them would be a lie. At 21px that phrase broke across FOUR lines —
+       * "151.66 / buy · / 152.26 / sell" — which is the word-soup failure, one cell over.
+       *
+       * So the whole board steps down a size on the phone. All four together, not just the rupee: §7.4
+       * asks the board to read as a set table, and a single cell at its own scale is exactly what makes
+       * a table read as a spill. Desktop keeps `body` — it has the width, and there the phrase fits.
+       */}
+      <div data-macro-group="money" className="grid grid-cols-2 gap-2 md:hidden">
+        {board.cells.map((cell) => (
+          <Surface key={cell.key} className="h-full p-3">
+            <Cell cell={cell} scale="dense" />
+          </Surface>
+        ))}
       </div>
 
       {/*
@@ -69,7 +80,7 @@ export function MacroBoard({ board }: { board: MacroBoardData }) {
        */}
       <div className="hidden flex-wrap gap-x-10 gap-y-4 md:flex">
         {board.cells.map((cell) => (
-          <Cell key={cell.key} cell={cell} />
+          <Cell key={cell.key} cell={cell} scale="body" />
         ))}
       </div>
 
@@ -93,13 +104,13 @@ export function MacroBoard({ board }: { board: MacroBoardData }) {
  * The note is never the only carrier of bad news and the colour is never the only carrier either.
  * They arrive together, and the words come first.
  */
-function Cell({ cell }: { cell: MacroCell }) {
+function Cell({ cell, scale }: { cell: MacroCell; scale: "body" | "dense" }) {
   const stale = cell.state === "stale";
 
   return (
     <div className="flex flex-col gap-1">
       <span title={cell.title}>
-        <StatFigure label={cell.label} value={cell.value} scale="body" delta={cell.delta} />
+        <StatFigure label={cell.label} value={cell.value} scale={scale} delta={cell.delta} />
       </span>
 
       {/*

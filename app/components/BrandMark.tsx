@@ -40,6 +40,21 @@ const LOCKUPS = {
   inline: { w: 20, h: 20, src: "/icons/brandmark-64.webp" },
   /** The login panel, above the headline. */
   panel: { w: 96, h: 96, src: "/icons/brandmark-192.webp" },
+  /**
+   * The login on a PHONE, above the headline — the same job as `panel`, at the size a 390px screen
+   * can afford (PD4).
+   *
+   * IT EXISTS BECAUSE THE PHONE HAD NO MARK AT ALL. The brand panel is `hidden lg:flex`, which is the
+   * right call for the panel — a phone has room for a headline and a form and little else — but the
+   * mark went out with it. So the first page anyone ever opens, on the device most people open it on,
+   * showed the product's name in text and nothing of its face. The one surface where a brand is
+   * genuinely load-bearing is the one where the reader has not seen the product yet.
+   *
+   * It reuses the 192px asset rather than the 64px one, and that costs NOTHING: a `display:none`
+   * subtree still loads its images, so the phone already downloads brandmark-192.webp for the panel
+   * it cannot see. A second file would be a second request to show a smaller picture.
+   */
+  panelPhone: { w: 48, h: 48, src: "/icons/brandmark-192.webp" },
   /** The link-preview card, at half size, in the styleguide — the living spec, and the oracle. */
   card: { w: 600, h: 315, src: "/icons/og-card.png" },
 } as const;

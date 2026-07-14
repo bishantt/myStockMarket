@@ -24,6 +24,23 @@ import { cx } from "@/lib/cx";
  * test walks up from every `[data-p2]` node to prove it.
  */
 
+/**
+ * THE WRAP CONTRACT (PD4, §7.2) — why the value row wraps instead of clipping.
+ *
+ * A figure and its delta chip sit on one line when they fit, and the chip drops BELOW the value when
+ * they do not. It never truncates, never ellipsizes, never clips.
+ *
+ * That is not a styling preference, it is the honesty rule applied to layout: truncating a figure is
+ * lying about it ("44,326.0…" is not a number), and clipping one is lying about it silently. Wrapping
+ * is just typography. So the row is `flex-wrap`, the chip may take a whole line of its own, and the
+ * cell grows downward — which is a thing this app is allowed to do, because a module reserves no
+ * height (drift rule 24).
+ *
+ * This heals every consumer at once. The old row was `flex items-baseline gap-2` with no wrap, so a
+ * long value beside a chip simply overflowed its card — which is exactly what the Desk's phone cards
+ * were doing.
+ */
+
 /** Which way the number moved. `flat` covers unchanged and doji — it renders in ink, no triangle. */
 export type Direction = "up" | "down" | "flat";
 
@@ -39,8 +56,20 @@ type StatFigureProps = {
    * `hero` is the 64px numeral. Exactly ONE per route may use it, and only `/` does — the
    * anti-drift checklist greps for violations at every phase exit.
    * `figure` is the 44px module-level key figure. `body` is everything else.
+   *
+   * `dense` (PD4) is `body`'s smaller sibling, and it exists because of ARITHMETIC before taste. The
+   * phone's 3-up macro row (§7.1, row B) leaves each cell about 88px of interior at 360px, and a
+   * nine-character index level — "20,674.19" — is roughly 113px wide at `body`'s 21px. A mono numeral
+   * has no wrap opportunity inside itself, so it cannot be made to fit; it can only overflow. `dense`
+   * is the scale at which the figure actually FITS the box it is given.
+   *
+   * It is also the right editorial answer, which is the happy part: row B carries the equity-tape
+   * echoes that the hero directly above already summarizes, so they should read as supporting data
+   * rather than as headlines.
    */
-  scale?: "hero" | "figure" | "body";
+  scale?: "hero" | "figure" | "body" | "dense";
+  /** How the label and the number are arranged. See the `Layout` note below. */
+  layout?: Layout;
   delta?: {
     /** The delta, already formatted and signed, e.g. "+0.42%". */
     value: string;
@@ -61,6 +90,22 @@ const VALUE_SCALE: Record<NonNullable<StatFigureProps["scale"]>, string> = {
   hero: "text-hero-mobile md:text-hero",
   figure: "text-num-lg",
   body: "text-lg",
+  dense: "text-base",
+};
+
+/**
+ * The chip's type size, which tracks the value's.
+ *
+ * A `dense` cell is narrow by definition, and the chip is the WIDER of the two things in it — a value
+ * is "20,674.19" but a chip is "▼ -0.55% · 1D", which is longer. Leaving the chip at `text-sm` inside
+ * a `dense` cell would mean the value fits and the chip does not, which is the same overflow bug one
+ * size down. The chip shrinks with its figure.
+ */
+const CHIP_SCALE: Record<NonNullable<StatFigureProps["scale"]>, string> = {
+  hero: "text-sm",
+  figure: "text-sm",
+  body: "text-sm",
+  dense: "text-xs",
 };
 
 /**
@@ -81,19 +126,55 @@ const DELTA_GLYPH: Record<Direction, string> = {
   flat: "",
 };
 
+/**
+ * The two ways a figure can be arranged, and what each is FOR.
+ *
+ * `stack` — label above the number. The default, and the right shape whenever the figure has a card
+ * to itself: it gives the number a whole line, which is what a figure worth a card deserves.
+ *
+ * `row` — label on the left, number and chip on the right, on one baseline. This exists because of a
+ * measurement (PD4). A phone is ~360–412px wide, and three figure CARDS across it leave about 74–91px
+ * of interior each — while an index level ("22,345.67") is ~81px and its delta chip ("▲ +0.29% · 1D")
+ * is ~95px. The two cannot share that cell, and no amount of type-scale tuning changes it; the
+ * arithmetic simply does not close.
+ *
+ * A row spends the phone's ONE abundant axis — its width — instead of fighting over its scarcest. The
+ * same three figures that overflow as cards fit comfortably as a list, and read as what they are: a
+ * tape, subordinate to the figures above them.
+ */
+type Layout = "stack" | "row";
+
 export function StatFigure({
   label,
   value,
   scale = "body",
+  layout = "stack",
   delta,
 }: StatFigureProps) {
+  const isRow = layout === "row";
+
   return (
-    <div data-p2 className="flex flex-col gap-1">
+    <div
+      data-p2
+      className={cx(
+        // In a row the label and the number sit on one baseline and the number is pushed to the far
+        // side. `flex-wrap` is the safety net rather than the plan: if a long label and a long figure
+        // genuinely cannot share a line, the figure takes the next one — it never spills.
+        isRow
+          ? "flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5"
+          : "flex flex-col gap-1",
+      )}
+    >
       <span className="font-ui text-2xs font-semibold uppercase tracking-[0.06em] text-muted">
         {label}
       </span>
 
-      <div className="flex items-baseline gap-2">
+      {/*
+       * THE WRAP CONTRACT (§7.2). `flex-wrap` is the whole fix: when the value and its chip cannot
+       * share a line, the chip takes the next one. `gap-y-0.5` is the seam it lands on — small,
+       * because a wrapped chip is still part of the same figure, not a new fact under it.
+       */}
+      <div className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-0.5">
         {/*
          * Always ink, at every scale. There is no variant of this component in which the number
          * itself carries the up/down colour — that is the whole point.
@@ -105,34 +186,69 @@ export function StatFigure({
         {delta ? (
           <span
             className={cx(
-              "flex items-baseline gap-0.5 rounded-chip px-1.5 py-0.5 font-mono text-sm",
+              /*
+               * THE CHIP HAS EXACTLY TWO ATOMS, AND IT MAY BREAK BETWEEN THEM BUT NEVER INSIDE ONE.
+               *
+               * The two atoms are the SIGNED DELTA ("▲ +0.29%" — glyph, sign and number are one fact
+               * spelled three ways) and its WINDOW ("· 1D", "· vs prior week" — the delta's unit). Each
+               * is `whitespace-nowrap` below. The chip itself is `flex-wrap`, so when a cell is too
+               * narrow to hold both, the window drops to a second line WHOLE.
+               *
+               * THIS IS THE THIRD VERSION OF THIS ROW, AND EACH WRONG ONE WAS FOUND BY LOOKING.
+               *
+               *   v1 — no wrap at all. The chip overflowed its card and sat under the card next door.
+               *   v2 — `flex-wrap` with no atoms. It wrapped into "▲" / "+0.29%" / "· 1D": three lines,
+               *        one token each. That is EXACTLY the Range Ladder bug PD3 spent a phase killing,
+               *        reintroduced one component over — and every guard stayed green, because the page
+               *        never scrolled sideways and the class contract was satisfied. Only the
+               *        screenshot showed it. Then "vs prior week" shattered into "vs / prior / week".
+               *   v3 — this one. Wrap between the atoms; never within them.
+               *
+               * The principle the three versions taught: "wrapping is honest, truncating is not" is a
+               * claim about a SENTENCE. A phrase broken one word per line has not been wrapped, it has
+               * been shattered — and a shattered figure is no more readable than a truncated one. So
+               * the unit of wrapping is the ATOM, and the atom is the smallest group that still means
+               * something on its own.
+               */
+              "flex max-w-full flex-wrap items-baseline gap-x-0.5 gap-y-0 rounded-chip px-1.5 py-0.5 font-mono",
+              CHIP_SCALE[scale],
               DELTA_CHIP[delta.direction],
             )}
           >
             {/*
-             * The triangle is decorative to a screen reader — the signed value that follows
-             * already says "up" or "down" out loud, so announcing "black up-pointing triangle"
-             * would just be noise.
-             */}
-            {delta.direction !== "flat" ? (
-              <span aria-hidden="true">{DELTA_GLYPH[delta.direction]}</span>
-            ) : null}
-            {delta.value}
-            {/*
-             * The window, inside the chip. It is quieter than the number — it is the number's UNIT,
-             * not a second number — but it is in the same chip, because a window that lives anywhere
-             * else is a window the reader has to go and find (C2).
+             * ATOM 1 — the signed delta. The triangle, the sign and the number never separate: they
+             * are the same fact in three redundant channels (a triangle for shape, a sign for text, a
+             * colour for glance), and the redundancy is the accessibility guarantee, not the hue.
              *
-             * QUIETER BY SIZE AND WEIGHT, NEVER BY OPACITY, and that is not a style preference.
-             * This span carried `opacity-80` until N2, which composites the text toward its
-             * background and dropped it under AA at this size — nine failing nodes on the Desk, all
-             * of them window tokens. Drift rule 18 already says it: `faint` is for placeholders and
-             * disabled states, never for information. And C2's whole claim is that the window IS
-             * information — half the fact, not an annotation on it. A number's unit is not
-             * decoration you may fade.
+             * The triangle is decorative to a screen reader — the signed value beside it already says
+             * "up" or "down" out loud, so announcing "black up-pointing triangle" would just be noise.
+             */}
+            <span className="whitespace-nowrap">
+              {delta.direction !== "flat" ? (
+                <span aria-hidden="true" className="pr-0.5">
+                  {DELTA_GLYPH[delta.direction]}
+                </span>
+              ) : null}
+              {delta.value}
+            </span>
+
+            {/*
+             * ATOM 2 — the window, inside the chip. It is quieter than the number — it is the number's
+             * UNIT, not a second number — but it is in the same chip, because a window that lives
+             * anywhere else is a window the reader has to go and find (C2).
+             *
+             * `whitespace-nowrap` is what stops "vs prior week" from becoming "vs / prior / week" in a
+             * narrow cell. A window is a phrase; it moves as one or not at all.
+             *
+             * QUIETER BY SIZE AND WEIGHT, NEVER BY OPACITY, and that is not a style preference. This
+             * span carried `opacity-80` until N2, which composites the text toward its background and
+             * dropped it under AA at this size — nine failing nodes on the Desk, all of them window
+             * tokens. Drift rule 18 already says it: `faint` is for placeholders and disabled states,
+             * never for information. And C2's whole claim is that the window IS information — half the
+             * fact, not an annotation on it. A number's unit is not decoration you may fade.
              */}
             {delta.window ? (
-              <span className="pl-1 text-2xs font-normal">· {delta.window}</span>
+              <span className="whitespace-nowrap pl-1 text-2xs font-normal">· {delta.window}</span>
             ) : null}
           </span>
         ) : null}

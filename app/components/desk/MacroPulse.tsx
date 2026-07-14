@@ -1,11 +1,10 @@
 import { GlossaryTerm } from "@/components/GlossaryTerm";
 import { SectionMasthead } from "@/components/SectionMasthead";
 import { StatFigure } from "@/components/StatFigure";
-import { Shelf, ShelfItem } from "@/components/Shelf";
 import { Surface } from "@/components/Surface";
 import { Tag } from "@/components/Tag";
 import { MacroBoard } from "@/components/desk/MacroBoard";
-import { copy, fill } from "@/lib/copy";
+import { copy } from "@/lib/copy";
 import type { MacroBoard as MacroBoardData } from "@/lib/macro-board";
 import type { IndexQuote } from "@/lib/morning";
 
@@ -57,7 +56,15 @@ type MacroPulseProps = {
  * noise, and noise is where a beginner stops reading. There is now exactly one mark, and it says
  * what the number IS — "IWM · ETF price" — rather than merely flagging that something is off.
  */
-function IndexSlot({ quote, scale }: { quote: IndexQuote; scale: "hero" | "body" }) {
+function IndexSlot({
+  quote,
+  scale,
+  layout = "stack",
+}: {
+  quote: IndexQuote;
+  scale: "hero" | "body" | "dense";
+  layout?: "stack" | "row";
+}) {
   const delta =
     quote.deltaPct === "—"
       ? undefined
@@ -65,7 +72,7 @@ function IndexSlot({ quote, scale }: { quote: IndexQuote; scale: "hero" | "body"
 
   return (
     <div className="flex flex-col gap-1">
-      <StatFigure label={quote.label} value={quote.value} scale={scale} delta={delta} />
+      <StatFigure label={quote.label} value={quote.value} scale={scale} layout={layout} delta={delta} />
 
       {quote.proxyChip ? (
         <span
@@ -109,43 +116,77 @@ export function MacroPulse({
         <IndexSlot quote={spx} scale="hero" />
 
         {/*
-         * THE FIGURES, BELOW md: A SHELF. The one shelf in the app (ruling M3, Part 0.4 [VETO?]).
+         * THE FIGURES, BELOW md: TWO GRIDS, NOT A SHELF (PD4, amendment 0.2.1).
          *
-         * The reader pushes it; it never pushes itself. User scrolling is not "motion" in the sense
-         * P2 forbids — the page already scrolls vertically past every one of these figures and nobody
-         * has ever read that as the number moving. A shelf is the same gesture, turned sideways.
+         * This module carried the app's one horizontal swipe-shelf for two phases. The shelf's own
+         * justification was "position is visibility" — in a rail, what starts off-screen is what gets
+         * read least, so the figures were ORDERED by how much they mattered. That argument was sound,
+         * and it defeats itself: a grid that shows all five figures at once is strictly more visible
+         * than a rail that shows three and hides two. The reasoning survives the shelf's retirement;
+         * it is now expressed as ROOM instead of as POSITION.
          *
-         * THE ORDER IS REASONED, NOT TRACED. In a shelf, position is visibility: what starts
-         * off-screen is what gets seen least. The hero directly above ALREADY states the equity tape,
-         * so the figures that merely echo it (Nasdaq, Dow, the small-cap proxy) take the tail, and the
-         * two carrying INDEPENDENT information — the risk gauges, VIX and the 10-year — ride first.
-         * The conventional indices-first order would have buried exactly the two figures that are not
-         * redundant with the number above them.
+         * ROW A — the risk gauges, 2-up and roomier. VIX and the 10-year carry information the hero
+         * above does NOT: the S&P's level says what the market did, and these two say what it costs to
+         * be worried and what money costs. Independent facts get the bigger cells.
+         *
+         * ROW B — the tape echoes, 3-up and deliberately denser. Nasdaq, the Dow and the small-cap
+         * proxy largely restate the equity tape the 64px hero has already stated. They are supporting
+         * data, and `dense` is the scale that says so — and, not by coincidence, the only scale that
+         * FITS a 3-up cell on a 360px phone (see StatFigure's `dense` note: a nine-character index
+         * level at 21px is wider than the cell it would live in, and a mono numeral cannot wrap).
+         *
+         * The count lines retire with the shelves. `copy.pulse.marketsShelf` said "Markets — 5
+         * figures, swipe", and M8 required it: a rail that hides an unstated number of things can hide
+         * anything. Nothing is hidden now, so the honest count is the one the reader can see, and a
+         * line asserting it would be chrome. The copy keys are deleted, not orphaned.
          */}
-        <div className="md:hidden">
-          {/* M8: the count is not decoration. A shelf that hides an unstated number can hide anything. */}
-          <Shelf
-            label="Macro figures"
-            countLine={fill(copy.pulse.marketsShelf, { n: indices.length + 2 })}
-          >
-            <ShelfItem className="w-[150px]">
-              <Surface className="h-full p-3">
-                <StatFigure label="VIX" value={vix} scale="body" />
-              </Surface>
-            </ShelfItem>
-            <ShelfItem className="w-[150px]">
-              <Surface className="h-full p-3">
-                <StatFigure label="10-year" value={tenYear} scale="body" />
-              </Surface>
-            </ShelfItem>
-            {indices.map((idx) => (
-              <ShelfItem key={idx.label} className="w-[150px]">
-                <Surface className="h-full p-3">
-                  <IndexSlot quote={idx} scale="body" />
-                </Surface>
-              </ShelfItem>
+        {/*
+         * Both groups carry a `data-macro-group` name — the same device PD3 used for the Desk's
+         * columns. A layout with a rule about it needs a handle the tests can hold: the unit suite
+         * asserts WHICH figures live in which group (the risk/echo split is the whole argument, and a
+         * silent reshuffle would erase it), and the browser suite measures the boxes.
+         */}
+        <div className="flex flex-col gap-2 md:hidden">
+          <div data-macro-group="risk" className="grid grid-cols-2 gap-2">
+            <Surface className="h-full p-3">
+              <StatFigure label="VIX" value={vix} scale="body" />
+            </Surface>
+            <Surface className="h-full p-3">
+              <StatFigure label="10-year" value={tenYear} scale="body" />
+            </Surface>
+          </div>
+
+          {/*
+           * THE TAPE — A LIST, NOT THREE CARDS, AND THE MEASUREMENT IS THE REASON (PD4).
+           *
+           * Part 7.1 specified this row as a 3-up grid of cards. It was built that way, photographed,
+           * and MEASURED, and the arithmetic does not close: three cards across a phone leave 74px of
+           * interior at 360 and 91px at 412, while an index level ("22,345.67") is ~81px and its delta
+           * chip ("▲ +0.29% · 1D") is ~95px. At 360 the levels overflowed 8px INTO THE CARD NEXT DOOR
+           * and the chips shattered into three lines. No type scale fixes that — the cell is simply
+           * smaller than the fact it has to hold.
+           *
+           * A list spends the phone's ONE abundant axis instead of fighting over its scarcest. The
+           * figures fit, on one line each, with room to spare.
+           *
+           * AND IT KEEPS 7.1's ARGUMENT INTACT, which is why this is an amendment and not a
+           * countermand. That argument was never "three columns" — it was that the risk gauges carry
+           * information the hero does NOT have and deserve room, while these three merely echo the tape
+           * the 64px hero has already stated and should read as supporting data. Cards above, a list
+           * below, says that MORE plainly than a big card next to a small one ever did.
+           */}
+          <Surface data-macro-group="tape" className="p-3">
+            {indices.map((idx, i) => (
+              <div
+                key={idx.label}
+                // A hairline between rows, never above the first — the card's own edge already does
+                // that job, and a second line on top of it reads as a mistake.
+                className={i > 0 ? "border-t border-hairline pt-2 mt-2" : undefined}
+              >
+                <IndexSlot quote={idx} scale="dense" layout="row" />
+              </div>
             ))}
-          </Shelf>
+          </Surface>
         </div>
 
         {/*
@@ -180,13 +221,16 @@ export function MacroPulse({
         <p className="font-mono text-2xs text-muted">{provenance}</p>
 
         {/*
-         * BREADTH STAYS FIXED AND FULL-WIDTH, BELOW THE SHELF — it never rides it.
+         * BREADTH STAYS FIXED AND FULL-WIDTH, BELOW THE FIGURES.
          *
          * It is the module's summary anchor: the one line that claims to describe the WHOLE market.
-         * A claim about everything must not be reachable only by swiping — that is the M2 instinct
-         * (a visible claim may not have a hidden caveat) applied to a scroll container. The figures
-         * above are individual facts and may sit off-screen; the sentence that generalises over them
-         * may not.
+         * While the figures rode a shelf, this line was deliberately kept OFF it — a claim about
+         * everything must not be reachable only by swiping (M2's instinct, that a visible claim may
+         * not have a hidden caveat, applied to a scroll container). PD4 retired the shelf, so nothing
+         * on this module is off-screen any more and that particular hazard is gone.
+         *
+         * It stays full-width anyway, because that is what it IS: not a sixth cell in the grid, but
+         * the sentence that generalises over the five.
          */}
         <div className="flex flex-wrap items-baseline gap-x-8 gap-y-1 border-t border-hairline pt-3">
           <span className="font-ui text-2xs uppercase tracking-[0.06em] text-muted">

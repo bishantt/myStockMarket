@@ -34,6 +34,18 @@ export default function LoginPage() {
 
         <div className="flex items-center justify-center px-5 py-12">
           <div className="w-full max-w-[400px]">
+            {/*
+             * THE MARK, ON A PHONE (PD4). The brand panel beside this column is `hidden lg:flex`, and
+             * until now the mark went out with it — so the first page anyone ever opened, on the
+             * device most people open it on, showed this product's name in text and nothing of its
+             * face. The panel is still the right thing to collapse; the identity was not.
+             *
+             * It is `aria-hidden` in effect (BrandMark's alt defaults to ""), because the headline and
+             * the wordmark below say "myStockMarket" in text already. Announcing it a third time is
+             * noise, not access.
+             */}
+            <BrandMark size="panelPhone" className="mb-4 lg:hidden" />
+
             {/* On a phone the brand panel collapses, and the headline comes with it — once. */}
             <h1 className="pb-3 font-display text-display font-bold text-ink lg:hidden">
               Your personal <em className="font-normal italic">broadsheet</em> for the market.

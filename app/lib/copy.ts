@@ -565,24 +565,23 @@ export const copy = {
   },
 
   pulse: {
-    /** M8, for the shelf: the reader is told what is off-screen and how to reach it. */
-    swipe: "5 figures — swipe",
     /**
-     * The module's TWO labelled shelves on a phone, and the split between them is the point.
+     * M8, for a shelf: the reader is told what is off-screen and how to reach it.
      *
-     * The first is the market's tape. The second is the reader's own life — what a mortgage costs,
-     * what their money buys, what the rupee is doing — plus the one number that is ours. They are
-     * different kinds of fact and they get different shelves, so that neither has to pretend to be
-     * the other.
+     * THE MACRO PULSE NO LONGER HAS A SHELF, AND THIS KEY DELIBERATELY OUTLIVES THAT (PD4).
      *
-     * WHY THESE CARRY A COUNT WHEN THE PLAN'S OWN STRINGS DID NOT. Appendix B specified "Markets —
-     * swipe" and "Money & mood — swipe", and shipping those verbatim broke ruling M8: a shelf that
-     * hides an unstated number of things is a shelf that can hide anything. The honesty rule outranks
-     * the plan's copy (the authority order says so explicitly), so the count stays and the plan's
-     * naming is kept around it. The existing M8 test caught this within a minute of the change.
+     * Two sibling strings used to live here — `marketsShelf` ("Markets — {n} figures, swipe") and
+     * `moneyShelf` — and they are DELETED, because their consumers are. PD4 replaced both of the
+     * Desk's swipe-shelves with grids that show every figure at once (amendment 0.2.1), and a count
+     * line announcing what is off the edge of the screen is a lie when nothing is. M8 required those
+     * strings precisely because the shelves hid things; the honest way to satisfy M8 is to stop
+     * hiding things, and then the sentence has no work left to do.
+     *
+     * This one survives because the `Shelf` primitive survives — it remains the house rail for
+     * filter-chip rows and any future glance rail, and the styleguide renders a live specimen of it.
+     * A primitive with no demo is a primitive that rots.
      */
-    marketsShelf: "Markets — {n} figures, swipe",
-    moneyShelf: "Money & mood — {n} figures, swipe",
+    swipe: "5 figures — swipe",
   },
 
   journal: {
