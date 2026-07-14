@@ -1,4 +1,5 @@
 import { cx } from "@/lib/cx";
+import { DeltaChip } from "@/components/DeltaChip";
 
 /**
  * StatFigure — a labelled number, and the rules that keep a number from lying.
@@ -80,8 +81,14 @@ type StatFigureProps = {
      * It renders INSIDE the chip, beside the number, because that is the whole of ruling C2: a
      * window stated in a footnote is a window most readers never connect to the figure. "+0.42%" is
      * not a fact on its own — over what? — and "+0.42% · 1D" is.
+     *
+     * REQUIRED SINCE PD5, and the type is now what enforces C2. It was optional, which meant the
+     * rule was a comment: any caller could ship a naked percentage and no guard in the build would
+     * have said a word. Every caller in the product already passed one — only the styleguide's own
+     * specimen omitted it, which is a fair summary of how a rule rots. There is no such thing as a
+     * delta without a period, so there is no longer a way to type one.
      */
-    window?: string;
+    window: string;
   };
 };
 
@@ -94,37 +101,13 @@ const VALUE_SCALE: Record<NonNullable<StatFigureProps["scale"]>, string> = {
 };
 
 /**
- * The chip's type size, which tracks the value's.
+ * The chip's type size tracks the value's, and `dense` is why that matters.
  *
  * A `dense` cell is narrow by definition, and the chip is the WIDER of the two things in it — a value
- * is "20,674.19" but a chip is "▼ -0.55% · 1D", which is longer. Leaving the chip at `text-sm` inside
- * a `dense` cell would mean the value fits and the chip does not, which is the same overflow bug one
- * size down. The chip shrinks with its figure.
+ * is "20,674.19" but a chip is "▼ -0.55% · 1D", which is longer. Leaving the chip at `sm` inside a
+ * `dense` cell would mean the value fits and the chip does not, which is the same overflow bug one
+ * size down. The chip shrinks with its figure; the mapping is the one line in the render below.
  */
-const CHIP_SCALE: Record<NonNullable<StatFigureProps["scale"]>, string> = {
-  hero: "text-sm",
-  figure: "text-sm",
-  body: "text-sm",
-  dense: "text-xs",
-};
-
-/**
- * The delta chip: semantic text on its own soft wash. These are the `-text` variants, darkened to
- * clear AA at small sizes, because a delta is always small type — never the hero. Flat is ink on
- * nothing: no direction, no colour, no wash.
- */
-const DELTA_CHIP: Record<Direction, string> = {
-  up: "text-up-text bg-up-wash",
-  down: "text-down-text bg-down-wash",
-  flat: "text-ink",
-};
-
-/** The redundant, non-colour channel. Flat gets no triangle at all rather than a fake one. */
-const DELTA_GLYPH: Record<Direction, string> = {
-  up: "▲",
-  down: "▼",
-  flat: "",
-};
 
 /**
  * The two ways a figure can be arranged, and what each is FOR.
@@ -183,74 +166,25 @@ export function StatFigure({
           {value}
         </span>
 
+        {/*
+         * THE CHIP IS NO LONGER WRITTEN HERE (PD5). It moved to components/DeltaChip.tsx, whole and
+         * unchanged — the two atoms, the wrap rule, the redundant glyph, the un-faded window.
+         *
+         * The reason it moved is the reason it had to: there were FOUR copies of this chip in the
+         * tree (here, Movers, Watchlist, NewsCard), and PD4's wrap fix landed in exactly one of them
+         * — this one. The other three kept the shape of the bug PD4 had just spent a phase killing,
+         * and nothing failed, because a duplicated component is not a bug, it is a bug's HABITAT.
+         *
+         * StatFigure now consumes the same chip as everyone else, which is what makes the contract
+         * a contract rather than a comment.
+         */}
         {delta ? (
-          <span
-            className={cx(
-              /*
-               * THE CHIP HAS EXACTLY TWO ATOMS, AND IT MAY BREAK BETWEEN THEM BUT NEVER INSIDE ONE.
-               *
-               * The two atoms are the SIGNED DELTA ("▲ +0.29%" — glyph, sign and number are one fact
-               * spelled three ways) and its WINDOW ("· 1D", "· vs prior week" — the delta's unit). Each
-               * is `whitespace-nowrap` below. The chip itself is `flex-wrap`, so when a cell is too
-               * narrow to hold both, the window drops to a second line WHOLE.
-               *
-               * THIS IS THE THIRD VERSION OF THIS ROW, AND EACH WRONG ONE WAS FOUND BY LOOKING.
-               *
-               *   v1 — no wrap at all. The chip overflowed its card and sat under the card next door.
-               *   v2 — `flex-wrap` with no atoms. It wrapped into "▲" / "+0.29%" / "· 1D": three lines,
-               *        one token each. That is EXACTLY the Range Ladder bug PD3 spent a phase killing,
-               *        reintroduced one component over — and every guard stayed green, because the page
-               *        never scrolled sideways and the class contract was satisfied. Only the
-               *        screenshot showed it. Then "vs prior week" shattered into "vs / prior / week".
-               *   v3 — this one. Wrap between the atoms; never within them.
-               *
-               * The principle the three versions taught: "wrapping is honest, truncating is not" is a
-               * claim about a SENTENCE. A phrase broken one word per line has not been wrapped, it has
-               * been shattered — and a shattered figure is no more readable than a truncated one. So
-               * the unit of wrapping is the ATOM, and the atom is the smallest group that still means
-               * something on its own.
-               */
-              "flex max-w-full flex-wrap items-baseline gap-x-0.5 gap-y-0 rounded-chip px-1.5 py-0.5 font-mono",
-              CHIP_SCALE[scale],
-              DELTA_CHIP[delta.direction],
-            )}
-          >
-            {/*
-             * ATOM 1 — the signed delta. The triangle, the sign and the number never separate: they
-             * are the same fact in three redundant channels (a triangle for shape, a sign for text, a
-             * colour for glance), and the redundancy is the accessibility guarantee, not the hue.
-             *
-             * The triangle is decorative to a screen reader — the signed value beside it already says
-             * "up" or "down" out loud, so announcing "black up-pointing triangle" would just be noise.
-             */}
-            <span className="whitespace-nowrap">
-              {delta.direction !== "flat" ? (
-                <span aria-hidden="true" className="pr-0.5">
-                  {DELTA_GLYPH[delta.direction]}
-                </span>
-              ) : null}
-              {delta.value}
-            </span>
-
-            {/*
-             * ATOM 2 — the window, inside the chip. It is quieter than the number — it is the number's
-             * UNIT, not a second number — but it is in the same chip, because a window that lives
-             * anywhere else is a window the reader has to go and find (C2).
-             *
-             * `whitespace-nowrap` is what stops "vs prior week" from becoming "vs / prior / week" in a
-             * narrow cell. A window is a phrase; it moves as one or not at all.
-             *
-             * QUIETER BY SIZE AND WEIGHT, NEVER BY OPACITY, and that is not a style preference. This
-             * span carried `opacity-80` until N2, which composites the text toward its background and
-             * dropped it under AA at this size — nine failing nodes on the Desk, all of them window
-             * tokens. Drift rule 18 already says it: `faint` is for placeholders and disabled states,
-             * never for information. And C2's whole claim is that the window IS information — half the
-             * fact, not an annotation on it. A number's unit is not decoration you may fade.
-             */}
-            {delta.window ? (
-              <span className="whitespace-nowrap pl-1 text-2xs font-normal">· {delta.window}</span>
-            ) : null}
-          </span>
+          <DeltaChip
+            value={delta.value}
+            direction={delta.direction}
+            window={delta.window}
+            scale={scale === "dense" ? "xs" : "sm"}
+          />
         ) : null}
       </div>
     </div>

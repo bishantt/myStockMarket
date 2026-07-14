@@ -1,7 +1,7 @@
 import Link from "next/link";
 
 import { db } from "@/lib/db";
-import { GlossaryTerm } from "@/components/GlossaryTerm";
+import { Term } from "@/components/Term";
 import { Surface } from "@/components/Surface";
 import { Tag } from "@/components/Tag";
 import { copy, fill } from "@/lib/copy";
@@ -100,7 +100,7 @@ export default async function ScansPage() {
                 <div className="flex flex-wrap items-baseline gap-3">
                   <h2 className="font-display text-title font-bold text-ink">
                     {PRESET_GLOSSARY[preset.key] ? (
-                      <GlossaryTerm term={PRESET_GLOSSARY[preset.key]}>{preset.label}</GlossaryTerm>
+                      <Term term={PRESET_GLOSSARY[preset.key]}>{preset.label}</Term>
                     ) : (
                       preset.label
                     )}

@@ -2,6 +2,8 @@ import { Disclosure } from "@/components/Disclosure";
 import { copy } from "@/lib/copy";
 import { SectionMasthead } from "@/components/SectionMasthead";
 import { RailTrigger } from "@/components/rail/Rail";
+import { TickerChip } from "@/components/TickerChip";
+import { DeltaChip } from "@/components/DeltaChip";
 import { cx } from "@/lib/cx";
 import type { Direction } from "@/components/StatFigure";
 
@@ -35,12 +37,6 @@ export type WatchRow = {
   spark: number[];
 };
 
-/** The delta chip — semantic text on its own wash, with the sign always inside it. */
-const DELTA_CHIP: Record<Direction, string> = {
-  up: "text-up-text bg-up-wash",
-  down: "text-down-text bg-down-wash",
-  flat: "text-ink",
-};
 
 /**
  * A tiny inline sparkline: a stroke in the direction's colour, over a soft area fill.
@@ -196,31 +192,35 @@ function WatchRowBody({ row: r }: { row: WatchRow }) {
                   rvol: r.rvol,
                   note: r.reason,
                 }}
-                className="flex items-center gap-3 rounded-panel px-2 py-2.5 transition-colors duration-(--duration-quick) ease-(--ease-quiet) hover:bg-accent-muted"
+                /*
+                 * INSTANT, not eased — the same ruling as Movers, for the same reason. This row's
+                 * delta chip is a DeltaChip now, so it carries `data-p2`, and a `transition-colors`
+                 * over a money visual is what drift rule 6 and the P2 ancestor walk both exist to
+                 * catch. The hover still lands; it simply lands at once.
+                 */
+                className="flex items-center gap-3 rounded-panel px-2 py-2.5 hover:bg-accent-muted"
               >
                 <div className="min-w-0 flex-1">
-                  <div className="flex items-baseline gap-1.5">
-                    <span className="font-mono text-sm font-semibold text-ink">{r.symbol}</span>
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    {/* Label mode: the row is a <button> that opens the rail. See Movers. */}
+                    <TickerChip symbol={r.symbol} />
                     {r.isFocus ? (
                       <span className="font-mono text-2xs uppercase tracking-[0.06em] text-muted">focus</span>
                     ) : null}
                   </div>
-                  <span className="block truncate font-ui text-2xs text-muted">{r.reason}</span>
+                  <span className="block truncate pt-1 font-ui text-2xs text-muted">{r.reason}</span>
                 </div>
                 <Sparkline points={r.spark} direction={r.direction} />
 
                 <span className="flex shrink-0 flex-col items-end gap-0.5">
                   <span className="font-mono text-sm text-ink">{r.price}</span>
                   {/* The window rides inside the chip (C2) — see the same rule in Movers. */}
-                  <span
-                    className={cx(
-                      "rounded-chip px-1.5 py-0.5 font-mono text-2xs",
-                      DELTA_CHIP[r.direction],
-                    )}
-                  >
-                    {r.changePct}
-                    <span className="pl-1 font-normal">· {copy.window.d1}</span>
-                  </span>
+                  <DeltaChip
+                    value={r.changePct}
+                    direction={r.direction}
+                    window={copy.window.d1}
+                    scale="xs"
+                  />
                 </span>
               </RailTrigger>
   );

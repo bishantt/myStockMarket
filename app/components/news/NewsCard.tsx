@@ -2,10 +2,12 @@ import Link from "next/link";
 
 import { NewsImage } from "@/components/news/NewsImage";
 import { Tag } from "@/components/Tag";
+import { TickerChip } from "@/components/TickerChip";
+import { VerifiedProse } from "@/components/KeyFigure";
 import { copy } from "@/lib/copy";
 import { cx } from "@/lib/cx";
-import { signedPercent } from "@/lib/format";
-import { catalystLabel, emphasizeVerifiedNumbers, sourcesLine } from "@/lib/news";
+import { directionOf, signedPercent } from "@/lib/format";
+import { catalystLabel, sourcesLine } from "@/lib/news";
 import type { NewsCard as Card } from "@/lib/news";
 import { formatEtClock, formatEtDate } from "@/lib/time";
 
@@ -104,19 +106,11 @@ export function NewsCard({ card, tier }: NewsCardProps) {
             isLead ? "text-xl desk:text-2xl" : "text-base",
           )}
         >
-          {emphasizeVerifiedNumbers(
-            card.headline,
-            card.keyNumbers.map((n) => n.value),
-          ).map((part, index) =>
-            part.verified ? (
-              // Set in mono because it was CHECKED. The typeface is the receipt.
-              <span key={index} data-p2="true" className="font-mono text-[0.92em] text-ink">
-                {part.text}
-              </span>
-            ) : (
-              <span key={index}>{part.text}</span>
-            ),
-          )}
+          {/* The N5 headline renderer, now the app's ONE emphasis path (PD5). A figure is set in
+           * mono if and only if the gate cleared it — the typeface is the receipt. It used to be an
+           * inline `.map` right here, which meant "emphasis is earned" was enforced in this one
+           * component and re-implementable by hand in every other. */}
+          <VerifiedProse text={card.headline} allowed={card.keyNumbers.map((n) => n.value)} />
         </h3>
 
         <p className="font-ui text-2xs text-muted">
@@ -125,19 +119,32 @@ export function NewsCard({ card, tier }: NewsCardProps) {
         </p>
 
         {card.tickers.length > 0 ? (
-          <ul className="flex flex-wrap gap-1.5">
+          // The testid names the SYMBOLS specifically. The browser suite needs to find a card that
+          // NAMES a ticker (to prove the chip is a door on the story behind it), and "has a data-p2
+          // node" is not that question: a headline carrying a gate-verified figure is also data-p2,
+          // and plenty of those name no symbol at all.
+          <ul data-testid="card-tickers" className="flex flex-wrap gap-1.5">
             {card.tickers.slice(0, TICKER_CAP).map((ticker) => (
-              <li
-                key={ticker.symbol}
-                data-p2="true"
-                className="inline-flex items-center gap-1 rounded-chip border border-hairline bg-surface px-1.5 py-0.5 font-mono text-2xs"
-              >
-                <span className="text-ink">{ticker.symbol}</span>
-                {ticker.ret1 !== null ? (
-                  <span className={ticker.ret1 >= 0 ? "text-up-text" : "text-down-text"}>
-                    {signedPercent(ticker.ret1)} · 1D
-                  </span>
-                ) : null}
+              <li key={ticker.symbol}>
+                {/*
+                 * LABEL MODE, and it is not a choice — this whole card is one `<Link>` to the story,
+                 * and an anchor inside an anchor is invalid HTML. The browser closes the outer one
+                 * where the inner begins, and the reader gets a card whose bottom half has silently
+                 * stopped being clickable. The symbol still LOOKS like every other symbol in the app,
+                 * which is the point of the chip; the door here belongs to the story.
+                 */}
+                <TickerChip
+                  symbol={ticker.symbol}
+                  move={
+                    ticker.ret1 !== null
+                      ? {
+                          value: signedPercent(ticker.ret1),
+                          direction: directionOf(ticker.ret1),
+                          window: copy.window.d1,
+                        }
+                      : undefined
+                  }
+                />
               </li>
             ))}
             {card.tickers.length > TICKER_CAP ? (
@@ -153,9 +160,15 @@ export function NewsCard({ card, tier }: NewsCardProps) {
           <p className="font-ui text-2xs text-muted">{copy.news.noListing}</p>
         ) : null}
 
-        {/* A null here prints NOTHING. Never a placeholder (P9). */}
+        {/* A null here prints NOTHING. Never a placeholder (P9). The figures inside it earn their
+         * mono the same way the headline's do — from the same allow-list, through the same door. */}
         {card.whyItMatters ? (
-          <p className="font-serif text-sm italic text-ink-2">{card.whyItMatters}</p>
+          <p className="font-serif text-sm italic text-ink-2">
+            <VerifiedProse
+              text={card.whyItMatters}
+              allowed={card.keyNumbers.map((n) => n.value)}
+            />
+          </p>
         ) : null}
 
         <p className="font-mono text-2xs uppercase tracking-[0.04em] text-muted">

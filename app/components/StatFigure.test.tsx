@@ -167,7 +167,7 @@ describe("StatFigure — the dense scale (PD4)", () => {
   });
 
   it("still renders the number in INK — the hero rule holds at every scale", () => {
-    render(<StatFigure label="Dow" value="44,326.02" scale="dense" delta={{ value: "-0.55%", direction: "down" }} />);
+    render(<StatFigure label="Dow" value="44,326.02" scale="dense" delta={{ value: "-0.55%", direction: "down", window: "1D" }} />);
 
     // There is no variant of this component in which the number itself carries the up/down colour.
     // `dense` is a size, and a size may never become a licence to colour a figure.

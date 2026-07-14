@@ -13,6 +13,10 @@ import { RangeBands } from "@/components/ticker/RangeBands";
 import { Surface } from "@/components/Surface";
 import { NewsImage } from "@/components/news/NewsImage";
 import { Tag } from "@/components/Tag";
+import { TickerChip } from "@/components/TickerChip";
+import { DeltaChip } from "@/components/DeltaChip";
+import { TermProse } from "@/components/Term";
+import { VerifiedProse } from "@/components/KeyFigure";
 import { copy, fill } from "@/lib/copy";
 import type { LadderBand } from "@/lib/range-ladder";
 
@@ -60,6 +64,7 @@ export default function StyleguidePage() {
 
           <Identity />
           <Colours />
+          <Voice />
           <Surfaces />
           <Typography />
           <Chips />
@@ -277,6 +282,260 @@ function Colours() {
             </ul>
           </div>
         ))}
+      </div>
+    </Section>
+  );
+}
+
+/**
+ * VOICE & EMPHASIS (PD5, plan §8) — the richness kit, and the complete colour dictionary.
+ *
+ * This section is the permanent spec the eyeball pass reads against, and it carries the one table
+ * §8.5 asks for: every colour this app is allowed to use, what it MEANS, and who is allowed to use
+ * it. The 3.10 eyeball pass gains one line because of it — "every coloured element on this surface
+ * appears in the dictionary" — and that line is only checkable because the dictionary is here.
+ *
+ * It is a GRID, not a `<table>`, and that is deliberate rather than a dodge of drift rule 16. The
+ * rule reserves `<table>` for components/DataTable, which is the app's one instrument for DATA: it
+ * sorts, it prioritises columns, it collapses on a phone. This is a SPECIFICATION — it never sorts,
+ * it is authored rather than queried, and pulling a sortable client table into the styleguide to
+ * render fifteen static rows would be spending a client bundle on a document.
+ */
+function Voice() {
+  /**
+   * THE COLOUR DICTIONARY (§8.5, ruling E6). The complete list of things colour may mean here.
+   *
+   * E6's promise is that this list did not GROW in Parts 5–11 — richness adds texture, weight and
+   * hierarchy, and zero new hue meanings. Anything on a screen that carries a hue must appear in
+   * this table, or it is drift. The `guard` column is the point: a meaning with no enforcement is a
+   * meaning that will be borrowed.
+   */
+  const dictionary = [
+    {
+      family: "Direction",
+      swatches: ["bg-up", "bg-down"],
+      means: "A price moved up, or down. The ONE data pair.",
+      consumers: "DeltaChip (the only door) · sparklines · candles · range strokes",
+      guard: "Never the only channel — a glyph and a sign ride with it, always (P7).",
+    },
+    {
+      family: "Accent (indigo)",
+      swatches: ["bg-accent", "bg-accent-soft"],
+      means: "Interactivity. This is a door, or the thing you are on.",
+      consumers: "Links · the active nav pill · focus rings · a TickerChip's hover wash",
+      guard: "It means nothing else. A definition is NOT a call to act — Term is ink, not accent.",
+    },
+    {
+      family: "Tier",
+      swatches: ["bg-tier-strong", "bg-tier-moderate", "bg-tier-weak"],
+      means: "How a historical tendency looks: strong, moderate, weak.",
+      consumers: "Tag variant=\"tier\" — and nothing else",
+      guard: "The WORD is always inside the chip. A coloured dot is not a claim.",
+    },
+    {
+      family: "Grade",
+      swatches: ["bg-grade-supported", "bg-grade-mixed", "bg-grade-weak", "bg-grade-folklore"],
+      means: "How well the research record supports a technique.",
+      consumers: "Tag variant=\"grade\" / \"folklore\"",
+      guard: "Same rule: the grade's name is in the chip, in text.",
+    },
+    {
+      family: "Alert (amber)",
+      swatches: ["bg-alert", "bg-alert-wash"],
+      means: "Something DEGRADED. Read this with suspicion.",
+      consumers: "The verification-gate flag · the fired-signal marker · a stale pipeline strip",
+      guard: "The REGION is reserved, not the hex. Drift rule 5 counts the consumers.",
+    },
+    {
+      family: "Danger (red)",
+      swatches: ["bg-danger", "bg-danger-wash"],
+      means: "Do not trust the numbers on this page.",
+      consumers: "PipelineStrip's DEAD state. One consumer, and only one, ever.",
+      guard: "Drift rule 19 fails the build on a second one.",
+    },
+    {
+      family: "Band",
+      swatches: ["bg-band-inner", "bg-band-outer"],
+      means: "Uncertainty. A range, with no direction in it.",
+      consumers: "The range ladder's fills, and nothing else",
+      guard: "Greyer than accent (so it never reads clickable) and NOT the up/down pair (so a symmetric range carries no valence).",
+    },
+    {
+      family: "Academy modules",
+      swatches: [
+        "bg-module-foundations",
+        "bg-module-structure",
+        "bg-module-patterns",
+        "bg-module-risk",
+      ],
+      means: "NOTHING. These are DECORATIVE — they distinguish four shelves of a library.",
+      consumers: "Academy module bars",
+      guard: "Labelled decorative here on purpose: they are the one place in the app where a hue is allowed to mean nothing, so they must never be read as a scale. None is amber; none is the accent.",
+    },
+  ];
+
+  return (
+    <Section
+      id="voice"
+      index={16}
+      title="Voice & emphasis"
+      intro="The richness kit — how a symbol, a term and a verified figure are set — and the complete dictionary of what colour is allowed to mean. Richness is texture, weight and hierarchy AT REST: nothing here moves, and nothing here adds a hue."
+    >
+      <div className="flex flex-col gap-8">
+        {/* ── The kit ─────────────────────────────────────────────────────────────────────── */}
+        <div>
+          <h3 className="font-mono text-2xs uppercase tracking-[0.08em] text-muted">
+            TickerChip — one symbol, one treatment
+          </h3>
+          <p className="max-w-[70ch] pt-1 font-ui text-2xs text-muted">
+            A door where a door is legal (a table cell); a label where an ancestor is already
+            interactive (a news card is one big link; a movers row is a button). Same chip either
+            way. The trailing move is money — it carries <code>data-p2</code> and never animates.
+          </p>
+          <ul className="flex flex-wrap items-center gap-3 pt-3">
+            <li>
+              <TickerChip symbol="AAPL" door />
+            </li>
+            <li>
+              <TickerChip symbol="AAPL" />
+            </li>
+            <li>
+              <TickerChip symbol="SMCI" door move={{ value: "+18.40%", direction: "up", window: "1D" }} />
+            </li>
+            <li>
+              <TickerChip symbol="NVDA" move={{ value: "-2.10%", direction: "down", window: "1D" }} />
+            </li>
+          </ul>
+        </div>
+
+        <div>
+          <h3 className="font-mono text-2xs uppercase tracking-[0.08em] text-muted">
+            DeltaChip — the app&rsquo;s one delta, and its two atoms
+          </h3>
+          <p className="max-w-[70ch] pt-1 font-ui text-2xs text-muted">
+            The signed delta and its window. It breaks BETWEEN the two atoms and never inside one —
+            a phrase broken one word per line has not been wrapped, it has been shattered. Flat gets
+            no triangle: inventing a direction would be inventing a fact.
+          </p>
+          <ul className="flex flex-wrap items-center gap-3 pt-3">
+            <li>
+              <DeltaChip value="+0.29%" direction="up" window="1D" />
+            </li>
+            <li>
+              <DeltaChip value="-0.55%" direction="down" window="vs prior week" />
+            </li>
+            <li>
+              <DeltaChip value="0.00%" direction="flat" window="1D" />
+            </li>
+          </ul>
+        </div>
+
+        <div>
+          <h3 className="font-mono text-2xs uppercase tracking-[0.08em] text-muted">
+            Term — a doorway, not a highlight
+          </h3>
+          <p className="max-w-[70ch] pt-1 font-ui text-2xs text-muted">
+            A dotted underline in INK. At most two per paragraph, first occurrence per view. It is
+            not accent, because accent means &ldquo;do something&rdquo; and a definition is not a
+            call to act — it is a word with more behind it if you want it, and nothing at all if you
+            don&rsquo;t.
+          </p>
+          <p className="max-w-[62ch] pt-3 font-prose text-base text-ink-2">
+            <TermProse text="Breadth was narrow into the close, and the VIX barely moved." />
+          </p>
+        </div>
+
+        <div>
+          <h3 className="font-mono text-2xs uppercase tracking-[0.08em] text-muted">
+            KeyFigure — emphasis is EARNED (E5)
+          </h3>
+          <p className="max-w-[70ch] pt-1 font-ui text-2xs text-muted">
+            A figure is set in mono if and only if the deterministic gate cleared it. The emphasis is
+            itself a claim — it says &ldquo;this was checked against its source&rdquo; — so the
+            renderer takes verified figures, never raw strings. Below, only <em>18.4%</em> was on the
+            gate&rsquo;s allow-list; &ldquo;4th&rdquo; is a number-shaped word the gate never
+            checked, and it stays in prose. No colour, no bold, no size bump: the TYPEFACE is the
+            receipt.
+          </p>
+          <p className="max-w-[62ch] pt-3 font-serif text-base italic text-ink-2">
+            <VerifiedProse
+              text="SMCI jumped 18.4% after raising guidance for the 4th time."
+              allowed={["18.4%"]}
+            />
+          </p>
+        </div>
+
+        {/* ── The dictionary (§8.5) ───────────────────────────────────────────────────────── */}
+        <div>
+          <h3 className="font-mono text-2xs uppercase tracking-[0.08em] text-muted">
+            The colour dictionary — the complete list, forever (E6)
+          </h3>
+          <p className="max-w-[70ch] pt-1 font-ui text-2xs text-muted">
+            Every colour this app may use, and what it means. The eyeball pass at every phase exit
+            asks one question of every surface: <em>does every coloured element on this screen appear
+            in this table?</em> If a hue is on the screen and not in this list, it is drift — no
+            matter how good it looks.
+          </p>
+
+          <dl className="flex flex-col gap-px pt-4">
+            {dictionary.map((entry) => (
+              <div
+                key={entry.family}
+                className="grid gap-x-4 gap-y-1 border-t border-hairline py-3 sm:grid-cols-[10rem_1fr]"
+              >
+                <dt className="flex flex-col gap-1.5">
+                  <span className="font-ui text-2xs font-semibold uppercase tracking-[0.06em] text-ink">
+                    {entry.family}
+                  </span>
+                  <span className="flex gap-1">
+                    {entry.swatches.map((className) => (
+                      <span
+                        key={className}
+                        className={`size-4 shrink-0 rounded-chip border border-hairline ${className}`}
+                      />
+                    ))}
+                  </span>
+                </dt>
+                <dd className="flex flex-col gap-1">
+                  <span className="font-prose text-base text-ink-2">{entry.means}</span>
+                  <span className="font-mono text-2xs text-muted">{entry.consumers}</span>
+                  <span className="max-w-[70ch] font-ui text-2xs text-muted">{entry.guard}</span>
+                </dd>
+              </div>
+            ))}
+          </dl>
+        </div>
+
+        {/* ── The negative list (§8.4) ────────────────────────────────────────────────────── */}
+        <div className="border-t border-hairline pt-5">
+          <h3 className="font-mono text-2xs uppercase tracking-[0.08em] text-muted">
+            What must never appear (§8.4)
+          </h3>
+          <p className="max-w-[70ch] pt-1 font-ui text-2xs text-muted">
+            Run at every richness exit. Each of these is a treatment somebody will reasonably propose,
+            and each is refused for a reason that is not taste.
+          </p>
+          <ul className="flex max-w-[70ch] flex-col gap-1.5 pt-3">
+            {[
+              "No motion on any data at rest — a number that moves is a number that looks like it is happening (P2).",
+              "No new hue meanings — walk every coloured element against the dictionary above (E6).",
+              "No bold inside Newsreader prose — the weight is not loaded, so the browser fakes it (drift rule 27).",
+              "No icon as decoration — functional icons only.",
+              "No colour-only signal, anywhere — a glyph or a word rides with every hue (P7).",
+              "No emphasis on an unverified number — the mono IS the claim (E5).",
+              "No underline that is not a doorway.",
+              "Masthead chrome stays muted — the “alive” comes from content, never from chrome.",
+              "No score-like heat tints on movers — magnitude already speaks through the figures (P6).",
+            ].map((line) => (
+              <li key={line} className="flex gap-2 font-ui text-2xs text-ink-2">
+                <span aria-hidden="true" className="text-muted">
+                  ·
+                </span>
+                {line}
+              </li>
+            ))}
+          </ul>
+        </div>
       </div>
     </Section>
   );
@@ -517,13 +776,13 @@ function Figures() {
             label="S&P 500"
             value="6,812.34"
             scale="hero"
-            delta={{ value: "+0.34%", direction: "up" }}
+            delta={{ value: "+0.34%", direction: "up", window: "1D" }}
           />
           <StatFigure
             label="Dow"
             value="44,210.55"
             scale="body"
-            delta={{ value: "−0.25%", direction: "down" }}
+            delta={{ value: "−0.25%", direction: "down", window: "1D" }}
           />
           <StatFigure label="VIX" value="15.84" scale="body" />
         </div>

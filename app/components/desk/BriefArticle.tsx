@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { SectionMasthead } from "@/components/SectionMasthead";
+import { TermProse } from "@/components/Term";
 import { ExternalLink } from "@/components/ExternalLink";
 import { copy } from "@/lib/copy";
 import type { BriefItemView, BriefFootnote, BriefView } from "@/lib/briefing";
@@ -22,7 +23,16 @@ import type { BriefItemView, BriefFootnote, BriefView } from "@/lib/briefing";
  * honest, working state, like the offline ribbon.
  */
 
-const SLOTS: ReadonlyArray<{ key: keyof BriefItemView; label: string }> = [
+/**
+ * The prose slots of a brief item — every key of BriefItemView EXCEPT `citationNumbers`, which is a
+ * number[] rather than a sentence. The old type here was `keyof BriefItemView`, which was wide
+ * enough to include it; nothing noticed, because the old renderer just interpolated `{item[key]}`
+ * and an array stringifies quietly. Handing that array to a component that expects prose is what
+ * finally made the compiler say so.
+ */
+type SlotKey = Exclude<keyof BriefItemView, "citationNumbers">;
+
+const SLOTS: ReadonlyArray<{ key: SlotKey; label: string }> = [
   { key: "whatHappened", label: "What happened" },
   { key: "whyItMatters", label: "Why it matters" },
   { key: "byTheNumbers", label: "By the numbers" },
@@ -43,7 +53,36 @@ export function BriefArticle({ asOf, brief }: { asOf: Date; brief: BriefView }) 
             {brief.todayFocus.headline}
             <Superscripts numbers={brief.todayFocus.citationNumbers} footnotes={brief.footnotes} />
           </h3>
-          <p className="max-w-[66ch] pt-3 font-prose text-prose text-ink-2">{brief.todayFocus.body}</p>
+          {/*
+           * THE LEDE CARRIES GLOSSARY DOORWAYS (PD5, §8.2.2), and NOT emphasised figures. The
+           * difference is the whole of ruling E5, and it is worth stating here because the omission
+           * looks like a gap and is not.
+           *
+           * A term can be decorated safely: an underline promises a DEFINITION, and the definition
+           * comes from our own glossary, so the app is only ever vouching for itself.
+           *
+           * A FIGURE cannot — not yet, and not honestly. Emphasis says "the gate checked this
+           * number", and for a news cluster the app can prove that: the pipeline stores
+           * `key_numbers`, the list of figures the gate CLEARED, and KeyFigure emphasises exactly
+           * those. The briefing stores no such list. Its verification record holds the FLAGS — the
+           * entities that FAILED — and a published brief may still carry up to two of them (the gate
+           * holds outright only on a Today's-focus flag or more than two flags total).
+           *
+           * So the only way to emphasise a brief number today would be to invert the record: mono
+           * everything number-shaped EXCEPT the flagged ones. That requires the APP to decide what
+           * counts as a number — its own regex, its own opinion on whether "Q3" or "2.1x" is a
+           * figure — and `briefing/verify.py` already answers that question. Its own header says what
+           * a second answer costs: "Two definitions of that would be one too many: the day they
+           * drifted apart, one of the two surfaces would start publishing numbers the other would
+           * have refused, and nobody would find out from a test."
+           *
+           * The brief's numbers therefore read as plain prose, which claims nothing — the honest
+           * default. Publishing the gate's CLEARED list alongside its flags is a pipeline change, and
+           * it is booked for PD7 (Q-PD5-1).
+           */}
+          <p className="max-w-[66ch] pt-3 font-prose text-prose text-ink-2">
+            <TermProse text={brief.todayFocus.body} />
+          </p>
 
           {/* The items — up to five, each filling the labeled slots that are present. */}
           {brief.items.length > 0 ? (
@@ -103,7 +142,10 @@ function BriefItem({ item, footnotes }: { item: BriefItemView; footnotes: BriefF
           <div key={key} className="contents">
             <div className="pt-0.5 font-ui text-2xs uppercase tracking-wide text-muted">{label}</div>
             <p className="max-w-[62ch] font-prose text-base text-ink-2">
-              {item[key]}
+              {/* ≤2 doorways per paragraph, first occurrence per view — the budget and the registry,
+               * composing. See lib/prose.ts. A slot the reader has already met a term in renders it
+               * plain, which is why a paragraph can honestly show fewer than two. */}
+              <TermProse text={item[key]} />
               {key === "byTheNumbers" ? (
                 <Superscripts numbers={item.citationNumbers} footnotes={footnotes} />
               ) : null}

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useMemo } from "react";
 
 import { DataTable } from "@/components/DataTable";
+import { TickerChip } from "@/components/TickerChip";
 import { copy } from "@/lib/copy";
 import type { Column } from "@/lib/table";
 
@@ -43,10 +44,10 @@ export function AffectedTable({ rows }: { rows: AffectedRow[] }) {
         priority: 1,
         value: (row) => row.symbol,
         render: (row) => (
-          <span className="flex items-center gap-2">
-            <Link href={`/ticker/${row.symbol}`} className="font-mono text-accent-deep">
-              {row.symbol}
-            </Link>
+          <span className="flex flex-wrap items-center gap-2">
+            {/* A DOOR here — nothing in a table cell is already interactive, so the symbol can be
+             * the link it wants to be. This is the chip's natural habitat. */}
+            <TickerChip symbol={row.symbol} door />
             {row.hasSetupCard ? (
               <Link href={`/ticker/${row.symbol}`} className="font-ui text-2xs text-accent-deep">
                 {copy.news.setupCard} →

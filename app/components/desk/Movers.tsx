@@ -2,6 +2,8 @@ import { Disclosure } from "@/components/Disclosure";
 import { SectionMasthead } from "@/components/SectionMasthead";
 import { RailTrigger } from "@/components/rail/Rail";
 import { Tag } from "@/components/Tag";
+import { TickerChip } from "@/components/TickerChip";
+import { DeltaChip } from "@/components/DeltaChip";
 import { ExternalLink } from "@/components/ExternalLink";
 import { cx } from "@/lib/cx";
 import { copy } from "@/lib/copy";
@@ -40,19 +42,11 @@ export type Mover = {
   catalyst?: Catalyst;
 };
 
-/** The delta chip: semantic text on its own soft wash. Never colour alone — the triangle and the
- * sign ride with it, always. */
-const DELTA_CHIP: Record<Direction, string> = {
-  up: "text-up-text bg-up-wash",
-  down: "text-down-text bg-down-wash",
-  flat: "text-ink",
-};
 
 /** RVOL is emphasised once it clears 2x — the point at which "unusual volume" stops being a phrase
  * and starts being a fact. It is accent, because it is the row's one interactive-grade signal. */
 const RVOL_EMPHASIS_THRESHOLD = 2;
 
-const GLYPH: Record<Direction, string> = { up: "▲", down: "▼", flat: "" };
 
 /** How many movers stay in view on a phone before the rest fold away (§4.1). */
 const VISIBLE_ON_PHONE = 3;
@@ -143,22 +137,36 @@ function MoverRow({ mover: m }: { mover: Mover }) {
                   rvol: m.rvol,
                   note: m.catalyst ? m.catalyst.headline : copy.mover.noNews,
                 }}
-                // The hover feedback is a BACKGROUND shift, never a lift: this row contains a delta
-                // chip, and a transform on an ancestor would move a money visual (P2, §3.6).
-                className="flex flex-1 flex-wrap items-baseline gap-x-4 gap-y-1 rounded-panel px-2 py-2.5 transition-colors duration-(--duration-quick) ease-(--ease-quiet) hover:bg-accent-muted"
+                /*
+                 * THE HOVER IS INSTANT, AND PD5 IS WHERE THAT STOPPED BEING OPTIONAL.
+                 *
+                 * This row carried `transition-colors duration-(--duration-quick)` for six phases and
+                 * got away with it for exactly one reason: its delta chip was UNMARKED, so the P2
+                 * ancestor walk never looked at this subtree. The chip is a DeltaChip now and carries
+                 * `data-p2` (Q-G4-1's ruling: a delta is money), which turned that innocent transition
+                 * into a build failure — drift rule 6 and the ancestor walk, both firing on this line.
+                 *
+                 * That is the guard doing its job, not an obstacle to route around. The row still
+                 * answers the cursor; the background simply changes INSTANTLY. NewsCard reached the
+                 * same place first and wrote down why: a price that eases into place is a price that
+                 * looks like it is happening right now.
+                 */
+                className="flex flex-1 flex-wrap items-baseline gap-x-4 gap-y-1 rounded-panel px-2 py-2.5 hover:bg-accent-muted"
               >
-                <span className="w-14 shrink-0 font-mono text-sm font-semibold text-ink">{m.symbol}</span>
+                {/* The symbol is a TickerChip in LABEL mode. This row is a <button> — it opens the
+                 * rail, the level-2 peek — and a link inside a button is invalid HTML. The rail
+                 * carries its own exit to the full page, which is where that journey belongs. */}
+                <span className="shrink-0">
+                  <TickerChip symbol={m.symbol} />
+                </span>
                 <span className="hidden min-w-0 flex-1 truncate font-ui text-sm text-muted sm:block">{m.name}</span>
                 {/*
                  * The window rides INSIDE the chip (ruling C2). "+8.2%" is not a fact; "+8.2% · 1D"
                  * is — a percentage with no period attached is a number the reader has to guess the
-                 * meaning of, and a beginner will guess wrong. It is set quieter than the figure
-                 * because it is the figure's UNIT, not a second number.
+                 * meaning of, and a beginner will guess wrong.
                  */}
-                <span className={cx("flex shrink-0 items-baseline gap-0.5 rounded-chip px-1.5 py-0.5 font-mono text-sm", DELTA_CHIP[m.direction])}>
-                  {m.direction !== "flat" ? <span aria-hidden="true">{GLYPH[m.direction]}</span> : null}
-                  {m.changePct}
-                  <span className="pl-1 text-2xs font-normal">· {copy.window.d1}</span>
+                <span className="shrink-0">
+                  <DeltaChip value={m.changePct} direction={m.direction} window={copy.window.d1} />
                 </span>
 
                 {/*

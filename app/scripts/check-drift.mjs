@@ -86,13 +86,29 @@ const ALERT_ALLOWED = [
  */
 const DANGER_ALLOWED = ["components/desk/PipelineStrip.tsx", "app/styleguide/page.tsx"];
 
-/** The P2 files: probability and money visuals. Nothing in them may move (§3.6). */
+/**
+ * The P2 files: probability and money visuals. Nothing in them may move (§3.6).
+ *
+ * PD5 ADDED FOUR, AND THE ADDITION IS THE PHASE'S SHARPEST FINDING. `components/DeltaChip.tsx` is
+ * the app's one delta chip and it carries `data-p2`; `TickerChip` embeds it; `Movers` and
+ * `Watchlist` render it on every row.
+ *
+ * Those last two had carried `transition-colors` on their row hover since the redesign, and they got
+ * away with it for one reason only: their delta chips were UNMARKED, so the P2 ancestor walk never
+ * looked at them. The rule was being kept by luck. Marking the chips (Q-G4-1: a delta is money) made
+ * this list bite, and it failed the build on both rows the moment they joined — which is exactly what
+ * a guard is for. Their hover is instant now, like NewsCard's always was.
+ */
 const P2_FILES = [
   "components/BaseRate.tsx",
   "components/StatFigure.tsx",
+  "components/DeltaChip.tsx",
+  "components/TickerChip.tsx",
   "components/desk/CalibrationScatter.tsx",
   "components/desk/SetupCards.tsx",
   "components/desk/MacroPulse.tsx",
+  "components/desk/Movers.tsx",
+  "components/desk/Watchlist.tsx",
   "components/ticker/RangeBands.tsx",
 ];
 
@@ -443,8 +459,14 @@ const RULES = [
     // and a second chance to ship a leaderboard by accident. The track-record page was skip-listed
     // until F6 converted it; that entry is gone now and the rule is closed. There is one table in
     // this app.
+    //
+    // COMMENTS ARE EXEMPT (added PD5), for the reason rules 1, 4, 21, 23 and 24 already give: a rule
+    // must let prose NAME the thing it bans, or the code cannot explain itself. PD5 wrote the colour
+    // dictionary as a GRID and left a comment saying why it is not a `<table>` — and this rule
+    // promptly failed the build on the word. The markup is what ships; a tag inside a comment
+    // renders nothing.
     skip: ["components/DataTable.tsx"],
-    match: (line) => /<table[\s>]/.test(line),
+    match: (line) => /<table[\s>]/.test(line) && !/^\s*(\*|\/\/|\/\*|<!--)/.test(line),
   },
   {
     id: 21,
@@ -647,6 +669,80 @@ const RULES = [
     match: (line) =>
       !/^\s*(\*|\/\/|\/\*|<!--)/.test(line) &&
       (/max-w-\[1360px\]/.test(line) || /max-w-\[1500px\]/.test(line)),
+  },
+  {
+    id: 26,
+    name: "one door for the ticker route — a /ticker/ link is a TickerChip (PD5 §8.2.1)",
+    /*
+     * THE DRIFT THIS CLOSES. Before PD5 a ticker symbol was rendered THREE ways: a bare mono span on
+     * the Desk's movers and watchlist, a bordered chip with a move on a news card, and a bare accent
+     * link in an affected table. One kind of fact, three treatments, and no two of them agreed on
+     * whether a symbol was even a door. That is how a design system dies — not in one bad decision,
+     * but in three reasonable ones taken on three different afternoons.
+     *
+     * components/TickerChip.tsx is the one door now. It renders every symbol identically and mints
+     * the only /ticker/ href in the app, so a NEW bare link to a ticker page — in a scan table, an
+     * academy lesson, a future room — fails the build instead of quietly becoming the fourth
+     * treatment.
+     *
+     * THE TWO ARGUED EXCEPTIONS, and note what they have in common: NEITHER IS A SYMBOL.
+     *
+     *   · components/rail/RailDialog.tsx — "Open full view →". The rail is the level-2 peek, and this
+     *     is its single exit to the full page. It is a SENTENCE, a call to act; the symbol above it
+     *     in the sheet is a different thing entirely.
+     *   · components/news/AffectedTable.tsx — "Setup card →". A signpost saying the ticker page holds
+     *     an evidence card for this name. Also a sentence, and it renders BESIDE a TickerChip that is
+     *     already the symbol's door.
+     *
+     * This is the same shape as rule 20's second door (BrandMark): one door for the THING, plus
+     * named CTAs that happen to travel to the same room. A door is a component; an exception is a
+     * decision someone had to defend in writing. Both are here.
+     */
+    skip: [
+      "components/TickerChip.tsx",
+      "components/rail/RailDialog.tsx",
+      "components/news/AffectedTable.tsx",
+    ],
+    match: (line, file) => {
+      if (/^\s*(\*|\/\/|\/\*|<!--)/.test(line)) return false; // prose may name the route
+      if (!/^(components|app)\//.test(file)) return false; // lib/ holds route strings, not links
+      const code = line.replace(/(?<![:/])\/\/.*$/, "");
+      // An href to the ticker room, in either the literal or the template-literal form. Rule 14
+      // learned this lesson already: a rule that only looks for `href="/…"` misses `href={`/…`}`,
+      // and the one it missed sat in the tree for four phases.
+      return /href=\{?["'`]?\/ticker\//.test(code);
+    },
+  },
+  {
+    id: 27,
+    name: "TYPE — no bold inside serif prose: the weight is not loaded, so the browser fakes it (§8)",
+    /*
+     * The app loads Inter 400/600, JetBrains Mono 400/500/600, Playfair 700 + italic, and Newsreader
+     * roman + italic. THAT IS EVERY WEIGHT THAT EXISTS. There is no bold Newsreader in the bundle.
+     *
+     * So `font-bold` on a `font-prose` or `font-serif` element does not render bold Newsreader — it
+     * renders SYNTHESIZED bold: the browser smears the roman outline sideways to fake a weight it
+     * does not have. It looks muddy, it breaks the vertical rhythm the serif was chosen for, and it
+     * is banned by the type system's own reasoning (rule 7 already bans the other synthesis routes —
+     * small-caps, a dead width axis).
+     *
+     * The type system's answer to "this word matters" is not weight. It is:
+     *   · ITALIC — Newsreader ships one, and it is the paper's editorial register (§8.2.4).
+     *   · MONO — a figure the gate verified (KeyFigure, §8.2.3). The typeface IS the emphasis.
+     *   · A DOORWAY UNDERLINE — the word has a definition behind it (Term, §8.2.2).
+     * Each of those carries INFORMATION. A bold word carries only volume.
+     *
+     * The tree passes this rule on the day it is written, which is exactly when a rule is worth
+     * writing: PD5 is the phase that hands every surface a richness kit, and "make it stand out" is
+     * the request this rule expects to be asked at 2am for the rest of the build.
+     */
+    match: (line) => {
+      if (/^\s*(\*|\/\/|\/\*|<!--)/.test(line)) return false;
+      const code = line.replace(/(?<![:/])\/\/.*$/, "");
+      // Both must be on the same element for this to be a real synthesis. A `font-bold` elsewhere in
+      // the file is an Inter or a Mono weight, and those are loaded.
+      return /\bfont-(prose|serif)\b/.test(code) && /\bfont-(bold|semibold|black|extrabold)\b/.test(code);
+    },
   },
 ];
 

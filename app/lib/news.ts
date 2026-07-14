@@ -256,42 +256,17 @@ export function inRange(card: NewsCard, range: NewsRange, sessionDate: Date): bo
   return seen >= sessionStart - (WEEK_DAYS - 1) * 24 * 60 * 60 * 1000;
 }
 
-/** One run of text in a headline, and whether the gate cleared it as a verified figure. */
-export type HeadlinePart = { text: string; verified: boolean };
-
-/**
- * Split a headline so its VERIFIED numbers can be set in mono, and nothing else can.
+/*
+ * THE HEADLINE EMPHASIS RENDERER LIVED HERE UNTIL PD5. It is now lib/verified.ts —
+ * `splitVerified`, rendered by components/KeyFigure.tsx.
  *
- * The emphasis is itself a claim — it tells the reader "this figure was checked against its
- * source". Applying it to every number-shaped token would have the app vouching for figures it
- * never verified, which is the whole disease this product is built against. So a number is
- * emphasized if and only if it appears, verbatim, in the cluster's gate-cleared key_numbers.
+ * It moved because it was never really about headlines. The rule it encodes (E5: a figure is
+ * set in mono IF AND ONLY IF the gate cleared it) applies to every narrated surface this app
+ * has — a why-it-matters line, an insight paragraph, a brief. Leaving it in `lib/news` meant
+ * the app's one honesty-of-emphasis rule was reachable only from the news room, and any other
+ * surface that wanted an emphasised number would have hand-rolled its own — which is exactly
+ * how a rule becomes a suggestion.
  */
-export function emphasizeVerifiedNumbers(headline: string, keyNumbers: string[]): HeadlinePart[] {
-  const verified = keyNumbers.map((value) => value.trim()).filter((value) => value.length > 0);
-  if (verified.length === 0) return [{ text: headline, verified: false }];
-
-  // Longest first, so "18.4%" wins over a bare "18" that is also a key number.
-  const ordered = [...verified].sort((a, b) => b.length - a.length);
-  const parts: HeadlinePart[] = [];
-  let cursor = 0;
-
-  while (cursor < headline.length) {
-    const hit = ordered
-      .map((value) => ({ value, at: headline.indexOf(value, cursor) }))
-      .filter((candidate) => candidate.at >= 0)
-      .sort((a, b) => a.at - b.at || b.value.length - a.value.length)[0];
-
-    if (!hit) break;
-
-    if (hit.at > cursor) parts.push({ text: headline.slice(cursor, hit.at), verified: false });
-    parts.push({ text: hit.value, verified: true });
-    cursor = hit.at + hit.value.length;
-  }
-
-  if (cursor < headline.length) parts.push({ text: headline.slice(cursor), verified: false });
-  return parts.length > 0 ? parts : [{ text: headline, verified: false }];
-}
 
 /**
  * The movers no catalyst explains (ruling C9).

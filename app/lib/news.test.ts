@@ -20,7 +20,6 @@ import {
   activeSectorChips,
   catalystLabel,
   countLine,
-  emphasizeVerifiedNumbers,
   filterCards,
   inRange,
   leadAndRest,
@@ -183,28 +182,9 @@ describe("Today and This week", () => {
   });
 });
 
-describe("a number in a headline is emphasized only if the gate cleared it", () => {
-  it("emphasizes a figure that is one of the cluster's verified key numbers", () => {
-    const parts = emphasizeVerifiedNumbers("SMCI jumps 18.4% on AI server demand", ["18.4%"]);
-    expect(parts).toEqual([
-      { text: "SMCI jumps ", verified: false },
-      { text: "18.4%", verified: true },
-      { text: " on AI server demand", verified: false },
-    ]);
-  });
-
-  it("leaves a number the gate never saw as plain text", () => {
-    // The emphasis IS a claim — it says "this figure was checked". Applying it to any number that
-    // happens to look like one would be the app vouching for something it never verified.
-    const parts = emphasizeVerifiedNumbers("Fed holds rates for the 4th meeting", ["18.4%"]);
-    expect(parts).toEqual([{ text: "Fed holds rates for the 4th meeting", verified: false }]);
-  });
-
-  it("handles a headline with no numbers at all", () => {
-    const parts = emphasizeVerifiedNumbers("Fed holds rates steady", []);
-    expect(parts).toEqual([{ text: "Fed holds rates steady", verified: false }]);
-  });
-});
+// The emphasis tests moved to lib/verified.test.ts at PD5, with the renderer itself. The rule
+// they pin (E5 — a figure is emphasised only if the gate cleared it) is not a news rule; it is
+// the app's, and it now guards every narrated surface through one door.
 
 describe("moved without a story (C9)", () => {
   it("names only the movers no catalyst explains", () => {

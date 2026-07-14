@@ -1,4 +1,4 @@
-import { GlossaryTerm } from "@/components/GlossaryTerm";
+import { Term } from "@/components/Term";
 import { SectionMasthead } from "@/components/SectionMasthead";
 import { StatFigure } from "@/components/StatFigure";
 import { Surface } from "@/components/Surface";
@@ -234,15 +234,15 @@ export function MacroPulse({
          */}
         <div className="flex flex-wrap items-baseline gap-x-8 gap-y-1 border-t border-hairline pt-3">
           <span className="font-ui text-2xs uppercase tracking-[0.06em] text-muted">
-            <GlossaryTerm term="breadth">Breadth</GlossaryTerm>
+            <Term term="breadth">Breadth</Term>
           </span>
           <span className="font-mono text-sm text-ink-2">
-            {breadth.advancers} <GlossaryTerm term="advance-decline">advancing</GlossaryTerm> ·{" "}
+            {breadth.advancers} <Term term="advance-decline">advancing</Term> ·{" "}
             {breadth.decliners} declining
           </span>
           <span className="font-mono text-sm text-ink-2">
             {breadth.pctAbove50dma} above the{" "}
-            <GlossaryTerm term="50-day-average">50-day average</GlossaryTerm>
+            <Term term="50-day-average">50-day average</Term>
             {/*
              * Breadth's window. This line makes a claim about the WHOLE market, and it was the one
              * figure on the module carrying no window at all — it named its indicator's lookback

@@ -19,6 +19,23 @@ export type GlossaryEntry = {
   short: string;
   long: string;
   lesson?: string;
+  /**
+   * Other ways the SAME concept is written in prose (PD5).
+   *
+   * The display `term` is a title — "RVOL", "50-day average". Prose is not written in titles. The
+   * pipeline's narrator writes "relative volume", because that is what a person would say, and a
+   * matcher that only knew the title would walk straight past it. The Desk's seeded brief proved it
+   * on PD5's first run: the lede said "relative volume of 4.7×" and the glossary, holding the term
+   * "RVOL", found nothing to define.
+   *
+   * So an entry may list the words it ACTUALLY appears as. Plurals go here too — a paragraph about
+   * "gaps" is a paragraph about a gap.
+   *
+   * These are matched at word boundaries and longest-first, exactly like the display term, and they
+   * are only ever used by lib/prose.ts's auto-decorator. An explicit `<Term term="rvol">` names its
+   * key directly and needs none of this.
+   */
+  aliases?: string[];
 };
 
 export const GLOSSARY: Record<string, GlossaryEntry> = {
@@ -33,24 +50,28 @@ export const GLOSSARY: Record<string, GlossaryEntry> = {
     short: "The gap between the best buy and sell prices — a real cost.",
     long: "The bid is the highest price a buyer will pay; the ask is the lowest a seller will take. The gap between them is paid on every round trip, and it is widest in the first thirty minutes of trading.",
     lesson: "order-types-and-the-spread",
+    aliases: ["bid-ask spread", "bid/ask spread"],
   },
   "market-order": {
     term: "Market order",
     short: "An order to trade now at whatever price is available.",
     long: "A market order fills immediately at the best available price, so it pays the full spread and any slippage. At the US open, where spreads are widest, that cost is largest.",
     lesson: "order-types-and-the-spread",
+    aliases: ["market orders"],
   },
   "limit-order": {
     term: "Limit order",
     short: "An order that trades only at a price you set or better.",
     long: "A limit order sets the worst price you will accept. It may not fill, but it never pays more than you chose — the sensible default for a small investor.",
     lesson: "order-types-and-the-spread",
+    aliases: ["limit orders"],
   },
   "pre-market": {
     term: "Pre-market",
     short: "Trading before the 9:30am ET open — thin and wide.",
     long: "The pre-market session runs before the 9:30am ET regular open. Volume is thin and spreads are wide, so prices there are less reliable than during regular hours.",
     lesson: "the-us-trading-day",
+    aliases: ["premarket"],
   },
   "after-hours": {
     term: "After-hours",
@@ -63,12 +84,14 @@ export const GLOSSARY: Record<string, GlossaryEntry> = {
     short: "An open that jumps away from the prior close.",
     long: "A gap is a difference between today's open and yesterday's close. The folklore that gaps 'always fill' points the wrong way: the careful evidence finds momentum in the gap's direction, not reversal.",
     lesson: "gaps-what-the-data-says",
+    aliases: ["gaps"],
   },
   rvol: {
     term: "RVOL",
     short: "Relative volume — today's volume against its average.",
     long: "Relative volume compares today's trading volume to its recent average. Unusual volume carries some information, but it is concentrated in small, wide-spread names — information, not a strategy.",
     lesson: "volume-and-rvol",
+    aliases: ["relative volume"],
   },
   breadth: {
     term: "Breadth",
@@ -81,18 +104,21 @@ export const GLOSSARY: Record<string, GlossaryEntry> = {
     short: "The count of rising versus falling stocks.",
     long: "The advance/decline count is how many stocks rose versus fell on the day. A rally on narrow breadth — few advancers — is a different picture from a broad one.",
     lesson: "reading-the-macro-pulse",
+    aliases: ["advancers", "decliners"],
   },
   "50-day-average": {
     term: "50-day average",
     short: "The average closing price over the last 50 days.",
     long: "The 50-day moving average smooths the last fifty closes into one line. It describes recent trend; on its own it is not a demonstrated edge.",
     lesson: "moving-averages-and-the-golden-cross",
+    aliases: ["50-day moving average"],
   },
   "200-day-average": {
     term: "200-day average",
     short: "The average closing price over the last 200 days.",
     long: "The 200-day moving average smooths roughly a year of closes. It is a common trend reference, but rules built on it have not survived honest out-of-sample testing net of costs.",
     lesson: "moving-averages-and-the-golden-cross",
+    aliases: ["200-day moving average"],
   },
   "golden-cross": {
     term: "Golden cross",
@@ -135,6 +161,7 @@ export const GLOSSARY: Record<string, GlossaryEntry> = {
     short: "How often something happened in a stated group before.",
     long: "A base rate is the historical frequency of an outcome within a stated reference class — the app's core unit. It is a tendency, never a prediction, and it always carries its sample size and interval.",
     lesson: "reading-a-base-rate-sentence",
+    aliases: ["base rates"],
   },
   "reference-class": {
     term: "Reference class",
@@ -147,6 +174,7 @@ export const GLOSSARY: Record<string, GlossaryEntry> = {
     short: "The honest range around a measured rate.",
     long: "A confidence interval is the range the true rate plausibly sits in, given the sample. A wide interval means the count is small and the number is uncertain.",
     lesson: "how-our-base-rates-are-computed",
+    aliases: ["confidence intervals"],
   },
   "wilson-interval": {
     term: "Wilson interval",
@@ -165,12 +193,14 @@ export const GLOSSARY: Record<string, GlossaryEntry> = {
     short: "Observational labels — weak, moderate, strong.",
     long: "The tendency tiers describe how a historical pattern looks — weak ('watch only'), moderate ('note it; check the weakeners'), strong ('worth a closer look'). Every tier is observational; none says 'buy'.",
     lesson: "the-probability-lexicon",
+    aliases: ["tendency tier"],
   },
   "evidence-grade": {
     term: "Evidence grade",
     short: "How well the research supports a technique.",
     long: "The evidence grade — supported, mixed, weak, or folklore — records how well the peer-reviewed record supports a technique. It sits beside the tier so recent data and long-run evidence are read together.",
     lesson: "the-myth-vs-evidence-ledger",
+    aliases: ["evidence grades"],
   },
   folklore: {
     term: "Folklore",
@@ -188,6 +218,7 @@ export const GLOSSARY: Record<string, GlossaryEntry> = {
     term: "Implied move",
     short: "The move size options are pricing in for an event.",
     long: "The implied move, read from the at-the-money straddle, is a roughly unbiased estimate of how large a move an event may bring — its size, never its direction.",
+    aliases: ["implied moves"],
   },
   "bmo-amc": {
     term: "BMO / AMC",
@@ -223,6 +254,7 @@ export const GLOSSARY: Record<string, GlossaryEntry> = {
     short: "The drop from a peak to a trough.",
     long: "A drawdown is the decline from a high-water mark to the low that follows. Its arithmetic is unforgiving: a 50% loss needs a 100% gain to recover.",
     lesson: "expectancy-and-drawdown-math",
+    aliases: ["drawdowns"],
   },
   expectancy: {
     term: "Expectancy",
@@ -252,6 +284,7 @@ export const GLOSSARY: Record<string, GlossaryEntry> = {
     term: "Paper trading",
     short: "Practising with simulated money and real friction.",
     long: "Paper trading records trades without real money, but with the same spread, slippage, and cooling-off friction. It is the app's default stance — the censuses price the tuition of learning with real dollars.",
+    aliases: ["paper trade", "paper trades"],
   },
   slippage: {
     term: "Slippage",

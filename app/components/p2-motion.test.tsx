@@ -8,6 +8,11 @@ import type { BaseRateData } from "@/lib/baserate";
 import { DataTable } from "@/components/DataTable";
 import { Disclosure } from "@/components/Disclosure";
 import { MoodGauge } from "@/components/desk/MoodGauge";
+import { Movers } from "@/components/desk/Movers";
+import type { Mover as MoverFixture } from "@/components/desk/Movers";
+import { Watchlist } from "@/components/desk/Watchlist";
+import type { WatchRow as WatchFixture } from "@/components/desk/Watchlist";
+import { DeltaChip } from "@/components/DeltaChip";
 import type { MoodComponent } from "@/lib/macro-board";
 import type { Column } from "@/lib/table";
 
@@ -123,7 +128,7 @@ describe("probability and money visuals never move (P2)", () => {
 
   it("StatFigure marks itself and sits still — a delta is money, and money does not animate", () => {
     const { container } = render(
-      <StatFigure label="S&P 500" value="6,812.34" scale="hero" delta={{ value: "+0.34%", direction: "up" }} />,
+      <StatFigure label="S&P 500" value="6,812.34" scale="hero" delta={{ value: "+0.34%", direction: "up", window: "1D" }} />,
     );
     expectNothingMoves(container);
   });
@@ -225,6 +230,73 @@ describe("the kit does not move the numbers it carries", () => {
     );
     const offenders = movingAncestorsOf(container.querySelector("[data-p2]")!);
     expect(offenders, "a fade over a data-p2 subtree must be caught").not.toHaveLength(0);
+  });
+});
+
+/**
+ * THE DESK'S TWO ROWS JOIN THE WALK (PD5), AND THEY ARE THE REASON THE WALK EXISTS.
+ *
+ * Movers and Watchlist render a delta on every row. Until PD5 those deltas were hand-rolled spans
+ * carrying no `data-p2`, so this walk — the app's strictest guard — had never once looked at the two
+ * busiest money surfaces on the Desk. Both rows carried `transition-colors` on their hover, and both
+ * were fine, because nothing was watching.
+ *
+ * The chips are DeltaChips now and they carry `data-p2` (Q-G4-1's ruling: a delta is money). The
+ * first run of this file after that change failed on BOTH rows, exactly as it should have. Their
+ * hover is instant now.
+ *
+ * These two tests are worth more than they look: they are the ones that would have caught the bug,
+ * and they are the ones that will catch the next person who adds a tasteful `transition` to a Desk
+ * row without noticing there is a price inside it.
+ */
+describe("the Desk's rows never animate the money on them (PD5)", () => {
+  const MOVER: MoverFixture = {
+    symbol: "SMCI",
+    name: "Super Micro Computer",
+    changePct: "+18.40%",
+    direction: "up",
+    rvol: "4.7×",
+    catalyst: {
+      type: "earnings",
+      headline: "Raised full-year guidance",
+      source: "Reuters",
+      url: "https://example.com/a",
+    },
+  };
+
+  const WATCH: WatchFixture = {
+    symbol: "AAPL",
+    name: "Apple",
+    reason: "Holding above its 50-day",
+    price: "$212.40",
+    changePct: "-0.55%",
+    direction: "down",
+    rvol: "1.1×",
+    isFocus: true,
+    spark: [210, 211, 209, 212, 212.4],
+  };
+
+  it("a movers row's delta chip has no moving ancestor", () => {
+    const { container } = render(<Movers asOf={new Date("2026-07-10T20:05:00Z")} movers={[MOVER]} />);
+    expectNothingMoves(container);
+  });
+
+  it("a watchlist row's delta chip has no moving ancestor", () => {
+    const { container } = render(<Watchlist asOf={new Date("2026-07-10T20:05:00Z")} rows={[WATCH]} />);
+    expectNothingMoves(container);
+  });
+
+  it("NEGATIVE CONTROL — the hover the rows USED to carry still fails the walk", () => {
+    // `transition-colors duration-(--duration-quick)` is the exact class string both rows carried.
+    // It is not banned because it is ugly; it is banned because of what sits underneath it.
+    const { container } = render(
+      <div className="transition-colors duration-(--duration-quick) hover:bg-accent-muted">
+        <DeltaChip value="+18.40%" direction="up" window="1D" />
+      </div>,
+    );
+
+    const offenders = movingAncestorsOf(container.querySelector("[data-p2]")!);
+    expect(offenders.length, "the row hover over a delta chip must be caught").toBeGreaterThan(0);
   });
 });
 
