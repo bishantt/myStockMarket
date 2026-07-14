@@ -1,17 +1,27 @@
 # PROGRESS.md — resumable state
 
-# THE GATE-EFFICIENCY BUILD IS RUNNING — G2 is done (2026-07-13), tagged `gate-2`, CI green.
+# THE GATE-EFFICIENCY BUILD IS RUNNING — G3 is done (2026-07-13), tagged `gate-3`, CI green.
 
-**Checkpoint: G0, G1 and G2 complete. G3 is next. Nothing is blocked. Nothing is in flight.**
+**Checkpoint: G0, G1, G2 and G3 complete. G4 (`gate-final`) is next and it is the LAST phase of this
+plan. Nothing is blocked. Nothing is in flight.**
 
-**`gate-2` went green on the FIRST TRY, in 7 m 59 s, and the tag never moved** — the second phase
-running to make that the ordinary outcome rather than the lucky one. Before this reform, 52% of tag
-runs failed and `nc-final` needed six pushes of one tag.
+**`gate-3` went green on the FIRST TRY, in 8 m 43 s, and the tag never moved** — the third phase
+running, and the reform is now simply how exits work here. Before it, 52% of tag runs failed and
+`nc-final` needed six pushes of one tag.
 
-**And G2's rehearsal proved its own worth on an ordinary day.** The phase changed **no app code at
-all**, and the rehearsal *still* went red — a latent race in the `/news` chip sweep. Before G1 that red
-would have arrived **on the tag**. Instead it arrived on a dispatch, cost nothing but the reading, and
-was fixed before a tag existed. See LESSONS ("the one locator call that does not wait").
+**G3 was the biggest phase of this plan, and the rehearsal is what made it safe.** It rewrote the lists
+that decide *what gets measured* — five hand-kept route lists collapsed into one manifest — and it
+rewrote thirty date literals across the seed and the browser suite. Either change could have silently
+altered what the gate looks at. The rehearsal ran the full oracle on the candidate SHA and came back
+green on the first dispatch: **the same routes swept, the same 76 baselines compared, zero pixel
+diffs.** That green IS the no-behavior-change proof, and it is the reason a phase this invasive cost
+one tag push and no loops.
+
+**And the manifest caught a real defect on its very first run.** `/scans/[preset]` — the match table,
+the app's ONE `DataTable` — shipped in F3 and **had never had a bundle baseline**. Not because anyone
+decided it did not need one: the lookup returned `undefined`, the verdict column printed an empty
+string, and the route was reported without ever being judged. **A silence in a gate is
+indistinguishable from a pass.**
 
 ## What this build is (read this first if you have no memory of it)
 
@@ -134,27 +144,83 @@ was understood. It is the **only `.all()` in the whole suite**. G2's non-goals r
 G3, but "Red CI blocks a phase exit" is an untouchable and the untouchable wins. Logged for veto as
 **Q-G2-1**.
 
-## What is NEXT — G3 (read GATE-EFFICIENCY-PLAN.md §G3 in full)
+## Where G3 left the machinery (all of this is live on `main` now)
 
-**G3 — One list of rooms, and defuse the clocks → tag `gate-3`.** The only phase that edits specs and
-scripts, and it is **full TDD**. Bigger than G2. Its crown is a guard that makes rot-by-omission
-mechanically impossible.
+Full evidence, with every RED quoted: `docs/gate-evidence/g3-manifest.md`.
 
-1. **`app/lib/routes-manifest.json`** — one entry per product route (`path`, `seeded`, `sweeps`,
-   `wide`, `navBudget`, `vrtRoom`). JSON so `.mjs` scripts, TS specs and vitest all read it plainly.
-2. **Wire the five hand-kept route lists to it** (list-wiring only, zero behavior change):
-   `a11y.spec.ts`, `hardening.spec.ts`, `vrt.spec.ts`, `check-nav.mjs`, `check-bundles.mjs`.
-3. **The completeness guard (TDD, write it RED first):** a vitest test that walks `app/app/**/page.tsx`,
-   derives the routes, and asserts every product route is in the manifest — with an argued in-file
-   exemption list. **This is how `/news` shipped in N5 and went unmeasured for two tagged phases.**
-   A new `page.tsx` with no manifest entry becomes a red unit test, not a hole found two phases later.
-4. **Drift rule 21 — the fuse-finder:** no absolute date literals in `seed.mjs` or `e2e/*.spec.ts`
-   outside sanctioned constants. "An absolute fixture under a relative rule has a fuse on it — /paper's
-   baseline expired 28 minutes after the run that certified it." Prove it RED first.
-5. Update `.claude/skills/new-surface/SKILL.md`: the manifest is the door now.
+- **THERE IS ONE LIST OF ROOMS: `app/lib/routes-manifest.json`.** 14 rooms, each with `path`,
+  `family`, `seeded`, `sweeps`, `navBudget`, `vrtRoom` and a `note` that has to defend it. Five
+  hand-kept lists used to answer "what rooms are there?" and they disagreed with each other and with
+  the app. All five now derive from the manifest: `a11y.spec.ts`, `hardening.spec.ts`, `vrt.spec.ts`,
+  `check-nav.mjs`, `check-bundles.mjs`. `app/lib/routes.ts` is the typed door for the TypeScript side.
+- **ROT BY OMISSION IS NOW MECHANICALLY IMPOSSIBLE.** `app/lib/routes-manifest.test.ts` walks
+  `app/app/**/page.tsx` and reds the unit suite if the filesystem and the manifest disagree in
+  **either** direction — a new room nothing measures, or an entry for a room that is gone (the sweeps
+  would "pass" on a deleted room forever, because a 404 page has no controls under 44px). **A new
+  `page.tsx` with no manifest entry is a red `npm test`, seconds after it is written.** Three REDs were
+  witnessed and are quoted in the evidence file.
+- **IT FOUND A REAL HOLE ON ITS FIRST RUN.** `/scans/[preset]` — the match table, the app's one
+  `DataTable` — shipped in F3 and **had never had a bundle baseline**. `BASELINE_KB[route]` came back
+  `undefined`, the verdict column printed an empty string, and the route was reported without ever
+  being judged, every run since F3. Not a failure — **a silence**, and a silence in a gate is
+  indistinguishable from a pass. Baselined at **153.6 KB**.
+- **DRIFT RULE 21 — THE FUSE-FINDER.** No absolute date literal anywhere in `prisma/seed.mjs`,
+  `prisma/fixtures/*.mjs` or `e2e/**/*.ts` outside **two named anchors**. There were **thirty**; there
+  are now two:
+  - `app/prisma/fixtures/clock.mjs` — the seeded world. `SEEDED_SESSION = "2026-07-09"`.
+  - `app/e2e/seeded-clock.ts` — the browser suite. `SEEDED_EVENING` (11pm ET that night).
+  Both REDs witnessed: the rule fired on all 30 real fuses, and it still fires on a fresh scratch date.
+  **The rule is NOT "never write a date."** The seeded world *is* a fixed morning and has to be — a
+  seed that drifted with the calendar would repaint every VRT baseline every night. The rule is that
+  there is exactly **one date per world, it has a name, and everything else derives from it**. A second
+  unnamed copy is how the two silently walk apart. (`vrt.spec.ts` and `desk.spec.ts` each carried their
+  own copy of the seeded evening before this.)
+- **`app/prisma/fixtures/clock.test.ts` is the proof the data did not move.** Every instant the seed
+  used to name as a literal is written out longhand and asserted against the expression that now
+  produces it. A thirty-site date refactor is exactly the change that can shift the seeded world by a
+  day and silently repaint a dozen baselines; it now fails in milliseconds instead.
+- **Rule 22 does not exist, on purpose.** Time-of-day-dependent assertions (the control-room test that
+  passed only while the market was open) are **not mechanizable without false positives**, and a gate
+  that cries wolf trains its reader to skim past it. It is a **question** now, asked in
+  `.claude/skills/new-surface/SKILL.md`: *"does this assertion hold at 3am and 3pm, Saturday
+  included?"*
+- **`.claude/skills/new-surface/SKILL.md` points at the manifest.** The N7-era "add the route to the
+  sweeps (hard-coded lists)" line is gone; N7's `SEEDED_ROUTES`-vs-`ROUTES` warning survives verbatim
+  as the manifest's `seeded` flag.
 
-**The rehearsal IS the no-behavior-change proof:** same routes swept, same 76 baselines, zero pixel
-diffs.
+## What G3 deliberately did NOT do (so you do not think it was missed)
+
+- **No per-route `wide` flag in the manifest**, though the plan asked for one. The wide viewport is
+  scoped by **spec file** (`playwright.config.ts`'s `testMatch`), not by route, so nothing would read
+  it — and a field nobody reads is a measurement that is not being taken, wearing a measurement's
+  clothes. **Q-G3-1.**
+- **An Academy lesson (`/academy/[slug]`) is still neither swept nor pixel-locked.** The manifest made
+  this visible; closing it would have destroyed G3's own no-behavior-change proof. It is a one-line
+  change now, and it is recorded in the route's `note`. **Q-G3-2 — worth your eyes.**
+
+## What is NEXT — G4 (read GATE-EFFICIENCY-PLAN.md §G4 + Appendix A in full)
+
+**G4 — Repair the texts, install the ritual → tag `gate-final`.** The LAST phase of this plan.
+Mostly documentation — but it is the phase that makes the whole reform *survivable across sessions*,
+which is why it runs after every mechanism it describes has been proven. **Appendix A is the exact
+22-row checklist; verify every file:line before editing, because line numbers have drifted.**
+
+The shape:
+1. **The five "roll straight on" clauses** — one dated annotation each (superseded 2026-07-13 by
+   one-phase-per-session). CLAUDE.md's was already done at G0.
+2. **CLAUDE.md** — point the phase-exit line at the current plan's standing gate (§6.4 is historical);
+   add the global-rules override sentence; add the **Endgame practice** block (Part 3's ritual).
+3. **DEVELOPMENT-PLAN §6.4 correction — VIA `docs/src/dp-0N.html` ONLY.** Never edit
+   `DEVELOPMENT-PLAN.md` directly; it says so in its own first line and N7 still did it once. Run
+   `build-plan-md.py` AND `build-plan-pdf.py`, commit sources + both outputs together.
+4. **The diverged duplicates** — amber-consumer counts, the §3.10-v2 note, the font drop-order comment,
+   `base-rate-display`'s "Plex Mono".
+5. **POLISH-AND-DEPTH-PLAN amendments** (a)–(g), including inserting the Part-3 ritual into PD's
+   standing gate so PD inherits the reformed exit from its first phase, and regenerating its PDF.
+6. **DECISIONS + QUESTIONS**, and **Appendix B's measurement table filled in with real numbers.**
+
+**G4 has FOUR live questions waiting for Bishan** (Q-G2-1, Q-G3-1, Q-G3-2, Q-G3-3, Q-G3-4). None of
+them blocks it.
 
 ## The exit ritual as it now stands (GATE-EFFICIENCY-PLAN Part 3)
 

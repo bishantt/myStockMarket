@@ -70,7 +70,20 @@ Optimize everything for a human reader, never for machine brevity.
 
 ## Commands
 app:      npm run dev | test | typecheck | lint | build
-guards:   npm run check:drift (20 anti-drift rules) · check:fonts (budget) · check:lighthouse · icons
+guards:   npm run check:drift (21 anti-drift rules) · check:fonts (budget) · check:lighthouse · icons
+rooms:    (G3) app/lib/routes-manifest.json is THE ONE LIST OF ROOMS. The sweeps (a11y, hardening),
+          the pixel oracle (vrt), the nav budget (check-nav) and the bundle budget (check-bundles) all
+          read it. app/lib/routes-manifest.test.ts walks app/app/**/page.tsx and REDS THE UNIT SUITE if
+          a room exists with no entry — in both directions (a room nobody measures, or an entry for a
+          room that is gone, which would let the sweeps "pass" on a 404 page forever). Add a room?
+          Add it there. `app/lib/routes.ts` is the typed door.
+clocks:   (G3, drift rule 21) NO absolute date literal in prisma/seed.mjs, prisma/fixtures/*.mjs or
+          e2e/**/*.ts outside TWO anchors: prisma/fixtures/clock.mjs (the seeded world) and
+          e2e/seeded-clock.ts (the browser suite). The rule is NOT "never write a date" — the seeded
+          world IS a fixed morning and must be. It is that there is ONE date per world, it has a name,
+          and everything else derives from it. A second unnamed copy is how the two silently walk
+          apart: /paper's baseline expired 28 minutes after the run that certified it. Comments are
+          exempt, so every derived call site carries its answer (`sessionPlus(3)  // 2026-07-12`).
 db-drift: npm run check:migrations — is the LIVE database running the schema in this repo? CI can
           never answer this (it migrates a fresh container every run), and production silently ran
           without N0's migration for days because nothing asked. Deploy applies migrations too.
@@ -141,8 +154,9 @@ and lib/format · all copy from lib/copy.ts · tokens from globals.css @theme (U
 Appendix A) — never ad-hoc hex · timestamps via lib/time.ts · adapters follow .claude/skills/new-provider-adapter ·
 readable-first code and plain-English docs per the Readability section above.
 
-**Any new card, panel, module or overlay: read .claude/skills/new-surface FIRST. Any table renders
-through components/DataTable — there is one table in this app.** It carries the
+**Any new card, panel, module or overlay: read .claude/skills/new-surface FIRST. Any new ROOM goes in
+app/lib/routes-manifest.json — the sweeps, the oracle and both budgets read it, and the unit test reds
+if you forget. Any table renders through components/DataTable — there is one table in this app.** It carries the
 honesty checklist you run BEFORE writing markup (does it show a base rate → it renders through
 BaseRate and nothing else; a probability or money → `data-p2`, and no ancestor may animate or
 transform it; an outcome → the word goes in the chip; an empty state → it is information, not an

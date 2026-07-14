@@ -601,3 +601,62 @@ have made it green. It had failed on its retry, and the mechanism was ten minute
 `rerun --failed` is for a *suspected* flake — re-running a known race until it passes is how a real
 defect becomes folklore. Grep the suite for every `.all()` when you find one; here there was exactly
 one, so it was an instance rather than a class.
+
+## The single register, and the guard that keeps it honest (G3, 2026-07-13)
+
+**The pattern.** When the same fact is written down in more than one place, it will diverge — and the
+divergence is silent, because nothing is comparing the copies. The cure is not discipline. It is (a)
+**one register** that holds the fact, (b) **every consumer derives from it**, and (c) **a test that
+fails when the register and reality disagree**.
+
+`app/lib/routes-manifest.json` is the worked example. Five lists answered "what rooms are there?";
+they disagreed; `/news` went unmeasured for two tagged phases. Now: one JSON file, five consumers
+reading it, and `lib/routes-manifest.test.ts` walking `app/app/**/page.tsx` to hold the register
+against the filesystem — **in both directions**, because the reverse one is the one people forget (an
+entry for a room that no longer exists means the sweeps "pass" on a 404 page forever).
+
+**Where else this shape already lives in the repo**, and it is worth seeing them as one pattern:
+`check-drift.mjs`'s `ALERT_ALLOWED` is the register of who may spend amber; `DANGER_ALLOWED` is the
+register of who may be red; `BLUR_ALLOWED` is the blur budget. Each is a list with an argued entry per
+line, and the script is the truth.
+
+**The three rules that make it work, all learned the hard way:**
+1. **Every entry defends itself.** The manifest gives each room a `note` field; the drift allowlists
+   give each entry a comment. *An entry with no argument is an entry nobody has had to defend*, and
+   those are the ones that turn out to be wrong.
+2. **A field nobody reads must not exist.** The plan asked for a per-route `wide` flag; nothing in the
+   codebase scopes the wide viewport by route, so the field would have been a measurement that is not
+   being taken, wearing a measurement's clothes. Left it out (Q-G3-1).
+3. **A lookup that can return `undefined` must fail, not shrug.** `check-bundles.mjs` printed
+   `/scans/[preset]` with an empty verdict column for phases, because `BASELINE_KB[route]` was
+   `undefined` and the code read that as "no opinion". **A silence in a gate is indistinguishable from
+   a pass.** The register reconciliation now runs before any measuring and refuses to proceed on a
+   disagreement.
+
+## One clock per world (G3, 2026-07-13)
+
+**The pattern.** A fixture may be absolute. It may **not** be absolute *twice*. Any world that has a
+pinned time — the seeded database, the browser suite that photographs it — gets exactly **one named
+anchor**, and every other instant in that world is derived from it by a helper.
+
+- `app/prisma/fixtures/clock.mjs` — the seeded world. `SEEDED_SESSION`, `sessionAt`, `sessionPlus`,
+  `monthStart`, `sessionDayIso`.
+- `app/e2e/seeded-clock.ts` — the browser suite. `SEEDED_SESSION`, `SEEDED_EVENING`.
+
+Drift rule 21 fails the build for a date written anywhere else in `prisma/` or `e2e/`.
+
+**Why one and not zero.** The instinct after `/paper`'s baseline expired was "make everything
+relative". That is wrong, and expensively so: a seed that moved with the calendar would repaint every
+VRT baseline every night, and the pixel oracle would stop being an oracle. **The failure was never the
+absolute date. It was the second copy of it** — two clocks, one edit apart from disagreeing.
+
+**Keep the derived call sites readable, or the cure is worse than the disease.** Every one carries its
+answer in a trailing comment (`sessionPlus(3)  // 2026-07-12`), and rule 21 exempts comments so it
+can. Where an offset would destroy the meaning, write a helper that keeps it: CPI is a *monthly* series
+stamped with the first of the month it describes, so it is `monthStart(1)` and never `sessionPlus(-38)`.
+A fixture nobody can check against a calendar is how the wrong one survives.
+
+**And pin the derivation with a test.** `prisma/fixtures/clock.test.ts` writes out every instant the
+seed used to name as a literal and asserts it against the expression that now produces it. A thirty-site
+date refactor is exactly the change that shifts a world by one day and repaints a dozen baselines; this
+catches it in milliseconds instead of twelve minutes into CI, as an unexplained wall of pixels.

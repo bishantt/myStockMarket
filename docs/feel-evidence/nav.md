@@ -96,3 +96,26 @@ _A non-200 row is not a fast route — it is a route that served nothing. The ga
 _A non-200 row is not a fast route — it is a route that served nothing. The gate treats it as a miss,_
 _unless it is a route a later phase has not built yet, which is reported as pending and never scored._
 
+
+### 2026-07-14 01:36 UTC — authenticated TTFB (5 samples, https://mystockmarket-eight.vercel.app)
+
+| Route | HTTP | Warm median (2–5) | Cold (sample 1) | All samples | x-vercel-cache | Region |
+|---|---|---|---|---|---|---|
+| `/` | 200 | **92ms** | 65ms | 65, 86, 98, 109, 40 | HIT, HIT, HIT, HIT, HIT | iad1 |
+| `/news` | 200 | **141ms** | 370ms | 370, 106, 176, 263, 101 | PRERENDER, HIT, HIT, HIT, HIT | iad1 |
+| `/news/nc-fed-hold` | 200 | **49ms** | 746ms | 746, 85, 43, 41, 55 | MISS, HIT, HIT, HIT, HIT | iad1 |
+| `/scans` | 200 | **66ms** | 173ms | 173, 208, 60, 48, 72 | PRERENDER, HIT, HIT, HIT, HIT | iad1 |
+| `/scans/unusual-volume` | 200 | **65ms** | 218ms | 218, 89, 48, 77, 53 | PRERENDER, HIT, HIT, HIT, HIT | iad1 |
+| `/ticker/SPY` | 200 | **129ms** | 942ms | 942, 87, 128, 130, 158 | MISS, MISS, HIT, HIT, HIT | iad1 |
+| `/paper` | 200 | **62ms** | 173ms | 173, 48, 103, 69, 54 | PRERENDER, HIT, HIT, HIT, HIT | iad1 |
+| `/track-record` | 200 | **52ms** | 127ms | 127, 58, 48, 55, 45 | PRERENDER, HIT, HIT, HIT, HIT | iad1 |
+| `/settings` | 200 | **429ms** | 457ms | 457, 416, 442, 397, 451 | MISS, MISS, MISS, MISS, MISS | iad1 |
+| `/academy` | 200 | **58ms** | 209ms | 209, 86, 45, 61, 55 | PRERENDER, HIT, HIT, HIT, HIT | iad1 |
+| `/academy/review` | 200 | **47ms** | 123ms | 123, 41, 47, 46, 52 | PRERENDER, HIT, HIT, HIT, HIT | iad1 |
+| `/academy/reading-a-base-rate-sentence` | 200 | **72ms** | 219ms | 219, 120, 65, 57, 79 | PRERENDER, HIT, HIT, HIT, HIT | iad1 |
+| `/login` _(control)_ | 200 | 50ms | 71ms | 71, 47, 220, 52, 44 | HIT, HIT, HIT, HIT, HIT | iad1 |
+| `/academy/glossary` _(control)_ | 200 | 49ms | 230ms | 230, 51, 52, 42, 47 | PRERENDER, HIT, HIT, HIT, HIT | iad1 |
+
+_A non-200 row is not a fast route — it is a route that served nothing. The gate treats it as a miss,_
+_unless it is a route a later phase has not built yet, which is reported as pending and never scored._
+

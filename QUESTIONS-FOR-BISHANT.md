@@ -842,3 +842,82 @@ commit with no content. It saves ~2.5 minutes a night and changes nothing that m
 
 **It does not change the tagging rule.** The heartbeat can still land mid-endgame and move `main`
 under you; that hazard was never about CI. **Tag the SHA you rehearsed, by SHA** — unchanged.
+
+---
+
+## Q-G3-1 — [FYI, decision made] the manifest has no per-route `wide` flag
+
+**The plan asked for one** (G3 item 1: `wide` — "gets the wide viewport"). **I left it out, and the
+reason is the same honesty rule the rest of this phase is built on.**
+
+The wide viewport (1536) is not scoped by ROUTE in this codebase. It is scoped by **spec file**:
+`playwright.config.ts`'s `wide` project carries `testMatch: /(vrt|hardening)\.spec\.ts/`, so it runs
+every route those two files walk and nothing else. There is no per-route decision anywhere for it to
+read. Adding the field would have created **a field nobody reads** — which is a measurement that is
+not being taken, wearing a measurement's clothes, and this phase exists to abolish exactly that.
+
+Whether a given *shot* runs at 1536 (and in which theme) is a per-shot quirk, and those stay in
+`vrt.spec.ts` where the plan itself said they should.
+
+**If you want the flag anyway**, the honest version is to make `playwright.config.ts` read the
+manifest and scope the `wide` project by route — that is a real change with real behavior, and it
+belongs in its own phase, not smuggled into a no-behavior-change one.
+
+---
+
+## Q-G3-2 — [WORTH YOUR EYES] an Academy lesson is neither swept nor pixel-locked
+
+The manifest made this visible the moment there was one list to look at. `/academy/[slug]` — a
+lesson page — is probed by the nav budget and **nothing else**:
+
+- no touch-target sweep (the glossary popovers live in a lesson, and they are tap targets)
+- no sideways-scroll sweep
+- no axe scan
+- no VRT baseline
+
+The Academy *frame* is swept at `/academy`, and lessons are prose inside it, so this is not as bad as
+it sounds. But "a lesson is just prose in a frame we already check" is an **assumption**, and the one
+thing this phase has established is that assumptions of that shape are how `/news` went unmeasured for
+two tagged phases.
+
+**My assumption, and what I built on it:** I left it exactly as it was. G3's whole proof is *zero
+behavior change* — the rehearsal has to sweep the same routes and compare the same 76 baselines — so
+adding a lesson to the sweeps was the one thing I could not do in this phase without destroying its
+own evidence. The manifest records the gap in the route's `note`, in as many words.
+
+**Closing it is now a one-line change** (`"sweeps": ["touch", "scroll", "axe"]` on that entry) plus
+whatever the sweeps then find. Worth doing in G4 or early PD. Tell me if you want it and I will book
+the cost.
+
+---
+
+## Q-G3-3 — [FYI, deviation recorded] the "3am and 3pm" line went to `new-surface`, not `new-lesson`
+
+The plan (G3 item 4) said to add *"does this assertion hold at 3am and 3pm, Saturday included?"* to
+**the `new-lesson` skill's checklist**.
+
+`new-lesson` is the skill for authoring **Academy lesson MDX** under `content/academy/`. It has
+nothing to do with test assertions — the plan pointed at the wrong skill. The tree wins on the detail.
+
+It went into `.claude/skills/new-surface/SKILL.md` instead, directly beneath its sibling (the
+routes-manifest line), because that is the checklist somebody actually runs when they build a surface
+and write its tests. Same intent, a place it will actually be read.
+
+---
+
+## Q-G3-4 — [FYI, a guard got STRICTER] `/scans/unusual-volume` is no longer allowed to 404
+
+`check-nav.mjs` carried `PENDING = { "/scans/unusual-volume": "F3 builds the per-preset match table" }`
+— a marker meaning *"this route does not exist yet; probe it, but do not fail the gate when it 404s."*
+
+**F3 built it. Phases ago. The marker never came off.** So the route has been carrying a standing
+licence to answer 404 without failing B2 ever since. It answers 200, so nothing was actually wrong —
+but the licence was live, and a 404 is the fastest response a server can give.
+
+The marker is gone and the route is gated like every other room. The PENDING *mechanism* stays, driven
+by the manifest's `navBudget: "pending"`, for the next route that gets probed before it is built.
+
+**This is a guard getting stricter, not weaker**, so it needs no permission under Part 1.3 — but it is
+a behavior change in a phase whose banner is "zero behavior change", so it is named here rather than
+buried. It cannot affect the sweeps or the pixels; `check:nav` is a local instrument and B2 is in
+report mode.
