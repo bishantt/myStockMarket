@@ -87,28 +87,84 @@ recording** — this repo has now caught GitHub's own docs being wrong twice (th
 an undocumented empty `204` with no run id; the concurrency group that cancelled the very run it was
 rehearsing). So it was proven here, live, before it was trusted.
 
-### The three observations, in order
+### The observations, in the order they were made
 
 Each used the same query shape — `gh api repos/:owner/:repo/actions/runs?head_sha=<sha>` — so the
-positive and negative results are directly comparable and the negative is not an artifact of looking
-in the wrong place.
+positive and negative results are directly comparable, and a zero is never an artifact of having
+looked in the wrong place.
 
 | # | Push | SHA | Runs created | Verdict |
 |---|---|---|---|---|
-| a | the `paths-ignore` commit itself (a `.yml`) | `ebb9e0b` | **1** — 29295614094, green, 2 m 43 s | the control: code still runs |
+| a | the `paths-ignore` commit itself (a `.yml`) | `ebb9e0b` | **1** — 29295614094, green, 2 m 43 s | **the control:** code still runs |
 | b | an **empty** commit | `522d42e` | **0** | filtered |
-| c | a **docs-only** commit (this file) | `<DOCS_SHA>` | **0** | filtered — *the absence is the pass* |
-| d | **the `gate-2` tag, on that same docs-only commit** | `<DOCS_SHA>` | **<TAG_RUNS>** | `<TAG_VERDICT>` |
+| c | a **docs-only** commit (this file) | `72ff535` | **0** | filtered — *the absence is the pass* |
+| d | a **spec fix** (`.ts`), mid-phase | `5739b11` | **1** — 29296471669, green, 2 m 28 s | **the second control:** code still runs |
+| e | a **workflow_dispatch** rehearsal on a docs-only SHA | `72ff535` | **1** — 29295892971 | path filters do not apply to dispatches |
+| f | **the `gate-2` tag, on a docs-only commit** | `<TAG_SHA>` | **<TAG_RUNS>** | `<TAG_VERDICT>` |
 
-**(a) The control.** `ebb9e0b` touches `.github/workflows/ci.yml`, which is not in the ignore list.
-Run 29295614094: `app` **success**, `pipeline` **success**, `oracle` and `vrt-baselines` **skipped**
-(correct — a branch push, per G0). The filter did not break the everyday proof.
+**(a) and (d) — the controls.** Both touch files outside the ignore list (`.github/workflows/ci.yml`
+and `app/e2e/news.spec.ts`), and both ran the full `app` + `pipeline` pair green, with `oracle` and
+`vrt-baselines` correctly **skipped** (a branch push, per G0). **The filter did not break the everyday
+proof, and it is not a blanket mute** — it is specific, and it was checked in both directions rather
+than only in the direction that would have looked good.
 
-**(d) The edge.** `<TAG_NARRATIVE>`
+**(e) — dispatches are unaffected.** The rehearsal was dispatched on `72ff535`, a commit that had
+created no push run at all, and the oracle ran anyway. Path filters apply to `push`, not to
+`workflow_dispatch` — so **the rehearsal remains available on exactly the docs-only commits a phase
+tag lands on.** Had this not held, G2 would have quietly disarmed G1.
+
+**(f) — the edge.** `<TAG_NARRATIVE>`
 
 ---
 
-## 5. The free finding: an empty commit is skipped
+## 5. The rehearsal earned its whole cost on its first ordinary outing
+
+**G2 changed no app code at all** — `git diff gate-1 HEAD -- app/ pipeline/` was empty — and **the
+rehearsal still went red.** Desktop leg, `news.spec.ts:97`: *expected 13 stories reachable, received
+0*. Phone and wide were green.
+
+This is what G1 was built for. Before the rehearsal existed, that red would have arrived **on the
+`gate-2` tag**, and the phase would have paid the full tag-delete/re-push cycle to learn it. Instead
+it arrived on a dispatch, on a SHA with no tag on it, and cost nothing but the reading.
+
+**Everything the machinery is supposed to do, it did:**
+
+- **The auto-mint correctly declined to fire.** No `*-actual.png` was written, so the guarded step
+  reported *"this red is an assertion, not a pixel. Not minting"* and skipped — exactly the case it
+  was guarded for. A logic failure did not buy four minutes of photography.
+- **The triptych artifact was there to read** (`playwright-failures-desktop`, 1.9 MB), and the answer
+  was in it.
+
+**What the picture said.** The page snapshot in `error-context.md` **stops at the press line**: the
+banner, the `Front page` heading and *"Assembled … from 45 articles, 14 catalysts"* had rendered, and
+then nothing. No filter row. No stories.
+
+**The mechanism.** `locator.all()` is the one locator call in Playwright that **does not auto-wait** —
+it returns whatever is in the DOM at that instant. The catalyst filter row is rendered by `NewsFeed`,
+a `"use client"` component, inside a **streamed Suspense boundary**, and `goto("/news")` resolves
+before that chunk lands. So `.all()` handed back an empty list, the `for` loop executed zero times,
+`reachable` stayed at its initial `0`, and the assertion failed — **reporting a broken filter row when
+what had actually happened is that the test measured a page that had not arrived yet.** Every other
+test in the file is safe *by luck*: they locate a chip by name and click it, and clicking auto-waits.
+
+It is the **only `.all()` in the entire e2e suite**, so this is an instance, not a class.
+
+**It was fixed, not re-run.** It failed on its retry as well, and the mechanism is fully understood;
+`gh run rerun --failed` is for a *suspected* flake, and re-running a known race until it goes green is
+the precise behaviour LESSONS.md exists to forbid. The fix (`5739b11`) waits for the row, then states
+how many chips it is about to sweep, so a zero can never again masquerade as a finding — **a sweep
+that swept nothing is a failure, not a pass**, which is now the third costume this house rule has worn
+(the `/paper` form that hydrated late, the figcaption that had not loaded, the sweeps that measured a
+404 page).
+
+**Scope note, made deliberately and marked.** G2's non-goals reserve spec edits for G3. But *"Red CI
+blocks a phase exit — no exceptions"* is an untouchable, and Part 1.3 rules that the untouchable wins.
+The alternative was to re-run a known defect into greenness and tag on top of it. Logged in
+DECISIONS.md and QUESTIONS-FOR-BISHANT.md (Q-G2-1).
+
+---
+
+## 6. The free finding: an empty commit is skipped
 
 `nightly-a.yml` pushes an **empty** `chore: heartbeat` commit to main after each full nightly run —
 it exists to stop GitHub disabling the cron after 60 idle days. An empty commit changes no paths at
@@ -129,7 +185,7 @@ The rule is unchanged and unaffected: **tag the SHA you rehearsed, by SHA.**
 
 ---
 
-## 6. What a docs commit costs now
+## 7. What a docs commit costs now
 
 | | Before G2 | After G2 |
 |---|---|---|
@@ -143,7 +199,7 @@ and it removes the last reason to fear the plan's own docs-batching rule.
 
 ---
 
-## 7. The practice this codifies (running since G0, written down here)
+## 8. The practice this codifies (running since G0, written down here)
 
 - **One intelligence commit per phase.** Evidence chapter, PROGRESS, DECISIONS, LESSONS, PATTERNS,
   QUESTIONS and NEXT-SESSION-PROMPT land together, *after* the tag, as a single docs commit.
@@ -157,7 +213,7 @@ These become CLAUDE.md text at G4. From now they are simply how this plan behave
 
 ---
 
-## 8. Gate at exit
+## 9. Gate at exit
 
 **20 drift rules · 76 VRT baselines · 22 e2e specs · tag run `<TAG_DURATION>`.**
 
