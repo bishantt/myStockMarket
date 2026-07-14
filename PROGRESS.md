@@ -1,27 +1,83 @@
 # PROGRESS.md — resumable state
 
-# THE GATE-EFFICIENCY BUILD IS RUNNING — G3 is done (2026-07-13), tagged `gate-3`, CI green.
+# THE GATE-EFFICIENCY BUILD IS **COMPLETE** — G4 is done (2026-07-13), tagged `gate-final`, CI green.
 
-**Checkpoint: G0, G1, G2 and G3 complete. G4 (`gate-final`) is next and it is the LAST phase of this
-plan. Nothing is blocked. Nothing is in flight.**
+**Checkpoint: G0, G1, G2, G3 and G4 are ALL COMPLETE. The reform is finished. Nothing is blocked.
+Nothing is in flight.**
 
-**`gate-3` went green on the FIRST TRY, in 8 m 43 s, and the tag never moved** — the third phase
-running, and the reform is now simply how exits work here. Before it, 52% of tag runs failed and
-`nc-final` needed six pushes of one tag.
+**NEXT: `POLISH-AND-DEPTH-PLAN.md`, phase PD0 — but ONLY when Bishan says go.** That is an explicit
+gate in the plan and in his instructions: PD waits for `gate-final` green **and** his word. Do not
+start it, and do not run PD1's Saturday-row SQL — it is theirs.
 
-**G3 was the biggest phase of this plan, and the rehearsal is what made it safe.** It rewrote the lists
-that decide *what gets measured* — five hand-kept route lists collapsed into one manifest — and it
-rewrote thirty date literals across the seed and the browser suite. Either change could have silently
-altered what the gate looks at. The rehearsal ran the full oracle on the candidate SHA and came back
-green on the first dispatch: **the same routes swept, the same 76 baselines compared, zero pixel
-diffs.** That green IS the no-behavior-change proof, and it is the reason a phase this invasive cost
-one tag push and no loops.
+## The reform, in one paragraph
 
-**And the manifest caught a real defect on its very first run.** `/scans/[preset]` — the match table,
-the app's ONE `DataTable` — shipped in F3 and **had never had a bundle baseline**. Not because anyone
-decided it did not need one: the lookup returned `undefined`, the verdict column printed an empty
-string, and the route was reported without ever being judged. **A silence in a gate is
-indistinguishable from a pass.**
+Phase exits used to grind: **52% of all tag CI runs failed**, endgames ran **60–90 minutes**,
+`nc-final` needed **six pushes of one tag**, and **43% of all CI minutes** re-verified commits that
+were already green. The cause was never that the guards were wrong. It was **placement**: the browser
+oracle — e2e, pixels, PWA, axe — ran *only on the tag*, so it was the first real test of the work,
+and every failure meant deleting and re-pushing the tag. Five phases fixed it. **The result: four
+phases, four tags, four first-try greens, zero re-points, and tag runs cut from 15.8 m to ~8 m.**
+**No guard was weakened** — that was the binding constraint (plan Part 1.3), and every verification
+that happened before still happens, on the exact tagged SHA.
+
+## The five things that are now true (and that a fresh session must know)
+
+1. **REHEARSE BEFORE YOU TAG.** `gh workflow run ci.yml -f job=e2e` runs the full browser oracle on
+   any ref with **no tag involved**. It is *the same job* the tag runs — so a green rehearsal is not
+   evidence *about* the tag run, it is the same evidence, collected before the tag exists. This is
+   the whole reform. (G1)
+2. **THE TAG STAYS PUT.** Tag the SHA you rehearsed, **by SHA** (`main` moves under you — the nightly
+   pushes a heartbeat commit). A suspected flake gets `gh run rerun <id> --failed`, **never** a
+   re-point. But read the failure first: G2's "flake" was a real race that had failed its retry too.
+3. **DOCUMENTATION IS FREE.** `on.push` carries `paths-ignore` for `**/*.md`, `docs/**`, `.claude/**`
+   — a prose-only commit starts **no CI run at all**. Tag pushes ignore path filters (proven live),
+   so a tag on a docs commit still runs the oracle. **THE TRAP: nothing in the gate currently READS
+   those paths. If you write a guard that reads a document, put its path back in the trigger FIRST.**
+   (G2)
+4. **A TAG RUNS EXACTLY ONE JOB — the browser oracle.** `app` and `pipeline` sit out tag runs and
+   dispatch runs; they already ran green on main. Verified `skipped` on all four gate tags. (G0)
+5. **THERE IS ONE LIST OF ROOMS: `app/lib/routes-manifest.json`.** All five formerly hand-kept route
+   lists derive from it, and `routes-manifest.test.ts` REDS `npm test` if the filesystem and the
+   manifest disagree in either direction. Add a room? Add it there. (G3)
+
+## What G4 did (the last phase — the texts)
+
+G0–G3 built machinery. **G4 made it survivable across sessions**, by repairing the sentences that
+handed the executor wrong orders at exactly the exit moment. It ran last on purpose: every mechanism
+it writes down had to be proven first.
+
+- **The five "roll straight into the next phase" clauses are annotated** (never edited — they are
+  user-authored). Each stands verbatim with the roll-on sentence repealed and the rest of the
+  autonomy contract preserved. The ritual *demands* re-reading the plan at tag time, so the executor
+  was being handed a direct order to violate the standing one-phase rule at the worst moment.
+- **CLAUDE.md stops pointing at DEVELOPMENT-PLAN §6.4**, whose gate **cannot pass on this Mac**: it
+  orders a bare `npx playwright test` (reds ~46 shots on macOS rasterization) and `npx lhci autorun`
+  — **an instrument this repo has never contained, in its entire history.** §6.4 now carries a dated
+  correction block. CLAUDE.md gains **"The Endgame"** block (the full reformed ritual) and one
+  sentence stating that **this repo overrides the `~/.claude` global rules** (no coverage chase, no
+  agent ceremony — the globals demand 80% coverage and this repo has no coverage tooling at all).
+- **THE AMBER COUNT WAS WRONG IN SEVEN PLACES, INCLUDING THE REGISTER'S OWN DOCSTRING.** Every text
+  said "exactly two consumers"; the truth was **four**, grown by two logged structural amendments
+  (N2's PipelineStrip AGING, N3's MacroBoard STALE). An executor obeying the text **would have
+  stripped sanctioned amber at an exit.** The register (`check-drift.mjs`'s `ALERT_ALLOWED`) was
+  repaired FIRST — pointing documents at a source whose own header is wrong just relocates the lie —
+  and every document now cites it instead of restating the number.
+- **The proof greps found four instances the analysis had MISSED, and they were the authoritative
+  ones:** DEVELOPMENT-PLAN's own token table ("Exactly two consumers exist") and three shipped source
+  comments (`Tag.tsx`, `BriefArticle.tsx`, `paper/page.tsx`). **Appendix A never listed them.** The
+  greps in the exit criteria are not ceremony — they are the phase.
+- **The font emergency drop-order was an empty ladder.** It named Inter 500 and Playfair 600 as its
+  first two rungs; **both were already spent at R6** — which is precisely why there is 317 KB of
+  headroom today. A ladder that exists "so the decision is not made at 2am" was a blank page, and you
+  would have found that out at 2am. Same silence class as G3's unbaselined route: **it looked like a
+  plan.**
+- **The Polish plan inherits the reformed exit from PD0** — its standing gate is rewritten with the
+  rehearsal at step 7 — and **three collisions are pre-decided** so they cost a paragraph now instead
+  of a phase later. The sharpest: **PD9's `/news` budget sentence was arithmetically impossible.**
+  It said "hold baseline+10KB"; `/news` baselines at 195.1 KB against a 200 KB ceiling the script
+  says is not re-baselinable, so baseline+10 = **205.1 KB — over the ceiling.** A PD9 that spent its
+  documented slack would have **passed the slack check and failed the build.** The code-split is now
+  pre-authorized.
 
 ## What this build is (read this first if you have no memory of it)
 

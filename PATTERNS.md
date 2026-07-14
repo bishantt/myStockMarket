@@ -660,3 +660,33 @@ A fixture nobody can check against a calendar is how the wrong one survives.
 seed used to name as a literal and asserts it against the expression that now produces it. A thirty-site
 date refactor is exactly the change that shifts a world by one day and repaints a dozen baselines; this
 catches it in milliseconds instead of twelve minutes into CI, as an unexplained wall of pixels.
+
+---
+
+## The register pattern — one file holds the rule, every document points at it
+
+**When a rule has a list, the list lives in exactly one place, and that place is the one the machine
+reads.** Everything else cites it by name and *does not restate its contents.*
+
+This is the same shape as G3's routes manifest (one list of rooms; five consumers derive from it)
+and G4's amber register (`ALERT_ALLOWED` in `check-drift.mjs`; six documents cite it). The failure
+mode it prevents is not staleness in the abstract — it is the specific, repeated, expensive event
+where **the machine is right and every human-readable description of it is wrong**, and nobody
+notices because all the descriptions look authored and confident.
+
+**The three rules:**
+
+1. **The register is the file that RUNS.** Not the plan, not the skill, not the docstring — the
+   array the guard actually iterates. If a document and the register disagree, the register wins by
+   definition, because it is the thing that will fail your build.
+2. **Repair the register FIRST.** If its own header is wrong (G4: `ALERT_ALLOWED`'s docstring said
+   "two" while the array held four), then pointing other documents at it *relocates the lie instead
+   of killing it*. Fix the source, then aim everything at the source.
+3. **Never restate a count. State the RULE.** "Amber has exactly two consumers" is a rule with a
+   fuse on it — it detonates the moment a properly-argued amendment adds a third. "Amber is
+   RESERVED; the list is SHORT; every entry is ARGUED IN PLACE; the register is `ALERT_ALLOWED`" is
+   the same rule, and it cannot rot. **Counts belong in the machine, which prints them** — the drift
+   script now announces "All 21 anti-drift rules pass" precisely so no prose has to.
+
+**The tell that you need this:** you are about to type a number, a list, or a file set into a
+document that a *script* also knows. Don't. Type the script's name instead.
