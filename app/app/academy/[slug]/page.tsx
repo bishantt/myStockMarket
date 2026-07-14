@@ -100,7 +100,19 @@ export default async function LessonPage({ params }: { params: Promise<{ slug: s
 
   return (
     <article className="flex flex-col">
-      <Link href="/academy" className="font-ui text-xs uppercase tracking-[0.06em] text-ink-2 hover:text-accent">
+      {/*
+       * The 44px touch box was missing here, and PD3 is when anything finally looked (Q-G3-2).
+       *
+       * Its twin on /academy/review has carried `flex min-h-11 w-fit items-center` since it shipped.
+       * This one — the same link, one directory over — was 17px tall. Nothing failed, because the
+       * lesson family was the one room in the manifest with an EMPTY `sweeps` list: the Academy's
+       * frame is swept at /academy, so a lesson looked covered, and its own controls had never been
+       * measured by anything. The sweep found this on its very first run.
+       */}
+      <Link
+        href="/academy"
+        className="flex min-h-11 w-fit items-center font-ui text-xs uppercase tracking-[0.06em] text-ink-2 hover:text-accent"
+      >
         ← All lessons
       </Link>
 

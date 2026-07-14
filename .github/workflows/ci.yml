@@ -275,27 +275,37 @@ jobs:
     if: startsWith(github.ref, 'refs/tags/phase-') || startsWith(github.ref, 'refs/tags/redesign-') || startsWith(github.ref, 'refs/tags/feel-') || startsWith(github.ref, 'refs/tags/nc-') || startsWith(github.ref, 'refs/tags/gate-') || startsWith(github.ref, 'refs/tags/pd-') || (github.event_name == 'workflow_dispatch' && inputs.job == 'e2e')
     runs-on: ubuntu-latest
 
-    # THREE LEGS, ONE PER PLAYWRIGHT PROJECT (G1). The suite used to run all three projects inside a
-    # single job, one worker, strictly serial: 852–868 seconds of the tag run's 950, and it was 90% of
-    # every exit's wall-clock.
+    # FOUR LEGS, ONE PER PLAYWRIGHT PROJECT (G1; `mbp16` added at PD3). The suite used to run every
+    # project inside a single job, one worker, strictly serial: 852–868 seconds of the tag run's 950,
+    # and it was 90% of every exit's wall-clock.
     #
     # `workers: 1` in playwright.config.ts is NOT the enemy and is NOT touched. It exists for a real
-    # reason: the seeded journeys write to the database (watchlist adds), so two specs running at once
-    # would let one spec's write change what another spec reads. That reason is about sharing ONE
-    # database — and each matrix leg is a separate runner with its own Postgres service container, so
-    # three legs are three throwaway databases that cannot see each other. The serial-within-a-leg
-    # guarantee survives byte for byte; only the legs run at the same time.
+    # reason: the seeded journeys write to the database (watchlist adds; since PD3 the thin-night
+    # shot), so two specs running at once would let one spec's write change what another spec reads.
+    # That reason is about sharing ONE database — and each matrix leg is a separate runner with its
+    # own Postgres service container, so four legs are four throwaway databases that cannot see each
+    # other. The serial-within-a-leg guarantee survives byte for byte; only the legs run at the same
+    # time.
     #
     # `fail-fast: false` because a red desktop leg must not cancel the phone leg. At a phase exit you
     # want the WHOLE truth in one run — all the failures, not the first one. Cancelling the other legs
     # would just buy another 9-minute round trip to learn what this run already knew.
     #
-    # `wide` is the short leg by construction: playwright.config.ts scopes it to vrt+hardening
-    # (testMatch), so it shoots the wide grid and sweeps for sideways scroll and stops.
+    # THE TWO SHORT LEGS, both by construction (playwright.config.ts scopes them with `testMatch`):
+    #   wide   (1536) — vrt + hardening. Shoots the wide grid, sweeps for sideways scroll, stops.
+    #   mbp16  (1512) — vrt + hardening + grid. The 16" MacBook, which is the machine the reader
+    #                   actually uses and the one the dead gap was reported on. It shoots only the six
+    #                   rooms whose layout is decided by CONTENT HEIGHT (the manifest's `mbp16` flag),
+    #                   plus the Desk on a THIN night — the one picture in this whole suite that shows
+    #                   the state the bug actually happens in.
+    #
+    # A FOURTH LEG COSTS A RUNNER, NOT WALL-CLOCK. The legs run in parallel, and both short legs
+    # finish well inside the desktop leg's time, so the exit still waits on the longest leg and that
+    # is still `desktop`. It is a real line on the CI bill and it is booked as such in the evidence.
     strategy:
       fail-fast: false
       matrix:
-        project: [desktop, phone, wide]
+        project: [desktop, phone, wide, mbp16]
 
     # A throwaway Postgres, seeded with the deterministic synthetic morning (prisma/seed.mjs), so
     # the Desk data journey (desk.spec.ts) asserts real rendered values end to end. This is a TEST

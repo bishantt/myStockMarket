@@ -1,4 +1,5 @@
 import { AppWash } from "@/components/AppWash";
+import { PageContainer } from "@/components/PageContainer";
 import { BrandMark } from "@/components/BrandMark";
 import { MacroBoard } from "@/components/desk/MacroBoard";
 import { PipelineStrip } from "@/components/desk/PipelineStrip";
@@ -38,8 +39,14 @@ export default function StyleguidePage() {
   return (
     <>
       <AppWash />
-      <div className="relative z-10 min-h-dvh px-5 pb-24 text-ink desk:px-8">
-        <div className="mx-auto flex max-w-[1360px] wide:max-w-[1500px] flex-col gap-12 pt-8">
+      {/*
+       * The living spec sits in the app's ONE container (PD3, §6.4), like every room it documents.
+       * It used to state the measure by hand with a 20px phone gutter, where every actual room uses
+       * 16px — a four-pixel disagreement between the specification and the thing it specifies. The
+       * gutter now comes from PageContainer, which is the only place the measure is decided.
+       */}
+      <div className="relative z-10 min-h-dvh pb-24 text-ink">
+        <PageContainer className="flex flex-col gap-12 pt-8">
           <header>
             <h1 className="font-display text-display font-bold text-ink">Morning Broadsheet</h1>
             <p className="max-w-[62ch] pt-3 font-prose text-prose text-ink-2">
@@ -66,7 +73,7 @@ export default function StyleguidePage() {
           <DegradedMacro />
           <DegradedBoard />
           <SuppressedGauge />
-        </div>
+        </PageContainer>
       </div>
     </>
   );

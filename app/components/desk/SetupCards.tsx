@@ -59,13 +59,27 @@ export type SetupCardView = {
   learnSlug: string | null;
 };
 
+/**
+ * The setup cards. **The caller owns the empty state** — this renders a list that HAS cards in it.
+ *
+ * It used to carry its own empty branch ("— No setup cards today.") and PD3 took it away, which is a
+ * change worth explaining because it looks like a component losing a capability.
+ *
+ * Law 2 says an empty module is a slim information band of a stated height. A module that renders its
+ * own bespoke empty state is a module whose empty height nobody controls — and six modules doing that
+ * is six different empty states, six different heights, and no way to hold any of them to a budget.
+ * That is precisely the disease Law 2 exists to cure. So there is now ONE empty state in this app
+ * (components/EmptyModule.tsx), and the Desk decides when to show it.
+ *
+ * Measured, before and after: the old bespoke state came to 124px against the plan's ~112px band.
+ * The shared one comes to ~104px, and it carries the run's timestamp — because "no setups fired
+ * tonight" is a FINDING as of a moment, not an absence of information.
+ */
 export function SetupCards({ asOf, cards }: { asOf: Date; cards: SetupCardView[] }) {
   return (
     <section aria-label="Setup cards">
       <SectionMasthead index={6} title="Setup cards" asOf={asOf} />
-      {cards.length === 0 ? (
-        <p className="pt-4 font-ui text-sm text-muted">— &nbsp; No setup cards today.</p>
-      ) : (
+      {
         /*
          * Two-up on the widest desks (NEWS-AND-CONTROL-PLAN Part 4.3). Setup cards are independent
          * cards, not prose, so they tile — unlike the brief and the movers, which stay one column at
@@ -85,7 +99,7 @@ export function SetupCards({ asOf, cards }: { asOf: Date; cards: SetupCardView[]
             </li>
           ))}
         </ul>
-      )}
+      }
     </section>
   );
 }

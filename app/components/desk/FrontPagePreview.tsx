@@ -45,9 +45,26 @@ export function FrontPagePreview({
           <ul className="flex flex-col gap-3 pt-4">
             {top.map((story) => (
               <li key={story.id} className="flex flex-col gap-1 border-b border-hairline pb-3 last:border-0 last:pb-0">
+                {/*
+                 * THE 44px TOUCH BOX, AND THE REASON IT WAS MISSING IS WORTH KNOWING (PD3).
+                 *
+                 * This link was 23px tall on a phone and the sweep had been passing anyway — because
+                 * the sweep runs on LINUX, where Playfair Display sets wider, the headline wraps to
+                 * TWO lines, and two lines of 23px happen to clear 44px. On macOS and iOS metrics the
+                 * same headline fits on ONE line, and the tap target is 23px. So on the reader's
+                 * actual iPhone this was under the floor the whole time, and the guard was green.
+                 *
+                 * Verified against the pd-2 tag, not assumed: the identical failure reproduces there,
+                 * so this is a latent defect PD3 uncovered rather than one it introduced. A rule that
+                 * holds only because a font happened to wrap is not a rule; it is a coincidence.
+                 *
+                 * `md:min-h-0` gives the height straight back above the phone, exactly as the mover's
+                 * source link does — there is no thumb up there, and 44px of headline in a tight list
+                 * would be a hole in the card.
+                 */}
                 <Link
                   href={`/news/${story.id}`}
-                  className="font-display text-base text-ink underline-offset-2 hover:underline"
+                  className="flex min-h-11 items-center font-display text-base text-ink underline-offset-2 hover:underline md:min-h-0"
                 >
                   {story.headline}
                 </Link>

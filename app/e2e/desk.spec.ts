@@ -181,24 +181,51 @@ test.describe("The Desk, chunked", () => {
     await expect(page).toHaveURL("/");
   });
 
-  test("the ritual order is intact — the modules mount 01 → 07 in the DOM", async ({ page }) => {
+  /**
+   * THE READING ORDER — what a screen reader hears, and what the Tab key walks (PD3, amendment 0.2.2).
+   *
+   * THIS TEST USED TO ASSERT THAT THE DOM ASCENDED 01 → 08, and PD3 changed the answer. It is worth
+   * being exact about why, because the number below looks like a regression and is not.
+   *
+   * The Desk's two columns must flow INDEPENDENTLY — that is Law 1, and it is what kills the dead
+   * hole a short module used to dig beside a tall one. Two independent columns means two wrapper
+   * elements, and CSS can only group children that are ADJACENT IN THE MARKUP. The ritual interleaves
+   * the columns (brief, calendar, movers, watchlist…), so a DOM in ritual order and a DOM grouped
+   * into columns are mutually exclusive. There is no CSS that gives you both. Something had to give.
+   *
+   * What gives is the DOM, and the reading order it produces is the one amendment 0.2.2 chose on the
+   * merits: the narrative first (02 brief, 04 movers, 06 setups, 07/08 + scorecard), then the rail's
+   * reference matter (03 calendar, 05 watchlist). A broadsheet is read column-first — nobody reads a
+   * newspaper row-by-row across the columns — and the rail is reference matter by the app's own
+   * definition. A screen reader now hears that same order at EVERY width, which is at least one
+   * consistent story rather than two.
+   *
+   * WHAT A READER SEES is a different question, and it is asserted where it belongs: e2e/grid.spec.ts
+   * measures the BOUNDING BOXES per viewport, and holds the phone to the full ritual 01 → 08. This
+   * test and that one are the two halves of the same contract, and neither is sufficient alone — a
+   * DOM-only assertion would have passed happily through this entire rewrite while the screen showed
+   * something else.
+   */
+  test("the reading order is narrative first, then the rail (the 0.2.2 amendment)", async ({ page }) => {
     await page.goto("/");
-    // The order is the invariant: it mirrors the documented professional pre-market sequence, so the
-    // layout itself teaches the routine. Modules are placed into the desktop spread by CSS grid,
-    // never by reordering the markup, which is why this assertion is on the DOM and not the pixels.
-    const mastheads = await page.locator("h2").allTextContents();
-    const indexed = mastheads.filter((m) => /^0\d —/.test(m));
-    const numbers = indexed.map((m) => Number(m.slice(0, 2)));
-    expect(numbers).toEqual([...numbers].sort((a, b) => a - b));
+    const mastheads = await page.locator("main h2").allTextContents();
+    const numbers = mastheads
+      .filter((m) => /^\d\d —/.test(m))
+      .map((m) => Number(m.slice(0, 2)));
+
+    expect(
+      numbers,
+      "the DOM reads: pulse, then the main column's stations, then the rail's reference matter",
+    ).toEqual([1, 2, 4, 6, 7, 8, 3, 5]);
 
     /*
      * MODULE 00 IS RETIRED (NEWS-AND-CONTROL-PLAN Part 4.1), and this asserts the retirement rather
      * than merely tolerating it.
      *
-     * The sorted-numbers check above would happily pass whether or not 00 exists — which is exactly
-     * the shape of a guard that cannot fail. The ritual now STARTS at 01, and if a future change
-     * reinstates a pipeline card in the grid, the strip and the card would both be on the page and
-     * nobody would notice.
+     * The exact-sequence check above already implies this — but it implies it by accident, and a
+     * guard that only works by accident is one refactor away from not working. The ritual STARTS at
+     * 01. If a future change reinstates a pipeline card in the grid, the strip and the card would
+     * both be on the page, and this says so out loud.
      *
      * The mastheads do not renumber: 01 stays 01. A masthead is a name, not an index that has to
      * start at zero, and renumbering every module, test and VRT baseline to close a cosmetic gap is
@@ -206,7 +233,6 @@ test.describe("The Desk, chunked", () => {
      */
     expect(numbers, "module 00 was retired into the pipeline strip — it must not be back in the grid")
       .not.toContain(0);
-    expect(numbers[0]).toBe(1);
   });
 
   test("the pipeline strip is page chrome — one quiet line, above the grid, and a doorway", async ({

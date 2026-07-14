@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { AppWash } from "@/components/AppWash";
+import { PageContainer } from "@/components/PageContainer";
 import { TabBar } from "@/components/desk/TabBar";
 
 /**
@@ -29,9 +30,10 @@ export default function AcademyLayout({ children }: { children: React.ReactNode 
       <div className="relative z-10">
         <header className="surface-bar sticky top-0 z-30 border-b border-hairline pt-[env(safe-area-inset-top)]">
           <div className="bar-blur">
-            <nav
+            <PageContainer
+              as="nav"
               aria-label="Academy"
-              className="mx-auto flex max-w-[1360px] wide:max-w-[1500px] items-center justify-between gap-6 px-4 py-3 desk:px-8"
+              className="flex items-center justify-between gap-6 py-3"
             >
               <Link
                 href="/academy"
@@ -51,13 +53,16 @@ export default function AcademyLayout({ children }: { children: React.ReactNode 
               >
                 ← Back to Desk
               </Link>
-            </nav>
+            </PageContainer>
           </div>
         </header>
 
-        <main className="mx-auto max-w-[1360px] wide:max-w-[1500px] px-4 py-10 pb-[calc(64px+env(safe-area-inset-bottom))] md:pb-16 desk:px-8">
+        <PageContainer
+          as="main"
+          className="py-10 pb-[calc(64px+env(safe-area-inset-bottom))] md:pb-16"
+        >
           {children}
-        </main>
+        </PageContainer>
 
         <TabBar />
       </div>

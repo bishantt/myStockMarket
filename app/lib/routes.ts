@@ -32,6 +32,15 @@ export interface RouteEntry {
   readonly navBudget: NavBudget;
   /** The slug vrt.spec.ts's generated room loop shoots, or null if it has no generated shot. */
   readonly vrtRoom: string | null;
+  /**
+   * Does this room get a 1512x982 pixel lock — the 16" MacBook Pro the reader actually uses (PD3)?
+   *
+   * False for most rooms, on purpose. 1512 sits INSIDE the `desk:` band and the container caps at
+   * 1360px, so a room whose composition is decided by the breakpoint renders the same content box at
+   * 1512 as at 1366 — a second picture of an answered question. True for the rooms where CONTENT
+   * HEIGHT decides the layout, which is where Law 1 lives and where the dead gap used to open.
+   */
+  readonly mbp16: boolean;
   /** Why this room is here, and why its flags say what they say. Every entry defends itself. */
   readonly note: string;
 }
@@ -69,6 +78,9 @@ function validate(entry: unknown, index: number): RouteEntry {
   if (r.vrtRoom !== null && typeof r.vrtRoom !== "string") {
     throw new Error(`${where} — "vrtRoom" must be a room slug or null, got ${JSON.stringify(r.vrtRoom)}`);
   }
+  if (typeof r.mbp16 !== "boolean") {
+    throw new Error(`${where} — "mbp16" must be true or false, got ${JSON.stringify(r.mbp16)}`);
+  }
 
   return {
     path: text("path"),
@@ -77,6 +89,7 @@ function validate(entry: unknown, index: number): RouteEntry {
     sweeps: r.sweeps as Sweep[],
     navBudget: r.navBudget as NavBudget,
     vrtRoom: r.vrtRoom as string | null,
+    mbp16: r.mbp16,
     // An entry with no note is an entry nobody has had to defend. The manifest says so; this enforces it.
     note: text("note"),
   };
@@ -96,6 +109,18 @@ export function sweptBy(sweep: Sweep): readonly RouteEntry[] {
  * `flatMap` rather than `filter` + `map` so the null case narrows honestly instead of being asserted
  * away — the compiler should be able to see that every room here really does have a slug.
  */
-export const VRT_ROOMS: readonly { path: string; name: string }[] = ROUTES.flatMap((r) =>
-  r.vrtRoom === null ? [] : [{ path: r.path, name: r.vrtRoom }],
+export const VRT_ROOMS: readonly { path: string; name: string; mbp16: boolean }[] = ROUTES.flatMap(
+  (r) => (r.vrtRoom === null ? [] : [{ path: r.path, name: r.vrtRoom, mbp16: r.mbp16 }]),
 );
+
+/**
+ * Does the room at this path carry a 16-inch lock?
+ *
+ * The bespoke shots in vrt.spec.ts (the ticker's, which are taken at /ticker/AAPL because the Range
+ * Ladder needs seeded vol bands) cannot go through VRT_ROOMS, so they ask here instead — against the
+ * manifest, rather than against a second hand-kept list in the spec. That is the whole point of the
+ * manifest: there is one list, and everything reads it.
+ */
+export function locksAt16Inches(path: string): boolean {
+  return ROUTES.some((r) => r.path === path && r.mbp16);
+}

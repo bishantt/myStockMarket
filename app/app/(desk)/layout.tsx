@@ -6,6 +6,7 @@ import { getLessonManifest } from "@/lib/academy";
 import { ROUTE_ITEMS, type PaletteItem } from "@/lib/palette";
 import { AppWash } from "@/components/AppWash";
 import { CommandPalette } from "@/components/CommandPalette";
+import { PageContainer } from "@/components/PageContainer";
 import { MarketState } from "@/components/desk/MarketState";
 import { RoomNav } from "@/components/desk/RoomNav";
 import { TabBar } from "@/components/desk/TabBar";
@@ -85,9 +86,9 @@ export default async function DeskLayout({
          * safe-area inset — without it the last module hides behind the bar, which is the kind of
          * bug that only ever shows up on a real device.
          */}
-        <main className="mx-auto max-w-[1360px] wide:max-w-[1500px] px-4 pb-[calc(64px+env(safe-area-inset-bottom))] md:pb-16 desk:px-8">
+        <PageContainer as="main" className="pb-[calc(64px+env(safe-area-inset-bottom))] md:pb-16">
           {children}
-        </main>
+        </PageContainer>
 
         <TabBar />
       </div>
@@ -107,10 +108,7 @@ function DeskNav() {
   return (
     <header className="surface-bar sticky top-0 z-30 border-b border-hairline pt-[env(safe-area-inset-top)]">
       <div className="bar-blur">
-        <nav
-          aria-label="Rooms"
-          className="mx-auto flex max-w-[1360px] wide:max-w-[1500px] items-center gap-4 px-4 py-3 desk:px-8"
-        >
+        <PageContainer as="nav" aria-label="Rooms" className="flex items-center gap-4 py-3">
           <Wordmark />
 
           {/* The room links are desktop-only. Phones navigate from the bottom tab bar (D2). */}
@@ -130,7 +128,7 @@ function DeskNav() {
               <SettingsIcon size={16} strokeWidth={1.75} aria-hidden="true" />
             </Link>
           </div>
-        </nav>
+        </PageContainer>
       </div>
     </header>
   );

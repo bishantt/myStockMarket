@@ -3,6 +3,7 @@ import { VRT_ROOMS } from "../lib/routes";
 import { THEME_COOKIE } from "../lib/theme";
 import { VRT_RESET_SECRET } from "../playwright.config";
 import { SEEDED_EVENING } from "./seeded-clock";
+import { applyThinNight } from "./thin-night";
 
 /**
  * vrt.spec.ts — visual regression. The styling counterpart of TDD (UI-REDESIGN-PLAN Part 9).
@@ -29,6 +30,24 @@ import { SEEDED_EVENING } from "./seeded-clock";
 
 const USER = "testuser";
 const PASSWORD = "correct horse battery staple";
+
+/**
+ * THE LAYOUT-ONLY PROJECTS — `wide` (1536) and `mbp16` (1512), the two viewports that exist to lock
+ * a GRID rather than a palette.
+ *
+ * Both shoot rooms, in the light theme, and nothing else. The colours are already pinned at 1366 and
+ * 390 in BOTH themes, so a third and fourth set of dark baselines up here would be pure cost — twice
+ * the pictures to regenerate on every restyle, to answer a question that is already answered. And
+ * neither of them re-shoots the styleguide, the login wall, or the table's interactive states: those
+ * are pinned at 1366 and a copy of them at another width is a second picture of the same answer.
+ *
+ * This used to be eleven copies of `testInfo.project.name === "wide"` scattered down the file. Adding
+ * `mbp16` would have meant finding all eleven and getting all eleven right — and the one that got
+ * missed would not have failed. It would have quietly taken a screenshot nobody asked for.
+ */
+const LAYOUT_ONLY = new Set(["wide", "mbp16"]);
+const locksLayoutOnly = (testInfo: { project: { name: string } }) =>
+  LAYOUT_ONLY.has(testInfo.project.name);
 
 test.use({ contextOptions: { reducedMotion: "reduce" } });
 
@@ -177,17 +196,17 @@ test.describe("visual regression — the design system", () => {
   // suite: a token that silently changes value shows up here before it shows up anywhere else.
 
   test("styleguide — Morning", async ({ page }, testInfo) => {
-    // The wide project locks the ROOM GRIDS only (Appendix F). This shot is not a room grid — it is
-    // already pinned at 1366, and a 1536 copy of it would be a second picture of the same answer.
-    test.skip(testInfo.project.name === "wide", "the wide project locks room layouts only");
+    // The layout-only projects lock ROOM GRIDS (Appendix F). This shot is not a room grid — it is
+    // already pinned at 1366, and a copy of it at another width answers nothing new.
+    test.skip(locksLayoutOnly(testInfo), "this project locks room layouts only");
     await useTheme(page, "light");
     await shoot(page, "/styleguide", "styleguide-light", { allowSkeletons: true });
   });
 
   test("styleguide — Midnight", async ({ page }, testInfo) => {
-    // The wide project locks the ROOM GRIDS only (Appendix F). This shot is not a room grid — it is
-    // already pinned at 1366, and a 1536 copy of it would be a second picture of the same answer.
-    test.skip(testInfo.project.name === "wide", "the wide project locks room layouts only");
+    // The layout-only projects lock ROOM GRIDS (Appendix F). This shot is not a room grid — it is
+    // already pinned at 1366, and a copy of it at another width answers nothing new.
+    test.skip(locksLayoutOnly(testInfo), "this project locks room layouts only");
     await useTheme(page, "dark");
     await shoot(page, "/styleguide", "styleguide-dark", { allowSkeletons: true });
   });
@@ -244,14 +263,33 @@ test.describe("visual regression — the design system", () => {
       test(`${room.name} — ${theme === "light" ? "Morning" : "Midnight"}`, async ({ page }, testInfo) => {
         test.skip(!process.env.MSM_SEEDED, "needs the seeded database");
         /*
-         * The WIDE project (1536) locks the GRID, not the palette (Appendix F: "every room at 1536,
-         * light only"). The colours are already pinned at 1366 and 390 in both themes; a third set
-         * of dark baselines up here would be pure cost — twice the pictures to regenerate on every
+         * The layout-only projects lock the GRID, not the palette (Appendix F: "every room at 1536,
+         * light only"). The colours are already pinned at 1366 and 390 in both themes; another set
+         * of dark baselines up here would be pure cost — more pictures to regenerate on every
          * restyle, for no question that is not already answered.
          *
          * What 1536 answers, and nothing else can, is whether the wide column maps hold.
          */
-        test.skip(testInfo.project.name === "wide" && theme === "dark", "wide locks layout, not palette");
+        test.skip(locksLayoutOnly(testInfo) && theme === "dark", "this project locks layout, not palette");
+
+        /*
+         * THE 16-INCH LOCK IS SELECTIVE, AND THE MANIFEST DECIDES — not this file (PD3, §6.3).
+         *
+         * 1512 sits INSIDE the `desk:` band (1366–1535) and the container caps at 1360px, so a room
+         * whose composition is decided by the BREAKPOINT renders the same content box at 1512 as at
+         * 1366 — the same layout, with more margin. Shooting every room here would buy a pile of
+         * baselines that re-answer an answered question and have to be regenerated forever.
+         *
+         * The rooms worth 1512 are the ones where CONTENT HEIGHT decides the layout: that is where
+         * Law 1 lives, that is where the dead gap opened, and a wide empty screen is where it is
+         * worst. The manifest's `mbp16` flag names them and defends each choice in its note. This
+         * loop just obeys it — there is ONE list of rooms, and a second one hiding in a spec file is
+         * how /news went two tagged phases without a single sweep looking at it.
+         */
+        test.skip(
+          testInfo.project.name === "mbp16" && !room.mbp16,
+          "not a 16-inch lock — see the mbp16 field in lib/routes-manifest.json",
+        );
 
         await useTheme(page, theme);
 
@@ -288,9 +326,9 @@ test.describe("visual regression — the design system", () => {
    */
   test("scans table sorted by RVOL — the header state", async ({ page, isMobile }, testInfo) => {
     test.skip(!process.env.MSM_SEEDED, "needs the seeded database");
-    // The wide project locks the ROOM GRIDS only (Appendix F). This shot is not a room grid — it is
-    // already pinned at 1366, and a 1536 copy of it would be a second picture of the same answer.
-    test.skip(testInfo.project.name === "wide", "the wide project locks room layouts only");
+    // The layout-only projects lock ROOM GRIDS (Appendix F). This shot is not a room grid — it is
+    // already pinned at 1366, and a copy of it at another width answers nothing new.
+    test.skip(locksLayoutOnly(testInfo), "this project locks room layouts only");
 
     test.skip(!!isMobile, "the desktop table is the thing being locked here");
     await useTheme(page, "light");
@@ -307,9 +345,9 @@ test.describe("visual regression — the design system", () => {
 
   test("scans table page 2 — the pagination footer", async ({ page, isMobile }, testInfo) => {
     test.skip(!process.env.MSM_SEEDED, "needs the seeded database");
-    // The wide project locks the ROOM GRIDS only (Appendix F). This shot is not a room grid — it is
-    // already pinned at 1366, and a 1536 copy of it would be a second picture of the same answer.
-    test.skip(testInfo.project.name === "wide", "the wide project locks room layouts only");
+    // The layout-only projects lock ROOM GRIDS (Appendix F). This shot is not a room grid — it is
+    // already pinned at 1366, and a copy of it at another width answers nothing new.
+    test.skip(locksLayoutOnly(testInfo), "this project locks room layouts only");
 
     test.skip(!!isMobile, "one shot is enough for the footer state");
     await useTheme(page, "light");
@@ -334,7 +372,7 @@ test.describe("visual regression — the design system", () => {
    */
   test("the front page, filtered — the count line restates the filter", async ({ page }, testInfo) => {
     test.skip(!process.env.MSM_SEEDED, "needs the seeded database");
-    test.skip(testInfo.project.name === "wide", "the wide project locks room layouts only");
+    test.skip(locksLayoutOnly(testInfo), "this project locks room layouts only");
 
     await useTheme(page, "light");
     await page.goto("/news");
@@ -352,7 +390,7 @@ test.describe("visual regression — the design system", () => {
 
   test("the front page, empty — an empty state is information, not an apology", async ({ page }, testInfo) => {
     test.skip(!process.env.MSM_SEEDED, "needs the seeded database");
-    test.skip(testInfo.project.name === "wide", "the wide project locks room layouts only");
+    test.skip(locksLayoutOnly(testInfo), "this project locks room layouts only");
 
     await useTheme(page, "light");
     await page.goto("/news");
@@ -372,7 +410,7 @@ test.describe("visual regression — the design system", () => {
 
   test("the front page, this week — the window says how deep it goes", async ({ page }, testInfo) => {
     test.skip(!process.env.MSM_SEEDED, "needs the seeded database");
-    test.skip(testInfo.project.name === "wide", "the wide project locks room layouts only");
+    test.skip(locksLayoutOnly(testInfo), "this project locks room layouts only");
 
     await useTheme(page, "light");
     await page.goto("/news");
@@ -396,7 +434,7 @@ test.describe("visual regression — the design system", () => {
 
   test("ticker with the Range Ladder — Midnight", async ({ page }, testInfo) => {
     test.skip(!process.env.MSM_SEEDED, "needs the seeded database");
-    test.skip(testInfo.project.name === "wide", "wide locks layout, not palette");
+    test.skip(locksLayoutOnly(testInfo), "this project locks layout, not palette");
     await useTheme(page, "dark");
     await shoot(page, "/ticker/AAPL", "ticker-dark");
   });
@@ -405,12 +443,61 @@ test.describe("visual regression — the design system", () => {
   // ── login: the first thing anyone sees ───────────────────────────────────────────────────
 
   test("login", async ({ page }, testInfo) => {
-    // The wide project locks the ROOM GRIDS only (Appendix F). This shot is not a room grid — it is
-    // already pinned at 1366, and a 1536 copy of it would be a second picture of the same answer.
-    test.skip(testInfo.project.name === "wide", "the wide project locks room layouts only");
+    // The layout-only projects lock ROOM GRIDS (Appendix F). This shot is not a room grid — it is
+    // already pinned at 1366, and a copy of it at another width answers nothing new.
+    test.skip(locksLayoutOnly(testInfo), "this project locks room layouts only");
     // Signed in already, so sign out by clearing cookies to see the wall itself.
     await page.context().clearCookies();
     await shoot(page, "/login", "login");
+  });
+
+  /**
+   * THE DESK ON A THIN NIGHT — the shot that would have caught the defect before a human did (PD3).
+   *
+   * Every other Desk baseline in this suite photographs the SEEDED morning, and the seeded morning
+   * is a FULL night: every module fat with data, every row track comfortably filled. The dead hole
+   * under the Brief cannot appear on a night like that. So for as long as this suite has existed, it
+   * has been taking a beautiful, careful, high-resolution picture of the one night the bug does not
+   * happen — and the bug was found by a person looking at his own screen.
+   *
+   * This is the other night. The briefing is HELD, three movers instead of eight, no setup cards: a
+   * short Brief beside a tall open Calendar, which is the exact shape that used to dig the hole. Law
+   * 1 is what closes it, e2e/grid.spec.ts measures the gap mechanically, and this pins what it looks
+   * like — because "does this page have a dead acre in the middle of it" is, in the end, a question
+   * you answer by looking.
+   *
+   * IT RUNS LAST, AND ONLY AT 1512. Last, because it is the only test in the suite that changes the
+   * database it photographs (it snapshots, thins, shoots, and puts the night back — see
+   * e2e/thin-night.ts for the whole safety argument). Only at 1512, because one picture of a thin
+   * night is enough, and 1512×982 is the screen the user was looking at when he reported it.
+   */
+  test("the Desk on a THIN night — a short brief beside a tall calendar, and no hole", async ({
+    page,
+    request,
+  }, testInfo) => {
+    test.skip(!process.env.MSM_SEEDED, "needs the seeded database");
+    test.skip(
+      testInfo.project.name !== "mbp16",
+      "one picture of a thin night is enough, and 1512 is the screen it was reported on",
+    );
+
+    const restore = await applyThinNight(request);
+    try {
+      await useTheme(page, "light");
+
+      // Prove the night is thin before photographing it. A baseline of a FULL night, filed under the
+      // name "thin", would be the most expensive kind of wrong: it would pass forever, and it would
+      // be a picture of the state that never had the bug.
+      await page.goto("/");
+      await expect(
+        page.getByText(/Briefing unavailable tonight/),
+        "the brief is not held — this would have baselined a full night under the thin night's name",
+      ).toBeVisible();
+
+      await shoot(page, "/", "desk-thin-night");
+    } finally {
+      await restore();
+    }
   });
 
 });
@@ -432,9 +519,9 @@ test.describe("visual regression — the design system", () => {
  */
 test.describe("visual regression — the pre-swap fallback", () => {
   test("login with the fonts blocked — the fallback layout still holds", async ({ page, context }, testInfo) => {
-    // The wide project locks the ROOM GRIDS only (Appendix F). This shot is not a room grid — it is
-    // already pinned at 1366, and a 1536 copy of it would be a second picture of the same answer.
-    test.skip(testInfo.project.name === "wide", "the wide project locks room layouts only");
+    // The layout-only projects lock ROOM GRIDS (Appendix F). This shot is not a room grid — it is
+    // already pinned at 1366, and a copy of it at another width answers nothing new.
+    test.skip(locksLayoutOnly(testInfo), "this project locks room layouts only");
 
     let blocked = 0;
     await context.route("**/*.woff2", (route) => {

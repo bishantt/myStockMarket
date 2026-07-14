@@ -115,6 +115,33 @@ export default defineConfig({
       testMatch: /(vrt|hardening)\.spec\.ts/,
       use: { ...devices["Desktop Chrome"], viewport: { width: 1536, height: 960 } },
     },
+    /*
+     * The 16-INCH DESK (PD3, §6.3) — 1512×982, the logical viewport of a 16" MacBook Pro.
+     *
+     * THIS IS THE SCREEN THE READER ACTUALLY USES, and it is the screen he photographed the dead gap
+     * on. That is the whole case for it, and it is worth being precise about what this project does
+     * and does not add, because the arithmetic is not what you would guess:
+     *
+     * 1512 sits INSIDE the `desk:` band (1366–1535), and the room container caps at `max-w-[1360px]`.
+     * So the CONTENT BOX at 1512 is the same width as the content box at 1366, to the pixel — the
+     * same layout, with more margin around it. A 1512 shot of a room whose composition is decided by
+     * the BREAKPOINT is therefore a second picture of a question 1366 has already answered.
+     *
+     * What only this project can answer is the question PD3 exists for: what happens when CONTENT
+     * HEIGHT decides the layout. A short module beside a tall one is not a breakpoint bug — it is a
+     * content bug, it is invisible on a full seeded night, and it is worst on a wide, empty screen.
+     * So this project shoots the six rooms whose composition is height-driven (the manifest's `mbp16`
+     * flag names them, and says why the others are false), plus the one shot that would actually have
+     * caught the defect before a human did: THE DESK ON A THIN NIGHT.
+     *
+     * It also runs `grid.spec.ts` — the Law 1 / Law 2 contract — because the no-dead-gap walk should
+     * be measured at the width the gap was reported at, not merely at the width that was convenient.
+     */
+    {
+      name: "mbp16",
+      testMatch: /(vrt|hardening|grid)\.spec\.ts/,
+      use: { ...devices["Desktop Chrome"], viewport: { width: 1512, height: 982 } },
+    },
   ],
 
   webServer: {

@@ -139,4 +139,40 @@ describe("the routes manifest is the one list of rooms", () => {
       "a dynamic family needs a concrete `path` — a real, seeded instance — or nothing can open it",
     ).toEqual([]);
   });
+
+  /**
+   * A ROOM FLAGGED FOR THE 16-INCH LOCK MUST ACTUALLY BE SHOT AT 16 INCHES (PD3).
+   *
+   * The manifest's own warning, applied to the manifest's newest field: "a field nobody reads is a
+   * measurement that is not being taken, wearing a measurement's clothes." `mbp16: true` says this
+   * room is pixel-locked at 1512. vrt.spec.ts's generated room loop delivers on that promise by
+   * reading `vrtRoom` — so a room with `mbp16: true` and `vrtRoom: null` is a promise nothing keeps.
+   * Nothing would fail. The room would simply never be photographed, and the flag would sit there
+   * looking like coverage.
+   *
+   * There is exactly ONE room where that combination is legitimate, and it is argued rather than
+   * assumed: the ticker. Its baselines are shot BESPOKE in vrt.spec.ts against /ticker/AAPL (the
+   * Range Ladder only renders with seeded vol bands behind it), while the sweeps and the nav budget
+   * open /ticker/SPY, which needs no seed. So its `vrtRoom` is null while the room genuinely does
+   * have pictures — including a 16-inch one.
+   */
+  it("every room flagged for the 16-inch lock is actually shot at 1512", () => {
+    const SHOT_BY_HAND: Record<string, string> = {
+      "/ticker/SPY":
+        "bespoke shots in vrt.spec.ts at /ticker/AAPL — the Range Ladder needs seeded vol bands, " +
+        "which SPY does not have. The room has pictures; it just does not get them from the loop.",
+    };
+
+    const promisedButUnphotographed = manifest.routes
+      .filter((r) => r.mbp16 && r.vrtRoom === null)
+      .filter((r) => !(r.path in SHOT_BY_HAND))
+      .map((r) => r.path);
+
+    expect(
+      promisedButUnphotographed,
+      "these rooms claim a 16-inch pixel lock but no shot exists for them — either give them a " +
+        "`vrtRoom` so the generated loop photographs them, write a bespoke shot and argue it in " +
+        "SHOT_BY_HAND above, or set `mbp16: false` and mean it",
+    ).toEqual([]);
+  });
 });

@@ -46,15 +46,34 @@
     "  vrtRoom   The room slug vrt.spec.ts's generated room loop shoots (light + dark, every",
     "            viewport). Null means the room has no GENERATED shot — it may still have bespoke",
     "            ones written by hand in the spec, and where it does, the note says so.",
+    "  mbp16     Does this room get a 1512x982 pixel lock — the 16-inch MacBook Pro, the machine the",
+    "            reader actually uses (PD3, §6.3). See the next paragraph, which is the whole",
+    "            argument for why this field exists and why it is FALSE for most rooms.",
     "",
     "NOT IN THIS FILE, deliberately: /login (the wall, not a room behind it) and /styleguide (the",
     "living spec — a developer surface). Both are argued in routes-manifest.test.ts's exemption list,",
     "and the tools that still need them name them explicitly, in one place each, with a reason.",
     "",
-    "There is no per-route `wide` flag. The wide viewport (1536) is scoped by SPEC FILE in",
-    "playwright.config.ts — the `wide` project runs vrt and hardening and nothing else — so a",
-    "per-route flag would have no consumer. A field nobody reads is a measurement that is not being",
-    "taken, wearing a measurement's clothes. See QUESTIONS-FOR-BISHANT.md, Q-G3-1."
+    "THE `mbp16` FIELD, AND WHY IT REPLACED THE PARAGRAPH THAT USED TO SIT HERE (PD3).",
+    "",
+    "This file used to say: there is no per-route viewport flag, because the wide viewport (1536) is",
+    "scoped by SPEC FILE in playwright.config.ts, so a per-route flag would have no consumer — and a",
+    "field nobody reads is a measurement that is not being taken, wearing a measurement's clothes.",
+    "That reasoning was right, and it is why `mbp16` is a field and `wide` still is not: this one HAS",
+    "a consumer. vrt.spec.ts's room loop reads it to decide which rooms get a 1512 row.",
+    "",
+    "IT IS FALSE FOR MOST ROOMS, AND THAT IS THE POINT. 1512 sits INSIDE the `desk:` band (1366-1535)",
+    "and the container caps at max-w-[1360px] — so the CONTENT BOX at 1512 is the same width as the",
+    "content box at 1366, to the pixel. It is the same layout with more margin around it. For a room",
+    "whose composition is decided purely by the breakpoint, a 1512 shot re-answers a question 1366 has",
+    "already answered, and pays for it with a baseline somebody has to regenerate on every restyle.",
+    "",
+    "The rooms marked TRUE are the ones where CONTENT HEIGHT, not the breakpoint, decides the layout —",
+    "where PD3's Law 1 lives, and where a short module used to dig a dead hole beside a tall one. That",
+    "is a failure that a wider, emptier screen shows at its worst, it is the failure the user actually",
+    "photographed, and 1512x982 is the screen he photographed it on.",
+    "",
+    "See QUESTIONS-FOR-BISHANT.md, Q-G3-1."
   ],
   "routes": [
     {
@@ -64,6 +83,7 @@
       "sweeps": ["touch", "scroll", "axe"],
       "navBudget": "gated",
       "vrtRoom": "desk",
+      "mbp16": true,
       "note": "The Desk. Carries the pipeline strip, which grades freshness against the READER's clock — so its baseline is shot under a pinned clock (e2e/seeded-clock.ts) and asserts the strip is FRESH before photographing it."
     },
     {
@@ -73,6 +93,7 @@
       "sweeps": ["touch", "scroll", "axe"],
       "navBudget": "gated",
       "vrtRoom": "news",
+      "mbp16": true,
       "note": "The Front Page (N5). The room this whole manifest exists because of: it shipped unmeasured and stayed unmeasured for two tagged phases. It is also the densest room in the app for the touch rule — two horizontally scrolling chip rows, a pagination control and a card grid of links."
     },
     {
@@ -82,6 +103,7 @@
       "sweeps": ["touch", "scroll", "axe"],
       "navBudget": "gated",
       "vrtRoom": "news-story",
+      "mbp16": false,
       "note": "One story. SEEDED: ask for a cluster id the database does not have and the route calls notFound(), which answers HTTP 200 with the 404 page in the body — so an unseeded sweep measures an error page and reports the story page clean. Verified: this happened."
     },
     {
@@ -91,6 +113,7 @@
       "sweeps": ["touch", "scroll", "axe"],
       "navBudget": "gated",
       "vrtRoom": "scans",
+      "mbp16": true,
       "note": "The five preset recipes."
     },
     {
@@ -100,6 +123,7 @@
       "sweeps": ["touch", "scroll", "axe"],
       "navBudget": "gated",
       "vrtRoom": "scans-preset",
+      "mbp16": false,
       "note": "The match table (F3) — the app's one DataTable, with the recipe card, the named default order and the pagination footer. Not seeded: /scans/[preset] declares dynamicParams=false over a closed set of five, so the room renders its empty state without the seed rather than 404ing."
     },
     {
@@ -109,6 +133,7 @@
       "sweeps": ["touch", "scroll", "axe"],
       "navBudget": "gated",
       "vrtRoom": null,
+      "mbp16": true,
       "note": "The instrument room. The sweeps and the nav budget open SPY, which needs no seed. Its pixel baselines are shot BESPOKE in vrt.spec.ts at /ticker/AAPL instead (snapshots ticker-light/ticker-dark), because the Range Ladder only renders with seeded vol bands behind it — hence vrtRoom is null here while the room does have baselines."
     },
     {
@@ -118,6 +143,7 @@
       "sweeps": ["touch", "scroll", "axe"],
       "navBudget": "gated",
       "vrtRoom": "paper",
+      "mbp16": true,
       "note": "The paper ledger. Its fixture (prisma/fixtures/paper.mjs) is RELATIVE to the run, and had to be: it carried absolute dates until N7, and the baseline expired 28 minutes after the run that last certified it. That is the fuse drift rule 21 now hunts."
     },
     {
@@ -127,6 +153,7 @@
       "sweeps": ["touch", "scroll", "axe"],
       "navBudget": "gated",
       "vrtRoom": "track-record",
+      "mbp16": true,
       "note": "The ledger of what fired and what it did — insert-only, misses public."
     },
     {
@@ -136,6 +163,7 @@
       "sweeps": ["touch", "scroll", "axe"],
       "navBudget": "gated",
       "vrtRoom": "settings",
+      "mbp16": false,
       "note": "The control room (N6): five action rows, ten states, the P-2 notice. The app's ONE writer room, so it is the one route allowed force-dynamic (argued in check-routes.mjs, check-drift rule 13 and its own page.tsx). It answers in ~430-510ms every sample, every one a cache MISS — correct, not a regression, which is why B2 is in report mode."
     },
     {
@@ -145,6 +173,7 @@
       "sweeps": ["touch", "scroll", "axe"],
       "navBudget": "gated",
       "vrtRoom": "academy",
+      "mbp16": false,
       "note": "The Academy index. Its VRT shot photographs lesson progress, so the suite clears lesson_progress and busts the ISR cache before shooting — the baselines were otherwise born in a different world than the one they are checked in."
     },
     {
@@ -154,6 +183,7 @@
       "sweeps": ["touch", "scroll", "axe"],
       "navBudget": "control",
       "vrtRoom": "academy-glossary",
+      "mbp16": false,
       "note": "CONTROL for the nav budget: a fully static page, timed and reported beside the product rooms as the fast path they are all measured against — never gated, because it is the yardstick."
     },
     {
@@ -163,16 +193,18 @@
       "sweeps": ["touch", "scroll", "axe"],
       "navBudget": "gated",
       "vrtRoom": "academy-review",
+      "mbp16": false,
       "note": "The spaced-repetition drill."
     },
     {
       "path": "/academy/reading-a-base-rate-sentence",
       "family": "/academy/[slug]",
       "seeded": false,
-      "sweeps": [],
+      "sweeps": ["touch", "scroll", "axe"],
       "navBudget": "gated",
       "vrtRoom": null,
-      "note": "One lesson, standing for the lesson family in the nav budget. NOT swept and NOT pixel-locked, and that is a real gap rather than a decision: a lesson is prose in the Academy's own frame, and the frame is already swept at /academy — but no sweep has ever measured a lesson's own controls (the glossary popovers are here). Logged as Q-G3-2; the manifest is now the place to close it."
+      "mbp16": false,
+      "note": "One lesson, standing for the lesson family. SWEPT SINCE PD3 (Q-G3-2, closed): a lesson is prose in the Academy's frame and the frame is already swept at /academy — but the GLOSSARY POPOVERS live here, and no sweep had ever measured a lesson's own controls. That was a real gap, not a decision. Still no pixel lock: a lesson is body prose, and the type is already locked at /academy."
     },
     {
       "path": "/offline",
@@ -181,6 +213,7 @@
       "sweeps": [],
       "navBudget": "none",
       "vrtRoom": null,
+      "mbp16": false,
       "note": "The page of last resort, served by the service worker when a navigation fails and nothing is cached. Not swept and not probed BY CONSTRUCTION: every sweep begins by signing in and navigating, which is exactly the thing that must have failed for a reader to be here, and timing it over a working network would measure a page nobody reaches that way. e2e/offline.spec.ts owns it, with the network actually turned off."
     }
   ]

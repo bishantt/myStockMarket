@@ -578,6 +578,76 @@ const RULES = [
     match: (line) =>
       /#[0-9a-fA-F]{3,8}\b/.test(line) && !/^\s*(\*|\/\/|\/\*|<!--)/.test(line),
   },
+  {
+    id: 24,
+    name: "LAW 2 — a module reserves no height: no `min-h-` on any surface (PD3 §6.2)",
+    /*
+     * THE LAW: a module with content renders at its natural height, and an empty module renders a
+     * slim information band. NOTHING reserves height.
+     *
+     * WHY IT IS A BUILD FAILURE AND NOT A PREFERENCE. PD3 was commissioned to kill a dead hole in
+     * the Desk's grid — an empty stretch of nothing under a short module, on the app's main surface,
+     * photographed by the user. Law 1 (independent column flow) removed the mechanism that CREATED
+     * that hole. This rule removes the temptation to build one by hand.
+     *
+     * A `min-h` on a module is a promise, made in whitespace, that content is coming to fill it. On
+     * the night the pipeline did not run, that promise is a lie, and the reader scrolls past the
+     * same emptiness either way — only now the app looks broken rather than quiet. The honest empty
+     * state is components/EmptyModule.tsx: a masthead, one line, a timestamp, and it stops.
+     *
+     * TODAY THIS RULE FINDS NOTHING, and that is exactly why it is worth writing. The tree is clean
+     * right now; the plan's own words were "today true; now a stated law with a grep". A law that
+     * only gets written after it is broken has already cost you the thing it was protecting.
+     *
+     * THE THREE EXEMPTIONS, each argued, none of them a loophole:
+     *
+     *   · `min-h-11` — the 44px touch floor. This is the OPPOSITE rule, and it is a requirement:
+     *     every control on a phone must be at least 44px tall, and e2e/hardening.spec.ts fails the
+     *     build if one is not. A control is not a module, and reserving height for a THUMB is not
+     *     reserving height for absent content.
+     *   · `min-h-0` — a RESET to zero, which reserves nothing at all. It is the exact opposite of
+     *     the thing this rule bans, and the tree already depends on it: a mover's source link
+     *     carries `min-h-11 md:min-h-0`, taking its 44px on a phone and giving it back above `md`,
+     *     where there is no thumb to protect and 44px of link would be a hole in a sentence. (This
+     *     exemption is here because the rule FOUND that line on its first run and called it a
+     *     violation. It was right to look and wrong to fail — so the rule learned the difference
+     *     between reserving height and refusing to.)
+     *   · `min-h-dvh` / `min-h-screen` — the page shell, which must fill the viewport so the wash
+     *     paints the whole window. That is the page, not a module in it.
+     *
+     * Anything else — `min-h-[200px]`, `min-h-64`, a min-height in a style object — is the thing
+     * this rule exists to stop, and it fails the build with the file and line that did it.
+     */
+    match: (line) => {
+      if (/^\s*(\*|\/\/|\/\*|<!--)/.test(line)) return false; // prose may name the rule it describes
+      const tailwind = /\bmin-h-(?!11\b|0\b|dvh\b|screen\b)[[\w.-]/.test(line);
+      const inlineStyle = /\bminHeight\s*:/.test(line);
+      return tailwind || inlineStyle;
+    },
+  },
+  {
+    id: 25,
+    name: "one door for the room container — the measure is stated only in components/PageContainer.tsx",
+    /*
+     * Every room sits in the same measured column: centred, capped at 1360px, 1500px in the `wide`
+     * band, 16px gutters stepping to 32px at `desk`. One decision — written out by hand in FIVE
+     * places until PD3 (both layouts' `<main>`, both top bars, the styleguide).
+     *
+     * They agreed with each other, which is not the same as being safe. The next change to this
+     * column was a five-file sweep, and forgetting one file produces a room that is subtly narrower
+     * than every other room, on one breakpoint, which nobody would ever catch by looking. This is
+     * the same lock this codebase already puts on its table (DataTable), its news imagery
+     * (NewsImage) and its brand mark (BrandMark): a shared decision gets exactly one door.
+     *
+     * The rule watches the two literals that ARE the decision — the caps. A room that wants a
+     * different measure is making a real design argument, and it should have to come here and make
+     * it, rather than typing a number into a className at 2am.
+     */
+    skip: ["components/PageContainer.tsx"],
+    match: (line) =>
+      !/^\s*(\*|\/\/|\/\*|<!--)/.test(line) &&
+      (/max-w-\[1360px\]/.test(line) || /max-w-\[1500px\]/.test(line)),
+  },
 ];
 
 let failures = 0;
