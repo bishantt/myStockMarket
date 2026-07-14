@@ -448,6 +448,46 @@ const RULES = [
     },
   },
   {
+    id: 22,
+    name: "E2 — one door for weekday words (lib/time.ts renders them; lib/market-hours.ts decides on them)",
+    /*
+     * THE DUPLICATE THIS ABOLISHES, and what it would have cost.
+     *
+     * lib/morning.ts carried its own `weekdayName` — an Intl.DateTimeFormat with {weekday: "short",
+     * timeZone: "UTC"} — which was, byte for byte, what lib/time.ts's formatUtcWeekday already did.
+     * Two identical formatters, one of them invisible. Nothing was broken. That is the point: a
+     * second copy of a formatter is not a bug, it is a bug's HABITAT. The day anyone changes the
+     * timezone, the locale or the width on one of them, the app names one weekday two ways and no
+     * test on earth notices, because both answers are individually correct.
+     *
+     * The breadth line said "at Fri's close" through the copy. The masthead said "Friday, July 10"
+     * through the original. On 2026-07-11 they both said Saturday, faithfully, about a day with no
+     * close — which is a different bug (Part 1.2, fixed in the pipeline) but the same lesson: a
+     * claim about a day is a claim, and claims get made in ONE place where they can be audited.
+     *
+     * TWO DOORS, NOT ONE, AND THE DIFFERENCE IS THE WHOLE RULE. The plan's census said there was
+     * exactly one local weekday formatter to delete. There were two things using {weekday}, and the
+     * second is not a duplicate at all:
+     *
+     *   lib/time.ts        RENDERS a weekday as a WORD, for a reader. "Fri", "Friday".
+     *   lib/market-hours.ts DECIDES with a weekday: it asks New York what day it is so it can answer
+     *                       "is the market open?" — and compares the answer to "Sat"/"Sun". No reader
+     *                       ever sees that string. It is the calendar, and the calendar is allowed to
+     *                       know what day it is.
+     *
+     * A rule that banned the second one would have forced the market-state check to import a
+     * display formatter to do arithmetic with, which is worse than the thing it was preventing. So
+     * both doors are named here, each with its reason, and a THIRD one fails the build.
+     */
+    skip: ["lib/time.ts", "lib/market-hours.ts"],
+    match: (line) => {
+      if (/^\s*(\*|\/\/|\/\*)/.test(line)) return false;
+      const code = line.replace(/(?<![:/])\/\/.*$/, "");
+      // `weekday:` as an Intl.DateTimeFormat option — the only way to mint a weekday word.
+      return /\bweekday\s*:\s*["'](long|short|narrow)["']/.test(code);
+    },
+  },
+  {
     id: 14,
     name: "PERF — internal links go through next/link, and nobody turns prefetch off",
     /*

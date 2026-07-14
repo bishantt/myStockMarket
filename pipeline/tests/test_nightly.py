@@ -16,14 +16,35 @@ import pytest
 
 import nightly
 from adapters.alpaca import Bar
+from trading_calendar import sessions_ahead
 
 
 def _bar(symbol, d, close, volume=1000):
     return Bar(symbol=symbol, date=d, open=close, high=close, low=close, close=close, volume=volume)
 
 
-def _history(symbol, closes, start=date(2026, 6, 1)):
-    return [_bar(symbol, date.fromordinal(start.toordinal() + i), c) for i, c in enumerate(closes)]
+# The session every fake night in this file ENDS on — its edition. A Wednesday, and a real one.
+LAST_SESSION = date(2026, 6, 10)
+
+
+def _history(symbol, closes, end=LAST_SESSION):
+    """A run of bars over consecutive TRADING SESSIONS, ENDING on `end`.
+
+    Two things changed here at PD0, and both are the same point.
+
+    They used to walk consecutive CALENDAR days, which quietly put fixture bars on Saturdays — a
+    fake night ending on a day the market never opened. And they were anchored at the START, so a
+    history's last bar moved whenever its length did, while the night's `run_date` sat beside it as
+    a hard-coded constant that did not move. The fixture therefore described one session and claimed
+    another: the production bug of Part 1.2, reproduced inside the test suite, green, for months.
+
+    Anchoring at the END is what a night actually is — a session, with however much history behind
+    it — so the edition is now a fixed, checkable date no matter how many closes a test feeds in.
+    (Ruling E1: fixtures are held to the same law as production, or a test can certify what
+    production forbids.)
+    """
+    last = len(closes) - 1
+    return [_bar(symbol, sessions_ahead(end, i - last), c) for i, c in enumerate(closes)]
 
 
 class RecordingStore:
@@ -61,6 +82,15 @@ def _deps(universe, bars_by_symbol, *, macro=None, served=("SPY",), publish=None
         nasdaq_composite=22345.67, nasdaq_composite_prior=22280.15,
         djia=44210.55, djia_prior=44320.80,
     )
+    # The expected session is READ OFF THE FIXTURE'S OWN BARS, not written down beside them.
+    #
+    # It used to be a hard-coded date(2026, 6, 10) sitting next to bar histories that ended on
+    # entirely different days — a fake night whose data described one session while its run_date
+    # claimed another. That is precisely the production bug (Part 1.2) reproduced in the test suite,
+    # sitting there green, for months. run_nightly now refuses such a night (edition_from_bars), and
+    # the fixtures are honest by construction rather than by someone remembering to update two
+    # numbers together.
+    last_session = max(bar.date for bars in bars_by_symbol.values() for bar in bars)
     return nightly.NightlyDeps(
         fetch_universe=lambda: universe,
         fetch_bars=lambda symbols: bars_by_symbol,
@@ -70,7 +100,7 @@ def _deps(universe, bars_by_symbol, *, macro=None, served=("SPY",), publish=None
         r2=r2,
         publish=publish or RecordingPublish(),
         conn=object(),
-        run_date=date(2026, 6, 10),
+        run_date=last_session,
     )
 
 
@@ -295,21 +325,71 @@ def test_a_complete_index_read_reports_ok():
     assert publish.calls[0]["source_status"]["fred-indexes"] == "ok"
 
 
-def test_a_non_session_night_does_not_flag_the_indexes_degraded():
-    # The weekend no-op. A macro-mode run on a Saturday is reading Friday's close; FRED publishes no
-    # new index observation for a day the market never opened. Flagging that as a degradation would
-    # teach the reader to ignore an amber light that means nothing — which is how a real one gets
-    # missed. (2026-07-11 is a Saturday.)
+# ── the edition is the session the DATA describes (PD0, plan 3.1, ruling E1) ─────────────────
+
+
+def test_the_night_stamps_the_session_its_bars_describe():
+    """The whole contract, in one assertion: the published run_date IS the newest bar's date.
+
+    Before PD0 this came from `datetime.now(ET).date()` — the wall clock — and on 2026-07-11 the
+    wall clock said Saturday while the bars said Friday. Four surfaces then faithfully rendered a
+    close that has never existed.
+    """
     universe = [{"symbol": "SPY", "name": "S&P 500 ETF", "exchange": "ARCA"}]
-    bars = {"SPY": _history("SPY", [500, 502, 505])}
+    bars = {"SPY": _history("SPY", [500, 502, 505])}  # three sessions, ending Wed 2026-06-10
     publish = RecordingPublish()
-    macro = nightly.MacroRead(vix=15.8, ten_year=4.5)  # no levels — but it is not a session day
-    deps = _deps(universe, bars, macro=macro, served=("SPY",), publish=publish)
-    deps = nightly.NightlyDeps(**{**deps.__dict__, "run_date": date(2026, 7, 11)})
+    deps = _deps(universe, bars, served=("SPY",), publish=publish)
 
-    nightly.run_nightly(deps)
+    result = nightly.run_nightly(deps)
 
-    assert "fred-indexes" not in publish.calls[0]["source_status"]
+    assert publish.calls[0]["run_date"] == LAST_SESSION   # 2026-06-10, the newest bar
+    assert result.run_date == LAST_SESSION
+
+
+def test_a_night_whose_bars_disagree_with_the_calendar_publishes_nothing():
+    """
+    THE STALE-PROVIDER CASE, which is the one that survives every other guard.
+
+    It is Monday evening. The gate is happy (Monday is a session). The calendar says the session
+    that closed is Monday. But Alpaca has not posted Monday's bars yet, so the ingest ends on
+    Friday. Publishing here would silently rewrite Friday's edition — same rows, fresh run,
+    everything green — and the reader would have no way to know the night did nothing.
+
+    So the night fails instead, loudly, before a single row is written. Exactly the judgment the
+    coverage floor already makes: a night that cannot say which session it is describing has nothing
+    publishable to say at all.
+    """
+    universe = [{"symbol": "SPY", "name": "S&P 500 ETF", "exchange": "ARCA"}]
+    bars = {"SPY": _history("SPY", [500, 502, 505])}  # ends Wed 2026-06-10
+    store = RecordingStore()
+    publish = RecordingPublish()
+    deps = _deps(universe, bars, served=("SPY",), publish=publish)
+    # The calendar expected the NEXT session (Thu 06-11); the data stopped a day short.
+    deps = nightly.NightlyDeps(**{**deps.__dict__, "store": store, "run_date": date(2026, 6, 11)})
+
+    with pytest.raises(nightly.EditionDateMismatch, match="disagree about which day this is"):
+        nightly.run_nightly(deps)
+
+    assert publish.calls == []
+
+
+def test_a_night_whose_bars_land_on_a_day_the_market_never_opened_publishes_nothing():
+    """The backstop, below the calendar cross-check: bars ending on a Saturday are refused outright.
+
+    2026-07-11 is the Saturday production actually stamped. It cannot be reached through the normal
+    path any more — but "cannot be reached" is what everyone believed about the last one too.
+    """
+    universe = [{"symbol": "SPY", "name": "S&P 500 ETF", "exchange": "ARCA"}]
+    saturday = date(2026, 7, 11)
+    bars = {"SPY": [_bar("SPY", date(2026, 7, 9), 500), _bar("SPY", date(2026, 7, 10), 502),
+                    _bar("SPY", saturday, 505)]}
+    publish = RecordingPublish()
+    deps = _deps(universe, bars, served=("SPY",), publish=publish)  # run_date derives to the Saturday
+
+    with pytest.raises(nightly.EditionDateMismatch, match="not a trading session"):
+        nightly.run_nightly(deps)
+
+    assert publish.calls == []
 
 
 # ── the macro board's stage (N3, Part 6) ─────────────────────────────────────────────────────

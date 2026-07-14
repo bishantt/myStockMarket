@@ -49,7 +49,7 @@ from config import Settings, load_settings
 from monitoring import ping
 from parquet_store import PRICES, ParquetStore
 from storage import R2Store
-from trading_calendar import is_trading_session
+from trading_calendar import is_trading_session, latest_closed_session
 
 # Where the Parquet lake is synced on the runner (mirrors job_a). The resolver reads closes from it.
 _PARQUET_ROOT = os.environ.get("MSM_PARQUET_ROOT", "parquet-store")
@@ -69,30 +69,78 @@ _CALENDAR_LIMIT = 12
 _COLLECT_BUDGET_SECONDS = 15 * 60
 
 
+def briefing_edition(now: datetime, latest_run: date | None) -> date | None:
+    """
+    The edition this briefing addresses — or None if there is nothing honest to write.
+
+    A BRIEFING IS THE FRONT OF AN EDITION, NOT A DIARY ENTRY (POLISH-AND-DEPTH-PLAN Part 3.1).
+
+    The old code stamped the briefing with the wall clock, exactly as job A did, and the two agreed
+    every night the cron ran — 8:25pm ET, same day, same date. They came apart the moment anything
+    ran off-schedule, and the failure was silent both ways:
+
+      - dispatched at 1:00am Tuesday, the briefing was stamped TUESDAY and then went looking for
+        Tuesday's market context, movers and calendar. There are none. It would brief the void.
+      - dispatched on a night when JOB A HAD FAILED, it would be stamped tonight, find no data for
+        tonight, and write a "held" row for an edition that does not exist — while the edition that
+        does exist (last night's) sat there already briefed.
+
+    So the briefing asks two questions and needs both answers to agree: which session has closed
+    (the market's clock), and which edition is actually on the table (the newest `pipeline_run`). If
+    the newest edition is not the one that just closed, job A did not run tonight, and the right
+    thing to write is nothing. Re-briefing an older edition would overwrite a good brief with a new
+    synthesis of the same day, at tonight's hour, looking freshly considered — a lie about when the
+    paper was written. Job A's own failure already rang the alarm; job B's job is not to paper over it.
+    """
+    if not is_trading_session(now.date()):
+        return None
+    expected = latest_closed_session(now)
+    if latest_run != expected:
+        return None
+    return expected
+
+
 def main() -> int:
     """Run the evening job and keep the dead-man check fed. Returns a process exit code (always 0 on
     the success paths; a raise between the pings is what alarms the monitor)."""
     settings = load_settings()
     ping_url = settings.require("healthchecks_ping_url")
-    run_date = datetime.now(_MARKET_TZ).date()
+    now = datetime.now(_MARKET_TZ)
 
-    if not is_trading_session(run_date):
+    if not is_trading_session(now.date()):
         # A weekend or NYSE holiday — nothing to brief. Still ping success (Appendix C).
-        print(f"job_b: {run_date.isoformat()} is not a trading session; nothing to brief.")
+        print(f"job_b: {now.date().isoformat()} is not a trading session; nothing to brief.")
         ping(ping_url)
         return 0
 
     ping(ping_url, "/start")
 
+    # The session whose bell has rung. On the cron this is simply tonight; off-schedule it is the
+    # last real close, which is the only thing the resolver and the backup can honestly be about.
+    session = latest_closed_session(now)
+
     with psycopg.connect(settings.database_url_psycopg) as conn:
-        outcome = _run_briefing(settings, conn, run_date)
-        print(f"job_b: briefing {outcome}.")
-        resolved = _resolve_signals(settings, conn, run_date)
+        edition = briefing_edition(now, _read_latest_edition(conn))
+        if edition is None:
+            # Not an error, and not a ping failure: the dead-man check asks "did job B run?", and it
+            # did. What it cannot do is invent an edition. The Desk's own pipeline strip is what
+            # tells the reader the paper is late — it grades freshness against their clock, and it
+            # will say so without any help from here.
+            print(
+                f"job_b: no edition published for {session.isoformat()} — job A has not landed "
+                f"tonight's run. Skipping the briefing rather than writing one about a night that "
+                f"does not exist."
+            )
+        else:
+            outcome = _run_briefing(settings, conn, edition)
+            print(f"job_b: briefing {outcome} for the {edition.isoformat()} edition.")
+
+        resolved = _resolve_signals(settings, conn, session)
         print(f"job_b: resolver — {resolved} signal(s) resolved.")
 
-    if run_date.weekday() == _WEEKLY_BACKUP_WEEKDAY:
+    if session.weekday() == _WEEKLY_BACKUP_WEEKDAY:
         with tempfile.TemporaryDirectory() as work_dir:
-            key = backup.run_weekly_backup(settings, run_date, work_dir)
+            key = backup.run_weekly_backup(settings, session, work_dir)
         print(f"job_b: weekly backup uploaded to R2 as {key}.")
 
     _revalidate_desk(settings)
@@ -174,6 +222,18 @@ def _load_prices(settings: Settings, due: list[tuple[str, str, date, date]]) -> 
 
 
 # ----- database reads -----
+
+def _read_latest_edition(conn: psycopg.Connection) -> date | None:
+    """The newest edition on the table — the `run_date` of the most recent pipeline_run, or None.
+
+    This is what job B briefs. It is asked of the DATABASE rather than the clock because the clock
+    does not know whether job A actually landed tonight, and a briefing about a night that was never
+    published is a briefing about nothing (see briefing_edition)."""
+    with conn.cursor() as cur:
+        cur.execute("SELECT run_date FROM pipeline_run ORDER BY run_date DESC LIMIT 1")
+        row = cur.fetchone()
+    return row[0] if row else None
+
 
 def _read_batch_id(conn: psycopg.Connection, run_date: date) -> str | None:
     with conn.cursor() as cur:

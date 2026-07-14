@@ -10,6 +10,27 @@
  * lives on market time (CLAUDE.md), and the market has exactly one clock.
  */
 
+/*
+ * THE NYSE CALENDAR — ONE LIST, THREE READERS.
+ *
+ *   lib/market-hours.ts (here)                 the app: is the market open, and why not
+ *   scripts/check-live.mjs                     the production instrument: which session SHOULD the
+ *                                              masthead be showing right now
+ *   pipeline/tests/test_calendars_agree.py     holds the list against the real XNYS exchange
+ *                                              calendar, day by day through 2028, and reds if they
+ *                                              ever disagree
+ *
+ * It is JSON rather than TypeScript because a plain .mjs script and a Python test both have to read
+ * it, and a table only TypeScript can read is a table that gets COPIED. Every duplicated calendar in
+ * this codebase has drifted. This one has nowhere to drift to.
+ *
+ * The file itself carries no prose, deliberately: it is imported into the client bundle, and a
+ * comment inside it is a comment shipped to every browser. (Measured, not assumed — an explanatory
+ * `_comment` key in this JSON cost /news 0.9KB of a 3.1KB remaining headroom against a hard ceiling
+ * that does not move.) The prose lives here, where the compiler strips it.
+ */
+import calendar from "@/lib/market-calendar.json";
+
 /** Regular session, in minutes from midnight ET: 9:30am to 4:00pm. */
 const OPEN_MINUTE = 9 * 60 + 30;
 const CLOSE_MINUTE = 16 * 60;
@@ -37,41 +58,24 @@ const HALF_DAY_CLOSE_MINUTE = 13 * 60;
  * calendar to keep in step — and it would fall out of step, in the same way and for the same reason
  * every duplicated calendar in this codebase has. One list. It already had the names; they were just
  * written where only a human could see them.
+ *
+ * AND SINCE PD0 THE LIST IS JSON, because the same argument came back with a third reader.
+ * `scripts/check-live.mjs` — the instrument that asks production whether it is telling the truth —
+ * needs this calendar to know which session the masthead should be showing, and a plain .mjs script
+ * cannot import a .ts module. The choices were to copy the table into the script (a second calendar,
+ * with the drift already scheduled) or to move it somewhere both can read. It now lives in
+ * lib/market-calendar.json, and pipeline/tests/test_calendars_agree.py walks it against the real
+ * XNYS exchange calendar day by day, through 2028, and reds if they ever disagree — which is a much
+ * stronger promise than the "observed — the 4th is a Saturday" comments this table used to carry to
+ * explain itself. The comments said what a human believed; the test says what the exchange does.
  */
-const HOLIDAYS = new Map<string, string>([
-  // 2026
-  ["2026-01-01", "New Year's Day"],
-  ["2026-01-19", "Martin Luther King Jr. Day"],
-  ["2026-02-16", "Washington's Birthday"],
-  ["2026-04-03", "Good Friday"],
-  ["2026-05-25", "Memorial Day"],
-  ["2026-06-19", "Juneteenth"],
-  ["2026-07-03", "Independence Day"], // observed — the 4th is a Saturday
-  ["2026-09-07", "Labor Day"],
-  ["2026-11-26", "Thanksgiving"],
-  ["2026-12-25", "Christmas"],
-  // 2027
-  ["2027-01-01", "New Year's Day"],
-  ["2027-01-18", "Martin Luther King Jr. Day"],
-  ["2027-02-15", "Washington's Birthday"],
-  ["2027-03-26", "Good Friday"],
-  ["2027-05-31", "Memorial Day"],
-  ["2027-06-18", "Juneteenth"], // observed — the 19th is a Saturday
-  ["2027-07-05", "Independence Day"], // observed — the 4th is a Sunday
-  ["2027-09-06", "Labor Day"],
-  ["2027-11-25", "Thanksgiving"],
-  ["2027-12-24", "Christmas"], // observed — the 25th is a Saturday
-  // 2028
-  ["2028-01-17", "Martin Luther King Jr. Day"],
-  ["2028-02-21", "Washington's Birthday"],
-  ["2028-04-14", "Good Friday"],
-  ["2028-05-29", "Memorial Day"],
-  ["2028-06-19", "Juneteenth"],
-  ["2028-07-04", "Independence Day"],
-  ["2028-09-04", "Labor Day"],
-  ["2028-11-23", "Thanksgiving"],
-  ["2028-12-25", "Christmas"],
-]);
+const CALENDAR: {
+  endsOn: string;
+  holidays: Record<string, string>;
+  halfDays: string[];
+} = calendar;
+
+const HOLIDAYS = new Map<string, string>(Object.entries(CALENDAR.holidays));
 
 /**
  * The name of the holiday closing the market on this date, or null if it is not a holiday.
@@ -84,16 +88,10 @@ export function holidayName(date: TradingDate): string | null {
 }
 
 /** Days the market closes at 1:00pm ET: the eve of a holiday, and the day after Thanksgiving. */
-const HALF_DAYS = new Set([
-  "2026-11-27", // day after Thanksgiving
-  "2026-12-24", // Christmas Eve
-  "2027-11-26",
-  "2028-07-03",
-  "2028-11-24",
-]);
+const HALF_DAYS = new Set(CALENDAR.halfDays);
 
 /** The last date this calendar knows about. Past it, we stop claiming to know. */
-const CALENDAR_ENDS = "2028-12-31";
+const CALENDAR_ENDS = CALENDAR.endsOn;
 
 export type MarketState = "open" | "closed" | "unknown";
 

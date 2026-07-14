@@ -194,6 +194,10 @@ class NightlyDeps:
     r2: Any  # R2Store | None
     publish: Callable[..., None]
     conn: Any  # a psycopg connection, passed straight to publish
+    # The session this run EXPECTS to publish — the last one whose bell has rung, per the market's
+    # own calendar (job_a.full_run_edition). It is NOT the wall-clock date, and it is not the final
+    # word either: the ingested bars are, and run_nightly refuses to publish if the two disagree.
+    # It is needed up front because the fetch windows are anchored on it (bars, catalysts, the board).
     run_date: date
     # The catalyst ingest (news + calendar) for the movers. Optional: None skips the catalyst stage
     # (the job owns the per-provider try/catch and reports each source's status in the bundle).
@@ -232,6 +236,65 @@ class NightlyResult:
     breadth: dict
 
 
+class EditionDateMismatch(RuntimeError):
+    """The bars do not describe the session this run was supposed to be publishing.
+
+    Raised before anything is written. See edition_from_bars for why this is fatal rather than
+    something to shrug at and stamp anyway — shrugging and stamping anyway is the entire bug.
+    """
+
+
+def edition_from_bars(bars: pl.DataFrame, expected: date) -> date:
+    """
+    The session this night's data actually describes — the newest bar in the ingest.
+
+    THE DATE OF AN EDITION IS A FACT ABOUT THE DATA, NOT ABOUT THE CLOCK (ruling E1). `compute` mode
+    has followed this law since N6 ("THE RUN DATE COMES FROM THE DATA, NOT THE CLOCK"); PD0 is where
+    the full night adopts it, which is where it was needed all along: on 2026-07-11 the clock said
+    Saturday, the bars said Friday, and the clock won.
+
+    `expected` is the calendar's answer to the same question (the last session whose bell has rung).
+    In a healthy night the two agree exactly, and this function is a formality. When they DISAGREE,
+    something is wrong that nobody wants papered over:
+
+      - the provider is stale (Monday evening, Alpaca has not posted Monday's bars yet), and
+        publishing would silently republish Friday's edition under a fresh run;
+      - or the ingest is broken in some way nobody has thought of yet.
+
+    Either way the night fails, loudly, before a row is written — the same judgment the coverage
+    floor already makes twenty lines above. A night that cannot say which session it is describing
+    has nothing publishable to say at all.
+    """
+    if bars.height == 0:
+        raise EditionDateMismatch(
+            "nightly: no bars were ingested, so this run cannot say which session it describes. "
+            "Refusing to publish an edition with no date behind it."
+        )
+
+    edition = bars["date"].max()
+
+    if edition != expected:
+        raise EditionDateMismatch(
+            f"nightly: the ingested bars end on {edition.isoformat()}, but the market calendar says "
+            f"the session that has closed is {expected.isoformat()}. The data and the calendar "
+            f"disagree about which day this is, so the night is refusing to publish rather than "
+            f"stamp one of them over the other. (This is how 2026-07-11 happened: the clock said "
+            f"Saturday, the bars said Friday, and nothing checked.) Most likely cause: the price "
+            f"provider has not posted the latest session yet — re-run once it has."
+        )
+
+    if not is_trading_session(edition):
+        # Unreachable through the calendar (`expected` is a session by construction), so this is the
+        # backstop for a bar frame carrying a date the market never had. publish() would refuse it
+        # anyway; failing here means failing BEFORE the ingest is persisted to the lake.
+        raise EditionDateMismatch(
+            f"nightly: the bars end on {edition.isoformat()}, which is not a trading session. "
+            f"Refusing to publish an edition for a day the market never opened."
+        )
+
+    return edition
+
+
 def run_nightly(deps: NightlyDeps) -> NightlyResult:
     """Run one full nightly flow. Raises RuntimeError if the universe is empty or under-covered."""
     universe = deps.fetch_universe()
@@ -248,6 +311,10 @@ def run_nightly(deps: NightlyDeps) -> NightlyResult:
             f"floor ({covered}/{len(symbols)} symbols had bars). Failing the night — a hole this "
             f"big is a broken ingest, not a publishable morning."
         )
+
+    # WHICH SESSION IS THIS? Asked of the data, checked against the market's calendar, and answered
+    # BEFORE anything is persisted. Everything below stamps `edition`; nothing below reads the clock.
+    edition = edition_from_bars(bars, deps.run_date)
 
     # Persist the full-universe history first, then push it to R2 (the re-pullable lake).
     deps.store.write_partitioned(PRICES, bars)
@@ -268,7 +335,7 @@ def run_nightly(deps: NightlyDeps) -> NightlyResult:
     served = set(deps.read_served_symbols())
     served_bars = served_price_bars(bars, served)
     scan_results = curated_scans(scans)
-    signal_logs = build_signal_logs(scans, deps.run_date)
+    signal_logs = build_signal_logs(scans, edition)
 
     # FRED is "ok" if any of its cells came back — the levels and the context cells fail separately,
     # and a partial read still fills part of the strip. Only a total FRED outage is "degraded".
@@ -288,11 +355,13 @@ def run_nightly(deps: NightlyDeps) -> NightlyResult:
     # degraded too: a Desk showing two true index levels and one ETF proxy has a reader who deserves
     # to know why the third one changed shape.
     #
-    # On a non-session day this is skipped entirely. FRED publishes no new index observation for a
-    # day the market never opened, so flagging it would light an amber lamp that means nothing — and
-    # an alert that cries wolf is how a real one gets ignored.
-    if is_trading_session(deps.run_date):
-        source_status["fred-indexes"] = "ok" if macro.has_every_index_level() else "degraded"
+    # This used to be guarded by `if is_trading_session(deps.run_date)`, because before PD0 a night
+    # COULD be dated to a day the market never opened — and flagging missing index levels for a
+    # Saturday would have lit an amber lamp that meant nothing. That guard is gone, not because the
+    # reasoning was wrong but because the condition can no longer be false: the edition is derived
+    # from the bars and cross-checked against the calendar (edition_from_bars), and publish() refuses
+    # a non-session date outright. A night that reaches this line is a night the market had.
+    source_status["fred-indexes"] = "ok" if macro.has_every_index_level() else "degraded"
 
     # The catalyst stage: fetch news for the movers + the calendar, classify, and merge each
     # provider's health into the source status. A provider being down degrades its section here, in
@@ -326,7 +395,7 @@ def run_nightly(deps: NightlyDeps) -> NightlyResult:
         macro_stat_rows.extend(board.rows)
         source_status = {**source_status, **board.source_status}
 
-    gauge_row = _build_mood_row(deps, indicated, breadth)
+    gauge_row = _build_mood_row(deps, edition, indicated, breadth)
     if gauge_row is not None:
         macro_stat_rows.append(gauge_row)
 
@@ -345,7 +414,7 @@ def run_nightly(deps: NightlyDeps) -> NightlyResult:
 
     deps.publish(
         deps.conn,
-        run_date=deps.run_date,
+        run_date=edition,
         stage_status={"ingest": "ok", "compute": "ok", "scan": "ok", "publish": "ok"},
         source_status=source_status,
         instruments=universe,
@@ -362,7 +431,7 @@ def run_nightly(deps: NightlyDeps) -> NightlyResult:
     if front_page is not None and deps.publish_news is not None:
         written = deps.publish_news(
             deps.conn,
-            run_date=deps.run_date,
+            run_date=edition,
             clusters=front_page.clusters,
             images=front_page.images,
         )
@@ -383,10 +452,10 @@ def run_nightly(deps: NightlyDeps) -> NightlyResult:
     # the symbols the user actually sees cards for — which is fast and honest via the N-gate. The
     # full-universe historical replay for larger N is a logged enhancement.)
     if deps.publish_analytics is not None:
-        _run_analytics(deps.conn, deps.publish_analytics, deps.run_date, bars, snapshot, served, market_context)
+        _run_analytics(deps.conn, deps.publish_analytics, edition, bars, snapshot, served, market_context)
 
     return NightlyResult(
-        run_date=deps.run_date,
+        run_date=edition,
         universe_size=len(symbols),
         coverage=coverage,
         scan_matches=scans.height,
@@ -492,7 +561,7 @@ def run_compute(deps: ComputeDeps) -> ComputeResult:
     )
 
 
-def _build_mood_row(deps: NightlyDeps, indicated: pl.DataFrame, breadth: dict) -> Any | None:
+def _build_mood_row(deps: NightlyDeps, edition: date, indicated: pl.DataFrame, breadth: dict) -> Any | None:
     """
     Compute tonight's Mood gauge and shape it as a macro_stat row — or return None.
 
@@ -523,10 +592,10 @@ def _build_mood_row(deps: NightlyDeps, indicated: pl.DataFrame, breadth: dict) -
 
         return macro_stats.MacroStatRow(
             series_key=macro_stats.MOOD,
-            as_of_date=deps.run_date,
+            as_of_date=edition,
             value=float(gauge.score),
             prior=None,  # filled from the previously stored gauge at publish time
-            as_of_label=macro_stats.label_for(macro_stats.MOOD, deps.run_date),
+            as_of_label=macro_stats.label_for(macro_stats.MOOD, edition),
             # "computed", never a provider name. This number is ours and the board says so out loud
             # (ruling C8) — the whole reason it exists is that no honest external source does.
             source_key="computed",

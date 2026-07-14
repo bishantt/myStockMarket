@@ -16,6 +16,10 @@ What gets written each run:
 
 Idempotency is the point: a workflow_dispatch re-run of a night produces zero duplicates. The
 inputs are plain Python/Polars structures the compute stage builds; this module only persists them.
+
+AND, SINCE PD0: NO EDITION MAY CLAIM A SESSION THAT DID NOT HAPPEN (ruling E1). Every entry point
+below that writes a dated edition row checks its run_date against the NYSE calendar first and raises
+NonSessionRunDate before touching the database. See _require_session.
 """
 
 from __future__ import annotations
@@ -31,6 +35,49 @@ from psycopg.types.json import Json
 
 import macro_stats
 from macro_levels import StoredLevels, resolve_index_levels
+from trading_calendar import is_trading_session
+
+
+class NonSessionRunDate(ValueError):
+    """A publish was asked to write an edition dated to a day the market never opened."""
+
+
+def _require_session(run_date: date, writer: str) -> None:
+    """
+    Refuse a run_date that is not a NYSE trading session. THE LOCK, and the lowest of the three.
+
+    An edition date, a "data through" label, a breadth close, a press-time: each of them is a CLAIM
+    THAT THE MARKET TRADED THAT DAY. On 2026-07-11 — a Saturday — this product made all four, for
+    two days, in production, because a manually dispatched run asked the wall clock what day it was
+    and believed the answer. Four honest formatters then rendered a lie faithfully. Nothing failed.
+    Every gate stayed green. That is the disease: not a wrong number, but a wrong PREMISE that every
+    number downstream then reports correctly.
+
+    Job A's mode gates and the full night's bar-derived edition both close the paths we KNOW about.
+    This closes the ones we do not — and it is deliberately below them, because modes are policy and
+    publish is law. A future mode, a backfill script, a refactor that reorders two lines: none of
+    them can get a non-session date into this database without deleting this function first, which
+    is a thing a reviewer can see.
+
+    It raises BEFORE the connection is touched. A rejected write that reached the wire and rolled
+    back is a different promise from one that never happened, and only the second one is worth
+    making.
+
+    Not applied to publish_macro_stats: those rows are keyed by the SOURCE's own observation date (a
+    mortgage rate published on a Thursday, a rupee reference published on a Sunday), which is a fact
+    about a publication and not a claim about a session. E1 governs dates that claim a session.
+    """
+    if is_trading_session(run_date):
+        return
+
+    weekday = run_date.strftime("%A")
+    raise NonSessionRunDate(
+        f"{writer}: refusing to write an edition dated {run_date.isoformat()} — that is a "
+        f"{weekday}, and the NYSE calendar (XNYS) says the market did not open. There was no "
+        f"close, so there is no session for this row to be about. (This is the 2026-07-11 bug: a "
+        f"run asked the wall clock what day it was instead of asking the market which session had "
+        f"closed. See POLISH-AND-DEPTH-PLAN Part 1.2, ruling E1.)"
+    )
 
 
 def _json_safe(value: Any) -> Any:
@@ -90,6 +137,7 @@ def publish(
     `batch_id` is the Anthropic extraction-batch id Job A submitted; it is recorded on the
     pipeline_run row so Job B can collect the batch the next evening (plan P3 step 1).
     """
+    _require_session(run_date, "publish")
     try:
         with conn.cursor() as cur:
             _upsert_pipeline_run(cur, run_date, stage_status, source_status, batch_id)
@@ -135,6 +183,7 @@ def publish_compute(
     (The same trap is already documented one function up, where `batch_id` is COALESCE'd for
     precisely this reason. The status columns were simply never given the same care.)
     """
+    _require_session(run_date, "publish_compute")
     try:
         with conn.cursor() as cur:
             cur.execute(
@@ -182,6 +231,7 @@ def publish_macro(
     The index levels go through the same carry-forward as the nightly (macro_levels), so a dawn run
     whose FRED call fails cannot undo a level the night before had already stored.
     """
+    _require_session(run_date, "publish_macro")
     with conn.cursor() as cur:
         levels = resolve_index_levels(
             macro,
@@ -297,6 +347,7 @@ def publish_analytics(
     Commits on success, rolls back on any error — a mid-publish reader sees the prior run's cards,
     never a half-written set.
     """
+    _require_session(run_date, "publish_analytics")
     try:
         with conn.cursor() as cur:
             _upsert_base_rates(cur, base_rates)
@@ -422,6 +473,7 @@ def publish_briefing(
     `pm_json` is written only when a PM edition is supplied; otherwise a re-publish preserves the
     edition already stored (COALESCE), so writing the AM edition never blanks a later PM one.
     """
+    _require_session(run_date, "publish_briefing")
     try:
         with conn.cursor() as cur:
             cur.execute(
@@ -727,6 +779,7 @@ def publish_news(
     Insert-only in spirit: a cluster that already exists is UPDATED in place (it keeps its id as more
     articles join it over the following evenings), and nothing is ever deleted.
     """
+    _require_session(run_date, "publish_news")
     written = 0
     with conn.transaction():
         with conn.cursor() as cur:

@@ -9,7 +9,7 @@ wired — a permanent, insert-only log must carry an exact resolves_on, never an
 
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, datetime
 from functools import lru_cache
 
 import exchange_calendars as xcals
@@ -62,6 +62,49 @@ def previous_session(day: date) -> date:
     cal = _calendar()
     index = cal.sessions.get_indexer([pd.Timestamp(day)], method="bfill")[0]
     return cal.sessions[index - 1].date()
+
+
+def latest_closed_session(moment: datetime) -> date:
+    """
+    The most recent trading session whose CLOSING BELL HAS ALREADY RUNG, as of `moment`.
+
+    This is the honest answer to "what edition are we publishing tonight?", and it is the function
+    the Saturday bug existed for the want of (POLISH-AND-DEPTH-PLAN Part 1.2, ruling E1).
+
+    The old code asked the wall clock — `datetime.now(ET).date()` — which answers a different
+    question: "what day is it where I am standing?" On Saturday 2026-07-11 the clock said Saturday,
+    so Friday's bars were published under a Saturday date, and the Desk spent two days claiming data
+    "through Saturday's close". There is no Saturday close. The date of an edition is a fact about
+    the MARKET, not about the calendar on the wall, and this is where that fact is looked up.
+
+    Three things it gets right that a hand-rolled version would not:
+
+      - **Before the bell, today does not count.** At 9:00am Monday the market has not opened; the
+        newest close that EXISTS is Friday's. A run at 1:00am Tuesday therefore publishes Monday's
+        edition, which is exactly the side door the N6 session gate could not close (Q-N6-2): Tuesday
+        is a perfectly good session, so the gate waves the run through, and only this function knows
+        that Tuesday's close has not happened yet.
+      - **Early closes.** The day after Thanksgiving the bell rings at 1:00pm ET, not 4:00pm, and
+        the exchange calendar knows it — so the close time is ASKED FOR, never assumed. Hard-coding
+        4:00pm would publish the previous session's date over a real half-day's bars, nine-odd times
+        a year, on precisely the sleepy days when nobody is checking.
+      - **Holidays walk backwards properly.** `previous_session` already crosses weekends and
+        holidays; this defers to it rather than subtracting a day and hoping.
+
+    `moment` must be timezone-aware (both jobs pass a market-time `datetime.now`).
+    """
+    cal = _calendar()
+    today = moment.date()
+
+    if is_trading_session(today):
+        # Ask the calendar when today's bell rings — it is 4:00pm ET on most days and 1:00pm on the
+        # handful of half-days. session_close returns a UTC instant, so the comparison is exact and
+        # the caller's timezone cannot skew it.
+        close = cal.session_close(pd.Timestamp(today))
+        if pd.Timestamp(moment) >= close:
+            return today
+
+    return previous_session(today)
 
 
 def sessions_between(earlier: date, later: date) -> int:

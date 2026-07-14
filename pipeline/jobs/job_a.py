@@ -60,7 +60,7 @@ from nightly import (
 )
 from parquet_store import PRICES, ParquetStore
 from storage import R2Store
-from trading_calendar import is_trading_session, previous_session
+from trading_calendar import is_trading_session, latest_closed_session, previous_session
 from universe import CORE_SERVED
 
 # The market's clock: run_date is the US trading day, computed in Eastern time. Proper trading-day
@@ -529,6 +529,35 @@ def run_macro_mode(settings: Settings) -> None:
     )
 
 
+def full_run_edition(now: datetime) -> date | None:
+    """
+    The edition a `full` run started at `now` would publish — or None if it must skip.
+
+    THE TWO LAYERS, and why one was not enough (POLISH-AND-DEPTH-PLAN Part 3.1):
+
+    **The gate (N6).** A day with no session has nothing to ingest. The cron `37 22 * * 1-5` never
+    fires at a weekend, but it fires on every market HOLIDAY — a weekday — roughly nine times a
+    year, and a manual dispatch can land on any day at all. That run would wake on a closed market,
+    ingest nothing new, and publish a pipeline_run dated to a session that did not happen. Nothing
+    would fail, so every gate would stay green. It stops here instead, and says so, and exits
+    cleanly: a skipped run on a closed market is the CORRECT outcome, not an error. Failing the
+    workflow would send a red e-mail every Thanksgiving, and an alert that cries wolf is not there
+    on the night it is finally right.
+
+    **The derivation (PD0).** The gate alone still let a lie in through the side door, and this is
+    Q-N6-2, which the N6 session found and deferred: a run fired at 1:00am ET on a Tuesday passes
+    the gate (Tuesday IS a session) and then, under the old code, stamped everything TUESDAY — over
+    bars that end on Monday. A phantom edition for a session that had not opened. So the date no
+    longer comes from the wall clock at all. It comes from the market: the last session whose bell
+    has actually rung. `run_nightly` then proves that answer against the bars themselves, and
+    `publish` refuses it outright if it is somehow not a session. Three layers, and the reason
+    there are three is that the first one shipped, looked complete, and was not.
+    """
+    if not is_trading_session(now.date()):
+        return None
+    return latest_closed_session(now)
+
+
 def main() -> None:
     """Build the real collaborators and run one night. Raises on any failure, so the workflow goes red."""
     settings = load_settings()
@@ -552,34 +581,28 @@ def main() -> None:
             f"through to a full nightly run, which would re-ingest the market."
         )
 
-    run_date = datetime.now(_MARKET_TZ).date()
-
-    # A NIGHT WITH NO SESSION HAS NOTHING TO INGEST, AND MUST NOT SAY OTHERWISE.
-    #
-    # Found by looking at N6's own panel against production, which opened with the line
-    # "Data through 2026-07-11" — a SATURDAY. There is no close on a Saturday, so there are no bars;
-    # Alpaca returns Friday's. The run had stamped Friday's data with Saturday's date, and the Desk
-    # had been telling the reader its data was "through" a day the market never opened.
-    #
-    # It was not a one-off. The cron is `37 22 * * 1-5`, so it never fires at a weekend — but it DOES
-    # fire on every market HOLIDAY, which is a weekday. Roughly nine times a year this job would wake
-    # up on a closed market, ingest nothing new, and publish a pipeline_run and a market_context row
-    # dated to a session that did not happen. Every gate would stay green, because nothing failed.
-    #
-    # So it stops, and says so, and exits cleanly. A skipped run on a closed market is the CORRECT
-    # outcome, not an error — failing the workflow would send a red e-mail every Thanksgiving and
-    # teach the reader to ignore exactly the alert that matters on the night it is real.
-    #
-    # (This also makes the promise the control room's `full` button already makes to the reader —
-    # "today's closing data doesn't exist until 4:00pm ET" — true of the JOB and not merely of the
-    # UI. A rule enforced only at the button is a rule the Actions tab can walk straight past.)
-    if not is_trading_session(run_date):
+    # THE EDITION COMES FROM THE MARKET, NOT FROM THE WALL CLOCK. The whole argument is in
+    # full_run_edition's docstring; the short version is that `datetime.now().date()` answers "what
+    # day is it where I am standing?", and an edition date answers "which session actually closed?"
+    # Those are different questions, and for two days in July 2026 this job answered the wrong one.
+    now = datetime.now(_MARKET_TZ)
+    run_date = full_run_edition(now)
+    if run_date is None:
         print(
-            f"job_a: {run_date.isoformat()} is not a trading session — the market never opened, so "
+            f"job_a: {now.date().isoformat()} is not a trading session — the market never opened, so "
             f"there is no close to ingest. Skipping. (The last session's data stands, correctly "
             f"stamped with the last session's date.)"
         )
         return
+
+    # A run that starts before today's bell publishes the session that HAS closed. Said out loud,
+    # because a 1:00am recovery run printing yesterday's date is exactly the thing a reader of these
+    # logs would otherwise file as a bug.
+    if run_date != now.date():
+        print(
+            f"job_a: it is {now.date().isoformat()} but today's close has not happened yet — "
+            f"publishing the session that has: {run_date.isoformat()}."
+        )
 
     alpaca = _alpaca(settings)
     fred = _fred(settings)

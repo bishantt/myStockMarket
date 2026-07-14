@@ -2,7 +2,7 @@ import { db } from "@/lib/db";
 import { SCAN_PRESETS } from "@/lib/scan-presets";
 import { copy } from "@/lib/copy";
 import { directionOf, multiple, percent, price, signedPercent } from "@/lib/format";
-import { formatUtcDate } from "@/lib/time";
+import { formatUtcDate, formatUtcWeekday } from "@/lib/time";
 import { buildBrief, parseBriefDraft, type BriefView } from "@/lib/briefing";
 import { isKnownLesson } from "@/lib/academy";
 import {
@@ -147,11 +147,6 @@ export type QuoteSource = "index" | "etf-proxy";
 /** Midnight UTC of a date, for comparing bare dates without letting a clock time decide the answer. */
 function startOfUtcDay(day: Date): number {
   return Date.UTC(day.getUTCFullYear(), day.getUTCMonth(), day.getUTCDate());
-}
-
-/** "Fri" — the weekday breadth's as-of names ("63% above the 50-day average · at Fri's close"). */
-function weekdayName(day: Date): string {
-  return new Intl.DateTimeFormat("en-US", { weekday: "short", timeZone: "UTC" }).format(day);
 }
 
 export type IndexQuote = {
@@ -376,7 +371,11 @@ export function buildMacro(
       pctAbove50dma: percent(ctx.pctAbove50dma),
       // Breadth is a claim about the WHOLE market, and until now it was the only figure on the
       // module carrying no window at all (C2). It is as of the close, and it says so.
-      asOf: runDate ? copy.macro.breadthClose.replace("{day}", weekdayName(runDate)) : "at the close",
+      // formatUtcWeekday, not a local Intl formatter (ruling E2 — one door for weekday words). The
+      // duplicate that used to live here was byte-for-byte the same call and would have drifted the
+      // day anyone changed one of them; a second copy of a formatter is a second answer waiting to
+      // happen. check-drift.mjs rule 22 now fails the build for a weekday formatter outside lib/time.
+      asOf: runDate ? copy.macro.breadthClose.replace("{day}", formatUtcWeekday(runDate)) : "at the close",
     },
     vix,
     tenYear,

@@ -154,7 +154,32 @@ jobs:
       - name: Anti-drift rules (gate step 5 — was local-only until G0)
         run: npm run check:drift
 
-      - run: npm test
+      # THE TZ MATRIX (PD0, plan 3.3). The unit suite runs TWICE, in two timezones.
+      #
+      # Until now it ran in whatever timezone the machine happened to be in — UTC on this runner, ET
+      # on the author's Mac — and NOTHING anywhere pinned it. That is not a hypothetical hazard in
+      # this app: it renders a trading DAY (a bare calendar date) and an INSTANT (a pipeline's finish
+      # time) side by side in the same line of the same strip, and the two must be read in different
+      # timezones to be true. Read a trading day in ET and it rolls back to the day before for five
+      # hours every evening. Every helper in lib/time.ts exists because of that distinction, and not
+      # one test could have caught a helper that quietly forgot it — a UTC-naive formatter passes
+      # perfectly on a UTC runner.
+      #
+      # So the suite is run in the two timezones that actually matter: UTC (the runner, the database,
+      # every stored trading day) and America/New_York (the reader, and the author's laptop, where a
+      # date bug is five hours wide). A formatter that depends on the machine's timezone now diverges
+      # between these two legs and fails visibly, in CI, instead of in production at 7pm.
+      #
+      # Cost: one extra vitest run, tens of seconds. Local `npm test` is unchanged.
+      - name: Unit tests — UTC (the runner, the database, every stored trading day)
+        run: npm test
+        env:
+          TZ: UTC
+
+      - name: Unit tests — America/New_York (the reader's clock, where a date bug is five hours wide)
+        run: npm test
+        env:
+          TZ: America/New_York
 
       # The production build uses webpack, because Serwist's service-worker injection is a webpack
       # plugin and Next 16 defaults to Turbopack (see next.config.ts). `npm run build` already
