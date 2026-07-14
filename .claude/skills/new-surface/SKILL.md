@@ -80,18 +80,43 @@ contains it. Background and border hover feedback only. A jsdom test walks up fr
 → The word goes in the chip. Colour is the redundant channel, never the primary one. A hit and
 a miss render at the same size and the same weight; only the hue differs.
 
-**Did you ADD THE ROUTE TO THE SWEEPS?** *(Added N7, 2026-07-13 — and it is the cheapest line here.)*
-→ `e2e/hardening.spec.ts` (44px targets, no sideways scroll) and `e2e/a11y.spec.ts` (axe, both
-themes) each walk a hard-coded list of routes. **A room that is not on those lists is not
-protected by them, and nothing anywhere will tell you.** `/news` shipped in N5 and no sweep
-measured it until N7 — by which time the story page's source links, the controls a reader taps to
-check a story against the outlet that reported it, had been **20px tall on a phone** for two
-tagged phases. The guard existed. The room was simply not in its list.
+**Did you ADD THE ROUTE TO `app/lib/routes-manifest.json`?** *(Added N7; mechanized at G3,
+2026-07-13 — and it is still the cheapest line here.)*
+→ There is now **ONE list of rooms**, and everything reads it: the touch-target and sideways-scroll
+sweeps (`e2e/hardening.spec.ts`), the axe sweep in both themes (`e2e/a11y.spec.ts`), the pixel
+baselines (`e2e/vrt.spec.ts`), the nav budget (`scripts/check-nav.mjs`) and the bundle budget
+(`scripts/check-bundles.mjs`). Add your room to the manifest and every one of them picks it up.
 
-If the room needs seeded data to exist, put it in `SEEDED_ROUTES`, not `ROUTES` — otherwise the
-sweep walks to a page that isn't there, measures **the 404 page**, and passes. And do not reach
-for the status code to catch that: a `notFound()` inside a statically-generated route answers
-**HTTP 200** with the 404 page in the body. The body is the only honest witness.
+**You cannot forget any more, and that is the point.** `lib/routes-manifest.test.ts` walks
+`app/app/**/page.tsx` and fails the unit suite if a room exists with no manifest entry behind it —
+so a missing room is a **red `npm test`**, seconds after you write the page, not a silent hole. It
+used to be five hand-kept lists, and `/news` shipped in N5 and no sweep measured it until N7 — by
+which time the story page's source links, the controls a reader taps to check a story against the
+outlet that reported it, had been **20px tall on a phone** for two tagged phases. The guard existed.
+The room was simply not in its list.
+
+Set the fields honestly; each entry carries a `note` saying why it says what it says (an entry with
+no note is an entry nobody has had to defend). And **if the room needs seeded data to exist, set
+`seeded: true`** — that is what puts it in `SEEDED_ROUTES` rather than `ROUTES`. Otherwise the sweep
+walks to a page that isn't there, measures **the 404 page**, and passes. And do not reach for the
+status code to catch that: a `notFound()` inside a statically-generated route answers **HTTP 200**
+with the 404 page in the body. The body is the only honest witness.
+
+**Does every assertion you just wrote hold at 3am AND 3pm — Saturday included?**
+*(Added G3, 2026-07-13. It is a QUESTION and not a grep, deliberately — see below.)*
+→ Two whole classes of gate failure in this build are a clock, not a bug:
+- **An absolute fixture under a relative rule.** The paper ledger's trades sat on fixed dates while
+  the page counted them against a rolling seven-day window. The baseline **expired 28 minutes after
+  the run that last certified it**. Nobody had changed a line of code. *This one IS mechanized now* —
+  drift rule 21 fails the build for any date written outside `prisma/fixtures/clock.mjs` or
+  `e2e/seeded-clock.ts`. Derive from the anchor; never write a second one.
+- **A time-of-day assertion.** The control-room test passed only while the market was open. There is
+  no honest grep for this — every attempt fires on code that is perfectly correct, and *a gate that
+  cries wolf trains its reader to skim past it*, which this codebase has now learned three separate
+  times. So it stays a question you have to actually ask, and this line is where you get asked it.
+
+If the answer is "no", pin the clock (`page.clock.setFixedTime(SEEDED_EVENING)`) rather than writing
+an assertion that is true this afternoon.
 
 **Does EVERY number on this surface state its WINDOW?** *(Added N7, 2026-07-13 — plan §5.2.)*
 → A number with no window is a claim with no scope, and the reader supplies the missing scope
