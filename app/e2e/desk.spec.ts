@@ -1,5 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 
+import { SEEDED_EVENING } from "./seeded-clock";
+
 /**
  * Journey 1 (P1 variant) — the Desk renders the morning the pipeline published (plan §6.2, §9.2).
  *
@@ -220,8 +222,12 @@ test.describe("The Desk, chunked", () => {
      *
      * The test was wrong, not the product. A test that reads time-dependent output has to say WHEN it
      * is reading, or it passes this week and fails next week for a reason nobody can reconstruct.
+     *
+     * The instant itself comes from e2e/seeded-clock.ts (G3). It used to be a second copy of the same
+     * literal, written out here by hand — and two copies of one clock is exactly how the two drift
+     * apart. Drift rule 21 now fails the build for a date written anywhere in e2e/ but there.
      */
-    await page.clock.setFixedTime(new Date("2026-07-09T23:00:00-04:00")); // the seeded session's night
+    await page.clock.setFixedTime(SEEDED_EVENING);
     await page.goto("/");
 
     // Now the strip is in its FRESH state: quiet, no colour, no card, no masthead. It states the

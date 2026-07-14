@@ -28,13 +28,17 @@
  * does not ingest attention data at all, and that absence is the deepest guard the room has.
  */
 
-/** The seeded run date — the same synthetic Thursday the rest of the seed uses. */
-const RUN_DATE = new Date("2026-07-09T00:00:00.000Z");
+/*
+ * The seeded run date — the same synthetic Thursday the rest of the seed uses — and it now comes
+ * from fixtures/clock.mjs rather than being a second copy of the literal. Two copies of one date is
+ * how the two drift apart, and drifting apart is the failure (drift rule 21; see clock.mjs).
+ */
+import { RUN_DATE, sessionAt, sessionPlus } from "./clock.mjs";
 
 /** Published times on the seeded evening. */
-const t = (hhmm) => new Date(`2026-07-09T${hhmm}:00.000Z`);
+const t = (hhmm) => sessionAt(hhmm); // 2026-07-09, that time
 /** ...and the session before it, for the two clusters that carry a recency decay. */
-const yesterday = (hhmm) => new Date(`2026-07-08T${hhmm}:00.000Z`);
+const yesterday = (hhmm) => sessionPlus(-1, hhmm); // 2026-07-08, that time
 
 /**
  * The three cached article images.

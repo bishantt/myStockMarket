@@ -18,13 +18,18 @@
  * state today. When the key lands, the cell goes fresh and this fixture changes with it.
  */
 
-const RUN_DATE_ISO = "2026-07-09";
+/*
+ * Every date here derives from the seeded world's one anchor (fixtures/clock.mjs, drift rule 21).
+ * This file used to keep its own copy of the run date, which made it a second clock — and two clocks
+ * are how a fixture and the world it belongs to silently walk apart.
+ */
+import { monthStart, sessionAt, sessionPlus } from "./clock.mjs";
 
-/** A UTC midnight Date from a bare YYYY-MM-DD, so the seed is byte-for-byte reproducible. */
-const day = (iso) => new Date(`${iso}T00:00:00.000Z`);
+/** The session itself, at midnight — the as-of date for the two DAILY series. */
+const runDay = sessionPlus(0); // 2026-07-09
 
 /** When the seeded night fetched these — the same moment seed.mjs finishes its run. */
-const FETCHED_AT = new Date("2026-07-09T22:39:00.000Z");
+const FETCHED_AT = sessionAt("22:39"); // 2026-07-09T22:39Z
 
 /**
  * The Mood gauge's components (ruling C8).
@@ -101,7 +106,7 @@ const MOOD_COMPONENTS = [
 export const MACRO_STATS = [
   {
     seriesKey: "mortgage30us",
-    asOfDate: day(RUN_DATE_ISO),
+    asOfDate: runDay, // 2026-07-09
     value: 6.72,
     prior: 6.78,
     // Freddie Mac's survey is published for the week ENDING Thursday. The label says so, because
@@ -113,7 +118,7 @@ export const MACRO_STATS = [
   },
   {
     seriesKey: "cpi_yoy",
-    asOfDate: day("2026-06-01"),
+    asOfDate: monthStart(1), // 2026-06-01 — June's print, stamped with the month it describes
     value: 2.7,
     prior: 2.9,
     // June's data, published mid-July. A monthly series in the middle of its cycle is not stale —
@@ -126,17 +131,17 @@ export const MACRO_STATS = [
   {
     seriesKey: "gold_usd",
     // A WEEK OLD, on purpose — see the file comment. This drives the amber "stale" cell.
-    asOfDate: day("2026-07-02"),
+    asOfDate: sessionPlus(-7), // 2026-07-02 — a week old, on purpose
     value: 4085.2,
     prior: 4071.9,
     asOfLabel: "Jul 2",
     sourceKey: "goldapi",
-    fetchedAt: new Date("2026-07-02T22:39:00.000Z"),
+    fetchedAt: sessionPlus(-7, "22:39"), // 2026-07-02T22:39Z — the last night it answered
     meta: null,
   },
   {
     seriesKey: "usd_npr",
-    asOfDate: day(RUN_DATE_ISO),
+    asOfDate: runDay, // 2026-07-09
     // `value` carries the BUY side so a single-number consumer has a defined answer, but the cell
     // renders the pair: picking one side silently answers a question the reader never asked.
     value: 151.66,
@@ -148,7 +153,7 @@ export const MACRO_STATS = [
   },
   {
     seriesKey: "mood",
-    asOfDate: day(RUN_DATE_ISO),
+    asOfDate: runDay, // 2026-07-09
     value: 42,
     prior: 47,
     asOfLabel: "Jul 9",

@@ -12,6 +12,7 @@
  */
 
 import { PrismaClient } from "@prisma/client";
+import { RUN_DATE, SEEDED_SESSION, sessionAt, sessionDayIso, sessionPlus } from "./fixtures/clock.mjs";
 import { SCAN_ROWS, SCAN_INSTRUMENTS } from "./fixtures/scans.mjs";
 import { PAPER_TRADES } from "./fixtures/paper.mjs";
 import { MACRO_STATS } from "./fixtures/macro.mjs";
@@ -19,8 +20,15 @@ import { NEWS_CLUSTERS, CATALYST_LINKS, NEWS_IMAGES, NEWS_INSTRUMENTS } from "./
 
 const db = new PrismaClient();
 
-// The synthetic run date — a fixed Thursday, so the seed is byte-for-byte reproducible.
-const RUN_DATE = new Date("2026-07-09T00:00:00.000Z");
+/*
+ * The synthetic run date — a fixed Thursday, so the seed is byte-for-byte reproducible — now comes
+ * from fixtures/clock.mjs, which is the ONE place in prisma/ allowed to say a date (drift rule 21).
+ *
+ * Every instant below is derived from it, and each call site carries its answer in a trailing comment
+ * so a reader can check the arithmetic against a calendar without running the code. Read clock.mjs's
+ * header for why: an absolute fixture under a relative rule has a fuse on it, and this build has been
+ * burned by one twice.
+ */
 
 /**
  * Build `count` daily bars ending on RUN_DATE for one symbol, oldest first. The path is a plain
@@ -102,9 +110,9 @@ const WATCHLIST = [
 /** News that explains the movers — each tagged to its ticker, published on the run day. One mover
  * (PLTR) is intentionally left with NO news, so the Desk renders the honest noise line for it. */
 const NEWS = [
-  { id: "seed-smci", publishedAt: new Date("2026-07-09T13:10:00.000Z"), provider: "finnhub", url: "https://reuters.com/smci-q3",
+  { id: "seed-smci", publishedAt: sessionAt("13:10"), provider: "finnhub", url: "https://reuters.com/smci-q3", // 2026-07-09T13:10Z
     headline: "Super Micro beats Q3 estimates on AI server demand", snippet: "Revenue jumped 40%.", tickers: ["SMCI"], eventType: "earnings" },
-  { id: "seed-gme", publishedAt: new Date("2026-07-09T11:30:00.000Z"), provider: "marketaux", url: "https://bloomberg.com/gme-downgrade",
+  { id: "seed-gme", publishedAt: sessionAt("11:30"), provider: "marketaux", url: "https://bloomberg.com/gme-downgrade", // 2026-07-09T11:30Z
     headline: "Analyst downgrades GameStop to Sell on weak fundamentals", snippet: "Price target cut.", tickers: ["GME"], eventType: "analyst" },
 ];
 
@@ -138,7 +146,7 @@ const BRIEFING = {
         citations: ["seed-gme"],
       },
     ],
-    calendar_notes: ["CPI for June is due 2026-07-12."],
+    calendar_notes: [`CPI for June is due ${sessionDayIso(3)}.`], // 2026-07-12 — the same day the CALENDAR row below carries
     learning_link_slug: "reading-a-base-rate-sentence",
   },
   verificationJson: { status: "ok", checked: 4, held_reason: null, flags: [] },
@@ -164,14 +172,14 @@ const BRIEFING = {
  * calendar back to a plain first-N slice, these two rows disappear and that test goes red.
  */
 const CALENDAR = [
-  { date: new Date("2026-07-12T00:00:00.000Z"), kind: "macro", symbol: null, timing: null, title: "Consumer Price Index", consensus: null, prior: null, importance: "high", code: "CPI" },
-  { date: new Date("2026-07-13T00:00:00.000Z"), kind: "earnings", symbol: "MSFT", timing: null, title: "MSFT earnings", consensus: 3.12, prior: 2.94, importance: "medium", code: "EARNINGS" },
-  { date: new Date("2026-07-14T00:00:00.000Z"), kind: "earnings", symbol: "GME", timing: null, title: "GME earnings", consensus: 0.04, prior: 0.02, importance: "medium", code: "EARNINGS" },
-  { date: new Date("2026-07-15T00:00:00.000Z"), kind: "earnings", symbol: "AAPL", timing: null, title: "AAPL earnings", consensus: 1.28, prior: 1.4, importance: "medium", code: "EARNINGS" },
-  { date: new Date("2026-07-16T00:00:00.000Z"), kind: "fed", symbol: null, timing: null, title: "FOMC decision", consensus: null, prior: null, importance: "high", code: "FOMC" },
-  { date: new Date("2026-07-17T00:00:00.000Z"), kind: "macro", symbol: null, timing: null, title: "Jobs report", consensus: null, prior: null, importance: "high", code: "JOBS" },
-  { date: new Date("2026-07-20T00:00:00.000Z"), kind: "earnings", symbol: "NVDA", timing: null, title: "NVDA earnings", consensus: 0.92, prior: 0.85, importance: "medium", code: "EARNINGS" },
-  { date: new Date("2026-07-21T00:00:00.000Z"), kind: "earnings", symbol: "PLTR", timing: null, title: "PLTR earnings", consensus: 0.15, prior: 0.13, importance: "medium", code: "EARNINGS" },
+  { date: sessionPlus(3), kind: "macro", symbol: null, timing: null, title: "Consumer Price Index", consensus: null, prior: null, importance: "high", code: "CPI" }, // 2026-07-12
+  { date: sessionPlus(4), kind: "earnings", symbol: "MSFT", timing: null, title: "MSFT earnings", consensus: 3.12, prior: 2.94, importance: "medium", code: "EARNINGS" }, // 2026-07-13
+  { date: sessionPlus(5), kind: "earnings", symbol: "GME", timing: null, title: "GME earnings", consensus: 0.04, prior: 0.02, importance: "medium", code: "EARNINGS" }, // 2026-07-14
+  { date: sessionPlus(6), kind: "earnings", symbol: "AAPL", timing: null, title: "AAPL earnings", consensus: 1.28, prior: 1.4, importance: "medium", code: "EARNINGS" }, // 2026-07-15
+  { date: sessionPlus(7), kind: "fed", symbol: null, timing: null, title: "FOMC decision", consensus: null, prior: null, importance: "high", code: "FOMC" }, // 2026-07-16
+  { date: sessionPlus(8), kind: "macro", symbol: null, timing: null, title: "Jobs report", consensus: null, prior: null, importance: "high", code: "JOBS" }, // 2026-07-17
+  { date: sessionPlus(11), kind: "earnings", symbol: "NVDA", timing: null, title: "NVDA earnings", consensus: 0.92, prior: 0.85, importance: "medium", code: "EARNINGS" }, // 2026-07-20
+  { date: sessionPlus(12), kind: "earnings", symbol: "PLTR", timing: null, title: "PLTR earnings", consensus: 0.15, prior: 0.13, importance: "medium", code: "EARNINGS" }, // 2026-07-21
 ];
 
 /**
@@ -248,14 +256,14 @@ const VOL_BANDS = [
 
 /** Fired signals and their resolved outcomes — the track record fills with hits and a miss. */
 const SIGNAL_LOGS = [
-  { id: "sig-spy", firedDate: new Date("2026-06-24T00:00:00.000Z"), symbol: "SPY", patternKey: "golden-cross", horizonDays: 10, resolvesOn: new Date("2026-07-08T00:00:00.000Z") },
-  { id: "sig-qqq", firedDate: new Date("2026-06-24T00:00:00.000Z"), symbol: "QQQ", patternKey: "52w-high-proximity", horizonDays: 10, resolvesOn: new Date("2026-07-08T00:00:00.000Z") },
-  { id: "sig-smci", firedDate: new Date("2026-06-23T00:00:00.000Z"), symbol: "SMCI", patternKey: "unusual-volume", horizonDays: 10, resolvesOn: new Date("2026-07-07T00:00:00.000Z") },
+  { id: "sig-spy", firedDate: sessionPlus(-15), symbol: "SPY", patternKey: "golden-cross", horizonDays: 10, resolvesOn: sessionPlus(-1) }, // fired 2026-06-24, resolves 07-08
+  { id: "sig-qqq", firedDate: sessionPlus(-15), symbol: "QQQ", patternKey: "52w-high-proximity", horizonDays: 10, resolvesOn: sessionPlus(-1) }, // fired 2026-06-24, resolves 07-08
+  { id: "sig-smci", firedDate: sessionPlus(-16), symbol: "SMCI", patternKey: "unusual-volume", horizonDays: 10, resolvesOn: sessionPlus(-2) }, // fired 2026-06-23, resolves 07-07
 ];
 const RESOLUTIONS = [
-  { id: "res-spy", signalId: "sig-spy", outcome: "hit", resolvedAt: new Date("2026-07-08T00:30:00.000Z") },
-  { id: "res-qqq", signalId: "sig-qqq", outcome: "hit", resolvedAt: new Date("2026-07-08T00:30:00.000Z") },
-  { id: "res-smci", signalId: "sig-smci", outcome: "miss", resolvedAt: new Date("2026-07-07T00:30:00.000Z") },
+  { id: "res-spy", signalId: "sig-spy", outcome: "hit", resolvedAt: sessionPlus(-1, "00:30") }, // 2026-07-08T00:30Z
+  { id: "res-qqq", signalId: "sig-qqq", outcome: "hit", resolvedAt: sessionPlus(-1, "00:30") }, // 2026-07-08T00:30Z
+  { id: "res-smci", signalId: "sig-smci", outcome: "miss", resolvedAt: sessionPlus(-2, "00:30") }, // 2026-07-07T00:30Z
 ];
 
 function guardAgainstProduction() {
@@ -272,15 +280,15 @@ function guardAgainstProduction() {
 
 async function main() {
   guardAgainstProduction();
-  console.log("Seeding a deterministic synthetic morning (run date 2026-07-09)…");
+  console.log(`Seeding a deterministic synthetic morning (run date ${SEEDED_SESSION})…`);
 
   await db.pipelineRun.upsert({
     where: { runDate: RUN_DATE },
-    update: { finishedAt: new Date("2026-07-09T22:40:00.000Z") },
+    update: { finishedAt: sessionAt("22:40") },
     create: {
       runDate: RUN_DATE,
-      startedAt: new Date("2026-07-09T22:37:00.000Z"),
-      finishedAt: new Date("2026-07-09T22:40:00.000Z"),
+      startedAt: sessionAt("22:37"), // 2026-07-09T22:37Z — the cron's real slot
+      finishedAt: sessionAt("22:40"), // 2026-07-09T22:40Z
       stageStatus: { ingest: "ok", compute: "ok", scan: "ok", publish: "ok" },
       // marketaux degraded on purpose, so the SourceStatusFooter's honest degraded line shows.
       sourceStatus: { alpaca: "ok", finnhub: "ok", marketaux: "degraded", fmp: "ok", fred: "ok" },

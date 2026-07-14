@@ -111,6 +111,44 @@ const FILES = sourceFiles();
 const read = (f) => readFileSync(join(ROOT, f), "utf8");
 
 /**
+ * The files rule 21 polices: the seeded world, and the browser suite that photographs it.
+ *
+ * These sit OUTSIDE SEARCH_DIRS on purpose — they are not the product's shipped surface, they are
+ * its fixtures and its oracle. Every other rule in this file asks "does the app do something it must
+ * not?". Rule 21 asks a different question: "does the GATE have a fuse burning in it?" — and the
+ * gate's fuses live here.
+ *
+ * Unit tests (`*.test.ts`) are NOT in scope, deliberately, and the distinction is the whole point. A
+ * unit test controls its own clock: it can name any date it likes, because it also decides what "now"
+ * means. An e2e spec runs against the real clock unless it explicitly pins one, and the seed is read
+ * BY the real clock. Those are the two places a date can quietly expire.
+ */
+function fuseFiles() {
+  const files = ["prisma/seed.mjs"];
+  for (const entry of readdirSync(join(ROOT, "prisma", "fixtures"))) {
+    if (extname(entry) === ".mjs") files.push(`prisma/fixtures/${entry}`);
+  }
+  for (const entry of readdirSync(join(ROOT, "e2e"))) {
+    if (extname(entry) === ".ts" && !/\.test\.ts$/.test(entry)) files.push(`e2e/${entry}`);
+  }
+  return files.sort();
+}
+
+/**
+ * The two files allowed to say a date out loud — one per world, and they must agree with each other.
+ *
+ * Everything else derives from these. That is the entire rule: not "never write a date" (the seeded
+ * world IS a fixed morning, and has to be, or the pixel oracle is photographing whatever today
+ * happens to hold) but "there is exactly ONE date, it has a name, and nothing keeps a second copy."
+ */
+const DATE_ANCHORS = [
+  // The seeded world's anchor: the synthetic trading day everything in prisma/ is measured from.
+  "prisma/fixtures/clock.mjs",
+  // The browser suite's anchor: the instant vrt.spec.ts and desk.spec.ts pin the page's clock to.
+  "e2e/seeded-clock.ts",
+];
+
+/**
  * One rule. `test` returns the offending lines in a file (or none). `skip` lists the files where
  * the thing being banned is legitimately allowed — and every entry in a skip list is a decision
  * someone has to defend.
@@ -351,6 +389,48 @@ const RULES = [
     match: (line) => /<table[\s>]/.test(line),
   },
   {
+    id: 21,
+    name: "THE FUSE-FINDER — no absolute date outside the two anchors (seeded world + browser suite)",
+    /*
+     * "An absolute fixture under a relative rule has a fuse on it — /paper's baseline expired 28
+     * minutes after the run that certified it."
+     *
+     * That sentence is not a metaphor, and the recording is in prisma/fixtures/paper.mjs's own
+     * header. The paper ledger's closed trades sat on absolute dates while the page counted them
+     * against a rolling "last 7 days" window. The window walked forward; the fixture did not. So:
+     *
+     *   nc-6's CI ran 2026-07-13 19:22Z → cutoff 07-06 19:22 → the 07-06T19:50 trade was IN  → 2 ✅
+     *   nc-final's   ran 2026-07-13 20:39Z → cutoff 07-06 20:39 → the same trade was OUT     → 1 ❌
+     *
+     * Nobody changed a line of code. The gate went red one evening because of the calendar, and it
+     * looked exactly like a regression. This class has now cost two exits (LESSONS: "absolute fixture
+     * under a relative rule"), so it stops being a lesson people are asked to remember and becomes a
+     * grep that fails the build.
+     *
+     * WHAT THIS RULE DOES NOT SAY: it does not say "never write a date". The seeded world IS a fixed
+     * morning and must be — a seed that drifted with the calendar would repaint every VRT baseline
+     * every night. What it says is that there is exactly ONE date per world, it has a NAME, and
+     * everything else is derived from it. A second, unnamed copy of the same instant is how the two
+     * silently drift apart, and drifting apart IS the failure. Before G3 there were two copies of the
+     * seeded evening (vrt.spec.ts and desk.spec.ts) and twenty-odd unanchored dates across the seed.
+     *
+     * Comments are exempt, like rule 1's hex: the prose has to be able to say which day it means, and
+     * a date in a comment has no fuse on it because nothing reads it. A trailing `// 2026-07-12` next
+     * to a derived expression is not just allowed, it is ENCOURAGED — it is what lets a human check
+     * the arithmetic against a calendar without running the code.
+     */
+    only: fuseFiles(),
+    skip: DATE_ANCHORS,
+    match: (line) => {
+      // A whole-line comment says nothing to the machine, so it can say anything to the reader.
+      if (/^\s*(\*|\/\/|\/\*)/.test(line)) return false;
+      // Drop a trailing line comment before looking. The lookbehind spares `https://…` from being
+      // mistaken for the start of one.
+      const code = line.replace(/(?<![:/])\/\/.*$/, "");
+      return /\b20\d\d-\d\d-\d\d/.test(code);
+    },
+  },
+  {
     id: 14,
     name: "PERF — internal links go through next/link, and nobody turns prefetch off",
     /*
@@ -377,7 +457,10 @@ const RULES = [
 let failures = 0;
 
 for (const rule of RULES) {
-  const scope = rule.only ?? FILES.filter((f) => !(rule.skip ?? []).includes(f));
+  // `only` narrows the search to a named set; `skip` then carves the argued exceptions out of it.
+  // They used to be either/or, which meant an `only` rule could not have an allowlist — and rule 21
+  // is exactly that shape: a named set of files, minus the two that are allowed to hold the anchor.
+  const scope = (rule.only ?? FILES).filter((f) => !(rule.skip ?? []).includes(f));
   const hits = [];
 
   for (const file of scope) {
