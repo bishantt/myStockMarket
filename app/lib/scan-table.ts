@@ -60,20 +60,28 @@ function commonColumns(): Column<ScanRow>[] {
  * `is_large_mid` and the rest of the 34-key snapshot stay server-side: they are pipeline internals,
  * not reader information, and a table that shows everything shows nothing.
  */
+/*
+ * EVERY SIGNED-PERCENT COLUMN NAMES ITS WINDOW, and the type will not let it do otherwise (PD6).
+ *
+ * The `window` is the SHORT form, because it renders on every row; the `header` keeps the long form,
+ * because it renders once. They are allowed to say the same thing twice — on a phone there is no
+ * header, and the window is the only thing left standing. `dist_52w_high` is the column that made
+ * the case: as a bare "▼ −12.4%" it reads as a bad day, and it is not one.
+ */
 const TRIGGERS: Record<string, Column<ScanRow>[]> = {
   "unusual-volume": [
-    { key: "ret_1", header: "1-day move", kind: "signedPercent", priority: 1, value: metric("ret_1") },
+    { key: "ret_1", header: "1-day move", kind: "signedPercent", window: "1D", priority: 1, value: metric("ret_1") },
     { key: "rvol20", header: "RVOL · 20d", kind: "multiple", priority: 1, value: metric("rvol20") },
     { key: "dollar_volume", header: "$ volume · 1D", kind: "compact", priority: 3, value: metric("dollar_volume") },
   ],
   "near-52w-high": [
-    { key: "dist_52w_high", header: "From 52w high", kind: "signedPercent", priority: 1, value: metric("dist_52w_high") },
-    { key: "ret_1", header: "1-day move", kind: "signedPercent", priority: 2, value: metric("ret_1") },
+    { key: "dist_52w_high", header: "From 52w high", kind: "signedPercent", window: "vs 52w high", priority: 1, value: metric("dist_52w_high") },
+    { key: "ret_1", header: "1-day move", kind: "signedPercent", window: "1D", priority: 2, value: metric("ret_1") },
     { key: "rvol20", header: "RVOL · 20d", kind: "multiple", priority: 3, value: metric("rvol20") },
   ],
   "gap-3plus": [
-    { key: "gap_pct", header: "Gap · open vs prior close", kind: "signedPercent", priority: 1, value: metric("gap_pct") },
-    { key: "ret_1", header: "1-day move", kind: "signedPercent", priority: 2, value: metric("ret_1") },
+    { key: "gap_pct", header: "Gap · open vs prior close", kind: "signedPercent", window: "vs prior close", priority: 1, value: metric("gap_pct") },
+    { key: "ret_1", header: "1-day move", kind: "signedPercent", window: "1D", priority: 2, value: metric("ret_1") },
     { key: "rvol20", header: "RVOL · 20d", kind: "multiple", priority: 3, value: metric("rvol20") },
   ],
   "golden-cross-fresh": [
@@ -82,12 +90,12 @@ const TRIGGERS: Record<string, Column<ScanRow>[]> = {
     // second implementation of it, free to disagree with the first.
     { key: "sma50", header: "50-day avg", kind: "price", priority: 1, value: metric("sma50") },
     { key: "sma200", header: "200-day avg", kind: "price", priority: 1, value: metric("sma200") },
-    { key: "ret_20", header: "20-day move", kind: "signedPercent", priority: 3, value: metric("ret_20") },
+    { key: "ret_20", header: "20-day move", kind: "signedPercent", window: "20D", priority: 3, value: metric("ret_20") },
   ],
   "rsi-extreme": [
     { key: "rsi14", header: "RSI · 14d", kind: "mono", priority: 1, value: metric("rsi14") },
     { key: "rsi14_prev", header: "RSI prior · 14d", kind: "mono", priority: 2, value: metric("rsi14_prev") },
-    { key: "ret_5", header: "5-day move", kind: "signedPercent", priority: 3, value: metric("ret_5") },
+    { key: "ret_5", header: "5-day move", kind: "signedPercent", window: "5D", priority: 3, value: metric("ret_5") },
   ],
 };
 

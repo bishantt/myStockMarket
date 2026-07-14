@@ -176,7 +176,7 @@ describe("probability and money visuals never move (P2)", () => {
 describe("the kit does not move the numbers it carries", () => {
   const columns: Column<{ symbol: string; ret: number }>[] = [
     { key: "symbol", header: "Symbol", kind: "mono", priority: 1, value: (r) => r.symbol },
-    { key: "ret", header: "1-day move", kind: "signedPercent", priority: 1, value: (r) => r.ret },
+    { key: "ret", header: "1-day move", kind: "signedPercent", window: "1D", priority: 1, value: (r) => r.ret },
   ];
   const rows = [{ symbol: "SMCI", ret: 0.184 }];
 

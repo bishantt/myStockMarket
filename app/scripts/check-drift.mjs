@@ -744,6 +744,44 @@ const RULES = [
       return /\bfont-(prose|serif)\b/.test(code) && /\bfont-(bold|semibold|black|extrabold)\b/.test(code);
     },
   },
+  {
+    id: 28,
+    name: "the direction wash has exactly TWO doors — DeltaChip and OutcomeChip (PD6 §8.2)",
+    /*
+     * THE RULE PD5 NEEDED AND DID NOT HAVE, AND THE ONE THAT WOULD HAVE CAUGHT ALL OF IT.
+     *
+     * PD5 built `components/DeltaChip.tsx` to be the app's ONE delta chip. It hunted the siblings by
+     * hand, found four, fixed them, and wrote down the law: *a duplicated component is not a bug, it
+     * is a bug's HABITAT*.
+     *
+     * THERE WERE SIX. `DataTable.tsx` held a private `function DeltaChip` that shadowed the kit
+     * component's own name, and `scans/page.tsx` held a sixth inline. Both were rendering on the
+     * front-facing rooms every night. Neither carried PD4's wrap contract. Neither carried a WINDOW,
+     * so on a phone — where a priority-1 cell is drawn with no column header beside it — the scan
+     * tables and the news room's affected-tickers table showed a bare "▼ −12.4%" for a column that
+     * meant "12.4% below the 52-week high". A hand grep found four of six and nothing failed.
+     *
+     * A HAND GREP IS NOT A GUARD. So here is the guard, and it is pointed at the one thing all six
+     * copies had in common and could not have avoided: **a direction-coloured BACKGROUND**. That wash
+     * is what makes a chip a chip. Any new hand-rolled delta or outcome chip must paint one, and the
+     * moment it does, the build fails and tells the author which door to use.
+     *
+     * IT MATCHES THE WASH, NOT THE TEXT, AND THAT IS DELIBERATE. `text-down-text` is legitimately
+     * used by every error message in the app (a failed login, a rejected watchlist symbol) — those
+     * are not chips and must not be dragged in here. A direction-coloured *fill* has exactly one
+     * meaning in this product: "this is a signed market fact". Two components own that meaning.
+     *
+     * The styleguide is the third door and it is not an exception — it RENDERS the two components as
+     * specimens, so it never names the wash itself.
+     */
+    skip: ["components/DeltaChip.tsx", "components/OutcomeChip.tsx"],
+    match: (line, file) => {
+      if (/^\s*(\*|\/\/|\/\*|<!--)/.test(line)) return false; // prose may name the token
+      if (!/^(components|app)\//.test(file)) return false;
+      const code = line.replace(/(?<![:/])\/\/.*$/, "");
+      return /\bbg-(up|down)-wash\b/.test(code);
+    },
+  },
 ];
 
 let failures = 0;

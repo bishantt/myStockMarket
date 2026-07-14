@@ -3,6 +3,7 @@ import { getForecastRecord } from "@/lib/forecasts";
 import { formatUtcDate } from "@/lib/time";
 import { decimal } from "@/lib/format";
 import { copy } from "@/lib/copy";
+import { Term, TermProse } from "@/components/Term";
 import { CalibrationScatter } from "@/components/desk/CalibrationScatter";
 import { TrackRecordTable } from "@/components/desk/TrackRecordTable";
 import { ForecastResolver } from "@/components/desk/ForecastResolver";
@@ -41,8 +42,7 @@ export default async function TrackRecordPage() {
         </div>
         <div className="h-px bg-hairline-strong" />
         <p className="max-w-[62ch] pt-3 font-prose text-base text-ink-2">
-          The app&rsquo;s own resolved signals, misses and all. A signal &ldquo;hit&rdquo; when the price was
-          higher ten trading days after it fired. Nothing here is a recommendation — it is the record.
+          <TermProse text="The app’s own resolved signals, misses and all. A signal “hit” when the price was higher ten trading days after it fired. Nothing here is a recommendation — it is the record." />
         </p>
       </header>
 
@@ -108,9 +108,12 @@ export default async function TrackRecordPage() {
       >
         <h2 className="font-ui text-sm font-bold uppercase tracking-[0.06em] text-ink">Your forecasts</h2>
         <div className="mt-2 h-px bg-hairline" />
+        {/* An explicit Term, not TermProse: this sentence interpolates copy, so it is not one plain
+         * string and the matcher has nothing to walk. The app's own copy names the concept, so the
+         * app names the doorway. */}
         <p className="max-w-[62ch] pt-3 font-prose text-base text-ink-2">
-          The forecasts you attach to journal entries, scored once they resolve. The same Brier score
-          the app uses on itself — {copy.brier.anchor}.
+          The forecasts you attach to journal entries, scored once they resolve. The same{" "}
+          <Term term="brier-score">Brier score</Term> the app uses on itself — {copy.brier.anchor}.
         </p>
 
         {forecasts.resolvedCount === 0 ? (

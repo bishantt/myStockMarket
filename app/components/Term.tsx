@@ -1,4 +1,4 @@
-import { cache } from "react";
+import { cache, Children } from "react";
 
 import { createGlossaryRegistry, lookupTerm } from "@/lib/glossary";
 import { splitTerms, TERMS_PER_PARAGRAPH } from "@/lib/prose";
@@ -73,28 +73,85 @@ export function Term({ term, children }: { term: string; children?: React.ReactN
  * THE SENTENCE IS NEVER EDITED. The runs concatenate back to the exact input string — the narrator's
  * words, its casing, its punctuation. Decorating a verified sentence is allowed; rewriting one is
  * not, and a renderer that dropped a run would be doing the second while looking like the first.
+ *
+ * ── `text` TAKES MARKUP NOW, AND ONLY DECORATES THE PLAIN PART OF IT (PD6) ───────────────────────
+ *
+ * The Academy's lessons are MDX, so a paragraph arrives as a TREE — strings interleaved with the
+ * author's own `<strong>`, `<a>` and `<code>` — not as one string. A string is simply the simplest
+ * case of that tree, so PD5's call sites pass one and are untouched.
+ *
+ * THE WALK IS DELIBERATELY ONE LEVEL DEEP, and that is a correctness rule, not laziness:
+ *
+ *   1. A `Term` renders a `GlossaryPopover`, which is a BUTTON. A button inside an anchor is invalid
+ *      HTML, and the browser's repair silently kills the outer link. That is exactly the hazard
+ *      TickerChip's door/label split exists for (drift rule 26) — and a lesson's prose is full of
+ *      author-written links. Never descending into an element makes the whole class of bug
+ *      unreachable, rather than guarded against.
+ *   2. THE AUTHOR'S MARKUP WINS. A word the lesson writer already bolded or already linked has
+ *      already been given emphasis by a human who knew what the sentence was for. Adding a second,
+ *      automatic treatment on top of a deliberate one is the machine talking over the writer.
+ *
+ * So: plain prose gets doorways; marked-up prose keeps the mark it was given.
  */
 export function TermProse({
   text,
   budget = TERMS_PER_PARAGRAPH,
+  exclude,
 }: {
-  text: string;
+  /** A sentence, or a paragraph's worth of MDX nodes. Only its plain-string parts are decorated. */
+  text: React.ReactNode;
   /** The per-paragraph ceiling. A ceiling, never a quota — see lib/prose.ts. */
   budget?: number;
+  /** Glossary keys this paragraph may not open — the Academy's self-lesson rule. See lib/prose.ts. */
+  exclude?: ReadonlySet<string>;
 }) {
-  const runs = splitTerms(text, budget);
+  return <>{decorate(Children.toArray(text), budget, exclude)}</>;
+}
 
-  return (
-    <>
-      {runs.map((run, index) =>
+/**
+ * Walk a paragraph's nodes in order, spending ONE budget across all of them.
+ *
+ * The budget is per PARAGRAPH, not per string leaf. A paragraph broken in half by an author's
+ * `<strong>` is still one paragraph to the reader, and giving each half its own budget of two would
+ * quietly double the underlines in exactly the paragraphs that are already the busiest.
+ *
+ * Written as a plain loop that accumulates into a local array, rather than a `Children.map` closing
+ * over a counter: React's compiler rejects the latter (a callback that reassigns an outer variable
+ * may run after the render that created it), and it is right to. Nothing here escapes this call.
+ */
+function decorate(
+  nodes: readonly React.ReactNode[],
+  budget: number,
+  exclude: ReadonlySet<string> | undefined,
+): React.ReactNode[] {
+  const out: React.ReactNode[] = [];
+  let remaining = budget;
+
+  for (const [nodeIndex, node] of nodes.entries()) {
+    // An element: the author's own mark — a link, a bold, a code span. It stands untouched, and we
+    // never descend into it. See the header: a doorway is a BUTTON, and a button inside an anchor is
+    // invalid HTML the browser silently repairs by killing the link.
+    if (typeof node !== "string" || remaining <= 0) {
+      out.push(node);
+      continue;
+    }
+
+    const runs = splitTerms(node, remaining, exclude);
+    remaining -= runs.filter((run) => run.kind === "term").length;
+
+    for (const [index, run] of runs.entries()) {
+      const key = `${nodeIndex}-${index}`;
+      out.push(
         run.kind === "term" ? (
-          <Term key={index} term={run.key}>
+          <Term key={key} term={run.key}>
             {run.text}
           </Term>
         ) : (
-          <span key={index}>{run.text}</span>
+          <span key={key}>{run.text}</span>
         ),
-      )}
-    </>
-  );
+      );
+    }
+  }
+
+  return out;
 }

@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
@@ -70,6 +71,83 @@ describe("TermProse — narrated prose, decorated automatically", () => {
     render(<TermProse text="RVOL was high, and RVOL stayed high all session." />);
 
     expect(screen.getAllByRole("button", { name: "RVOL" })).toHaveLength(1);
+  });
+
+  /**
+   * ── TermProse OVER MARKUP (PD6) ─────────────────────────────────────────────────────────────────
+   *
+   * The Academy's lessons are MDX, so a paragraph arrives as a TREE of strings and author elements,
+   * not as one string. The walk is one level deep, and the first test below is the reason why: a
+   * `Term` renders a popover BUTTON, and a button inside an anchor is invalid HTML whose browser
+   * repair silently kills the outer link. Never descending makes that bug unreachable rather than
+   * guarded — the same reasoning as TickerChip's door/label split (drift rule 26).
+   */
+  describe("over markup", () => {
+    it("NEVER decorates inside the author's own link — a button in an anchor is invalid HTML", () => {
+      render(
+        <p>
+          <TermProse
+            text={[
+              "Read about ",
+              // A real lesson link, exactly as an MDX author writes one — the `a` in mdxComponents
+              // maps to this. It is the hazard the walk exists to avoid.
+              <Link key="a" href="/academy/volume-and-rvol">
+                relative volume
+              </Link>,
+              " when you get a chance.",
+            ]}
+          />
+        </p>,
+      );
+
+      // The anchor survives, and there is no doorway button anywhere inside it.
+      const link = screen.getByRole("link", { name: "relative volume" });
+      expect(link.querySelector("button")).toBeNull();
+      expect(screen.queryByRole("button")).toBeNull();
+    });
+
+    it("decorates the plain prose AROUND the author's markup, and leaves the markup alone", () => {
+      render(
+        <p>
+          <TermProse
+            text={["A ", <strong key="s">gap</strong>, " happens when relative volume spikes."]}
+          />
+        </p>,
+      );
+
+      // The author's <strong>gap</strong> keeps its own emphasis, untouched. The plain tail gets the
+      // doorway — the machine decorates what the writer left plain, and never talks over them.
+      expect(screen.getByText("gap").tagName).toBe("STRONG");
+      expect(screen.getByRole("button", { name: "relative volume" })).toBeInTheDocument();
+    });
+
+    it("spends ONE budget across the whole paragraph, not one per string leaf", () => {
+      // A paragraph broken in half by an author's <strong> is still one paragraph to the reader.
+      // Giving each half its own budget of two would silently double the underlines in exactly the
+      // paragraphs that are already the busiest.
+      render(
+        <p>
+          <TermProse
+            text={[
+              "A gap and a base rate, ",
+              <strong key="s">then</strong>,
+              " relative volume and slippage.",
+            ]}
+          />
+        </p>,
+      );
+
+      expect(screen.getAllByRole("button")).toHaveLength(2);
+    });
+
+    it("renders a plain string exactly as PD5 did — a string is the simplest tree", () => {
+      render(
+        <p>
+          <TermProse text="A gap is a jump." />
+        </p>,
+      );
+      expect(screen.getByRole("button", { name: "gap" })).toBeInTheDocument();
+    });
   });
 
   /**

@@ -5,8 +5,9 @@ import { useActionState, useMemo } from "react";
 import { closePaperTrade, type PaperResult } from "@/app/(desk)/paper/paper-actions";
 import { DataTable } from "@/components/DataTable";
 import { Disclosure } from "@/components/Disclosure";
+import { OutcomeChip } from "@/components/OutcomeChip";
+import { TickerChip } from "@/components/TickerChip";
 import { copy } from "@/lib/copy";
-import { cx } from "@/lib/cx";
 import { decimal, price } from "@/lib/format";
 import { realizedPnl, type PaperTradeRow } from "@/lib/ledger";
 import type { Column } from "@/lib/table";
@@ -40,7 +41,17 @@ export function PaperLedger({ open, closed }: { open: PaperTradeRow[]; closed: P
   /** Open trades: what you hold, what it cost you to get there, and a way out. */
   const openColumns: Column<LedgerRow>[] = useMemo(
     () => [
-      { key: "symbol", header: "Symbol", kind: "mono", priority: 1, value: (t) => t.symbol },
+      {
+        key: "symbol",
+        header: "Symbol",
+        kind: "mono",
+        priority: 1,
+        value: (t) => t.symbol,
+        // A DOOR. The ledger's rows are inert — no rail here — and the close form lives in a SIBLING
+        // cell, so the anchor is not nested inside anything interactive. Valid, and useful: from a
+        // position you hold, straight to the name's page.
+        render: (t) => <TickerChip symbol={t.symbol} door />,
+      },
       { key: "side", header: "Side", kind: "text", priority: 2, value: (t) => t.side },
       { key: "quantity", header: "Qty", kind: "int", priority: 2, value: (t) => t.quantity },
       { key: "fillPrice", header: "Fill", kind: "price", priority: 1, value: (t) => t.fillPrice },
@@ -70,14 +81,21 @@ export function PaperLedger({ open, closed }: { open: PaperTradeRow[]; closed: P
   /** Closed trades: the record, gains and losses at the same weight. */
   const closedColumns: Column<LedgerRow>[] = useMemo(
     () => [
-      { key: "symbol", header: "Symbol", kind: "mono", priority: 1, value: (t) => t.symbol },
+      {
+        key: "symbol",
+        header: "Symbol",
+        kind: "mono",
+        priority: 1,
+        value: (t) => t.symbol,
+        render: (t) => <TickerChip symbol={t.symbol} door />,
+      },
       {
         key: "pnl",
         header: "Realized",
         kind: "text",
         priority: 1,
         value: (t) => t.pnl,
-        render: (t) => <OutcomeChip pnl={t.pnl ?? 0} />,
+        render: (t) => <RealizedChip pnl={t.pnl ?? 0} />,
       },
       { key: "side", header: "Side", kind: "text", priority: 2, value: (t) => t.side },
       { key: "quantity", header: "Qty", kind: "int", priority: 2, value: (t) => t.quantity },
@@ -151,27 +169,24 @@ export function PaperLedger({ open, closed }: { open: PaperTradeRow[]; closed: P
 }
 
 /**
- * The realized-P&L chip. The WORD is the primary channel; the colour is the redundant one (P7).
+ * The realized-P&L chip: a figure and the verdict on it, through the app's ONE outcome chip.
  *
- * `data-p2`: this is money, so nothing may animate it — and because the DataTable is P2-bearing by
- * construction, nothing in that file animates anything.
+ * This file used to hold its own copy of that chip. So did the track record, and so did the pipeline
+ * panel — three copies, three comments each promising that a gain and a loss render at the same
+ * weight, and a drift between them that nothing caught. See components/OutcomeChip.tsx (PD6).
+ *
+ * All that is left here is the ROOM'S vocabulary: this room calls it a gain or a loss. The chip does
+ * not need to know it is standing in the paper room, and the paper room does not need to know how a
+ * chip is built. The `data-p2` mark comes free with the figure — money does not move.
  */
-function OutcomeChip({ pnl }: { pnl: number }) {
+function RealizedChip({ pnl }: { pnl: number }) {
   const gain = pnl >= 0;
   return (
-    <span
-      data-p2="true"
-      className={cx(
-        "inline-flex items-center gap-1.5 rounded-pill px-2 py-0.5 font-mono text-2xs tabular-nums",
-        gain ? "bg-up-wash text-up-text" : "bg-down-wash text-down-text",
-      )}
-    >
-      <span>
-        {gain ? "+" : "−"}
-        {price(Math.abs(pnl))}
-      </span>
-      <span className="uppercase tracking-[0.08em]">{gain ? "gain" : "loss"}</span>
-    </span>
+    <OutcomeChip
+      tone={gain ? "positive" : "negative"}
+      label={gain ? "gain" : "loss"}
+      figure={`${gain ? "+" : "−"}${price(Math.abs(pnl))}`}
+    />
   );
 }
 

@@ -57,4 +57,35 @@ describe("TickerChip — one symbol, one treatment (§8.2.1)", () => {
 
     expect(container.querySelector("[data-p2]")).toBeNull();
   });
+
+  /**
+   * ── THE TOUCH TARGET (PD6) ──────────────────────────────────────────────────────────────────────
+   *
+   * A door is a CONTROL, and every control in this app is at least 44px on touch. The chip shipped at
+   * 34×21px, and the phone sweep — which exists precisely to catch this — had been passing it for a
+   * whole phase, because the ONE story page it visits has zero affected tickers in the seeded world,
+   * so it never rendered a door to measure.
+   *
+   * jsdom computes no layout, so this test cannot measure 44 pixels. It asserts the CLASS that
+   * produces them, on the anchor, which is the thing that was missing — and it lives here, next to
+   * the component, rather than depending on a browser sweep reaching a page where a door happens to
+   * be rendered. A guard that only fires when a fixture cooperates is not a guard.
+   */
+  it("gives the DOOR a 44px hit area, while the chip you SEE stays small", () => {
+    render(<TickerChip symbol="AAPL" door />);
+
+    const link = screen.getByRole("link", { name: /AAPL/ });
+    expect(link.className).toContain("min-h-11");
+
+    // And the visual chip is a separate, inner box — it must NOT have grown to 44px, or every table
+    // cell in the app would be holding a pill twice the height of its own text.
+    const chip = link.firstElementChild!;
+    expect(chip.className).toContain("rounded-chip");
+    expect(chip.className).not.toContain("min-h-11");
+  });
+
+  it("gives the LABEL no hit area at all — it is not a control, and must not pretend to be one", () => {
+    const { container } = render(<TickerChip symbol="AAPL" />);
+    expect(container.querySelector(".min-h-11")).toBeNull();
+  });
 });

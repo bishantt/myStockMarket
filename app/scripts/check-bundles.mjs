@@ -140,7 +140,26 @@ const BASELINE_KB = {
    * chunk the rendered page turns out not to need). Comfortably under the 200KB ceiling.
    */
   "/scans/[preset]": 153.6,
-  "/settings": 181.7,
+  /*
+   * REBASELINED DOWN AT PD6: 181.7 → 154.7, AND A BASELINE THAT IS TOO HIGH IS A HOLE IN THE GUARD.
+   *
+   * This one was found by accident. PD6 touched /settings, saw it report 154.7 KB against a baseline
+   * of 181.7, and went looking for the 27 KB it thought it had saved. It had not saved anything: a
+   * rebuild of the tagged `pd-5` tree measures /settings at 153.5 KB. The route has been ~28 KB
+   * lighter than its baseline for some time, and nobody noticed, because a guard that only fires on
+   * GROWTH is silent about a number that is too generous.
+   *
+   * The consequence is worth stating plainly, because it is the mirror image of the failure mode this
+   * file was already written to fear. The comment above worries that re-baselining upward after every
+   * honest growth ends at 260 KB with nothing ever failing. The same hole opens from the other side:
+   * a stale HIGH baseline means /settings could have grown 28 KB — the whole richness kit, twice —
+   * and the drift check would have reported a cheerful ✓. **A guard with 28 KB of invisible slack in
+   * it is not measuring the room; it is measuring a room that used to exist.**
+   *
+   * So it comes down to what the room actually weighs. The ceiling (200 KB) is unaffected and remains
+   * the real budget; this restores the DRIFT half of the gate, which had quietly stopped working.
+   */
+  "/settings": 154.7,
   // Rebaselined at F2: 163.0 → 173.3. The styleguide is the LIVING SPEC — its job is to render one
   // of everything, so it necessarily grows whenever the design system does, and section 9 added the
   // whole kit (the table, the disclosure, the form controls) to it. It is not a product room; no
@@ -149,7 +168,25 @@ const BASELINE_KB = {
   // Rebaselined at N5: 180.7 → 187.9 — the four news-image rungs joined the living spec.
   "/styleguide": 187.9,
   "/ticker/[symbol]": 148.5,
-  "/track-record": 185.1,
+  /*
+   * Rebaselined at PD6: 185.1 → 192.7 (+7.2 KB), and the number is worth the paragraph.
+   *
+   * The richness kit landed in this room. `TrackRecordTable` is a client component, so giving its
+   * symbol column a `TickerChip` pulled the chip — and `DeltaChip` behind it — across the client
+   * boundary for the first time; wrapping the room's prose in `TermProse` pulled in the glossary
+   * popover island. Measured A/B against a rebuild of `pd-5`: 185.5 → 192.7 KB, and afterwards
+   * /track-record and /paper request an IDENTICAL chunk set apart from their own page chunk. It
+   * gained three shared chunks the neighbouring rooms were already carrying. That is the whole story;
+   * there is no mystery left in it.
+   *
+   * Rebaselined rather than left to ride the slack, deliberately. At 192.7 against a baseline of
+   * 185.1 the route had 2.4 KB of headroom left, which would have redded the next phase's build for
+   * an innocent edit and taught whoever hit it that the guard cries wolf. A slack allowance is for
+   * absorbing noise, not for hiding a change somebody chose to make. The change is named here
+   * instead, which is what a baseline is FOR — and the 200 KB ceiling, 7.3 KB above this, is still
+   * the budget that actually binds.
+   */
+  "/track-record": 192.7,
 };
 
 /**

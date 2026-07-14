@@ -5,6 +5,8 @@ import { compileMDX } from "next-mdx-remote/rsc";
 import { getLessonManifest, getLessonMeta, getLessonSource } from "@/lib/academy";
 import { isLessonSoftGated, M3_SLUGS } from "@/lib/academy-progress";
 import { db } from "@/lib/db";
+import { GLOSSARY } from "@/lib/glossary";
+import { TermProse } from "@/components/Term";
 import { LessonReadBeacon } from "@/components/academy/LessonReadBeacon";
 
 /**
@@ -59,12 +61,48 @@ async function completedLessons(): Promise<string[]> {
  * you read it. Section headings are serif, not terminal mastheads — a reading room does not number
  * its furniture.
  */
-const mdxComponents = {
+/**
+ * The glossary entries this lesson IS. They get no doorway in their own lesson (PD6).
+ *
+ * The glossary already knows which lesson explains each term (`entry.lesson`), so nobody maintains a
+ * second list — the exclusion is derived from the link that already exists. A reader on "Volume and
+ * RVOL" does not need a dotted underline under "relative volume" offering to explain relative volume;
+ * that is the page. Every OTHER term still opens, which is the actual value: a risk lesson that
+ * mentions "base rate" in passing hands the beginner the definition without sending them away.
+ */
+function selfExplainedBy(slug: string): ReadonlySet<string> {
+  return new Set(
+    Object.entries(GLOSSARY)
+      .filter(([, entry]) => entry.lesson === slug)
+      .map(([key]) => key),
+  );
+}
+
+function mdxComponentsFor(slug: string) {
+  const exclude = selfExplainedBy(slug);
+
+  return {
   h2: (props: React.HTMLAttributes<HTMLHeadingElement>) => (
     <h2 className="max-w-[65ch] pt-10 font-display text-title font-bold text-ink" {...props} />
   ),
-  p: (props: React.HTMLAttributes<HTMLParagraphElement>) => (
-    <p className="max-w-[65ch] pt-4 font-prose text-prose leading-[1.7] text-ink-2" {...props} />
+  /*
+   * THE LESSON'S PROSE IS WHERE A BEGINNER MEETS THE VOCABULARY, so it is where the doorways go —
+   * and it is also the room with the least tolerance for noise, because a reading room is for
+   * reading. The restraint is not a judgement call; it is three rules composing:
+   *
+   *   · at most TWO doorways per paragraph (lib/prose.ts), and
+   *   · each term opens exactly ONCE per view (the React `cache` registry) — so across a whole
+   *     lesson a term is underlined once, in the first paragraph that happens to use it, and reads
+   *     as plain words every time after, and
+   *   · a lesson never opens a doorway onto ITSELF (`exclude`, above).
+   *
+   * A long lesson therefore carries a handful of underlines, not a forest, and nothing here needed a
+   * number to be tuned by eye.
+   */
+  p: ({ children, ...props }: React.HTMLAttributes<HTMLParagraphElement>) => (
+    <p className="max-w-[65ch] pt-4 font-prose text-prose leading-[1.7] text-ink-2" {...props}>
+      <TermProse text={children} exclude={exclude} />
+    </p>
   ),
   ul: (props: React.HTMLAttributes<HTMLUListElement>) => (
     <ul className="max-w-[65ch] list-disc pt-3 pl-5 font-prose text-prose leading-[1.7] text-ink-2 marker:text-muted" {...props} />
@@ -80,7 +118,8 @@ const mdxComponents = {
   blockquote: (props: React.HTMLAttributes<HTMLQuoteElement>) => (
     <blockquote className="max-w-[65ch] border-l-2 border-hairline pl-4 pt-4 font-prose text-prose italic text-ink" {...props} />
   ),
-};
+  };
+}
 
 export default async function LessonPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
@@ -95,7 +134,7 @@ export default async function LessonPage({ params }: { params: Promise<{ slug: s
   const { content } = await compileMDX({
     source,
     options: { parseFrontmatter: true },
-    components: mdxComponents,
+    components: mdxComponentsFor(slug),
   });
 
   return (
@@ -149,15 +188,30 @@ export default async function LessonPage({ params }: { params: Promise<{ slug: s
           <dl className="pt-3">
             {meta.questions.map((question, index) => (
               <div key={index} className="max-w-[65ch] pt-4">
-                <dt className="font-prose text-prose text-ink">{question.q}</dt>
-                <dd className="pt-1.5 font-prose text-base text-ink-2">{question.a}</dd>
+                {/* Frontmatter, so these are plain strings — no markup to walk around. */}
+                <dt className="font-prose text-prose text-ink">
+                  <TermProse text={question.q} exclude={selfExplainedBy(slug)} />
+                </dt>
+                <dd className="pt-1.5 font-prose text-base text-ink-2">
+                  <TermProse text={question.a} exclude={selfExplainedBy(slug)} />
+                </dd>
               </div>
             ))}
           </dl>
         </section>
       ) : null}
 
-      <Link href="/academy" className="pt-10 font-ui text-xs uppercase tracking-[0.06em] text-ink-2 hover:text-accent">
+      {/* AND THE SAME 44px TOUCH BOX AS ITS TWIN AT THE TOP OF THIS FILE (PD6).
+       *
+       * PD3 found the missing touch target on the return rail above and fixed it — HERE, on the same
+       * link, in the same file, forty lines down, it was still 17px tall. The sweep measures a room's
+       * controls and this one had simply never been reported, because the fix was applied where the
+       * bug was FOUND rather than everywhere the bug LIVED. Same law as the six delta chips: when you
+       * fix something, grep for its siblings. This one was in the same file. */}
+      <Link
+        href="/academy"
+        className="mt-10 flex min-h-11 w-fit items-center font-ui text-xs uppercase tracking-[0.06em] text-ink-2 hover:text-accent"
+      >
         ← All lessons
       </Link>
 

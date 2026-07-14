@@ -2,6 +2,8 @@
 
 import { useActionState } from "react";
 
+import { Tag } from "@/components/Tag";
+import { TickerChip } from "@/components/TickerChip";
 import { cx } from "@/lib/cx";
 import { FOCUS_CAP } from "@/lib/watchlist";
 import { removeWatchlistItem, toggleFocus, type ActionResult } from "./actions";
@@ -51,12 +53,17 @@ function WatchlistManagerRow({ item }: { item: ManagedItem }) {
   return (
     <li className="flex flex-col gap-1 border-b border-hairline py-3 last:border-b-0">
       <div className="flex items-center gap-4">
+        {/*
+         * THE SYMBOL WAS SET IN THE UI SANS, BOLD (PD6). Every other symbol in this app is mono —
+         * that is the type system's oldest rule, and this room was the one place that broke it, so
+         * the watchlist's own symbols did not look like the symbols on the Desk that render FROM
+         * this watchlist. A door now, too: the row's controls are in sibling <form>s, so the anchor
+         * nests inside nothing interactive.
+         */}
         <div className="w-24 shrink-0">
-          <div className="flex items-baseline gap-1.5">
-            <span className="font-ui text-sm font-semibold text-ink">{item.symbol}</span>
-            {item.isFocus ? (
-              <span className="font-ui text-2xs uppercase tracking-[0.06em] text-muted">focus</span>
-            ) : null}
+          <div className="flex flex-wrap items-center gap-1.5">
+            <TickerChip symbol={item.symbol} door />
+            {item.isFocus ? <Tag variant="catalyst">focus</Tag> : null}
           </div>
           <span className="font-ui text-2xs text-muted">{item.name}</span>
         </div>

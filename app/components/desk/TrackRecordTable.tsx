@@ -3,6 +3,8 @@
 import { useMemo, useState } from "react";
 
 import { DataTable } from "@/components/DataTable";
+import { OutcomeChip, type OutcomeTone } from "@/components/OutcomeChip";
+import { TickerChip } from "@/components/TickerChip";
 import { cx } from "@/lib/cx";
 import type { Column } from "@/lib/table";
 
@@ -57,14 +59,23 @@ export function TrackRecordTable({ rows }: { rows: ResolvedRow[] }) {
 
   const columns: Column<ResolvedRow>[] = useMemo(
     () => [
-      { key: "symbol", header: "Symbol", kind: "mono", priority: 1, value: (r) => r.symbol },
+      {
+        key: "symbol",
+        header: "Symbol",
+        kind: "mono",
+        priority: 1,
+        value: (r) => r.symbol,
+        // A DOOR: this table's rows are inert (no rail, no payload), so the symbol is free to be the
+        // link it wants to be. From a resolved signal straight to the name it fired on.
+        render: (r) => <TickerChip symbol={r.symbol} door />,
+      },
       {
         key: "outcome",
         header: "Outcome",
         kind: "text",
         priority: 1, // line 1 on a phone: the outcome is never below the fold of its own row
         value: (r) => r.outcome,
-        render: (r) => <OutcomeChip outcome={r.outcome} />,
+        render: (r) => <OutcomeChip tone={TONE_OF[r.outcome] ?? "neutral"} label={r.outcome} />,
       },
       { key: "patternLabel", header: "Pattern", kind: "text", priority: 2, value: (r) => r.patternLabel },
       { key: "horizonDays", header: "Horizon (trading days)", kind: "int", priority: 2, value: (r) => r.horizonDays },
@@ -109,22 +120,19 @@ export function TrackRecordTable({ rows }: { rows: ResolvedRow[] }) {
 }
 
 /**
- * The outcome chip. The WORD is the primary channel and the colour is the redundant one (P7): a hit
- * and a miss render at the same size and the same weight, and only the hue differs.
+ * A resolved outcome's TONE — and nothing else. The chip itself lives in components/OutcomeChip.tsx.
+ *
+ * This file used to hold its own copy of that chip, with a comment promising that a hit and a miss
+ * render at the same size and weight. Two other files held the same copy and made the same promise,
+ * and the three had already drifted (this one painted its neutral case on `bg-band`, a solid
+ * mid-purple that its own dark text could not clear). The promise is structural now: one component,
+ * one token swapped, and a test that strips the colours off a hit and a miss and asserts nothing
+ * else about them differs. See PD6 in OutcomeChip.tsx.
+ *
+ * Anything not named here is NEUTRAL, and that is the honest default: an "unresolvable" signal is
+ * one the market never answered, not one we got wrong.
  */
-function OutcomeChip({ outcome }: { outcome: string }) {
-  const styles: Record<string, string> = {
-    hit: "bg-up-wash text-up-text",
-    miss: "bg-down-wash text-down-text",
-  };
-  return (
-    <span
-      className={cx(
-        "inline-flex items-center rounded-pill px-2 py-0.5 font-mono text-2xs uppercase tracking-[0.08em]",
-        styles[outcome] ?? "bg-band text-ink-2",
-      )}
-    >
-      {outcome}
-    </span>
-  );
-}
+const TONE_OF: Record<string, OutcomeTone> = {
+  hit: "positive",
+  miss: "negative",
+};

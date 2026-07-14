@@ -89,13 +89,46 @@ const SHELL =
 const SYMBOL = "whitespace-nowrap font-medium text-ink";
 
 /**
- * The door's hover and focus, and every one of these is a colour or an outline — never a motion.
- * `group-hover` recolours the SYMBOL only, so the delta beside it keeps its semantic colour and the
- * figure stays exactly as still as P2 demands.
+ * THE DOOR'S BOX IS THE TOUCH TARGET, AND IT IS 44px (PD6). THE CHIP YOU SEE IS STILL 21px.
+ *
+ * ── THE BUG, AND IT WAS ALREADY IN PRODUCTION WHEN PD6 FOUND IT ──────────────────────────────────
+ *
+ * A `door` is a CONTROL. Every control in this app is at least 44px on touch — it is in the
+ * constitution, the phone sweep enforces it, and a 21px link is a link a thumb cannot reliably hit.
+ *
+ * The chip shipped at **34×21px**. PD6 put doors on the paper ledger, the track record and the
+ * watchlist, and the sweep failed all three instantly — which is the guard working. But the same
+ * 21px door had ALREADY been live on the news story page's affected-tickers table since PD5, and the
+ * sweep had passed it every single night.
+ *
+ * IT PASSED BECAUSE IT NEVER LOOKED. The touch sweep visits ONE story, `nc-fed-hold`, and that
+ * cluster has **zero** catalyst links in the seeded world — so the affected table renders no rows,
+ * so there were no chips to measure, so the room reported clean. The rule was being kept by the
+ * shape of a fixture. That is the same law this phase keeps meeting: **a guard only guards what it
+ * is pointed at.**
+ *
+ * ── THE FIX, AND WHY IT IS NOT `min-h-11` ON THE CHIP ────────────────────────────────────────────
+ *
+ * Making the CHIP 44px tall would put a 44px pill in every table cell and destroy the density that
+ * makes a table readable. So the anchor and the chip become two different boxes: the `<Link>` is an
+ * invisible 44px-tall hit area, and the visual chip sits inside it, unchanged at 21px. The reader
+ * sees the same chip; the thumb gets a target it can actually land on.
+ *
+ * This costs nothing in a table — a `<td>` is already ~45px tall with its padding, so the row does
+ * not grow. That is exactly why the door belongs in tables and NOT on the scans index's three-row
+ * teaser, whose rows are shorter than the target and would have to grow to hold one.
  */
-const DOOR =
-  "group cursor-pointer hover:border-accent hover:bg-accent-muted " +
-  "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent";
+const DOOR_HIT_AREA =
+  "group inline-flex min-h-11 max-w-full items-center align-middle " +
+  "focus-visible:rounded-chip focus-visible:outline-2 focus-visible:outline-offset-2 " +
+  "focus-visible:outline-accent";
+
+/**
+ * The door's hover, and every one of these is a colour — never a motion. It lives on the visual chip
+ * (the hit area is invisible and must stay that way), driven by `group-hover` from the anchor, so
+ * hovering anywhere in the 44px box lights the chip the reader can actually see.
+ */
+const DOOR_VISUAL = "cursor-pointer group-hover:border-accent group-hover:bg-accent-muted";
 
 const DOOR_SYMBOL = "group-hover:text-accent-deep group-focus-visible:text-accent-deep";
 
@@ -122,8 +155,8 @@ export function TickerChip({ symbol, door = false, move }: TickerChipProps) {
   }
 
   return (
-    <Link href={`/ticker/${encodeURIComponent(symbol)}`} className={cx(SHELL, DOOR)}>
-      {body}
+    <Link href={`/ticker/${encodeURIComponent(symbol)}`} className={DOOR_HIT_AREA}>
+      <span className={cx(SHELL, DOOR_VISUAL)}>{body}</span>
     </Link>
   );
 }

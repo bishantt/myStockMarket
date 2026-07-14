@@ -2,11 +2,12 @@
 
 import { useMemo, useState } from "react";
 
+import { DeltaChip } from "@/components/DeltaChip";
 import { Tag } from "@/components/Tag";
 import { useRail, type RailPayload } from "@/components/rail/Rail";
 import { copy, fill } from "@/lib/copy";
 import { cx } from "@/lib/cx";
-import { compactMoney, decimal, multiple, percent, price, signedPercent } from "@/lib/format";
+import { compactMoney, decimal, directionOf, multiple, percent, price, signedPercent } from "@/lib/format";
 import { DEFAULT_PER_PAGE, paginate, sortRows, type Column, type SortDirection } from "@/lib/table";
 
 /**
@@ -81,29 +82,48 @@ function formatCell(value: string | number | null, kind: Column<never>["kind"]):
   return value;
 }
 
-/** The delta chip: the movers' visual grammar (word + triangle + sign), never their hover motion. */
-function DeltaChip({ value }: { value: number }) {
-  const up = value >= 0;
-  return (
-    <span
-      data-p2="true"
-      className={cx(
-        "inline-flex items-center gap-1 rounded-pill px-1.5 py-0.5 font-mono text-2xs",
-        up ? "bg-up-wash text-up-text" : "bg-down-wash text-down-text",
-      )}
-    >
-      <span aria-hidden="true">{up ? "▲" : "▼"}</span>
-      {signedPercent(value)}
-    </span>
-  );
-}
-
+/**
+ * One cell.
+ *
+ * THE TABLE USED TO KEEP ITS OWN PRIVATE DELTA CHIP RIGHT HERE, and that is the whole story of PD6.
+ *
+ * PD5 built `components/DeltaChip.tsx` to be the app's ONE delta chip, hunted down its siblings, and
+ * found four (StatFigure, Movers, Watchlist, NewsCard). There were SIX. This file held the fifth —
+ * a `function DeltaChip` that shadowed the kit component's very name — and the scans index held the
+ * sixth, inline. Neither carried PD4's wrap contract. Neither carried a window. Both went on being
+ * wrong, in production, while every guard stayed green, because the sweep grepped for the copies it
+ * already knew about.
+ *
+ * That is the sibling law arriving for the third time, and it is why the window is now enforced by
+ * the TYPE (lib/table.ts) rather than by anybody remembering: `kind: "signedPercent"` does not
+ * compile without one.
+ *
+ * `directionOf` replaces the old `value >= 0`, and that is a second honesty fix riding along: the
+ * old test painted a +0.00000% change as a green ▲. `directionOf` has a flat band, so a change that
+ * rounds to nothing renders flat — ink, no wash, no triangle. A triangle on an unchanged price is an
+ * invented direction.
+ */
 function Cell<Row>({ column, row }: { column: Column<Row>; row: Row }) {
   const value = column.value(row);
 
   // A custom renderer wins — but only over the DISPLAY. The sort still reads column.value.
   if (column.render) return <>{column.render(row)}</>;
-  if (column.kind === "signedPercent" && typeof value === "number") return <DeltaChip value={value} />;
+
+  if (column.kind === "signedPercent" && typeof value === "number") {
+    // The kit chip is a `flex` box, so it does not inherit the `<td>`'s `text-right`. It gets a flex
+    // parent that pushes it to the correct edge instead — the cell's alignment is the cell's job.
+    return (
+      <span className={cx("flex", alignmentOf(column) === "right" && "justify-end")}>
+        <DeltaChip
+          value={signedPercent(value)}
+          direction={directionOf(value)}
+          window={column.window}
+          scale="xs"
+        />
+      </span>
+    );
+  }
+
   if (column.kind === "chip" && value !== null) return <Tag variant="catalyst">{String(value)}</Tag>;
 
   const numeric = column.kind !== "text";
@@ -112,6 +132,18 @@ function Cell<Row>({ column, row }: { column: Column<Row>; row: Row }) {
       {formatCell(value, column.kind)}
     </span>
   );
+}
+
+/**
+ * Which edge a column hangs off. Numbers right, words left — the reason a column of figures is
+ * readable at all is that their decimal points line up.
+ *
+ * It was computed inline in two places (the `<th>` and the `<td>`) and is now computed in one, so a
+ * header and its cells cannot drift onto opposite edges.
+ */
+function alignmentOf<Row>(column: Column<Row>): "left" | "right" {
+  if (column.align) return column.align;
+  return column.kind !== "text" && column.kind !== "mono" ? "right" : "left";
 }
 
 export function DataTable<Row>({
@@ -237,7 +269,7 @@ export function DataTable<Row>({
               {columns.map((column) => {
                 const active = column.key === sortKey;
                 const canSort = sortable && column.sortable !== false;
-                const alignRight = column.align === "right" || (column.kind !== "text" && column.kind !== "mono");
+                const alignRight = alignmentOf(column) === "right";
 
                 return (
                   <th
@@ -295,7 +327,7 @@ export function DataTable<Row>({
                   )}
                 >
                   {columns.map((column) => {
-                    const alignRight = column.align === "right" || (column.kind !== "text" && column.kind !== "mono");
+                    const alignRight = alignmentOf(column) === "right";
                     return (
                       <td
                         key={column.key}

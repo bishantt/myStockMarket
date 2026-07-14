@@ -34,7 +34,12 @@ export function ForecastResolver({ id }: { id: string }) {
       >
         Did not
       </button>
-      {state.ok === false && state.error ? <span className="font-ui text-2xs text-down">{state.error}</span> : null}
+      {/* `text-down-text`, not `text-down` (PD6). The bare `down` token is the CHART's red — it is
+       * tuned to be read as a fill or a stroke, not as type, and this error string is text-2xs, the
+       * smallest size in the app. Every other error message in the app already used the darkened
+       * `-text` variant; this was the one that did not, and at this size it is exactly the case the
+       * `-text` variants exist for. */}
+      {state.ok === false && state.error ? <span className="font-ui text-2xs text-down-text">{state.error}</span> : null}
     </form>
   );
 }

@@ -3,7 +3,7 @@
 import { useActionState, useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { runPipeline, type RunResult } from "@/app/(desk)/settings/pipeline-actions";
-import { cx } from "@/lib/cx";
+import { OutcomeChip, type OutcomeTone } from "@/components/OutcomeChip";
 import { copy, fill } from "@/lib/copy";
 import { controlPanel, type ActionRow, type ManualRunRow, type RunState } from "@/lib/pipeline-control";
 import type { CompletedRun } from "@/lib/freshness";
@@ -250,20 +250,22 @@ function LastRun({ lastRun }: { lastRun: Props["lastRun"] }) {
         finished <span className="font-mono text-ink-2">{lastRun.finishedAt}</span>
       </p>
 
+      {/*
+       * Each source's verdict, through the app's one outcome chip (PD6 — this markup was a verbatim
+       * copy of Tag.tsx's shell, hand-rolled a third time).
+       *
+       * "ok" IS NEUTRAL, NOT POSITIVE, and that is a colour decision, not an oversight. A source
+       * behaving is the normal case, and painting the normal case green would spend a hue on
+       * "nothing happened" — leaving the reader to scan a wall of green for the one chip that is not.
+       * Colour is scarce here and always means something (E6). Only the degradation gets a hue.
+       */}
       <div className="flex flex-wrap gap-1.5 pt-2">
         {Object.entries(lastRun.sources).map(([source, status]) => (
-          <span
+          <OutcomeChip
             key={source}
-            className={cx(
-              "inline-flex items-center gap-1.5 rounded-chip border px-1.5 py-0.5",
-              "font-mono text-2xs font-medium uppercase tracking-[0.04em]",
-              status === "ok"
-                ? "border-hairline bg-surface text-ink-2"
-                : "border-down-wash bg-down-wash text-down-text",
-            )}
-          >
-            {source} · {status}
-          </span>
+            tone={status === "ok" ? "neutral" : "negative"}
+            label={`${source} · ${status}`}
+          />
         ))}
       </div>
 
@@ -362,17 +364,14 @@ function ActionRowView({ row, onDispatched }: { row: ActionRow; onDispatched: ()
  * and the same weight; only the hue differs, and the hue is the redundant channel.
  */
 function StateChip({ state }: { state: RunState }) {
-  const SHELL =
-    "inline-flex items-center rounded-pill px-2 py-0.5 font-mono text-2xs uppercase tracking-[0.08em]";
-
   if (state.kind === "running" || state.kind === "queued" || state.kind === "requested") {
-    return <span className={cx(SHELL, "bg-band-outer text-ink-2")}>{state.kind}</span>;
+    return <OutcomeChip tone="neutral" label={state.kind} />;
   }
   if (state.kind === "failed") {
-    return <span className={cx(SHELL, "bg-down-wash text-down-text")}>failed</span>;
+    return <OutcomeChip tone="negative" label="failed" />;
   }
   if (state.kind === "lost") {
-    return <span className={cx(SHELL, "bg-down-wash text-down-text")}>not found</span>;
+    return <OutcomeChip tone="negative" label="not found" />;
   }
   // capped, cooldown, blocked, not_applicable, not_configured — the SENTENCE below says it, and a
   // chip repeating the same thing in shorthand would be noise sitting on top of the explanation.
@@ -523,20 +522,17 @@ function History({ history }: { history: ManualRunRow[] }) {
   );
 }
 
-/** The word, always. Colour is redundant — see the OutcomeChip on the track record, same rule. */
+/**
+ * The word, always. Colour is redundant.
+ *
+ * This comment used to read "see the OutcomeChip on the track record, same rule" — which named the
+ * duplication instead of removing it, and the two copies had already drifted. It IS that chip now
+ * (components/OutcomeChip.tsx, PD6).
+ */
 function RunOutcomeChip({ status }: { status: ManualRunRow["status"] }) {
-  const styles: Record<string, string> = {
-    succeeded: "bg-up-wash text-up-text",
-    failed: "bg-down-wash text-down-text",
+  const TONE: Record<string, OutcomeTone> = {
+    succeeded: "positive",
+    failed: "negative",
   };
-  return (
-    <span
-      className={cx(
-        "inline-flex items-center rounded-pill px-2 py-0.5 font-mono text-2xs uppercase tracking-[0.08em]",
-        styles[status] ?? "bg-band-outer text-ink-2",
-      )}
-    >
-      {status}
-    </span>
-  );
+  return <OutcomeChip tone={TONE[status] ?? "neutral"} label={status} />;
 }

@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { ScanTable } from "@/components/scans/ScanTable";
 import { Surface } from "@/components/Surface";
 import { Tag } from "@/components/Tag";
+import { TermProse } from "@/components/Term";
 import { RailProvider } from "@/components/rail/Rail";
 import { copy, fill } from "@/lib/copy";
 import { db } from "@/lib/db";
@@ -160,7 +161,10 @@ export default async function ScanPresetPage({ params }: { params: Promise<{ pre
               {criteriaClauses(preset.criteria).map((clause, index) => (
                 <li key={clause} className="flex items-baseline gap-3 border-b border-hairline py-2 last:border-b-0">
                   <span className="shrink-0 font-mono text-2xs text-muted">{String(index + 1).padStart(2, "0")}</span>
-                  <span className="max-w-[62ch] font-ui text-sm text-ink-2">{clause}</span>
+                  {/* The recipe is the vocabulary lesson. Same doorway as the index (PD6). */}
+                  <span className="max-w-[62ch] font-ui text-sm text-ink-2">
+                    <TermProse text={clause} />
+                  </span>
                 </li>
               ))}
             </ol>

@@ -61,6 +61,11 @@ export function AffectedTable({ rows }: { rows: AffectedRow[] }) {
         key: "ret1",
         header: "1-day move",
         kind: "signedPercent",
+        // The window rides the chip (PD6). This column is priority 1, and a priority-1 cell on the
+        // phone card is drawn with NO header beside it — so without this, the story page's affected
+        // tickers showed a bare signed percentage on every phone. PD5 fixed exactly this bug on the
+        // news FEED and left it standing here, one component over, behind the table's private chip.
+        window: "1D",
         align: "right",
         priority: 1,
         value: (row) => row.ret1,

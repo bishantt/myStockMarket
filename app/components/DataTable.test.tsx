@@ -32,7 +32,7 @@ const rows: Row[] = [
 const columns: Column<Row>[] = [
   { key: "symbol", header: "Symbol", kind: "mono", priority: 1, value: (r) => r.symbol },
   { key: "name", header: "Name", kind: "text", priority: 2, value: (r) => r.name },
-  { key: "ret", header: "1-day move", kind: "signedPercent", priority: 1, value: (r) => r.ret },
+  { key: "ret", header: "1-day move", kind: "signedPercent", window: "1D", priority: 1, value: (r) => r.ret },
   { key: "rvol", header: "RVOL", kind: "multiple", priority: 2, value: (r) => r.rvol },
 ];
 
@@ -128,6 +128,52 @@ describe("DataTable", () => {
   it("marks delta cells as money, so the P2 ancestor walk can police them", () => {
     const { container } = renderTable();
     expect(container.querySelectorAll("[data-p2]").length).toBeGreaterThan(0);
+  });
+
+  /*
+   * ── THE WINDOW (PD6) ────────────────────────────────────────────────────────────────────────────
+   *
+   * A delta with no period attached is a number the reader has to guess the meaning of (ruling C2).
+   * The table used to answer that in the COLUMN HEADER and nowhere else — which works on a desktop,
+   * where a `<th>` sits above every cell, and fails completely on a phone, where a priority-1 cell is
+   * drawn with NO header beside it. Every signed-percent column in the app is priority 1 or 2.
+   *
+   * So the phone showed "▼ −12.4%" for a column meaning "12.4% below the 52-week high", and a reader
+   * would read it as a bad day. Both of these tests would have failed on the tree PD6 inherited.
+   */
+  it("prints the delta's window on the chip, in BOTH layouts — the header is not on the phone", () => {
+    renderTable();
+    // Two renderings of the row exist in the DOM at once (the desktop table and the phone card list;
+    // CSS hides one). Both must carry the window, because either one may be the one on screen.
+    expect(screen.getAllByText("· 1D")).toHaveLength(rows.length * 2);
+  });
+
+  it("renders every delta through the kit's ONE chip — the table may not keep a private copy", () => {
+    renderTable();
+    // The kit chip's signature: two atoms, and a glyph that is hidden from screen readers because the
+    // signed value beside it already says the direction out loud. A hand-rolled copy has never once
+    // reproduced all three of these at once, which is exactly why five of them drifted.
+    const chip = screen.getAllByText("+18.40%")[0].closest("[data-p2]")!;
+    expect(chip).toHaveTextContent("· 1D");
+    expect(chip.querySelector("[aria-hidden='true']")).toHaveTextContent("▲");
+  });
+
+  it("renders a change that rounds to nothing as FLAT — no triangle, no wash, no invented direction", () => {
+    // The table's private chip tested `value >= 0`, so a +0.00000% change was painted a green ▲. The
+    // kit routes through `directionOf`, which has a flat band. A triangle on an unchanged price is a
+    // direction the market did not have.
+    render(
+      <DataTable
+        columns={columns}
+        rows={[{ symbol: "FLAT", name: "Flatline", rvol: 1, ret: 0 }]}
+        defaultSort={{ key: "symbol", dir: "asc" }}
+        rowKey={(r) => r.symbol}
+        ariaLabel="flat"
+      />,
+    );
+    const chip = screen.getAllByText("+0.00%")[0].closest("[data-p2]")!;
+    expect(chip.querySelector("[aria-hidden='true']")).toBeNull();
+    expect(chip.className).not.toMatch(/bg-(up|down)-wash/);
   });
 
   it("carries NO transition or animation anywhere — a sorted row is a money figure in motion (M3)", () => {

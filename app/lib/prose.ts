@@ -87,7 +87,21 @@ const TERMS_BY_LENGTH: ReadonlyArray<{ key: string; term: string }> = Object.ent
  * renderer that dropped a run would be rewriting the narrator's sentence, and the one thing this
  * app may never do to a verified sentence is edit it.
  */
-export function splitTerms(text: string, budget: number = TERMS_PER_PARAGRAPH): TermRun[] {
+export function splitTerms(
+  text: string,
+  budget: number = TERMS_PER_PARAGRAPH,
+  /**
+   * Glossary keys this paragraph may NOT open — the Academy's "reading-room restraint" (PD6).
+   *
+   * A lesson ABOUT relative volume must not underline "relative volume" in its own prose and offer
+   * the reader a popover whose footer says "read the lesson: Volume and RVOL". They are reading it.
+   * A doorway back into the room you are standing in is not a doorway, it is furniture in the way.
+   *
+   * So the lesson page excludes every glossary entry whose `lesson` IS this lesson, and the terms it
+   * borrows from elsewhere in the glossary — the ones a reader genuinely might not know — still open.
+   */
+  exclude: ReadonlySet<string> = new Set(),
+): TermRun[] {
   if (text.length === 0 || budget <= 0) return [{ kind: "text", text }];
 
   const lower = text.toLowerCase();
@@ -98,6 +112,8 @@ export function splitTerms(text: string, budget: number = TERMS_PER_PARAGRAPH): 
   const hits: Array<{ key: string; at: number; length: number }> = [];
 
   for (const { key, term } of TERMS_BY_LENGTH) {
+    if (exclude.has(key)) continue;
+
     const at = lower.indexOf(term.toLowerCase());
     if (at < 0) continue;
     if (isWordChar(text, at - 1) || isWordChar(text, at + term.length)) continue;

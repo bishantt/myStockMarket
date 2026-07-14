@@ -4,6 +4,7 @@ import Link from "next/link";
 import { db } from "@/lib/db";
 import { buildLedgerView, type PaperTradeRow } from "@/lib/ledger";
 import { Surface } from "@/components/Surface";
+import { TermProse } from "@/components/Term";
 import { costMirrorDrag } from "@/lib/paper";
 import { decimal, percent, price } from "@/lib/format";
 import { isM3Complete, M3_SLUGS } from "@/lib/academy-progress";
@@ -73,10 +74,20 @@ export default async function PaperPage() {
           Paper desk
         </h1>
         <div className="mt-2 h-0.5 bg-ink" />
+        {/*
+         * THE ONLY DOORWAYS IN THIS ROOM ARE UP HERE, IN THE STANDING PROSE (PD6).
+         *
+         * The plan is explicit that /paper gets a figures AUDIT and no new emphasis (§8.3), and the
+         * reason is this room's job: it is the one place in the app where the reader is about to
+         * spend money, even simulated money. A ticket decorated with underlines and emphasized
+         * numerals is a ticket that is selling something. The cost mirror already says the true and
+         * unwelcome thing in plain type, and plain type is exactly how it should say it.
+         *
+         * So the vocabulary lesson happens in the paragraph that INTRODUCES the room — where "the
+         * spread" and "slippage" are being explained to a beginner — and stops at the ticket's edge.
+         */}
         <p className="max-w-[62ch] pt-3 font-prose text-base text-ink-2">
-          Practice with simulated money and real friction. Every fill pays the spread and slippage it
-          would in life, so the certain cost of trading is visible before any uncertain gain. No
-          brokerage, no real orders — this is the whole point of the app.
+          <TermProse text="Practice with simulated money and real friction. Every fill pays the spread and slippage it would in life, so the certain cost of trading is visible before any uncertain gain. No brokerage, no real orders — this is the whole point of the app." />
         </p>
       </header>
 

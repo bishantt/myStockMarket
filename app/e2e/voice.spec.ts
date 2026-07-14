@@ -74,6 +74,97 @@ test.describe("the voice — glossary doorways on the Desk", () => {
   });
 });
 
+/**
+ * PD6 — the kit in the rooms PD5 did not reach.
+ *
+ * These do NOT need a seeded database: a lesson is an MDX file on disk and the scan criteria are
+ * constants, so they run on every leg of the oracle, including the ones with no Postgres.
+ */
+test.describe("the voice — the Academy's reading room", () => {
+  test.beforeEach(async ({ page }) => {
+    await signIn(page);
+  });
+
+  test("a lesson's prose carries doorways, and a term opens ONCE across the whole lesson", async ({
+    page,
+  }) => {
+    await page.goto("/academy/volume-and-rvol");
+
+    const article = page.getByRole("article");
+    const doorways = article.getByRole("button");
+    const names = await doorways.allInnerTexts();
+    test.skip(names.length === 0, "this lesson's prose names no borrowed glossary term");
+
+    // FIRST OCCURRENCE PER VIEW, on a page that is mostly prose — the hardest case for the rule, and
+    // the one a unit test cannot see (React `cache` memoises only inside a server render).
+    const normalized = names.map((name) => name.trim().toLowerCase());
+    expect(new Set(normalized).size, `a term was dotted twice: ${names.join(", ")}`).toBe(
+      normalized.length,
+    );
+
+    // And the doorway is a real doorway.
+    await doorways.first().click();
+    await expect(article.getByRole("dialog")).toBeVisible();
+  });
+
+  test("a lesson NEVER opens a doorway onto itself — you are already standing in the room", async ({
+    page,
+  }) => {
+    // The RVOL lesson may explain a base rate in passing and hand you that definition. What it must
+    // not do is underline "relative volume" and offer to explain relative volume. The exclusion is
+    // derived from the glossary's own `lesson` field, so it cannot drift from the manifest.
+    await page.goto("/academy/volume-and-rvol");
+
+    const names = await page.getByRole("article").getByRole("button").allInnerTexts();
+    const selfReferential = names.filter((name) => /rvol|relative volume/i.test(name.trim()));
+
+    expect(
+      selfReferential,
+      "the RVOL lesson underlined its own subject and offered to define it",
+    ).toEqual([]);
+  });
+});
+
+test.describe("the voice — a delta always carries its window (ruling C2)", () => {
+  // The matches come from the database, so this one is honest only on a seeded leg. CI seeds all four.
+  test.skip(process.env.MSM_SEEDED !== "1", "needs a seeded test database (MSM_SEEDED=1)");
+
+  test.beforeEach(async ({ page }) => {
+    await signIn(page);
+  });
+
+  /*
+   * THE BUG THIS PINS, AND IT SHIPPED FOR SIX PHASES.
+   *
+   * The table used to hold a PRIVATE delta chip that took no window, because the window lived in the
+   * column header. On a desktop that is fine — a `<th>` labels every cell beneath it. On a PHONE
+   * there is no `<th>`: DataTable draws a card list, and a priority-1 cell is rendered with no header
+   * beside it. Every signed-percent column in the scan tables is priority 1.
+   *
+   * So `dist_52w_high` — "12.4% below the 52-week high" — rendered on a phone as a bare red "▼
+   * −12.4%", which any reader takes for a bad day. The desktop told the truth and the phone did not,
+   * and the pixel baseline had photographed both and was defending them.
+   *
+   * This test runs on every viewport in the matrix, which is the entire point: the phone leg is the
+   * one that would have caught it.
+   */
+  test("the scan table's delta chips name their window, at every width", async ({ page }) => {
+    await page.goto("/scans/near-52w-high");
+
+    const chips = page.locator("[data-p2]:visible");
+    const count = await chips.count();
+    test.skip(count === 0, "no matches in this preset tonight — nothing to measure");
+
+    // Every visible delta on the page says what it was measured over. "vs 52w high" is the one that
+    // matters: it is the column a naked percentage actively misleads about.
+    const texts = await chips.allInnerTexts();
+    const naked = texts.filter((text) => /[+\-−]\d/.test(text) && !text.includes("·"));
+
+    expect(naked, `a delta rendered with no window: ${naked.join(" | ")}`).toEqual([]);
+    expect(texts.some((text) => text.includes("vs 52w high"))).toBe(true);
+  });
+});
+
 test.describe("the voice — a TickerChip is a door", () => {
   test.skip(process.env.MSM_SEEDED !== "1", "needs a seeded test database (MSM_SEEDED=1)");
 

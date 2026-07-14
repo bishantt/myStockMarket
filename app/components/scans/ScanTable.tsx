@@ -4,6 +4,7 @@ import { useMemo } from "react";
 
 import { DataTable } from "@/components/DataTable";
 import { Tag } from "@/components/Tag";
+import { TickerChip } from "@/components/TickerChip";
 import type { RailPayload } from "@/components/rail/Rail";
 import { copy } from "@/lib/copy";
 import { directionOf, multiple, signedPercent } from "@/lib/format";
@@ -39,7 +40,11 @@ export function ScanTable({ presetKey, rows, capped }: ScanTableProps) {
             ...column,
             render: (row: ScanRow) => (
               <span className="flex flex-wrap items-center gap-1.5">
-                <span className="font-mono text-sm text-ink">{row.symbol}</span>
+                {/* A LABEL, not a door — and HTML decides that, not taste (drift rule 26). This
+                 * table's rows open the rail, so a row IS a button; an anchor inside one is invalid
+                 * markup, and the browser's repair would silently kill the rail. The rail is the
+                 * symbol's door here, and it is a better one. */}
+                <TickerChip symbol={row.symbol} />
                 {row.lottery ? <Tag variant="catalyst">{copy.scans.lotteryChip}</Tag> : null}
               </span>
             ),

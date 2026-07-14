@@ -15,6 +15,7 @@ import { NewsImage } from "@/components/news/NewsImage";
 import { Tag } from "@/components/Tag";
 import { TickerChip } from "@/components/TickerChip";
 import { DeltaChip } from "@/components/DeltaChip";
+import { OutcomeChip } from "@/components/OutcomeChip";
 import { TermProse } from "@/components/Term";
 import { VerifiedProse } from "@/components/KeyFigure";
 import { copy, fill } from "@/lib/copy";
@@ -314,9 +315,11 @@ function Voice() {
     {
       family: "Direction",
       swatches: ["bg-up", "bg-down"],
-      means: "A price moved up, or down. The ONE data pair.",
-      consumers: "DeltaChip (the only door) · sparklines · candles · range strokes",
-      guard: "Never the only channel — a glyph and a sign ride with it, always (P7).",
+      means: "A price moved up or down — or a thing turned out well or badly. The ONE data pair.",
+      // TWO doors, and drift rule 28 holds them shut: a direction-coloured BACKGROUND is what makes
+      // a chip a chip, and any hand-rolled seventh copy has to paint one to exist.
+      consumers: "DeltaChip · OutcomeChip — the two doors (rule 28) · sparklines · candles · range strokes",
+      guard: "Never the only channel — a glyph, a sign, or the WORD rides with it, always (P7).",
     },
     {
       family: "Accent (indigo)",
@@ -426,6 +429,37 @@ function Voice() {
             </li>
             <li>
               <DeltaChip value="0.00%" direction="flat" window="1D" />
+            </li>
+          </ul>
+        </div>
+
+        <div>
+          <h3 className="font-mono text-2xs uppercase tracking-[0.08em] text-muted">
+            OutcomeChip — how it turned out, and the word says so
+          </h3>
+          <p className="max-w-[70ch] pt-1 font-ui text-2xs text-muted">
+            The delta chip&rsquo;s sibling: a delta&rsquo;s second atom is the WINDOW it was measured
+            over, an outcome&rsquo;s is the WORD for the verdict. A hit and a miss render at
+            identical weight and differ only in hue — that is not a style choice, it is the track
+            record&rsquo;s honesty claim, and it is asserted in a test that strips the colours off
+            both and compares what is left. Neutral is the honest third state: a forecast the market
+            never answered is not a miss.
+          </p>
+          <ul className="flex flex-wrap items-center gap-3 pt-3">
+            <li>
+              <OutcomeChip tone="positive" label="hit" />
+            </li>
+            <li>
+              <OutcomeChip tone="negative" label="miss" />
+            </li>
+            <li>
+              <OutcomeChip tone="neutral" label="unresolvable" />
+            </li>
+            <li>
+              <OutcomeChip tone="positive" label="gain" figure="+$412.30" />
+            </li>
+            <li>
+              <OutcomeChip tone="negative" label="loss" figure="−$118.05" />
             </li>
           </ul>
         </div>

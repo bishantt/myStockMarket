@@ -103,4 +103,46 @@ describe("splitTerms — the glossary doorways in a paragraph (§8.2.2)", () => 
       expect(terms[0].text).toBe("gaps"); // and the PROSE's word is what renders, not "Gap"
     });
   });
+
+  /**
+   * THE EXCLUSION (PD6) — the Academy's "reading-room restraint", made concrete.
+   *
+   * A lesson about RVOL must not underline "relative volume" in its own prose and offer the reader a
+   * popover whose footer says "read the lesson: Volume and RVOL". They are reading it. The lesson
+   * page derives the exclusion from `entry.lesson`, which the glossary already carries, so there is
+   * no second list to maintain and no way for the two to disagree.
+   */
+  describe("the exclusion", () => {
+    it("does not open a doorway onto the very lesson the reader is standing in", () => {
+      const text = "Relative volume tells you whether today's volume is unusual for this name.";
+
+      expect(splitTerms(text).some((run) => run.kind === "term")).toBe(true);
+      expect(splitTerms(text, 2, new Set(["rvol"])).some((run) => run.kind === "term")).toBe(false);
+    });
+
+    it("still opens every OTHER term — the exclusion is one key, not a mute button", () => {
+      // This is the whole value of the feature: a risk lesson that mentions a base rate in passing
+      // hands the beginner the definition without sending them out of the room.
+      const runs = splitTerms(
+        "Relative volume is not a base rate.",
+        2,
+        new Set(["rvol"]),
+      );
+      const terms = runs.filter((run) => run.kind === "term");
+
+      expect(terms).toHaveLength(1);
+      expect(terms[0].kind === "term" && terms[0].key).toBe("base-rate");
+    });
+
+    it("leaves the sentence itself exactly as written, excluded or not", () => {
+      const text = "Relative volume is not a base rate.";
+      const rebuild = (exclude: Set<string>) =>
+        splitTerms(text, 2, exclude)
+          .map((run) => run.text)
+          .join("");
+
+      expect(rebuild(new Set())).toBe(text);
+      expect(rebuild(new Set(["rvol", "base-rate"]))).toBe(text);
+    });
+  });
 });

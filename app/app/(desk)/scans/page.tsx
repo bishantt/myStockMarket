@@ -1,11 +1,13 @@
 import Link from "next/link";
 
 import { db } from "@/lib/db";
-import { Term } from "@/components/Term";
+import { DeltaChip } from "@/components/DeltaChip";
+import { Term, TermProse } from "@/components/Term";
+import { TickerChip } from "@/components/TickerChip";
 import { Surface } from "@/components/Surface";
 import { Tag } from "@/components/Tag";
 import { copy, fill } from "@/lib/copy";
-import { signedPercent } from "@/lib/format";
+import { directionOf, signedPercent } from "@/lib/format";
 import { SCAN_PRESETS, criteriaClauses } from "@/lib/scan-presets";
 
 /** Each preset's core concept, so its label carries a glossary doorway into the Academy. */
@@ -130,7 +132,14 @@ export default async function ScansPage() {
                       <span className="shrink-0 font-mono text-2xs text-muted">
                         {String(index + 1).padStart(2, "0")}
                       </span>
-                      <span className="max-w-[62ch] font-ui text-sm text-ink-2">{clause}</span>
+                      {/* The recipe is where a beginner meets the vocabulary — "20-day relative
+                       * volume", "the 252-day high" — so the criteria are the page's natural place
+                       * for a doorway. The per-view registry does the restraining: a term opens once
+                       * on this page, in the first recipe that happens to use it, and reads as plain
+                       * words in the other four. */}
+                      <span className="max-w-[62ch] font-ui text-sm text-ink-2">
+                        <TermProse text={clause} />
+                      </span>
                     </li>
                   ))}
                 </ol>
@@ -156,20 +165,28 @@ export default async function ScansPage() {
                           key={row.symbol}
                           className="flex items-center justify-between gap-3 border-b border-hairline py-2 last:border-b-0"
                         >
-                          <span className="flex items-center gap-2">
-                            <span className="font-mono text-2xs text-muted">{row.rank}</span>
-                            <span className="font-mono text-sm text-ink">{row.symbol}</span>
+                          <span className="flex min-w-0 items-center gap-2">
+                            <span className="shrink-0 font-mono text-2xs text-muted">{row.rank}</span>
+                            {/*
+                             * A LABEL, and this one is a judgement rather than an HTML constraint.
+                             *
+                             * A door is a control, so it is 44px tall (TickerChip). These teaser rows
+                             * are 37px, and fifteen of them on this page would each have to GROW to
+                             * hold a target — turning a glanceable recipe card into a list of
+                             * buttons. The comment above already says why that is wrong: a preview is
+                             * a teaser, not a comparison instrument. It has no header row and no sort
+                             * affordance for the same reason, and the card's own "all N matches" link
+                             * is the door this card is offering.
+                             */}
+                            <TickerChip symbol={row.symbol} />
                           </span>
                           {row.ret !== null ? (
-                            <span
-                              data-p2="true"
-                              className={`inline-flex items-center gap-1 rounded-pill px-1.5 py-0.5 font-mono text-2xs ${
-                                row.ret >= 0 ? "bg-up-wash text-up-text" : "bg-down-wash text-down-text"
-                              }`}
-                            >
-                              <span aria-hidden="true">{row.ret >= 0 ? "▲" : "▼"}</span>
-                              {signedPercent(row.ret)}
-                            </span>
+                            <DeltaChip
+                              value={signedPercent(row.ret)}
+                              direction={directionOf(row.ret)}
+                              window="1D"
+                              scale="xs"
+                            />
                           ) : (
                             <span className="font-mono text-2xs text-muted">—</span>
                           )}

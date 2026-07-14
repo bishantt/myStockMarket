@@ -39,13 +39,11 @@ export type ColumnKind =
   | "int"
   | "chip";
 
-export type Column<Row> = {
+type ColumnBase<Row> = {
   /** The metrics key or field name. Used as the column's identity when sorting. */
   key: string;
   /** The header the reader sees: "RVOL", "From 52w high". Never "top", "best", or "hottest" (M1). */
   header: string;
-  /** Routes the value through lib/format. The ONLY door numbers may come through. */
-  kind: ColumnKind;
   align?: "left" | "right";
   /** Sortable unless a column says otherwise. */
   sortable?: boolean;
@@ -63,6 +61,51 @@ export type Column<Row> = {
    */
   render?: (row: Row) => ReactNode;
 };
+
+/**
+ * A column of signed moves — and it MUST name the window it measured them over.
+ *
+ * ── THE BUG THIS TYPE EXISTS TO MAKE IMPOSSIBLE (PD6) ────────────────────────────────────────────
+ *
+ * A delta with no period attached is a number the reader has to guess the meaning of, and a beginner
+ * guesses wrong. That is ruling C2, and `DeltaChip` already enforces it: `window` is a REQUIRED prop
+ * there, precisely so that a chip which omitted it could not be built.
+ *
+ * The table walked around that guard for six phases, by holding its own private copy of the chip
+ * that took no window at all. The window lived in the COLUMN HEADER instead — "1-day move", "From
+ * 52w high" — and on a desktop that is genuinely fine: a `<th>` sits directly above its cells and
+ * labels every one of them.
+ *
+ * ON A PHONE THERE IS NO `<th>`. DataTable renders a card list, and a priority-1 cell is drawn with
+ * NO HEADER BESIDE IT (only priority-2 cells get their header printed). Every signed-percent column
+ * in the scan tables and in the news room's affected-tickers table is priority 1. So on a phone the
+ * row read:
+ *
+ *     SMCI   ▼ −12.4%   4.7×
+ *
+ * and nothing anywhere on that screen said the −12.4% was the distance from the 52-week HIGH. It
+ * reads as "down 12.4% today", which is not what it is, and the reader has no way to find out. The
+ * desktop told the truth; the phone did not; the pixel baseline had photographed both and was
+ * defending them.
+ *
+ * So the window comes back onto the chip, where DeltaChip always wanted it — and it is REQUIRED by
+ * the type, which means a future signed-percent column cannot be added without one. The compiler is
+ * the guard. It cannot be forgotten, and it cannot be pointed at the wrong file.
+ */
+type SignedPercentColumn<Row> = ColumnBase<Row> & {
+  kind: "signedPercent";
+  /**
+   * The period the move was measured over, in the chip's own short voice: "1D", "vs 52w high",
+   * "vs prior close". Short, because it renders on EVERY row — the long form is the column header's
+   * job ("Gap · open vs prior close"), and the two are allowed to say the same thing twice. A unit
+   * travels with its number; a header labels a column. On a phone only the first of those survives.
+   */
+  window: string;
+};
+
+export type Column<Row> =
+  | (ColumnBase<Row> & { kind: Exclude<ColumnKind, "signedPercent"> })
+  | SignedPercentColumn<Row>;
 
 export type SortDirection = "asc" | "desc";
 

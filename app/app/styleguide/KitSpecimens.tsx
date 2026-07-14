@@ -47,7 +47,7 @@ const SPECIMEN_ROWS: SpecimenRow[] = [
 const SPECIMEN_COLUMNS: Column<SpecimenRow>[] = [
   { key: "symbol", header: "Symbol", kind: "mono", priority: 1, value: (r) => r.symbol },
   { key: "name", header: "Name", kind: "text", priority: 2, value: (r) => r.name },
-  { key: "ret", header: "1-day move", kind: "signedPercent", priority: 1, value: (r) => r.ret },
+  { key: "ret", header: "1-day move", kind: "signedPercent", window: "1D", priority: 1, value: (r) => r.ret },
   { key: "rvol", header: "RVOL", kind: "multiple", priority: 2, value: (r) => r.rvol },
   { key: "close", header: "Close", kind: "price", priority: 3, value: (r) => r.close },
 ];
