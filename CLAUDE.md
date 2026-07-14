@@ -288,6 +288,15 @@ VRT:      baselines are BORN IN CI. Never shoot one on macOS. Since G1 a rehears
           `--update-snapshots=all` re-photographs all of them, so copying the whole directory commits
           files nobody can explain. Read .claude/skills/vrt-update FIRST. `-f job=vrt-baselines`
           remains for a deliberate restyle. FOUR legs now (PD3): desktop · phone · wide · mbp16.
+          **BATCH VISUAL FIXES INTO A SINGLE RE-SHOOT (standing rule — user, 2026-07-14, permanent).**
+          After a red rehearsal: download the failure artifacts AND the candidates for EVERY red leg,
+          OPEN EVERY IMAGE, LIST EVERY DIFF, fix them ALL, and dispatch ONCE. Never one dispatch per
+          fix. PD6 ran FOUR serial red rehearsals because it looked at the pictures, found a real bug,
+          fixed it, and re-shot — three times over (69px table rows · a chip wrapping in a column
+          sized for a word · that fix pushing /settings into a 16px sideways scroll at 360). Every one
+          was a genuine defect and the looking was right; the SERIALIZING was the waste. **The repo is
+          public and the minutes are free, and this rule still holds — what it saves is not money, it
+          is the ~50 minutes of round-trip WAITING that four rehearsals cost instead of one or two.**
           FOUR LAWS, EACH LEARNED THE HARD WAY, IN ASCENDING ORDER OF DANGER:
           · (PD2) "WHAT MOVED" AND "WHAT FAILED" ARE NOT THE SAME LIST. `maxDiffPixels: 600`, so a shot
             can CHANGE and still PASS. PD2's 28px mark moved 59 baselines and redded only 14 — the other

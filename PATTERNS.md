@@ -1031,3 +1031,40 @@ They compose, which is why a paragraph can honestly render **fewer** than two: M
 **The registry is only real on a SERVER render.** `cache()` does not memoise under vitest's client
 render, so the per-view rule is pinned in `e2e/voice.spec.ts`, not in a unit test. A unit test that
 cannot see the behaviour it names is a green light wired to nothing.
+
+## the-invisible-touch-target
+Where it lives: `components/TickerChip.tsx` (`DOOR_HIT_AREA`)
+Shape:
+```tsx
+// A control must be 44px on touch. The thing you SEE may be 21px. Those are two boxes.
+<Link className="-my-3 inline-flex min-h-11 items-center">   {/* the target: a true 44px */}
+  <span className="rounded-chip border px-1.5 py-0.5">…</span>  {/* the chip: still 21px */}
+</Link>
+```
+Use when: a small inline object (a chip, a symbol, an icon) has to become a link or a button.
+
+Two rules, and PD6 got the first one right and the second one wrong before it shipped:
+
+1. **Do not grow the visual.** A 44px pill in every table cell destroys the density a table exists
+   for. Put `min-h-11` on the ANCHOR and leave the chip alone inside it.
+2. **`-my-3` is not optional.** Without it the 44px target ADDS to the cell's existing padding, and
+   every row grows from 45px to 69px — for a target nobody can see. The negative margin pulls the
+   target's box back INTO padding the layout had already reserved. `boundingBox()` (what the touch
+   sweep and the browser's hit-testing both read) still returns a true 44px. Nothing is faked; the
+   target simply occupies space that was already there.
+
+**And it only works where there is padding to borrow.** A table cell has 12px to lend. The scans
+index's 37px teaser rows have none — which is why the symbols there are LABELS, not doors. If the
+row is shorter than the target, the honest answer is that the row is not a place for a control.
+
+## a-chip-is-wider-than-the-word-it-replaces
+Where it lives: `app/(desk)/settings/WatchlistManager.tsx` (`w-32`)
+Shape: when plain text becomes a bordered chip, it gains a border and horizontal padding — "AAPL"
+goes from ~34px to ~48px. Every container that was measured for the WORD is now too narrow.
+Use when: swapping bare text for any chip component (`TickerChip`, `Tag`, `DeltaChip`).
+
+The failure is quiet: the chip does not overflow, it WRAPS — and a wrapped chip pushes whatever was
+beside it onto a new line and grows the row. Nothing fails. No guard in this repo has an opinion
+about it. **Making a chip fit is the LAYOUT's job, not the chip's** (PD4's law). So: after any
+text→chip swap, grep for the fixed widths (`w-24`, `max-w-`, a grid column) around the thing you
+changed, and go and LOOK at the room.

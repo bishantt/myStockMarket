@@ -1,178 +1,137 @@
 # PROGRESS.md — resumable state
 
-# PD5 IS **COMPLETE** — tagged `pd-5` (`4fadf4c`), CI green **first try**. **Eleven tags, eleven first-try greens.**
+# PD6 IS **COMPLETE** — tagged `pd-6` (`026c9cf`), CI green — the tag run reran ONE known flake (scans.spec:44) and went green. **Twelve tags.**
 
-**Checkpoint: POLISH-AND-DEPTH-PLAN.md, PD5 (Part 8 — the voice: the richness system) is DONE.
-Nothing is blocked. Nothing is in flight.**
+**Checkpoint: POLISH-AND-DEPTH-PLAN.md, PD6 (Part 8.3's second half — the voice, the remaining
+rooms) is DONE. Nothing is blocked. Nothing is in flight.**
 
-**NEXT: PD6 — the voice, remaining rooms** (plan Part 8.3's PD6 list + Part 12's PD6 entry).
+**NEXT: PD7 — news & ticker depth, the PIPELINE** (plan Part 9.2/9.3/9.5 + Part 12's PD7 entry).
+It is a **pipeline** phase, not an app phase — the first one since N5.
 
-## What PD5 did, in one paragraph
+## What PD6 did, in one paragraph
 
-Built the richness kit — **TickerChip** (one symbol, one treatment), **DeltaChip** (the app's ONE
-delta chip), **Term/TermProse** (the glossary doorway, superseding GlossaryTerm) and
-**KeyFigure/VerifiedProse** (E5 as a *type*: emphasis you cannot fake) — and landed it on the Desk and
-the news room. Wrote the complete **colour dictionary** into the styleguide. Added **drift rules 26
-and 27**. And then found three bugs *by looking at the screen*, every one of which was invisible to a
-fully green test suite: the brief's glossary doorway decorated **nothing** (the glossary knows "RVOL";
-the narrator writes "relative volume"); the news feed's ticker chips had been encoding direction by
-**colour alone** since N5 — a P7 violation sitting in a committed baseline; and the pixel oracle's
-scans-preset baseline turns out to be **a photograph of a hover state**.
+Carried PD5's richness kit into the five rooms it had not reached — scans, paper, track-record,
+Academy, settings — and found that the kit had **six** delta chips rather than the four PD5 hunted
+down, that the app's one table had been rendering **a delta with no window on every phone** since the
+table was written, and that a **21px touch target** had been live on the news story page since PD5,
+passing the phone sweep every night because the seeded story it visits has no rows in it. Built
+`OutcomeChip` (three hand-rolled copies, three comments promising equal weight, two of them already
+drifted). Added **drift rule 28**. Closed **Q-PD5-2** — the `scans-preset` baseline really was a
+photograph of a hover state, and I have looked at it. And then the pictures caught **two bugs of my
+own** that every single guard had passed — and a THIRD when a fix for one of those broke the phone.
+**The repository went PUBLIC mid-endgame** (Bishan's decision) when a GitHub Actions billing wall
+stopped CI dead; Actions is unmetered on public repos, and the login wall is untouched.
 
-## The five things that are now true (a fresh session must know these)
+## The six things that are now true (a fresh session must know these)
 
-1. **A DUPLICATED COMPONENT IS NOT A BUG. IT IS A BUG'S HABITAT.** PD4 found the delta chip's wrap
-   contract the hard way and fixed it — **in StatFigure**. There were FOUR copies of that chip
-   (StatFigure, Movers, Watchlist, NewsCard). The other three still carried the exact shape of the bug
-   PD4 had just spent a phase killing, and nothing failed, and nothing would have. There is **one**
-   chip now: `components/DeltaChip.tsx`. **When you fix a bug, grep for the component's siblings
-   before you close it.**
+1. **A HAND GREP IS NOT A GUARD.** PD5 wrote the law — *a duplicated component is not a bug, it is a
+   bug's habitat* — hunted the delta chip's siblings, found FOUR, and closed the file. **There were
+   SIX.** `DataTable.tsx` held a private `function DeltaChip` that **shadowed the kit component's own
+   name**, so a grep found it and read it as the kit; `scans/page.tsx` held a sixth inline, with no
+   component name to grep for at all. Both rendered nightly on front-facing rooms.
+   **Drift rule 28** is the answer: the direction WASH (`bg-up-wash`/`bg-down-wash`) has exactly two
+   doors — `DeltaChip` and `OutcomeChip`. It is pointed at the one thing all six copies had in common
+   and could not have avoided, so a seventh must paint one to exist, and fails the build when it does.
 
-2. **Q-G4-1 IS CLOSED: the delta chip carries `data-p2`** — and it cost the Desk its hover transition.
-   Movers and Watchlist had carried `transition-colors` since the redesign and got away with it for
-   ONE reason: their delta chips were unmarked, so the P2 ancestor walk had **never once looked at the
-   two busiest money surfaces on the Desk**. The rule was being kept by luck. Marking them failed the
-   build on both rows immediately. Their hover is INSTANT now. **A guard only guards what it is
-   pointed at.**
+2. **THE TABLE SHOWED A NAKED DELTA ON EVERY PHONE, AND ONE OF THEM ACTIVELY MISLEADS.** The window
+   lived in the COLUMN HEADER — honest on a desktop, where a `<th>` labels every cell beneath it, and
+   **completely absent on a phone**: DataTable draws a card list, and a priority-1 cell is rendered
+   with *no header beside it*. Every signed-percent column in the app is priority 1 or 2. So
+   `dist_52w_high` — which means *"12.4% below the 52-week HIGH"* — rendered as a bare red `▼ −12.4%`,
+   which any reader takes for a bad day.
+   **The fix is a TYPE.** `lib/table.ts`'s `Column<Row>` is a discriminated union: `kind:
+   "signedPercent"` **does not compile** without a `window`. It cannot be forgotten and cannot be
+   pointed at the wrong file, and it named the three remaining call sites the moment it was written.
+   It reached the news story page too — PD5 fixed the delta chip on the news FEED and left the
+   identical bug on the news STORY page, one component over, behind the table's private chip.
 
-3. **THE BRIEF CARRIES GLOSSARY DOORWAYS BUT NO EMPHASIZED FIGURES, AND THE OMISSION IS THE POINT.**
-   E5 needs an ALLOW-list. A news cluster has one (`key_numbers` = what the gate CLEARED). The
-   briefing does not — it stores the FLAGS, and a published brief may still carry up to two of them.
-   Emphasizing brief numbers would mean the APP deciding what counts as a number, with its own regex,
-   and `briefing/verify.py` already answers that. **Booked for PD7 as Q-PD5-1** (have the gate publish
-   what it cleared, not just what it flagged).
+3. **A GUARD ONLY GUARDS WHAT IT IS POINTED AT — AND THAT INCLUDES THE DATA.** A `door` is a control,
+   so it is ≥44px on touch. `TickerChip` shipped at **34×21px**, and the same 21px door had been LIVE
+   on the news story page since PD5 with the phone sweep passing it every night. The sweep visits one
+   story, `nc-fed-hold`, and that cluster has **zero** catalyst links in the seeded world — so the
+   affected table renders no rows, so there were no doors to measure. **The rule was being kept by the
+   shape of a fixture.** Fixed in the component (so it lands everywhere at once) and pinned in
+   `TickerChip.test.tsx`, not in a sweep that needs the data to cooperate. **Q-PD6-2** asks PD8 to
+   point the sweep at a story that actually has an affected table.
 
-4. **THE NEWS FEED HAD A P7 VIOLATION IN A COMMITTED BASELINE.** The old ticker chips read
-   `+2.10% · 1D` in green or red — **direction by hue alone**, no glyph, on the front page, since N5.
-   Every guard was green; the baseline had photographed it and was defending it. `DeltaChip` brings
-   the triangle, so direction is told three ways. The news room is **+29px taller on a phone**, and
-   that height is the honesty fix paying its own way.
+4. **LOOK AT THE PICTURES — AND THIS TIME THEY CAUGHT THREE OF MINE.** Third phase running.
+   · **The 44px door made every table row 69px.** `min-h-11` gave the anchor a true 44px box, and that
+     44px then ADDED to the `<td>`'s 12px of padding: every row in every table went 45px → **69px**,
+     half again as tall, to make room for something invisible. **Every guard passed** — including the
+     touch sweep, which asks "is it 44px?" and got 44px. Caught by putting the candidate baseline next
+     to the committed one. `-my-3` pulls the box back INTO padding the cell had already reserved;
+     `boundingBox()` still returns a true 44px. Measured after: **row 46.3px, door 44px.**
+   · **A chip is wider than the word it replaces.** The settings watchlist's symbol column was `w-24`
+     (96px), sized for the text "AAPL" (~34px). As a bordered chip that is ~48px, and beside its FOCUS
+     tag it no longer fit — so the tag wrapped to its own line. `w-32` fixed it, and *also* stopped the
+     company names wrapping, which is why the settings baseline came back **35px SHORTER**.
+   · **AND THAT FIX BROKE THE PHONE.** `w-32` added 32px to a tight row and `/settings` began
+     **scrolling sideways 16px at 360** — PD4's bug, reintroduced by a fix for something else. Then
+     `flex-wrap` fixed 360 and **broke 1366** (the reason text's flex-basis is `auto`, so under wrap it
+     stops shrinking and starts pushing). The answer was a RESPONSIVE column, `w-24 md:w-32`.
+   **PD4's law, in two new rooms: making a chip FIT is the LAYOUT's job, not the chip's.**
+   **And the harder one: A FIX VERIFIED AT ONE WIDTH IS NOT VERIFIED. Touch a room, re-run its sweeps.**
 
-5. **THE PIXEL ORACLE HAS A HOVER STATE IN IT, AGAIN (Q-PD5-2).** Diffing EVERY candidate against its
-   committed baseline — not just the failures — found three shots that changed **without failing**, on
-   pages PD5 never touched. The committed `scans-preset` baseline has **a row highlighted as if the
-   mouse were resting on it**. PD4 fixed exactly this on the ticker by parking the mouse at (0,0) in
-   `shoot()`; the fix did not reach everywhere. Left alone deliberately (the oracle passes it, and
-   PD5 did not touch that page). **For PD6, which touches the scans room.**
+5. **THE PIXEL ORACLE IS BLIND TO A LARGE, LOW-CONTRAST CHANGE — AND THAT IS NOT THE TOLERANCE.**
+   PD5 saw `scans-preset` change by ~56,000px *without failing* and assumed `maxDiffPixels: 600` had
+   absorbed it. It had not — 56,000 would blow straight through 600. Playwright ALSO takes a per-pixel
+   **`threshold`** (default 0.2, a colour distance), and we never set it. **A hover wash is a big
+   region of a *slightly* different colour: every one of those pixels falls under the cutoff, so none
+   of them counts as differing and the 600-pixel budget is never even consulted.** The oracle was not
+   tolerating the hover. It could not see it.
+   The specific bug is dead: those baselines dated from **PD2**, before PD4 parked the mouse at (0,0),
+   and were photographs of row 2 (GME) sitting in a `hover:bg-accent-soft` wash. **I cropped them side
+   by side and looked. Q-PD5-2 is CLOSED.** Arming `threshold` is a change to the instrument all 83
+   baselines are measured by → **Q-PD6-1, booked for PD10.**
 
----
+6. **`/paper`'s RESTRAINT HELD, AND IT WAS THE HARDEST LINE TO KEEP.** The room got glossary doorways
+   in the standing prose that *introduces* it — where "the spread" and "slippage" are being explained
+   to a beginner — and the chip treatment on its ledger symbols. It got **nothing** near the ticket.
+   The cost mirror's `−X% / yr drag` is still plain mono; it was deliberately NOT wrapped in
+   `DeltaChip`, because it is a **cost**, not a market move, and it has no window. **A cost mirror is
+   the one place in this app where a reader is about to spend money. A ticket decorated with
+   underlines and emphasized numerals is a ticket that is selling something.**
 
-## (Historic) What PD4 did, in one paragraph
+## The gate at `pd-6`
 
-The phone was quietly broken and every guard said it was fine. Measured on the **tagged, green
-`pd-3` tree**, before PD4 changed a line: **the Desk overflowed sideways by 16px at 360px, in
-production**; the mortgage cell's window label rendered **"· vs / prior / week", one word per line**;
-and the two swipe-shelves were hiding **four of nine figures** behind a swipe. The shelves are now a
-2-up card row, a full-width tape list and a 2×2 money grid — everything visible, nothing spilling.
-`StatFigure` got a wrap contract. The sweep now runs at **360 as well as 412** and counts the rooms it
-visited. And then PD4 **wrote its own version of the same bug**, shipped it past every green test, and
-was caught by a screenshot — twice.
+- App unit tests: **710** (was 692). Pipeline: **535** (504 + 31 skipped locally without Postgres).
+- Anti-drift: **28 rules** (was 27 — rule 28, the direction wash). Rooms: **14**. Oracle legs: **4**.
+  e2e specs: **25**. VRT baselines: **83** (34 re-shot, 0 added).
+- **Bundles: worst `/news` 197.3 KB against the 200 KB hard ceiling — ≈2.7 KB of real headroom.**
+  **PD9's overlay still has to fit in what is left.** Two baselines rebooked, each with its reason:
+  `/track-record` 185.1 → **192.7** (the kit crossed into a client component: TickerChip → DeltaChip,
+  plus the glossary popover island) and `/settings` 181.7 → **154.7** — that one was a **28 KB hole in
+  the drift guard**: a rebuild of `pd-5` measures the room at 153.5 KB, so it had been ~28 KB lighter
+  than its baseline for some time, and **a guard that only fires on GROWTH is silent about a number
+  that is too generous**.
+- Fonts 243/560 KB · `check:migrations` clean · `check:live` **green — 5 pass, 2 pending** (news
+  bylines, owed to PD8; and the masthead, owed to *tonight's* nightly — it was run at 5:15pm ET,
+  before the 6:37pm edition, and the checker says so rather than failing a healthy Desk) · `check:nav` report-mode · `check:lighthouse` **CLS 0.000, first-load JS 181 KB** (both hard
+  gates; perf 77 is the advisory synthetic-4G number that varies ±10).
+- Every candidate baseline was diffed against its committed one — **all 83, not just the failures** —
+  and the ones that moved were **opened and looked at** before they were committed.
 
-## The five things that are now true (a fresh session must know these)
+## The local harness, as actually used this phase (it all works — use it)
 
-1. **A PAGE-LEVEL OVERFLOW GUARD IS STRUCTURALLY BLIND TO A CELL-LEVEL OVERFLOW.** This is PD4's
-   sharpest finding and it nearly shipped.
+A seeded Postgres in Docker turns 149 skipped browser tests into 222 that actually run. PD6's whole
+touch-target finding came out of it, and it would have reached CI otherwise.
 
-   The sideways-scroll sweep asks the **document**: `scrollWidth === clientWidth`. A cell that spills
-   into the cell **next door** lands its spill *inside* the page, never past its edge. So the document
-   reports zero overflow — **honestly** — while a figure sits under the border of its neighbour.
-
-   PD4's first tape row did exactly this: index levels overflowing their cards by **8px**, delta chips
-   shattered into **three lines**, and **every guard green** — the unit tests, the class contract, and
-   the brand-new 360px sweep I had *just written*. Only the screenshot showed it.
-
-   > **The box you measure must be the box the bug is in.** A guard aimed one level too high is not a
-   > weak guard — it is a guard that will never fire, and it will make you confident while it does not.
-
-   `e2e/desk.spec.ts` now asks the question of the **cell**, measuring to the **content** edge (a
-   figure sitting in its own card's padding is already touching the wall).
-
-2. **THE ORACLE WAS PHOTOGRAPHING A HOVER STATE — the ticker baseline encoded where the LOGIN BUTTON
-   was.** `signIn()` *clicks* the Sign-in button; Chromium leaves the pointer resting there and
-   Playwright never moves it. On `/ticker/AAPL` the candle chart lands under that stationary cursor,
-   lightweight-charts thinks it is hovered, and draws a **crosshair** — two dashed lines and a black
-   price pill — into the baseline.
-
-   PD4 moved the Sign-in button down (the phone login gained a mark). The pointer moved with it, the
-   crosshair slid down the price axis, and the pill went **214.54 → 213.02** on a page PD4 never
-   touched. The candles were pixel-identical; only the crosshair moved. It reproduced **byte-for-byte
-   on a re-run**, so it was never flake.
-
-   `shoot()` now parks the mouse at (0,0). **This is PD3's law for the third time and it is always the
-   same law: a baseline proves the page did not CHANGE; it never proved the page was RIGHT.**
-
-3. **A GUARD POINTED AT THE COMFORTABLE END OF A RANGE IS NOT MEASURING THE RANGE.** The Desk scrolled
-   sideways 16px at 360px **in production**, and the sweep built to catch exactly that was green —
-   because it ran at each project's viewport, and the phone project is a **Pixel 7 at 412px**, the one
-   phone width where the defect does not happen. The sweep was never wrong. It was **aimed at the easy
-   end**. It now runs at 360 too, and it **counts the rooms it swept** and fails if it swept none.
-
-4. **THE WRAP CONTRACT: the unit of wrapping is the ATOM.** PD3's rule — *numbers never truncate,
-   never ellipsize, never clip; wrapping is just typography* — is true, and I over-applied it and
-   reproduced the very bug it was written to prevent. Told to wrap rather than clip, a delta chip
-   wrapped into `▲` / `+0.29%` / `· 1D`: **three lines, one token each.**
-
-   > "Wrapping is honest, truncating is not" is a claim about a **sentence**. A phrase broken one word
-   > per line has not been wrapped — it has been **shattered**, and a shattered figure is no more
-   > readable than a truncated one.
-
-   A delta chip has **two atoms**: the signed delta (`▲ +0.29%`, one fact in three redundant channels)
-   and its window (`· vs prior week`, the delta's unit). Each is `whitespace-nowrap`; the chip is
-   `flex-wrap`. Wrap **between** atoms, never **within** one. **This fixed a live production bug, not
-   just my own** — the mortgage window had been shattering for months.
-
-5. **THREE CARDS DO NOT FIT ACROSS A PHONE, AND THE PLAN'S ARITHMETIC WAS WRONG.** Part 7.1 specified
-   a 3-up grid and estimated "≈112px interior". **Measured: 74px at 360, 91px at 412** — against an
-   index level of ~81px and a delta chip of ~95px. A mono numeral has no wrap opportunity inside
-   itself, so it cannot be made to fit, only to overflow. I got the type down to **within 1px** of
-   breaking and stopped: **a design one pixel from failure is a coin flip, not a design.**
-
-   The tape is a **full-width list**, which keeps 7.1's argument intact (cards for the figures the
-   hero does not already state; a list for the ones it does). **The plan is amended in place** — Part
-   7.1 carries a dated correction block, so the plan and the code never disagree in silence.
-
-## The phone composition, as shipped
-
-```
-Macro Pulse (module 01), below md:
-  S&P hero                      full width, 48px numeral   (unchanged)
-  [data-macro-group="risk"]     VIX | 10-year              2-up cards, `body` scale
-  [data-macro-group="tape"]     Nasdaq / Dow / Small caps  ONE Surface, 3 hairline rows,
-                                                           `dense` scale, layout="row"
-  breadth                       full width                 (unchanged)
-  [data-macro-group="money"]    the 4 stats                2×2 grid, `dense` scale
-  Mood gauge                    full width, BELOW the grid (never IN it — see below)
+```bash
+docker run -d --name msm-e2e -e POSTGRES_PASSWORD=test -e POSTGRES_DB=msmtest -p 55434:5432 postgres:16
+export DATABASE_URL="postgresql://postgres:test@localhost:55434/msmtest" DIRECT_URL="$DATABASE_URL"
+npx prisma migrate deploy && npm run db:seed
+export MSM_SEEDED=1
+lsof -ti:3210 | xargs kill -9          # ALWAYS, before any run — reuseExistingServer will lie to you
+npx playwright test --project=phone --workers=1 --ignore-snapshots
 ```
 
-`StatFigure` gained two things: a **`dense` scale** (value `text-base`, chip `text-xs` — the chip
-shrinks *with* the figure, or the value fits and the chip does not) and a **`row` layout** (label
-left, figure right, on one baseline) which is what makes the tape list possible.
+**The seed only deletes the three watchlist symbols it creates**, so a failed `settings.spec` leaves
+`QQQ`/`DIA` behind and poisons the next run. Delete them between runs.
 
-**The gauge must never enter the money grid.** A grid row is as tall as its tallest cell — the same
-mechanism as the shelf that once padded four stat cards with 200px of white space each and grew the
-phone Desk by 347px. The guard survived the shelf's retirement and now measures cell heights in the
-browser (threshold 280px: the real cells measure 125–163px; the gauge is well past 400px).
+## Two local e2e failures that are NOT yours (both re-confirmed at PD6)
 
-## The gate at `pd-4`
-
-- App unit tests: **649** (was 642 — `StatFigure` gets its own test file; the MacroPulse shelf tests
-  are **inverted**, not deleted). Pipeline: **535** (504 + 31 skipped locally without Postgres).
-- Anti-drift: **25 rules**, unchanged. Rooms: **14**. Oracle legs: **4**. e2e specs: **25**.
-- **Bundles unmoved: worst `/news` 196.3 KB against the 200 KB hard ceiling.** Composition is not JS.
-  **PD5's kit and PD9's overlay both spend from this same ≈3.7 KB of headroom.**
-- Fonts 243/560 KB · `check:migrations` clean · `check:live` **all six green** (1 pending, owed to
-  PD8) · `check:nav` (every cached room 44–62 ms; `/settings` 436 ms, the argued `force-dynamic`
-  exemption) · `check:lighthouse` **CLS 0.000, first-load JS 178 KB** (both hard gates).
-- **VRT re-minted: the phone's Desk ×2, styleguide ×2 and login ×2, plus the ticker on every leg**
-  (the crosshair is gone from all of them). Every candidate was diffed against its committed baseline
-  **and opened and looked at** before it was committed.
-
-## Two local-harness traps that cost time — do not re-learn these
-
-- **`thin-night`'s Law-2 test will fail against a hand-started server.** If your server lacks
-  `CRON_SECRET`, thin-night's ISR cache-bust silently no-ops and the test photographs a **stale
-  full-night render** (318px where it wants ≤120). It looks exactly like a layout regression and is
-  not. **Let Playwright start its own server** — its `webServer.env` sets the secret.
-- **`e2e:local` needs ONE PROJECT AT A TIME** (already in CLAUDE.md), and *within* a project the local
-  worker default is **parallel**, which is enough to make `ticker-range` fail on the shared database.
-  Add `--workers=1` locally.
+- **`scans.spec.ts:44`** — passes in isolation. The thin-night specs mutate the shared local database;
+  CI gives every leg its own.
+- **`settings.spec.ts:29`** — **fails on the tagged, green `pd-5` tree too.** I stashed PD6, rebuilt
+  `pd-5`, ran it against the same database, and it failed *earlier*, at a different assertion. A local
+  ISR-revalidation flake, and it has now been confirmed against two different tags. Do not chase it.

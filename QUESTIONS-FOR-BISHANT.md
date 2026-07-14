@@ -8,6 +8,90 @@ Format: newest first. I mark each as [FYI], [VETO?], or [NEED] so you can scan.
 
 ---
 
+## 2026-07-14 — PD6 (the voice: the remaining rooms)
+
+### Q-PD6-1 — [FYI · BOOKED FOR PD10] the pixel oracle is BLIND to a large, low-contrast change
+
+**Nothing is needed from you.** This is the honest version of something PD5 got half right, and I
+want it written down before anyone relies on the oracle more than it deserves.
+
+PD5 noticed that the `scans-preset` baseline had changed by ~56,000 pixels **without failing**, and
+concluded the tolerance had absorbed it. It had not. The tolerance is `maxDiffPixels: 600` — 56,000
+pixels would blow straight through it.
+
+What actually happened is worse. Playwright's screenshot comparison ALSO takes a per-pixel
+`threshold` (a colour-distance cutoff, default 0.2), and we have never set it. **A hover wash is a
+big region of a *slightly* different colour.** Every one of those 56,000 pixels falls under the
+per-pixel cutoff, so *none of them count as differing at all*, and the 600-pixel budget is never
+even consulted.
+
+So the oracle is not tolerating that class of change. **It cannot see it.** Any pure hue shift —
+a background tint, a wash, a colour token quietly changing value — is invisible to it at any size.
+
+**What I did about it:** the specific bug is fixed. The committed `scans-preset` baselines dated from
+**PD2**, before PD4 parked the mouse at (0,0), and were photographs of a table row sitting in a hover
+highlight. I confirmed that with my own eyes (the crop is in `docs/pd-evidence/pd6-rooms.md` §7), and
+PD6 re-shot them. **Q-PD5-2 is closed.**
+
+**What I did NOT do:** arm the `threshold`. That is a change to the *instrument* all 83 baselines are
+measured by, and it belongs in a phase that can re-photograph every one of them and look at the
+results — not in a phase that would be doing it as a side-effect. **Booked for PD10 (hardening).**
+
+### Q-PD6-3 — [FYI · NEEDS A HOME] you cannot read your own watchlist reasons on a phone
+
+**Nothing is needed from you, but you may want to tell me where this belongs.**
+
+I found this by looking at a screenshot I was checking for something else entirely.
+
+On a 412px phone, `/settings`' watchlist row is: `[symbol] [why you're watching it] [Unfocus]
+[Remove]`. Those four things do not fit, so the reason column — the *only* piece of writing you
+authored yourself — gets truncated to **nothing**. The committed baseline shows **zero** characters
+of it. My change gives it three ("Ea…"). Both are useless.
+
+**It is not PD6's bug.** It is in the picture PD6 inherited, and PD6's brief for this room is *"type
+rhythm only"* (plan Part 8.3). I did not want to redesign a row's phone layout as the fourth
+unplanned swing at one small thing at the end of a long phase — that is exactly how the last three
+regressions happened.
+
+**The fix is small and obvious when someone owns it:** on a phone the reason should sit on its own
+line under the symbol, not fight two buttons for a 20px slot. That is a five-line change to
+`WatchlistManager.tsx`. It has no natural home in the remaining plan (PD7 is the pipeline, PD8/PD9
+are news and sheets), so **I would put it in PD10's hardening pass unless you say otherwise.**
+
+### Q-PD6-2 — [FYI · BOOKED FOR PD8] the touch sweep visits a news story that has nothing in it
+
+**Nothing is needed from you.**
+
+A ticker chip that is a *door* is a control, so it must be 44px on touch. It shipped at **21px** —
+and it had been live on the news story page since PD5, passing the phone sweep every single night.
+
+The sweep visits exactly one story, `nc-fed-hold`. That cluster has **zero** affected tickers in the
+seeded world, so the affected-tickers table renders no rows, so there were no doors to measure, so
+the room reported clean. **The rule was being kept by the shape of a fixture.**
+
+The bug is fixed at the component, so it is gone everywhere at once, and the 44px contract is now
+pinned in `TickerChip`'s own unit test rather than in a sweep that needs the data to cooperate. But
+the blind spot is still there: **every control inside that table is still unswept.** PD8 rebuilds the
+story page and should point the sweep at a story that actually has one.
+
+### [FYI] The pictures caught two of my own bugs this phase, and no test would have
+
+Worth thirty seconds of your time, because it is the third phase running that this has happened and
+the first time the bugs were mine.
+
+1. **The 44px door made every table row 69px.** The fix was right and its side-effect was not: the
+   44px target *added* to the table cell's existing padding, so every row in every table grew by half
+   again — to make room for something invisible. Every guard passed, including the touch sweep, which
+   asks "is it 44px?" and got 44px. I found it by putting the new baseline next to the old one.
+2. **A chip is wider than the word it replaces.** The settings watchlist's symbol column was 96px,
+   sized for the text "AAPL" (~34px). As a bordered chip that is ~48px, and beside its FOCUS tag it
+   no longer fit — so the tag wrapped to its own line and shoved the company name down. Nothing
+   failed. It just looked wrong, because it was wrong.
+
+Both are fixed and both are now in LESSONS. No action.
+
+---
+
 ## 2026-07-14 — PD5 (the voice: the richness kit)
 
 ### Q-PD5-1 — [FYI · BOOKED FOR PD7] the Desk's brief carries glossary doorways but no emphasized numbers
