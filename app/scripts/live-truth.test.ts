@@ -212,23 +212,45 @@ describe("5 — press-time truth", () => {
 
 describe("6 — the next-edition promise", () => {
   it("passes a strip promising the next real session", () => {
-    // Recorded Monday evening; the strip says "next: Tue".
-    const result = checkNextEdition(desk(HEALTHY_DESK), MONDAY_EVENING);
+    // Recorded Monday evening; the masthead says Monday, the strip says "next: Tue".
+    const result = checkNextEdition(desk(HEALTHY_DESK));
     expect(result.verdict).toBe("PASS");
     expect(result.found).toBe("Tue");
   });
 
+  it("measures the promise against the EDITION, not against the wall clock", () => {
+    // THE BUG THIS EXISTS FOR (PD1, found the night check:live joined the standing gate).
+    //
+    // This check used to walk forward from `now`. So at 00:07 ET on Tuesday it demanded the strip
+    // say "Wed" — while the Desk, still serving Monday's edition and promising that evening's, was
+    // completely correct. It failed a healthy product, and it would have done so EVERY night,
+    // between midnight ET and the evening run.
+    //
+    // That is the same two-clocks bug as the calendar floor in lib/morning.ts, found the same hour:
+    // a surface derived from the EDITION, checked against the CLOCK. The promise is a fact about the
+    // edition, so the edition is what it is measured against — and this check no longer takes a
+    // clock at all. A stale masthead is assertion 1's job, and assertion 1 does it loudly.
+    const result = checkNextEdition(desk(HEALTHY_DESK)); // masthead: Monday, July 13; strip: next Tue
+    expect(result.verdict).toBe("PASS");
+  });
+
   it("catches a promise that names the wrong day", () => {
     const wrong = desk(HEALTHY_DESK).replace("next: Tue", "next: Thu");
-    const result = checkNextEdition(wrong, MONDAY_EVENING);
+    const result = checkNextEdition(wrong);
     expect(result.verdict).toBe("FAIL");
     expect(result.expected).toContain("Tue");
   });
 
-  it("walks over a weekend — a Friday strip promises Monday", () => {
-    const friday = new Date("2026-07-10T23:00:00Z"); // Friday evening
-    const strip = desk(HEALTHY_DESK).replace("next: Tue", "next: Mon");
-    expect(checkNextEdition(strip, friday).verdict).toBe("PASS");
+  it("walks over a weekend — a Friday edition promises Monday", () => {
+    const friday = desk(HEALTHY_DESK)
+      .replace("Monday, July 13, 2026", "Friday, July 10, 2026")
+      .replace("next: Tue", "next: Mon");
+    expect(checkNextEdition(friday).verdict).toBe("PASS");
+  });
+
+  it("says so when the Desk names no edition at all", () => {
+    const noDate = desk(HEALTHY_DESK).replace("Monday, July 13, 2026", "");
+    expect(checkNextEdition(noDate).verdict).toBe("FAIL");
   });
 });
 

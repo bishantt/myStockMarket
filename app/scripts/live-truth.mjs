@@ -328,6 +328,18 @@ export function checkBylines(newsHtml) {
   return pass("news · byline links", "external anchors on the feed", `${anchors.length} outbound link(s)`);
 }
 
+/** The next trading session strictly after `day`. */
+export function nextTradingDay(day) {
+  let cursor = day;
+  for (let i = 0; i < 14; i += 1) {
+    const next = new Date(`${cursor}T00:00:00Z`);
+    next.setUTCDate(next.getUTCDate() + 1);
+    cursor = next.toISOString().slice(0, 10);
+    if (isTradingDay(cursor)) break;
+  }
+  return cursor;
+}
+
 /**
  * 6. STRIP FUTURE-TRUTH — the "next:" promise.
  *
@@ -336,33 +348,40 @@ export function checkBylines(newsHtml) {
  * quietly wrong, because it is derived from the edition date, and the edition date is the thing that
  * was broken. (On the Saturday it read "next: Mon" and was, by accident, right — which is precisely
  * why a check that only looked at this one would have seen nothing.)
+ *
+ * IT IS MEASURED AGAINST THE EDITION, AND IT TAKES NO CLOCK. This check used to walk forward from
+ * `now`, and PD1 caught it the night check:live joined the standing gate: at 00:07 ET on a Tuesday it
+ * demanded the strip say "Wed", while the Desk — still serving Monday's edition, correctly promising
+ * that evening's — said "Tue". It failed a healthy product, and would have done so every night
+ * between midnight and the evening run.
+ *
+ * The promise is a fact ABOUT THE EDITION ("the next paper after this one"), so the edition is what
+ * it is measured against. That is the same lesson as the calendar floor in lib/morning.ts, found in
+ * the same hour: a surface derived from the edition must never be checked against the wall clock, or
+ * the two disagree for a few hours every night. A STALE masthead is assertion 1's job — and assertion
+ * 1 does it loudly, so nothing is lost by taking the clock out of this one.
  */
-export function checkNextEdition(deskText, now) {
+export function checkNextEdition(deskText) {
   const m = deskText.match(/next: (Sun|Mon|Tue|Wed|Thu|Fri|Sat)\b/);
   if (!m) return fail("strip · next-edition promise", "a named next session", "the strip promises nothing");
 
-  const promised = m[1];
-  const today = easternParts(now).day;
-
-  // Walk forward from today to the next trading day and check the strip named it.
-  let cursor = today;
-  for (let i = 0; i < 14; i += 1) {
-    const next = new Date(`${cursor}T00:00:00Z`);
-    next.setUTCDate(next.getUTCDate() + 1);
-    cursor = next.toISOString().slice(0, 10);
-    if (isTradingDay(cursor)) break;
+  const edition = parseLongDate(deskText);
+  if (!edition) {
+    return fail("strip · next-edition promise", "an edition to promise from", "the Desk names no date");
   }
-  const expected = new Date(`${cursor}T12:00:00Z`)
+
+  const promised = m[1];
+  const expected = new Date(`${nextTradingDay(edition)}T12:00:00Z`)
     .toLocaleDateString("en-US", { weekday: "short", timeZone: "UTC" });
 
   if (promised !== expected) {
     return fail(
       "strip · next-edition promise",
-      `${expected} (the next trading day after ${today})`,
+      `${expected} (the next session after the ${edition} edition)`,
       `the strip says ${promised}`,
     );
   }
-  return pass("strip · next-edition promise", `${expected}, a future session`, promised);
+  return pass("strip · next-edition promise", `${expected}, the session after this edition`, promised);
 }
 
 /** All six, in the order plan 3.6 lists them. `now` is injected so the tests own the clock. */
@@ -377,6 +396,6 @@ export function checkLive({ deskHtml, newsHtml, now }) {
     checkCalendar(deskText, now),
     checkPressTime(newsText),
     checkBylines(newsHtml),
-    checkNextEdition(deskText, now),
+    checkNextEdition(deskText),
   ];
 }

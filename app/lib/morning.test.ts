@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { buildCalendar, buildMacro, buildMovers, buildSourceStatus, buildWatchlist } from "@/lib/morning";
+import { buildCalendar, buildMacro, buildMovers, buildSourceStatus, buildWatchlist, calendarFloor } from "@/lib/morning";
 
 /**
  * Tests for the pure builders in lib/morning — the row-shape → view-model transforms the Desk
@@ -342,12 +342,46 @@ describe("buildCalendar", () => {
 
   it("falls back to the kind for a row written before the allowlist existed", () => {
     // Old rows carry no code. They still render a chip — an empty chip would be worse than a
-    // slightly-stale one, and the next nightly run replaces the forward calendar anyway.
+    // slightly-stale one. What keeps such a row off the Desk is not this function but the floor
+    // below: it is only ever asked to format rows the query already agreed to show.
     const [row] = buildCalendar([
       { date: new Date("2026-07-15T00:00:00.000Z"), kind: "macro", symbol: null, title: "Something old", consensus: null, prior: null, code: null, importance: null },
     ]);
     expect(row.code).toBe("macro");
     expect(row.high).toBe(false);
+  });
+});
+
+describe("calendarFloor", () => {
+  // The floor is what stops a row stranded in the past from being rendered — and, because the rows
+  // are taken 15-at-a-time in date order, from EVICTING the real forward events behind it. That is
+  // how four pre-allowlist rows dated on a Saturday and a Sunday cut the live Desk's calendar from
+  // 15 events to 11 for weeks (PD1).
+
+  it("floors the calendar at the edition's session, so a past row can never be shown", () => {
+    const edition = new Date("2026-07-13T00:00:00.000Z"); // Monday's edition
+    const floor = calendarFloor(edition, new Date("2026-07-14T04:00:00.000Z"));
+    expect(floor.toISOString()).toBe("2026-07-13T00:00:00.000Z");
+
+    // The two rows that sat on production: Saturday and Sunday. Both are below the floor.
+    expect(new Date("2026-07-11T00:00:00.000Z") >= floor).toBe(false);
+    expect(new Date("2026-07-12T00:00:00.000Z") >= floor).toBe(false);
+    // An event ON the edition's own day still belongs — the floor is inclusive.
+    expect(new Date("2026-07-13T00:00:00.000Z") >= floor).toBe(true);
+  });
+
+  it("follows the edition, not the wall clock", () => {
+    // It is past midnight, so the CLOCK says the 14th — but the edition on the Desk is still the
+    // 13th's, and the calendar must speak from the same day the masthead does. A clock-based floor
+    // would hide the edition's own events for a few hours every night.
+    const floor = calendarFloor(new Date("2026-07-13T00:00:00.000Z"), new Date("2026-07-14T03:59:00.000Z"));
+    expect(floor.toISOString()).toBe("2026-07-13T00:00:00.000Z");
+  });
+
+  it("falls back to today when there is no edition at all", () => {
+    // An empty database has no session to speak from. Showing nothing beats showing history.
+    const floor = calendarFloor(null, new Date("2026-07-14T18:30:00.000Z"));
+    expect(floor.toISOString()).toBe("2026-07-14T00:00:00.000Z");
   });
 });
 

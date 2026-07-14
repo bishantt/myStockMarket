@@ -203,6 +203,61 @@ def test_calendar_replaces_the_forward_window_but_none_leaves_it_alone(db):
     assert _count(db, "calendar_event") == 1
 
 
+def test_calendar_refresh_sweeps_a_row_that_has_fallen_behind_the_window(db):
+    """
+    A row dated BEHIND the run date is litter, and the refresh takes it out.
+
+    THE BUG THIS EXISTS FOR (PD1, live on production for weeks). The refresh used to delete only
+    `date >= run_date` — the forward window — and re-insert tonight's fetch. So a row whose date had
+    slipped into the PAST was no longer in the window, and nothing ever touched it again. Four of
+    them ("Coinbase Cryptocurrencies" and a raw "FOMC Press Release", written by the pre-allowlist
+    ingest and dated on a Saturday and a Sunday) sat on the live Desk long after the write path that
+    made them had been fixed.
+
+    That is the lesson worth keeping: FIXING A WRITE PATH DOES NOT CLEAN A TABLE. The allowlist
+    stopped new litter; it could not reach the litter already there, because the delete only ever
+    looked forward.
+
+    The calendar is a FORWARD VIEW. The table holds that window and nothing else — so a refresh
+    replaces ALL of it, not just the part still ahead of the clock. There is no history here to
+    protect: nothing reads a past calendar row (see loadCalendar in app/lib/morning.ts, which now
+    refuses to render one).
+    """
+    stale = {"date": date(2026, 6, 26), "kind": "macro", "symbol": None, "timing": None,
+             "title": "Coinbase Cryptocurrencies", "consensus": None, "prior": None,
+             "importance": None, "code": None}
+    # An earlier run wrote it, back when that date was still ahead of it.
+    pub.publish(db, run_date=date(2026, 6, 25), stage_status={}, source_status={},
+                calendar_events=[stale])
+    assert _count(db, "calendar_event") == 1
+
+    # Tonight's run is LATER than the stale row's date, so the row now sits behind the window.
+    fresh = {"date": date(2026, 7, 15), "kind": "earnings", "symbol": "AAPL", "timing": None,
+             "title": "Apple Q3", "consensus": None, "prior": None, "importance": "medium",
+             "code": "EARNINGS"}
+    pub.publish(db, run_date=RUN, stage_status={}, source_status={}, calendar_events=[fresh])
+
+    # The old refresh left the stale row in place. This one sweeps it.
+    rows = db.execute("SELECT title FROM calendar_event ORDER BY date").fetchall()
+    assert rows == [("Apple Q3",)]
+
+
+def test_a_degraded_ingest_still_leaves_a_stale_row_alone(db):
+    """
+    The sweep is part of the REPLACE, not a separate cleanup — so it only runs when a calendar
+    actually arrived. `None` means "no calendar source ran tonight", and a degraded source must
+    never blank the calendar (nor half-blank it by deleting the past and inserting nothing).
+    """
+    stale = {"date": date(2026, 6, 26), "kind": "macro", "symbol": None, "timing": None,
+             "title": "Coinbase Cryptocurrencies", "consensus": None, "prior": None,
+             "importance": None, "code": None}
+    pub.publish(db, run_date=date(2026, 6, 25), stage_status={}, source_status={},
+                calendar_events=[stale])
+
+    pub.publish(db, run_date=RUN, stage_status={}, source_status={}, calendar_events=None)
+    assert _count(db, "calendar_event") == 1
+
+
 def test_batch_id_persists_and_is_coalesced_on_rerun(db):
     # Job A records the extraction batch id on pipeline_run; a rerun without a new id keeps it.
     pub.publish(db, run_date=RUN, stage_status={}, source_status={}, batch_id="batch-abc")

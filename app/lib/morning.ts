@@ -809,11 +809,56 @@ async function citationResolver(amJson: unknown): Promise<Record<string, { url: 
   return Object.fromEntries(rows.map((r) => [r.id, { url: r.url, source: sourceLabel(r.url) }]));
 }
 
+/**
+ * How many calendar rows the Desk shows. Named because the cap is load-bearing: the rows are sorted
+ * by date ascending, so anything stranded in the PAST sorts first and spends these slots. That is
+ * not a cosmetic problem — it is an eviction. See calendarFloor below.
+ */
+const CALENDAR_ROWS = 15;
+
+/**
+ * The earliest date the session calendar may show: the edition's own session.
+ *
+ * The calendar is a FORWARD view — it says what is coming — so it must never render a day that has
+ * already been. The floor is the EDITION's session date, not the wall clock, and that choice is
+ * PD0's lesson restated: the Desk serves a dated edition, and every module on it speaks from that
+ * same day. A clock-based floor would quietly disagree with the masthead in the hours between
+ * midnight and the next night's run, which is exactly the kind of two-clocks bug this codebase has
+ * already paid for once.
+ *
+ * With no run at all (an empty database) there is no edition to speak from, so fall back to today:
+ * showing nothing is better than showing history.
+ */
+export function calendarFloor(editionDate: Date | null, now: Date): Date {
+  if (editionDate !== null) return editionDate;
+  return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+}
+
+/**
+ * The session calendar: the next few things the market is waiting for.
+ *
+ * THE BUG THIS GUARDS (PD1). This read used to have no lower bound at all — it simply took the 15
+ * earliest rows in the table. So four rows written by the pre-allowlist ingest ("Coinbase
+ * Cryptocurrencies", a raw "FOMC Press Release") and dated on a Saturday and a Sunday sorted to the
+ * TOP of the list and sat on the live Desk for weeks. They were not merely ugly: they were spending
+ * 4 of the 15 slots, so the Desk showed 11 of its 23 real forward events and silently dropped the
+ * rest.
+ *
+ * The pipeline's refresh now sweeps the whole table (publish._replace_calendar), so the litter
+ * cannot accumulate. This is the other half of the fence, and it is the half that holds when the
+ * pipeline has not run for a few days: a floor at the read means a stale row can never be rendered,
+ * whatever is sitting in the table.
+ */
 async function loadCalendar(): Promise<CalendarRow[] | null> {
   try {
+    const edition = await db.pipelineRun.findFirst({
+      orderBy: { runDate: "desc" },
+      select: { runDate: true },
+    });
     const rows = await db.calendarEvent.findMany({
+      where: { date: { gte: calendarFloor(edition?.runDate ?? null, new Date()) } },
       orderBy: [{ date: "asc" }],
-      take: 15,
+      take: CALENDAR_ROWS,
       select: {
         date: true, kind: true, symbol: true, title: true,
         consensus: true, prior: true, code: true, importance: true,

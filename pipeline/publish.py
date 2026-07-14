@@ -147,7 +147,7 @@ def publish(
             _insert_signal_logs(cur, signal_logs)
             _upsert_market_context(cur, run_date, market_context)
             _upsert_news_items(cur, news_items)
-            _replace_calendar(cur, run_date, calendar_events)
+            _replace_calendar(cur, calendar_events)
         conn.commit()
     except Exception:
         conn.rollback()
@@ -633,14 +633,25 @@ def _upsert_news_items(cur, news_items) -> None:
     )
 
 
-def _replace_calendar(cur, run_date, calendar_events) -> None:
-    # The calendar is a forward view, so each run replaces it from the run date onward — the fresh
-    # schedule wins, and a cancelled or rescheduled event does not linger. `None` means "the catalyst
-    # ingest did not run tonight", so the existing calendar is left untouched (a degraded source must
-    # not blank the calendar); an empty list means "it ran and found nothing", which does replace.
+def _replace_calendar(cur, calendar_events) -> None:
+    # The calendar is a forward view, so each run replaces THE WHOLE TABLE — the fresh schedule wins,
+    # and a cancelled or rescheduled event does not linger. `None` means "the catalyst ingest did not
+    # run tonight", so the existing calendar is left untouched (a degraded source must not blank the
+    # calendar); an empty list means "it ran and found nothing", which does replace.
+    #
+    # THE DELETE USED TO SAY `WHERE date >= run_date` — only the forward window (PD1). That looked
+    # right and was not: a row whose date had slipped into the PAST was no longer in the window, so
+    # the refresh never reached it and it rotted in place. Four such rows — "Coinbase
+    # Cryptocurrencies" and a raw "FOMC Press Release" from the pre-allowlist ingest, dated on a
+    # Saturday and a Sunday — sat on the live Desk for weeks after the write path that made them was
+    # fixed. FIXING A WRITE PATH DOES NOT CLEAN A TABLE.
+    #
+    # Deleting all of it costs nothing: the table IS the forward window, and no reader wants a past
+    # calendar row (app/lib/morning.ts's loadCalendar now refuses to render one). There is no history
+    # here to protect — the one ledger that may never be rewritten is signal_log, and it is elsewhere.
     if calendar_events is None:
         return
-    cur.execute("DELETE FROM calendar_event WHERE date >= %s", (run_date,))
+    cur.execute("DELETE FROM calendar_event")
     # `code` is the chip the Desk renders (CPI, JOBS, FOMC, EARNINGS …) — the calendar's one
     # vocabulary, set by the allowlist rather than by the raw provider name (redesign §6.2).
     rows = [
