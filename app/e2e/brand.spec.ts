@@ -21,27 +21,31 @@ import { expect, test } from "@playwright/test";
  * Every path from the artifact table (plan 5.2), with the content type it must answer.
  * If a row is added to the generator, it is added here — that is the whole contract.
  */
-const BRAND_PATHS: ReadonlyArray<{ path: string; type: string; why: string }> = [
-  { path: "/favicon.ico", type: "image/x-icon", why: "the browser tab" },
-  { path: "/apple-touch-icon.png", type: "image/png", why: "the iOS home screen" },
-  { path: "/icons/icon-192.png", type: "image/png", why: "manifest — any" },
-  { path: "/icons/icon-512.png", type: "image/png", why: "manifest — any / splash" },
-  { path: "/icons/icon-maskable-192.png", type: "image/png", why: "manifest — maskable" },
-  { path: "/icons/icon-maskable-512.png", type: "image/png", why: "manifest — maskable" },
-  { path: "/icons/icon-monochrome-96.png", type: "image/png", why: "manifest — monochrome" },
-  { path: "/icons/brandmark-64.webp", type: "image/webp", why: "the top bar's mark" },
-  { path: "/icons/brandmark-192.webp", type: "image/webp", why: "the login panel's mark" },
-  { path: "/icons/og-card.png", type: "image/png", why: "the link preview" },
+const BRAND_PATHS: ReadonlyArray<{ path: string; type: RegExp; why: string }> = [
+  // An ICO has two blessed content types and the answer depends on WHO is serving it: `next start`
+  // says image/x-icon, the Vercel CDN in front of production says image/vnd.microsoft.icon. Both are
+  // correct and every browser accepts either. Pinning the one CI happens to see would be pinning the
+  // server, not the contract — and it would red the day anyone pointed this suite at production.
+  { path: "/favicon.ico", type: /image\/(x-icon|vnd\.microsoft\.icon)/, why: "the browser tab" },
+  { path: "/apple-touch-icon.png", type: /image\/png/, why: "the iOS home screen" },
+  { path: "/icons/icon-192.png", type: /image\/png/, why: "manifest — any" },
+  { path: "/icons/icon-512.png", type: /image\/png/, why: "manifest — any / splash" },
+  { path: "/icons/icon-maskable-192.png", type: /image\/png/, why: "manifest — maskable" },
+  { path: "/icons/icon-maskable-512.png", type: /image\/png/, why: "manifest — maskable" },
+  { path: "/icons/icon-monochrome-96.png", type: /image\/png/, why: "manifest — monochrome" },
+  { path: "/icons/brandmark-64.webp", type: /image\/webp/, why: "the top bar's mark" },
+  { path: "/icons/brandmark-192.webp", type: /image\/webp/, why: "the login panel's mark" },
+  { path: "/icons/og-card.png", type: /image\/png/, why: "the link preview" },
 ];
 
 test.describe("the brand assets are reachable without a session", () => {
   for (const { path, type, why } of BRAND_PATHS) {
-    test(`${path} answers 200 ${type} — ${why}`, async ({ request }) => {
+    test(`${path} answers 200 ${type.source} — ${why}`, async ({ request }) => {
       // maxRedirects: 0 is the assertion. Following a redirect would turn the login wall's 307
       // into a cheerful 200 for the login PAGE, and the test would pass while the icon was gone.
       const response = await request.get(path, { maxRedirects: 0 });
       expect(response.status(), `${path} must not be behind the login wall`).toBe(200);
-      expect(response.headers()["content-type"]).toContain(type);
+      expect(response.headers()["content-type"]).toMatch(type);
       // A zero-byte file would satisfy everything above it and show nothing at all.
       expect((await response.body()).byteLength).toBeGreaterThan(200);
     });

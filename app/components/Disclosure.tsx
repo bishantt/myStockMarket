@@ -59,6 +59,27 @@ export type DisclosureProps = {
    * default is instant precisely so that the safe thing is the thing you get by not thinking.
    */
   fade?: boolean;
+  /**
+   * Hide this count from the PIXEL ORACLE (not from the reader — it renders exactly as always).
+   *
+   * THE FUSE THIS DEFUSES, found at PD2 and older than PD2. The Desk's journal disclosure counts
+   * what the reader saved tonight. In the seeded world that is zero — except that e2e/briefing.spec
+   * WRITES a journal entry, it runs before e2e/vrt.spec (workers: 1, alphabetical), and it never
+   * cleans up. So the Desk the oracle photographs says "1 saved tonight", while the baseline minted
+   * by the standalone `vrt-baselines` job — which runs vrt.spec alone, on a fresh database — says
+   * "none saved tonight". The two have disagreed by 387 pixels for as long as the baseline has
+   * existed, and nobody knew, because `maxDiffPixels: 600` was quietly absorbing it.
+   *
+   * PD2's new top-bar mark added 746 more pixels to the same shots. 387 + 746 cleared the tolerance,
+   * the Desk went red, and the old disagreement fell out of it.
+   *
+   * A pixel baseline that depends on WHICH TESTS RAN FIRST is not a baseline, it is a coin toss with
+   * a long period. e2e/desk.spec.ts already refuses to assert this number for exactly this reason
+   * ("asserting 'none saved tonight' would be asserting the test ORDER, not the product"). The
+   * oracle now refuses too. The count's typography is still pixel-locked — through the watchlist's
+   * disclosure, which counts something that does not move.
+   */
+  maskCount?: boolean;
   children: React.ReactNode;
 };
 
@@ -76,6 +97,7 @@ export function Disclosure({
   forceOpen = false,
   defaultOpen = false,
   fade = false,
+  maskCount = false,
   children,
 }: DisclosureProps) {
   const [open, setOpen] = useState(defaultOpen);
@@ -88,7 +110,10 @@ export function Disclosure({
         <h3 className="flex min-h-11 items-center gap-2 font-mono text-2xs font-medium uppercase tracking-[0.08em] text-muted">
           {label}
           {count > 0 ? (
-            <span className="whitespace-nowrap font-normal normal-case tracking-normal text-muted">
+            <span
+              data-vrt={maskCount ? "mask" : undefined}
+              className="whitespace-nowrap font-normal normal-case tracking-normal text-muted"
+            >
               {countLine(count, context, true)}
             </span>
           ) : null}
@@ -122,7 +147,10 @@ export function Disclosure({
            * One non-breaking unit. At 320px the count wraps BELOW the label as a whole phrase
            * rather than shattering into "+ 12" / "more · through Jul 26" across two lines.
            */}
-          <span className="whitespace-nowrap font-normal normal-case tracking-normal text-muted">
+          <span
+            data-vrt={maskCount ? "mask" : undefined}
+            className="whitespace-nowrap font-normal normal-case tracking-normal text-muted"
+          >
             {countLine(count, context, open)}
           </span>
         </span>

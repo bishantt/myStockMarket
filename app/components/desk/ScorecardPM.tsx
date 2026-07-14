@@ -77,6 +77,11 @@ export function ScorecardPM({
         label={JOURNAL_PROMPT}
         count={savedTonight}
         context={savedTonight === 0 ? copy.journal.savedNone : copy.journal.savedOne}
+        // The reader still sees this count. The PIXEL ORACLE does not — it is the one number on the
+        // Desk that changes with which tests ran first (e2e/briefing.spec writes a journal entry and
+        // does not clean up). See Disclosure's `maskCount` for the full story; it is a fuse that has
+        // been burning under `maxDiffPixels` since the baseline was minted, and PD2 surfaced it.
+        maskCount
       >
         <JournalPrompt />
       </Disclosure>
