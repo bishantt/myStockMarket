@@ -66,6 +66,49 @@ on:
   push:
     branches: ["**"]
     tags: ["phase-*", "redesign-*", "feel-*", "nc-*", "gate-*", "pd-*"]
+    # DOCUMENTATION IS FREE (G2). A commit that changes nothing but prose starts no run at all.
+    #
+    # This repo writes a lot of prose on purpose — evidence chapters, five intelligence files, the
+    # plans, the skills. 58 of the first 249 commits changed no code whatsoever, and every one of
+    # them paid the full price: the app job type-checked, linted, ran 577 unit tests and produced a
+    # production build, and the pipeline job stood up a Postgres container and ran pytest, in order
+    # to prove that a sentence in LESSONS.md had not broken the compiler. Measured on the two docs
+    # commits that closed G1: 2 m 35 s and 2 m 26 s, to learn nothing (GATE-EFFICIENCY-ANALYSIS.md
+    # §2.3-#4). A check earns its place by what it could DISCOVER, and this one could discover
+    # nothing by construction.
+    #
+    # SAFE ONLY BECAUSE NOTHING IN THE GATE READS THESE PATHS — checked, not assumed, before this
+    # was written: no test, drift rule or budget script reads a .md file, `docs/`, or `.claude/`
+    # (the only .md contact anywhere is the evidence scripts APPENDING to docs/evidence/*.md). The
+    # workflow files themselves are NOT ignored, so `test_ci_tag_families.py` and
+    # `test_workflow_dispatch.py` — the two guards that read .github/workflows/*.yml — still fire on
+    # every change they care about. If a future guard ever starts reading a doc, this list is where
+    # it breaks, and it breaks silently. Add the path back before you write that guard.
+    #
+    # A MIXED COMMIT STILL RUNS. GitHub skips the run only when EVERY changed file matches an ignore
+    # pattern, so "docs + a one-line fix" is a normal, fully-verified push. You cannot smuggle code
+    # past the gate by attaching a README to it.
+    #
+    # *** THE TAG EDGE — THE ONE THAT COULD HAVE KILLED THE ORACLE, PROVEN LIVE ON THIS REPO ***
+    # Phase tags in this build deliberately land on docs-only commits (this very phase's tag does).
+    # If GitHub applied these path filters to TAG pushes, `git tag gate-2 <a docs commit>` would
+    # start NO RUN, the phase would "pass its gate" without the browser oracle ever executing, and
+    # nothing would say so — the exact "gate that silently never runs" disease this file has warned
+    # about since phase one. GitHub's documentation says path filters are ignored for tag pushes.
+    # THE VENDOR'S DOCUMENTATION IS NOT A RECORDING — this repo re-learned that against GitHub
+    # itself twice (the dispatch API's undocumented empty 204; the concurrency group that cancelled
+    # the very run it was rehearsing). So this line is not taken on faith. G2 proves it live, on
+    # this repo, in the same breath as landing it: push a docs-only commit and confirm NO run is
+    # created (the absence is the pass), then tag `gate-2` on that same commit and confirm the full
+    # three-leg oracle DID run. One run settles the edge — branch pushes filtered, tag pushes not.
+    # THE RESULT, WITH RUN IDS, IS IN docs/gate-evidence/g2-docs-cost.md — read it, do not assume
+    # it. Had the tag failed to trigger, this commit would have been reverted and docs-only commits
+    # would carry `[skip ci]` instead, under one bright line: never `[skip ci]` a commit a tag will
+    # sit on.
+    paths-ignore:
+      - "**/*.md"
+      - "docs/**"
+      - ".claude/**"
   workflow_dispatch:
     inputs:
       job:
