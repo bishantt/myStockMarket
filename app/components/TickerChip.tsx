@@ -114,12 +114,24 @@ const SYMBOL = "whitespace-nowrap font-medium text-ink";
  * invisible 44px-tall hit area, and the visual chip sits inside it, unchanged at 21px. The reader
  * sees the same chip; the thumb gets a target it can actually land on.
  *
- * This costs nothing in a table — a `<td>` is already ~45px tall with its padding, so the row does
- * not grow. That is exactly why the door belongs in tables and NOT on the scans index's three-row
- * teaser, whose rows are shorter than the target and would have to grow to hold one.
+ * ── AND THE HIT AREA OVERLAPS THE CELL'S PADDING RATHER THAN STACKING ON TOP OF IT ───────────────
+ *
+ * `-my-3` is the load-bearing half of this, and PD6 shipped it wrong first. Without the negative
+ * margin the 44px anchor ADDS to the `<td>`'s 12px of vertical padding, and every row in every table
+ * in the app grows from 45px to **69px** — half again as tall, for a target nobody can see. The unit
+ * tests passed. The touch sweep passed (it was now 44px, which is all it asks). It was caught by
+ * LOOKING at the baseline: the rows had visibly drifted apart.
+ *
+ * The negative margin pulls the anchor's 44px border box back INTO the padding that is already
+ * there. The row stays 45px, the chip stays 21px, and `boundingBox()` — which is what the sweep and
+ * every browser hit-test read — still returns a true 44px. Nothing is faked: the target really is
+ * 44px, it simply occupies space the cell had already reserved.
+ *
+ * This is why the door belongs in TABLES and not on the scans index's three-row teaser: a table cell
+ * has 12px of padding to lend, and a 37px teaser row has none.
  */
 const DOOR_HIT_AREA =
-  "group inline-flex min-h-11 max-w-full items-center align-middle " +
+  "group -my-3 inline-flex min-h-11 max-w-full items-center align-middle " +
   "focus-visible:rounded-chip focus-visible:outline-2 focus-visible:outline-offset-2 " +
   "focus-visible:outline-accent";
 

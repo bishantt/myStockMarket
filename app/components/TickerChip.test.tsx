@@ -84,6 +84,18 @@ describe("TickerChip — one symbol, one treatment (§8.2.1)", () => {
     expect(chip.className).not.toContain("min-h-11");
   });
 
+  it("OVERLAPS the cell's padding with its hit area, instead of stacking on top of it", () => {
+    // PD6 shipped this wrong first, and only a SCREENSHOT caught it. A 44px anchor with no negative
+    // margin ADDS to the <td>'s 12px of vertical padding, and every row in every table in the app
+    // grew from 45px to 69px — half again as tall, for a target nobody can see. Every unit test
+    // passed. The touch sweep passed, because 44px is all it asks for. The baseline showed the rows
+    // visibly drifting apart.
+    //
+    // Measured after the fix, in a real browser: row 46.3px, door 44px. Both true at once.
+    render(<TickerChip symbol="AAPL" door />);
+    expect(screen.getByRole("link", { name: /AAPL/ }).className).toContain("-my-3");
+  });
+
   it("gives the LABEL no hit area at all — it is not a control, and must not pretend to be one", () => {
     const { container } = render(<TickerChip symbol="AAPL" />);
     expect(container.querySelector(".min-h-11")).toBeNull();
