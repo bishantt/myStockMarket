@@ -1,157 +1,128 @@
 # PROGRESS.md — resumable state
 
-# PD3 IS **COMPLETE** — tagged `pd-3`, CI green on the first try. **The hole is gone, and the oracle was caught defending a bug.**
+# PD4 IS **COMPLETE** — tagged `pd-4`. **The phone had been scrolling sideways in production, and the oracle had been photographing a hover state.**
 
-**Checkpoint: POLISH-AND-DEPTH-PLAN.md, PD3 (Part 6 — the desktop grid contract v2) is DONE.
+**Checkpoint: POLISH-AND-DEPTH-PLAN.md, PD4 (Part 7 — the phone composition) is DONE.
 Nothing is blocked. Nothing is in flight.**
 
-**NEXT: PD4 — the phone composition** (plan Part 7).
+**NEXT: PD5 — the voice: the richness system + Desk + News** (plan Part 8).
 
-## What PD3 did, in one paragraph
+## What PD4 did, in one paragraph
 
-The Desk had a hole in it. On a thin night — the briefing held, no setup cards — a short module dug a
-dead acre of nothing into the middle of the app's main room, and the user found it by looking at his
-own screen. **The two columns were ONE grid, and a grid row is as tall as its tallest cell**: the held
-Brief shared a row track with the open Session Calendar, and the difference became empty space under
-the Brief. Measured on the `pd-2` build at 1512: **334px**. The columns are two independently-flowing
-stacks now, they share no tracks, and the same night measures **24px, 24px, 24px** — the designed
-rhythm, and the page is 322px shorter. Then the guards, pointed at things they had never been asked
-to look at, found **three more defects that had all been green** — including one that had been shipping
-to production for months with the pixel oracle photographing it and passing it every run.
+The phone was quietly broken and every guard said it was fine. Measured on the **tagged, green
+`pd-3` tree**, before PD4 changed a line: **the Desk overflowed sideways by 16px at 360px, in
+production**; the mortgage cell's window label rendered **"· vs / prior / week", one word per line**;
+and the two swipe-shelves were hiding **four of nine figures** behind a swipe. The shelves are now a
+2-up card row, a full-width tape list and a 2×2 money grid — everything visible, nothing spilling.
+`StatFigure` got a wrap contract. The sweep now runs at **360 as well as 412** and counts the rooms it
+visited. And then PD4 **wrote its own version of the same bug**, shipped it past every green test, and
+was caught by a screenshot — twice.
 
 ## The five things that are now true (a fresh session must know these)
 
-1. **THE ORACLE WAS DEFENDING A BUG, AND THIS IS THE SHARPEST LESSON THIS BUILD HAS PRODUCED.**
-   `/ticker` on a phone renders the **Range Ladder** — the app's central probability visual. Its
-   sentences were coming out **one word per line**: "In / the / past, / 8 / in / 10 / 5- / day /
-   paths / from / here / stayed / inside / this / range." `ticker-light-phone-linux.png` and
-   `ticker-dark-phone-linux.png` were **committed photographs of that**, green, run after run, for
-   months.
-   > **A VRT baseline proves a page has not CHANGED. It does not prove the page was ever RIGHT.**
-   > If the first baseline is already wrong, the oracle locks the bug in and *defends* it. Nothing
-   > ever fails. PD2's law was "a baseline that is TOLERATED is still WRONG." **This is the harder
-   > version: a baseline that is EXACT can still be wrong.**
+1. **A PAGE-LEVEL OVERFLOW GUARD IS STRUCTURALLY BLIND TO A CELL-LEVEL OVERFLOW.** This is PD4's
+   sharpest finding and it nearly shipped.
 
-   The cause: `flex-1` is `flex: 1 1 0%` — **a flex-basis of ZERO**, and a zero-basis flex item **can
-   never cause its line to wrap; it can only be crushed.** Fixed with `min-w-[18ch]` (a flex item's
-   min-width *does* participate in line breaking). **In a `flex-wrap` row, anything that must stay
-   legible needs a `min-w-*`.** It surfaced only because PD3 moved a container 4px, which changed the
-   styleguide's HEIGHT — and **a page that gets wider is not supposed to get taller**, so I looked.
+   The sideways-scroll sweep asks the **document**: `scrollWidth === clientWidth`. A cell that spills
+   into the cell **next door** lands its spill *inside* the page, never past its edge. So the document
+   reports zero overflow — **honestly** — while a figure sits under the border of its neighbour.
 
-2. **LAW 1 — the Desk's two columns flow independently, and the DOM price is real and is stated.**
-   CSS can only group children that are **adjacent in the DOM**, and the ritual interleaves the
-   columns — so a ritual-ordered DOM and column-grouped wrappers are **mutually exclusive, in any CSS
-   that exists**. The DOM is now **main-then-rail at every width** (amendment 0.2.2's order); below
-   `lg` the phone's ritual is restored *visually* with `display: contents` + `order`. **The residual
-   cost: below lg a sighted keyboard user tabs main-then-rail while seeing the ritual — a WCAG 2.4.3
-   divergence axe cannot see, because it is a comparison between two orders, not a property of one.**
-   It is pinned by e2e so it cannot drift. **The alternative (a rail that row-SPANS the main column)
-   is strictly worse — it brings the dead gap straight back, distributed.**
+   PD4's first tape row did exactly this: index levels overflowing their cards by **8px**, delta chips
+   shattered into **three lines**, and **every guard green** — the unit tests, the class contract, and
+   the brand-new 360px sweep I had *just written*. Only the screenshot showed it.
 
-3. **LAW 2 — one empty state, one height, one component.** `components/EmptyModule.tsx`, policed by
-   drift rule 24 (`min-h-` on any surface). `SetupCards` **lost its own empty branch** — six modules
-   each inventing their own empty state is six heights nobody can hold to a budget. **The shimmer is
-   gone:** a shimmer means "content is on its way", which is TRUE on an empty database and **FALSE on
-   a thin night** where the run happened and nothing fired. 124px → 104px. And the copy now separates
-   two facts that read the same before: *"Setup cards arrive with the nightly base rates"* (a
-   schedule — **no timestamp**, because none exists) vs *"No setups fired tonight."* (a **finding**,
-   so it takes the run's stamp). **Watch for `[]` being truthy** — that is how the old code walked
-   straight past its own guard.
+   > **The box you measure must be the box the bug is in.** A guard aimed one level too high is not a
+   > weak guard — it is a guard that will never fire, and it will make you confident while it does not.
 
-4. **TWO 44px DEFECTS THAT WERE GREEN.** The Desk's front-page headlines were a **23px tap target on
-   a phone** and the sweep passed — because the sweep runs on **Linux**, where Playfair sets wider, the
-   headline wraps to two lines, and two lines clear 44px **by accident**. On macOS/iOS metrics it fits
-   one line. **So on the reader's actual iPhone it was under the floor the whole time.** Verified
-   against `pd-2` rather than assumed. And `/academy/[slug]` was the one room in the manifest with an
-   **empty `sweeps` list** — its "← All lessons" link was 17px while its identical twin on
-   `/academy/review` has had a 44px box since it shipped. **Q-G3-2 is CLOSED.**
+   `e2e/desk.spec.ts` now asks the question of the **cell**, measuring to the **content** edge (a
+   figure sitting in its own card's padding is already touching the wall).
 
-5. **THE 16-INCH LOCK, AND THE ARITHMETIC A FUTURE SESSION MUST NOT RE-DERIVE.** The `mbp16` project
-   (1512×982) is the 4th oracle leg. But **1512 sits INSIDE the `desk:` band (1366–1535) and the
-   container caps at 1360px — so 1366 and 1512 render an IDENTICAL 1296px interior** (measured, all 13
-   rooms; only `wide` ≥1536 opens up, to 1436px). **The project does not buy a new layout map and it
-   would be dishonest to say it does.** It buys: the night the bug happens on (the thin-night shot),
-   the screen the reader actually uses, and the sideways-scroll sweep at 1512. That is why the
-   manifest's new `mbp16` flag is **false for most rooms**.
+2. **THE ORACLE WAS PHOTOGRAPHING A HOVER STATE — the ticker baseline encoded where the LOGIN BUTTON
+   was.** `signIn()` *clicks* the Sign-in button; Chromium leaves the pointer resting there and
+   Playwright never moves it. On `/ticker/AAPL` the candle chart lands under that stationary cursor,
+   lightweight-charts thinks it is hovered, and draws a **crosshair** — two dashed lines and a black
+   price pill — into the baseline.
 
-## Gate size at `pd-3`
+   PD4 moved the Sign-in button down (the phone login gained a mark). The pointer moved with it, the
+   crosshair slid down the price axis, and the pill went **214.54 → 213.02** on a page PD4 never
+   touched. The candles were pixel-identical; only the crosshair moved. It reproduced **byte-for-byte
+   on a re-run**, so it was never flake.
 
-**25 drift rules · 83 VRT baselines · 24 e2e specs · 642 unit tests · 16 bundle baselines · 14
-manifest rooms · 4 oracle legs · tag run 8 m 08 s.** Pipeline: 535 (504 + 31 skipped without Postgres).
+   `shoot()` now parks the mouse at (0,0). **This is PD3's law for the third time and it is always the
+   same law: a baseline proves the page did not CHANGE; it never proved the page was RIGHT.**
 
-Growth this phase, each with a reason (full detail in `docs/pd-evidence/pd3-grid.md`):
-- **+2 drift rules (25)** — 24 = Law 2's `min-h` grep; 25 = `PageContainer` is the one door for the
-  room measure (it had been written by hand in five files, and the styleguide was already out of step
-  by 4px and nobody knew).
-- **+1 e2e spec (24)** — `grid.spec.ts`, which measures **bounding boxes, not the DOM**. A DOM-only
-  assertion would have passed happily through this entire rewrite while the screen showed something
-  else — the old ritual test did exactly that.
-- **+4 unit tests (642)** — EmptyModule's contract, and a guard that a room flagged for the 16-inch
-  lock is actually *shot* at 16 inches.
-- **+7 VRT baselines (83)** — the `mbp16` set, including `desk-thin-night`.
-- **+1 oracle leg (4)** — `mbp16`. **Costs a runner, not wall-clock**: the legs are parallel and the
-  exit still waits on `desktop`.
-- **Bundles UNMOVED** — worst `/news` **196.3 KB**. Structure is not JavaScript.
+3. **A GUARD POINTED AT THE COMFORTABLE END OF A RANGE IS NOT MEASURING THE RANGE.** The Desk scrolled
+   sideways 16px at 360px **in production**, and the sweep built to catch exactly that was green —
+   because it ran at each project's viewport, and the phone project is a **Pixel 7 at 412px**, the one
+   phone width where the defect does not happen. The sweep was never wrong. It was **aimed at the easy
+   end**. It now runs at 360 too, and it **counts the rooms it swept** and fails if it swept none.
 
-## Production is green and watched
+4. **THE WRAP CONTRACT: the unit of wrapping is the ATOM.** PD3's rule — *numbers never truncate,
+   never ellipsize, never clip; wrapping is just typography* — is true, and I over-applied it and
+   reproduced the very bug it was written to prevent. Told to wrap rather than clip, a delta chip
+   wrapped into `▲` / `+0.29%` / `· 1D`: **three lines, one token each.**
 
-`npm run check:live` — **all six assertions pass** (1 PENDING, owed to PD8: the news bylines are plain
-text because that feature does not exist yet). Needs `set -a; source .env; set +a`.
+   > "Wrapping is honest, truncating is not" is a claim about a **sentence**. A phrase broken one word
+   > per line has not been wrapped — it has been **shattered**, and a shattered figure is no more
+   > readable than a truncated one.
 
-`check:nav`: every cached room **45–57 ms**, every sample a cache HIT. `/settings` 385 ms — the argued
-writer-room exemption, unchanged. **Lighthouse: CLS 0.000 and first-load JS 178 KB (both HARD gates).**
-Advisory perf **re-sampled four times before being explained**: 76 · 77 · 83 · 84, LCP 5.16 → 4.53 →
-4.31 → 4.30 s. The first post-deploy sample is the cold outlier and the series converges as the
-deployment warms; the spread is inside the documented ±10 band, bundles are byte-identical, and nothing
-PD3 touched is on the critical path.
+   A delta chip has **two atoms**: the signed delta (`▲ +0.29%`, one fact in three redundant channels)
+   and its window (`· vs prior week`, the delta's unit). Each is `whitespace-nowrap`; the chip is
+   `flex-wrap`. Wrap **between** atoms, never **within** one. **This fixed a live production bug, not
+   just my own** — the mortgage window had been shattering for months.
 
-## Known-and-fine (do not chase)
+5. **THREE CARDS DO NOT FIT ACROSS A PHONE, AND THE PLAN'S ARITHMETIC WAS WRONG.** Part 7.1 specified
+   a 3-up grid and estimated "≈112px interior". **Measured: 74px at 360, 91px at 412** — against an
+   index level of ~81px and a delta chip of ~95px. A mono numeral has no wrap opportunity inside
+   itself, so it cannot be made to fit, only to overflow. I got the type down to **within 1px** of
+   breaking and stopped: **a design one pixel from failure is a coin flip, not a design.**
 
-- **Node 20 shadowing.** Claude Code exports its own Node 20 into every shell; `check:fonts` then dies
-  with a `globSync` export error. Not a regression. Prepend Node 24:
-  `export PATH="$HOME/.nvm/versions/node/v24.18.0/bin:$PATH"`.
-- **`uv run pytest` fails `test_missing_database_url_fails_loudly` if you sourced the root `.env`.**
-  Not a regression. Run `env -u DATABASE_URL uv run pytest`.
-- **The 29 Postgres-backed pipeline tests skip on this Mac — but they do NOT have to.**
-  `docker run -d --name msm-pg -e POSTGRES_PASSWORD=postgres -e POSTGRES_DB=msm_test -p 55433:5432 postgres:16`
-  then `TEST_DATABASE_URL="postgresql://postgres:postgres@localhost:55433/msm_test" uv run pytest`.
-- **⚠ NEW AT PD3 — the thin-night specs need ONE DATABASE PER PLAYWRIGHT PROJECT.** CI gives this for
-  free (each matrix leg is its own runner with its own Postgres, `workers: 1`). **But `npm run
-  e2e:local` runs EVERY project against the ONE local database in parallel workers** — the thin-night
-  tests in desktop/phone/mbp16 will then thin it simultaneously and fight, and the symptom is a
-  **duplicate-primary-key error inside the restore, which reads like a broken layout and is not.**
-  Run one project at a time locally: `npx playwright test --project=mbp16`.
-- **⚠ Running the e2e suite locally DIRTIES `docs/feel-evidence/nav-timing.md`** — `nav-timing.spec.ts`
-  appends its samples to it. Those rows are this Mac under contention (bimodal, 30–830ms), not evidence.
-  `git checkout -- docs/feel-evidence/nav-timing.md` before committing.
-- **`check:lighthouse` needs** `export CHROME_PATH="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"`
-  and the root `.env` sourced. **Advisory perf varies ±10 — RE-SAMPLE before explaining a move.**
-- **`/settings` answers in ~385 ms, every sample a cache MISS.** Correct — the app's one *writer* room,
-  `force-dynamic` by design, with an argued exemption. Every cached room answers in 45–57 ms.
-- **`nav-timing — Desk → Scans` on the phone leg is timing-flaky on a contended runner.** Read the
-  samples before believing it; a real slowdown moves every one of them.
-- **P-2 (a GitHub PAT with `workflow` scope) is still NOT PROVISIONED**, so the control room's buttons
-  are dark in production. The path is proven working end to end. It is a secret and nothing else.
-- **Three untracked files** (`UI-LIBRARY-EVALUATION.md` + its PDF/HTML) are a finished research
-  deliverable from an earlier session, deliberately left uncommitted. Not PD's; leave them.
+   The tape is a **full-width list**, which keeps 7.1's argument intact (cards for the figures the
+   hero does not already state; a list for the ones it does). **The plan is amended in place** — Part
+   7.1 carries a dated correction block, so the plan and the code never disagree in silence.
 
-## Open questions (none blocking — see QUESTIONS-FOR-BISHANT.md)
+## The phone composition, as shipped
 
-- **[VETO?] The phone login has no mark.** The brand panel is `hidden lg:flex`, so the 96px lockup is
-  desktop-only and a phone sees no mark on the first page anyone ever opens. **PD4 owns the phone
-  composition — this is the phase to decide it.** Two-line change.
-- **[NEW, PD3 — WORTH HIS EYES] The Desk's phone tab order now differs from its visual order.** Forced
-  by CSS (see #2 above); axe cannot see it; it is pinned by e2e. If Bishan wants the DOM to follow the
-  ritual instead, the price is the dead gap coming back — they cannot both be had.
-- **[NEW, PD3 — FYI] The pixel oracle can enshrine a bug.** `/ticker`'s phone baselines did, for months.
-  **Any brand-new surface's FIRST baseline deserves eyes** — it is the only moment anyone will ever look
-  at it with fresh judgement.
-- **Q-G4-1 [VETO?]** PD5's movers delta chip carries `data-p2` (hover = opacity/underline only). **PD5
-  has not started — nothing is built on it.**
-- **Q-G3-2 — CLOSED at PD3.** `/academy/[slug]` is swept, and the sweep found a real 17px defect on its
-  first run.
-- **Q-N6-1 · Q-PD0-1 — CLOSED at PD1.** Q-PD0-2 · Q-G2-1 · Q-G4-2 · Q-G3-1 · Q-G3-3 · Q-G3-4 · Q-G2-2 —
-  all decided, no action needed.
-- **[FYI] `e2e/briefing.spec.ts` never cleans up its journal entry.** The camera looks away
-  (`Disclosure`'s `maskCount`). The deeper fix needs a journal delete path — a feature, not a test fix.
-- **[FYI] Bishan's logo file has painted-on transparency**; the generator keys it out itself. Nothing to do.
+```
+Macro Pulse (module 01), below md:
+  S&P hero                      full width, 48px numeral   (unchanged)
+  [data-macro-group="risk"]     VIX | 10-year              2-up cards, `body` scale
+  [data-macro-group="tape"]     Nasdaq / Dow / Small caps  ONE Surface, 3 hairline rows,
+                                                           `dense` scale, layout="row"
+  breadth                       full width                 (unchanged)
+  [data-macro-group="money"]    the 4 stats                2×2 grid, `dense` scale
+  Mood gauge                    full width, BELOW the grid (never IN it — see below)
+```
+
+`StatFigure` gained two things: a **`dense` scale** (value `text-base`, chip `text-xs` — the chip
+shrinks *with* the figure, or the value fits and the chip does not) and a **`row` layout** (label
+left, figure right, on one baseline) which is what makes the tape list possible.
+
+**The gauge must never enter the money grid.** A grid row is as tall as its tallest cell — the same
+mechanism as the shelf that once padded four stat cards with 200px of white space each and grew the
+phone Desk by 347px. The guard survived the shelf's retirement and now measures cell heights in the
+browser (threshold 280px: the real cells measure 125–163px; the gauge is well past 400px).
+
+## The gate at `pd-4`
+
+- App unit tests: **649** (was 642 — `StatFigure` gets its own test file; the MacroPulse shelf tests
+  are **inverted**, not deleted). Pipeline: **535** (504 + 31 skipped locally without Postgres).
+- Anti-drift: **25 rules**, unchanged. Rooms: **14**. Oracle legs: **4**. e2e specs: **25**.
+- **Bundles unmoved: worst `/news` 196.3 KB against the 200 KB hard ceiling.** Composition is not JS.
+  **PD5's kit and PD9's overlay both spend from this same ≈3.7 KB of headroom.**
+- Fonts 243/560 KB · `check:migrations` clean · `check:live` **all six green** (1 pending, owed to
+  PD8) · `check:nav` (every cached room 44–62 ms; `/settings` 436 ms, the argued `force-dynamic`
+  exemption) · `check:lighthouse` **CLS 0.000, first-load JS 178 KB** (both hard gates).
+- **VRT re-minted: the phone's Desk ×2, styleguide ×2 and login ×2, plus the ticker on every leg**
+  (the crosshair is gone from all of them). Every candidate was diffed against its committed baseline
+  **and opened and looked at** before it was committed.
+
+## Two local-harness traps that cost time — do not re-learn these
+
+- **`thin-night`'s Law-2 test will fail against a hand-started server.** If your server lacks
+  `CRON_SECRET`, thin-night's ISR cache-bust silently no-ops and the test photographs a **stale
+  full-night render** (318px where it wants ≤120). It looks exactly like a layout regression and is
+  not. **Let Playwright start its own server** — its `webServer.env` sets the secret.
+- **`e2e:local` needs ONE PROJECT AT A TIME** (already in CLAUDE.md), and *within* a project the local
+  worker default is **parallel**, which is enough to make `ticker-range` fail on the shared database.
+  Add `--workers=1` locally.

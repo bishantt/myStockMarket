@@ -921,3 +921,41 @@ a budget.
   arrive with the nightly base rates"* is a schedule, and carries **no timestamp**, because none exists
   and a fabricated one is worse than none. *"No setups fired tonight"* is a **finding**, as of a moment,
   and takes the run's stamp.
+
+## The wrap contract — atoms, not tokens (PD4)
+
+**A figure and its chip wrap; a chip's INSIDES do not.** Three versions were built and each wrong one
+was caught by looking at the screen, never by a test.
+
+- The value row is `flex flex-wrap min-w-0 gap-x-2 gap-y-0.5` — the chip drops **below** the value
+  when they cannot share a line. Numbers never truncate, never ellipsize, never clip.
+- The chip is `flex flex-wrap max-w-full`, and it holds exactly **two atoms**, each
+  `whitespace-nowrap`:
+  1. the **signed delta** — `▲ +0.29%` — glyph, sign and number are one fact in three redundant
+     channels, and they never separate;
+  2. the **window** — `· 1D`, `· vs prior week` — the delta's unit, which moves as one phrase or not
+     at all.
+- So a narrow cell drops the window to a second line **whole**, and never shatters it into
+  `vs / prior / week`.
+
+**The rule:** the unit of wrapping is the **atom** — the smallest group that still means something on
+its own. "Wrapping is honest, truncating is not" is a claim about a *sentence*; a phrase broken one
+word per line has been shattered, not wrapped.
+
+**Corollary for layout:** making a chip FIT is the layout's job, not the chip's. If a cell cannot give
+a chip the ~95px it needs, the cell is the wrong shape — that is why the Desk's phone tape is a
+full-width list and not three cards.
+
+## Overflow is asked of the CELL, not the page (PD4)
+
+`document.scrollWidth === clientWidth` cannot see a cell that spills into its **neighbour** — that
+spill lands inside the page, never past its edge. A page-level sweep will report clean on a figure
+sitting under the border of the card next to it.
+
+**So both questions get asked.** The page sweep (`hardening.spec.ts`, every room, 412 **and** 360)
+and the cell sweep (`desk.spec.ts`: does anything inside this box reach past the box's **content**
+edge?). Measure to the content edge, not the border edge — a figure in its own padding is already
+touching the wall.
+
+**And a sweep proves it swept:** it counts the rooms it visited and fails if it visited none, or
+fewer than the manifest lists. A sweep that measured nothing must not report success.

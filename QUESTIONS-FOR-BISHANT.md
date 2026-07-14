@@ -8,6 +8,73 @@ Format: newest first. I mark each as [FYI], [VETO?], or [NEED] so you can scan.
 
 ---
 
+## 2026-07-14 — PD4 (the phone composition)
+
+### [FYI — but I think you'll want to know] Your Desk has been scrolling sideways on a narrow phone
+
+Before PD4 changed anything, I measured the **tagged, green, fully-guarded `pd-3` tree** at 360px —
+the width of a Galaxy S in portrait, and of most budget Androids:
+
+> **The Desk overflowed by 16 pixels. In production. And the guard that exists to catch exactly that
+> was green.**
+
+The reason is a small, ugly one. The sweep runs at each test project's own screen, and the phone
+project is a **Pixel 7 — 412px wide**. At 412 the bug does not happen. So the sweep had been asking
+its question only at the comfortable end of the range, and passing, for months.
+
+Two other live bugs came out of the same look: the mortgage cell's window label was rendering **"· vs
+/ prior / week" — one word per line**, and the S&P's own delta chip ran off the right edge of the
+screen. All three are fixed. Before/after pictures and the exact numbers:
+`docs/pd-evidence/pd4-phone.md`.
+
+**No action needed.** I mention it because it is the second phase running where the thing that caught
+a real bug was *looking at the screen*, and the thing that missed it was the test suite.
+
+### [VETO?] I did NOT build the tape row the plan specified — the arithmetic wouldn't allow it
+
+Part 7.1 said the three index echoes (Nasdaq, Dow, small caps) should sit **3-up as cards** under the
+risk gauges. I built that, then measured it:
+
+| | 360px | 412px |
+|---|---|---|
+| what a 3-up cell actually gives you | **74px** | **91px** |
+| an index level — `22,345.67` | ~81px | ~81px |
+| its delta chip — `▲ +0.29% · 1D` | ~95px | ~95px |
+
+The plan estimated "≈112px" of cell. The real number is 74. The level and its chip **cannot fit**,
+and a number in a monospace font has nowhere to wrap *inside itself* — so it does not shrink, it
+overflows. At 360 the levels ran 8px **into the card next door** and the chips broke into three
+lines.
+
+I could have shrunk the type until it fit. I got it to **within 1px** of breaking, and stopped: a
+layout one pixel from failure is a coin flip, not a design.
+
+**So the three echoes are now a full-width list** — one row each, label on the left, figure and
+change on the right. I believe this *keeps* the plan's actual argument rather than breaking it: that
+argument was never "three columns", it was that VIX and the 10-year tell you something the big S&P
+number doesn't and deserve room, while Nasdaq/Dow/small-caps mostly repeat it. **Cards above, a list
+below** says that more clearly than a big card next to a small one.
+
+**Veto is easy** — it is one component (`MacroPulse`). But please look at the after picture first
+(`docs/pd-evidence/pd4/after-pulse-360.png`); I think it reads better than what was drawn.
+
+### [VETO?] The phone login now has your mark on it — I decided this, as PD3 asked me to
+
+This was the open question PD3 left. The brand panel is desktop-only by design (a phone has room for
+a headline and a form), but the **mark went out with the panel** — so the first page anyone ever
+opens, on the device most people open it on, showed the product's name in text and nothing of its
+face.
+
+There is now a 48px lockup above the headline on phones. It **costs nothing**: the phone was already
+downloading that image file for the panel it can't see (browsers fetch images inside hidden elements
+anyway).
+
+Reversing it is two lines. But I think a login page with no mark on a phone was an oversight, not a
+design — and the test that guarded it literally asserted the mark's *absence* and called it "the
+design, not a regression". Nobody had ever looked at it.
+
+---
+
 ## 2026-07-14 — PD2 (brand: the identity kit)
 
 ### [FYI] Your logo file has fake transparency — and I did NOT edit it
@@ -32,7 +99,7 @@ version — the wrong palette, and green candles collide with the colour meaning
 generator wrote `favicon.png`, nothing linked it, and the app has been shipping a blank tab this
 whole time. It has one now, and a test fetches every brand path so it cannot happen again.
 
-### [VETO?] The phone login has no mark
+### [VETO?] The phone login has no mark — **DECIDED AT PD4 (2026-07-14): it now has one.** See PD4 above.
 
 The login's brand panel is desktop-only by existing design (below `lg` it collapses and only the
 headline and form remain), so the mark you see at 96px on a laptop **is not there on a phone at all**.

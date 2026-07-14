@@ -847,12 +847,32 @@ sideways again.*
 
 ### 7.1 The macro grids (replacing the two swipe shelves)
 
+> **AMENDED AT PD4, 2026-07-14, ON MEASURED EVIDENCE — READ THIS BEFORE THE SPEC BELOW.**
+>
+> **Row B is NOT a 3-up grid of cards. It is a full-width LIST.** The 3-up was built exactly as
+> written below, and then measured: a 3-up cell leaves **74px of interior at 360px and 91px at 412px**
+> — not the "≈112px" this section estimates. An index level ("22,345.67") is ~81px and its delta chip
+> ("▲ +0.29% · 1D") is ~95px. At 360 the levels overflowed **8px into the card next door** and the
+> chips shattered into three lines. A mono numeral has no wrap opportunity inside itself, so no type
+> scale closes that gap: it is arithmetic, not tuning.
+>
+> **The list keeps this section's argument in full** — one row per index, label left, figure and chip
+> right. The argument was never "three columns"; it was that the risk gauges carry information the
+> hero does NOT have and deserve room, while the tape echoes merely restate it. *Cards above, a list
+> below* says that more plainly than a big card beside a small one, and it spends the phone's one
+> abundant axis instead of fighting over its scarcest.
+>
+> **Row A (the 2-up risk cards) and the money 2×2 are exactly as specified.** Only row B is amended.
+> Evidence and the measurements: `docs/pd-evidence/pd4-phone.md` §2. Logged in DECISIONS.md.
+
 **Markets (module 01, phone):** the S&P hero keeps its full-width slot and its one 48px
 numeral (P14 untouched). Below it, in place of the 5-figure shelf:
 
 ```
 row A (2-up, roomier):   VIX          | 10-year
 row B (3-up, denser):    Nasdaq       | Dow          | Small caps
+                         ^^^^^^^^^^^^^^ AMENDED AT PD4 — see the block above.
+                         Shipped as a full-width list: one row per index.
 ```
 
 The hierarchy is reasoned, not decorative: row A carries the two figures with INDEPENDENT

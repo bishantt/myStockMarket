@@ -552,3 +552,83 @@ is never what you meant.
 four VRT viewports missed on the styleguide and that one of them (phone) hit on the ticker — where it
 was silently baselined. A 14-width sweep from 320 to 1536, run in a loop against the real page, found
 and then closed the whole window in about a minute.
+
+---
+
+## PD4 — the phone composition (2026-07-14)
+
+### A page-level overflow guard is STRUCTURALLY BLIND to a cell-level overflow
+
+This is the most transferable thing PD4 found, and it nearly shipped a bug *while I was writing the
+guard against it*.
+
+The sideways-scroll sweep asks the **document** a question: `scrollWidth === clientWidth`. A cell
+that spills into the cell **next door** lands its spill *inside* the page, never past its edge. So
+the document reports zero overflow — honestly — while a figure sits under the border of its
+neighbour.
+
+PD4's first tape row did exactly this: index levels overflowing their cards by 8px, delta chips
+shattered into three lines, **and every guard green** — the unit tests, the class contract, and the
+brand-new 360px sweep I had just written. Only the screenshot showed it.
+
+PD3's law was *"layout is asserted in bounding boxes, never the DOM."* The sharper form:
+
+> **The box you measure must be the box the bug is in.** A guard aimed one level too high is not a
+> weak guard — it is a guard that will never fire, and it will make you confident while it does not.
+
+And measure to the **content** edge, not the border edge: a figure sitting in its own card's padding
+is already touching the wall, one character from being outside it.
+
+### A guard pointed at the comfortable end of a range is not measuring the range
+
+The Desk scrolled sideways **16px at 360px, in production**, and the sweep built to catch precisely
+that was green — because it ran at each project's viewport, and the phone project is a Pixel 7 at
+**412px**, the one phone width where the defect does not occur.
+
+The sweep was never wrong. It was **pointed at the easy end**. Same family as PD3's baseline lesson
+(*an exact baseline can still be wrong*) and the N1 ratio-tolerance lesson (*a ratio makes a gate
+weaker the longer the page gets*): the instrument was fine and the aim was not.
+
+**So: a sweep must state the RANGE it covers, and cover both ends of it.** PD4's sweep now runs at
+360 as well as 412, and it **counts the rooms it visited** and refuses to pass if it swept none — a
+sweep that measured nothing must never be allowed to report success.
+
+### "Wrapping is honest" is a claim about a SENTENCE, not about a phrase
+
+The rule that came out of PD3 — *numbers never truncate, never ellipsize, never clip; wrapping is
+just typography* — is true, and I over-applied it and produced the same bug it was written to
+prevent.
+
+Told to wrap rather than clip, a delta chip wrapped into `▲` / `+0.29%` / `· 1D`: **three lines, one
+token each.** That is PD3's Range Ladder, one component over.
+
+> A phrase broken one word per line has not been **wrapped** — it has been **shattered**, and a
+> shattered figure is no more readable than a truncated one.
+
+**The unit of wrapping is the ATOM: the smallest group that still means something on its own.** A
+delta chip has two — the signed delta (`▲ +0.29%`, one fact in three redundant channels) and its
+window (`· vs prior week`, the delta's unit). Wrap *between* atoms; `whitespace-nowrap` *within*
+them. And this was not merely my own bug to fix: **the mortgage cell has been rendering "· vs /
+prior / week" in production**, because its window span had `white-space: normal` and nothing forbade
+it.
+
+### When the plan's arithmetic and the ruler disagree, the ruler wins — and then you AMEND
+
+Part 7.1 specified a 3-up grid of cards and estimated "≈112px interior". Measured: **74px at 360**.
+The gap is not tunable — a mono numeral has no wrap opportunity inside itself, so it cannot be made
+to fit, only to overflow.
+
+The temptation is to shrink the type until it "fits". I got it to within **1px** of breaking. **A
+design one pixel from failure is not a design; it is a coin flip.** The right move was to change the
+SHAPE (a full-width list), keep the plan's *argument* intact, and log the amendment loudly — in
+DECISIONS.md, in the evidence file, and **in the plan itself**, so the plan and the code never
+disagree in silence.
+
+### Two local test failures that are harness, not code — recognise them fast
+
+- **`thin-night`'s Law-2 test measuring a stale render.** Playwright reuses a hand-started server
+  (`reuseExistingServer` locally). If that server lacks `CRON_SECRET`, thin-night's ISR cache-bust
+  silently no-ops and the test photographs the **full** night — 318px where it wants ≤120. It looks
+  exactly like a layout regression. **Let Playwright start its own server**; its `webServer.env` has
+  the secret.
+- **`ticker-range` failing only in parallel.** The documented one-database race. Serial, green.

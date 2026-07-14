@@ -118,6 +118,39 @@ grid:     (PD3) THE DESK'S TWO COLUMNS FLOW INDEPENDENTLY — `[data-column="mai
           components/EmptyModule.tsx — and the CALLER decides when to show it (watch for `[]` being
           TRUTHY). No shimmer on it: a shimmer promises content is coming, which is FALSE on a night the
           run happened and found nothing, and that is the common case.
+          (PD4) **A BOUNDING BOX IS ONLY EVIDENCE ONCE THE THING THAT DECIDES IT HAS ARRIVED.**
+          grid.spec.ts measured a page before its stylesheet applied and reported `mainRight: 0,
+          railLeft: 0` — every module at x=0, which is not a collapsed grid, it is UNSTYLED HTML. It
+          reproduced on its retry and never locally: `page.goto()` resolves on `load`, which does not
+          guarantee the CSSOM is applied to the layout you then force. `waitForLayout()` waits for the
+          TOKENS (`--color-paper` is "" until globals.css is in effect) and for fonts. Any new
+          box-measuring spec calls it.
+phone:    (PD4) THE DESK'S PHONE MACRO COMPOSITION — three named groups, no shelves. `data-macro-group`
+          = "risk" (VIX | 10-year, 2-up cards) · "tape" (Nasdaq/Dow/Small caps, ONE Surface, three
+          hairline rows, `dense` + `layout="row"`) · "money" (the 4 stats, 2×2, `dense`). The Mood gauge
+          is FULL-WIDTH BELOW the money grid and may NEVER enter it — a grid row is as tall as its
+          tallest cell, so a gauge in the grid drags all four stat cells up to its height, which is the
+          exact 347px bug the shelf once produced. e2e measures the cell heights (real: 125–163px).
+          **THREE CARDS DO NOT FIT ACROSS A PHONE.** A 3-up cell gives 74px at 360 and 91px at 412; an
+          index level is ~81px and its delta chip ~95px. Part 7.1 guessed "≈112px" and is AMENDED in
+          place. A mono numeral has no wrap opportunity inside itself — it cannot be made to fit, only
+          to overflow. Do not "fix" it by shrinking the type: that lands within 1px of breaking.
+          **OVERFLOW IS ASKED OF THE CELL, NOT THE PAGE.** `document.scrollWidth === clientWidth` CANNOT
+          SEE a cell that spills into its NEIGHBOUR — the spill lands inside the page, never past its
+          edge — so the sweep reports clean while a figure sits under the border of the card next door.
+          That is exactly how PD4's own first tape passed every guard while broken. Both questions get
+          asked now: hardening.spec sweeps the PAGE (every room, 412 AND 360, and it COUNTS the rooms it
+          visited); desk.spec sweeps the CELL, to the CONTENT edge.
+wrap:     (PD4) **THE UNIT OF WRAPPING IS THE ATOM.** A figure and its chip wrap; a chip's INSIDES do
+          not. StatFigure's value row is `flex-wrap min-w-0` so the chip drops BELOW the value rather
+          than overflowing. The chip is `flex-wrap max-w-full` and holds exactly TWO atoms, each
+          `whitespace-nowrap`: the signed delta (`▲ +0.29%` — glyph, sign and number are one fact in
+          three redundant channels) and its window (`· vs prior week` — the delta's unit). It breaks
+          BETWEEN them, never WITHIN one. Told to "wrap rather than clip", PD4's first chip shattered
+          into "▲" / "+0.29%" / "· 1D" — PD3's Range Ladder bug reintroduced one component over, green
+          on every test. **"Wrapping is honest, truncating is not" is a claim about a SENTENCE**; a
+          phrase broken one word per line has not been wrapped, it has been SHATTERED. Making a chip FIT
+          is the LAYOUT's job, not the chip's.
 clocks:   (G3, drift rule 21) NO absolute date literal in prisma/seed.mjs, prisma/fixtures/*.mjs or
           e2e/**/*.ts outside TWO anchors: prisma/fixtures/clock.mjs (the seeded world) and
           e2e/seeded-clock.ts (the browser suite). The rule is NOT "never write a date" — the seeded
@@ -150,6 +183,14 @@ e2e:      npx playwright test  ·  LOCAL: npm run e2e:local (--ignore-snapshots;
           parallel workers, so the thin-night tests fight and the symptom is a duplicate-primary-key
           error inside the RESTORE, which reads exactly like a broken layout and is not. Locally, run
           one project at a time: `npx playwright test --project=mbp16`.
+          (PD4) AND ADD `--workers=1`. One project at a time is NOT ENOUGH: inside a project the local
+          worker default is still PARALLEL, which is enough to make ticker-range fail on the shared
+          database. It is not a flake and not your code.
+          (PD4) **DO NOT HAND-START THE SERVER AND LET PLAYWRIGHT REUSE IT** (`reuseExistingServer` is
+          true locally). If your server has no CRON_SECRET, thin-night's ISR cache-bust silently no-ops
+          and the Law-2 test photographs a STALE FULL-NIGHT render — 318px where it wants ≤120. It reads
+          exactly like a layout regression and is not. Let Playwright start its own: webServer.env has
+          the secret. Cost me a stash, a rebuild and a bisect against pd-3 to find.
           ALSO: running the browser suite locally DIRTIES docs/feel-evidence/nav-timing.md —
           nav-timing.spec.ts appends its samples. Those rows are this Mac under contention, not
           evidence. `git checkout -- docs/feel-evidence/nav-timing.md` before you commit.
@@ -196,7 +237,7 @@ VRT:      baselines are BORN IN CI. Never shoot one on macOS. Since G1 a rehears
           `--update-snapshots=all` re-photographs all of them, so copying the whole directory commits
           files nobody can explain. Read .claude/skills/vrt-update FIRST. `-f job=vrt-baselines`
           remains for a deliberate restyle. FOUR legs now (PD3): desktop · phone · wide · mbp16.
-          THREE LAWS, EACH LEARNED THE HARD WAY, IN ASCENDING ORDER OF DANGER:
+          FOUR LAWS, EACH LEARNED THE HARD WAY, IN ASCENDING ORDER OF DANGER:
           · (PD2) "WHAT MOVED" AND "WHAT FAILED" ARE NOT THE SAME LIST. `maxDiffPixels: 600`, so a shot
             can CHANGE and still PASS. PD2's 28px mark moved 59 baselines and redded only 14 — the other
             45 would have gone on passing while showing a top bar the app no longer had. DIFF EVERY
@@ -212,6 +253,15 @@ VRT:      baselines are BORN IN CI. Never shoot one on macOS. Since G1 a rehears
             baseline that is EXACT can still be wrong; the tolerance was innocent. **So: any brand-new
             surface's FIRST baseline gets eyes before it is committed** — that is the only moment anyone
             will ever look at it with fresh judgement.
+          · (PD4, AND IT IS THE SAME LAW A THIRD TIME) **A BASELINE CAN BE A PHOTOGRAPH OF THE TEST
+            HARNESS RATHER THAN OF THE APP.** `signIn()` CLICKS the Sign-in button; Chromium leaves the
+            pointer resting there and Playwright never moves it. On `/ticker` the candle chart sits under
+            that cursor, lightweight-charts thinks it is hovered, and draws a CROSSHAIR into the baseline
+            — so the ticker's picture encoded WHERE THE LOGIN BUTTON WAS. PD4 moved that button (the
+            phone login gained its mark) and the crosshair slid down the price axis on a page PD4 never
+            touched: 214.54 → 213.02, byte-identical on a re-run, so it was never flake. `shoot()` now
+            parks the mouse at (0,0). **Ask of every diff on a page you did not touch: is this the APP,
+            or is this the CAMERA?**
 
 ## The control room (/settings#pipeline — N6)
 The reader can run the pipeline by hand: five actions, each in exactly one of ten states, with daily
