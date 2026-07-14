@@ -1130,3 +1130,72 @@ it, and its `opsz` axis already cost 153KB and is gone).
 is not currently needed by anyone. This is a comment, not a behavior change — no font was touched.
 If you disagree with the rung, it is a one-line edit. I deliberately did **not** write the current
 total into the comment: that is the number that rots, and `npm run check:fonts` prints it live.
+
+---
+
+## Q-PD3-1 — [WORTH YOUR EYES] the pixel oracle was defending a bug, live, for months
+
+**No decision needed. This is the most important thing I found this phase, and you should know it.**
+
+On `/ticker`, on a phone, the **Range Ladder** — the panel that tells a reader what a range actually
+*means*, which is one of the most important honesty surfaces this product has — has been rendering its
+sentences **one word per line**:
+
+> In / the / past, / 8 / in / 10 / 5- / day / paths / from / here / stayed / inside / this / range.
+
+That is what you would have seen on your phone. And the visual-regression suite had **photographed it,
+filed it as the correct baseline, and passed it on every single CI run for months.**
+
+**Why nothing ever failed.** A pixel baseline is a comparison against the *previous* picture. It catches
+CHANGE. It cannot catch a page that was **already wrong when the first picture was taken** — in that
+case the baseline *is* the bug, and the oracle's job quietly becomes *defending* it.
+
+PD2 gave us "a baseline that is TOLERATED is still a baseline that is WRONG." **This is the harder
+version: a baseline that is EXACT can still be wrong.** The tolerance was innocent here. The picture was
+the lie.
+
+**How it actually surfaced, because it was luck and I want to be honest about that.** Not from a test.
+PD3 extracted a shared container, which moved the styleguide's gutter by **four pixels**. That made the
+styleguide's copy of the same component fall into a *different* wrong state, which changed its
+**height** — the new picture came back **272px taller**. And **a page that gets wider is not supposed to
+get taller.** I only had that number at all because PD2's law says to diff *every* candidate rather than
+read the failure list. I pulled the thread because the arithmetic was absurd, not because anything was
+red.
+
+**What I have changed as a result:** any brand-new surface's FIRST baseline now gets eyes before it is
+committed — it is the only moment anyone will ever look at it with fresh judgement. After that, it is
+just "unchanged", forever.
+
+*(The cause was `flex-1`, which is a flex-basis of ZERO — a zero-basis flex item can never make its line
+wrap, it can only be crushed. Fixed, and swept across 14 widths from 320 to 1536.)*
+
+---
+
+## Q-PD3-2 — [WORTH YOUR EYES] the Desk's phone tab order now differs from its visual order, and it cannot be otherwise
+
+**I made the call and built it. It is reversible, but the reversal has a price, and you should know what
+the trade actually is.**
+
+To kill the dead gap, the Desk's main column and rail must flow **independently**. That requires
+wrapping each column in its own element. **CSS can only group children that are next to each other in
+the markup** — and your ritual interleaves the two columns (brief, calendar, movers, watchlist…).
+
+So a ritual-ordered DOM and column-grouped wrappers are **mutually exclusive. There is no CSS that gives
+you both.** Something has to give.
+
+**What I chose:** the DOM reads main-then-rail (the narrative, then the reference matter) at every width
+— which is the reading order your own plan already blessed for desktop in amendment 0.2.2, and it is now
+what a screen reader hears everywhere rather than two different orders. **On a phone, the ritual you see
+is restored with CSS**, so what you *look at* is exactly what it always was.
+
+**The price:** below 1024px, someone navigating with a **keyboard** tabs in the DOM order (main, then
+rail) while *seeing* the ritual order. That is a real accessibility divergence, **no tool can detect
+it** (axe included — it is a comparison between two orders, not a property of either), so I have pinned
+both orders in tests so it can never drift by accident.
+
+**If you want the DOM to follow the ritual instead, the dead gap comes back.** I tried the alternative
+that seems to give you both (a rail that spans the main column's rows) and it is strictly worse — when
+the rail is taller than the main column, the grid stretches the rows to fit it and the gap returns,
+merely *spread out* between the modules instead of pooled under one.
+
+**No action needed unless you disagree.**

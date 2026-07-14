@@ -854,3 +854,70 @@ what else the tolerance has been quietly holding.
 
 Related: [the-instrument-that-can-see-production] (PD0/PD1) — the same disease, one layer up. A guard
 that cannot fail on a real defect, and a guard that forgives one, are the same guard.
+
+## Two columns that never trade heights (and the DOM price you cannot avoid paying)
+
+**The defect this exists to prevent.** Put two columns in ONE CSS grid, pin the modules with
+`col-start`, and the modules pair off into shared implicit rows. **A grid row is as tall as its tallest
+cell.** So a short module beside a tall one leaves a dead hole — and `items-start` pins the short one
+to the top of the shared track, which makes the hole *visible* rather than merely present.
+`grid-flow-row-dense` does not help: it backfills empty CELLS, not slack inside a track.
+
+**The only shape that actually decouples them** is two independently-flowing stacks:
+
+```
+<div class="grid lg:grid-cols-[minmax(0,1fr)_340px] lg:items-start">
+  <Hero class="lg:col-span-2" />                              <!-- belongs to neither column -->
+  <div data-column="main" class="contents lg:flex lg:flex-col lg:gap-6"> … </div>
+  <div data-column="rail" class="contents lg:flex lg:flex-col lg:gap-6"> … </div>
+</div>
+```
+
+`display: contents` below the breakpoint **dissolves the wrappers**, so their children become grid
+items of the outer grid again and the single-column layout is exactly what it was. It is safe on a
+plain `div` with no role — dissolving it removes nothing from the accessibility tree.
+
+**THE PRICE, AND IT IS NOT AVOIDABLE.** CSS can only group children that are **adjacent in the DOM**.
+If your reading order interleaves the two columns (narrative, reference, narrative, reference…), then
+a ritual-ordered DOM and column-grouped wrappers are **mutually exclusive**. There is no CSS that
+gives you both. So:
+
+- the DOM becomes **column-grouped** (main, then rail) at every width, and that is what a screen reader
+  hears everywhere — at least it is *one* consistent order rather than two;
+- the single-column visual order is restored with `order` utilities (make the order numbers *be* the
+  ritual indices — then one set of numbers is correct at every width and it reads as documentation);
+- **a sighted keyboard user below the breakpoint tabs in DOM order while seeing the visual order.** That
+  is a WCAG 2.4.3 divergence, **axe cannot see it** (no tool can — it is a comparison between two
+  orders, not a property of one), and the only honest thing to do is *state it and pin it*, not
+  discover it later.
+
+**The trap that looks like a way out and is not.** Making the rail one cell that ROW-SPANS the main
+column keeps the ritual DOM. But when the rail is taller than the main column, the grid **grows the
+spanned rows to fit it** — and the dead gap comes straight back, merely *distributed* between the main
+modules instead of pooled under one. That is precisely the case (short main, tall rail) the law exists
+for. It is strictly worse.
+
+**Test the pixels, not the DOM.** A DOM-order assertion will pass happily through this entire rewrite
+while the screen shows something else — the old ritual test did exactly that. Assert **bounding boxes,
+per viewport**: what a reader sees is the only thing a reader experiences.
+
+## One empty state, one height, one component
+
+A module that renders its own bespoke empty state is a module whose empty height **nobody controls**.
+Six modules doing that is six empty states of six different heights, and no way to hold any of them to
+a budget.
+
+- **One `EmptyModule`.** The *caller* decides when to show it; the module renders a list that HAS
+  things in it. (Watch for `[]` being **truthy** — `data && data.length > 0`, or the empty array walks
+  straight past your guard into the component and renders its own thing.)
+- **Reserve no height.** `min-h`, fixed heights and aspect boxes on a module surface are a promise, made
+  in whitespace, that content is coming to fill them. Grep for it (`min-h-`), and argue the exemptions
+  out loud: the 44px touch floor is the *opposite* rule and is a requirement; `min-h-0` is a *reset* and
+  reserves nothing; the page shell is not a module.
+- **No shimmer on "the run found nothing".** A shimmer means *content is on its way*. That is true when
+  nothing has ever run and **false** when the run happened and found nothing — and "found nothing" is
+  the common case while "never ran" happens once.
+- **"Nothing yet" and "nothing tonight" are different facts and must not read the same.** *"Setup cards
+  arrive with the nightly base rates"* is a schedule, and carries **no timestamp**, because none exists
+  and a fabricated one is worse than none. *"No setups fired tonight"* is a **finding**, as of a moment,
+  and takes the run's stamp.

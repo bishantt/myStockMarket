@@ -473,3 +473,82 @@ it had been hiding a 387-pixel bug for months in the same breath.
 **A baseline that is tolerated is still a baseline that is wrong.** Re-photograph everything that
 moved, not everything that failed. What the gate FORGIVES is exactly where the next bug will sit,
 because it is the one place nobody is looking.
+
+## PD3 — A baseline proves the page did not CHANGE. It never proved the page was RIGHT. (2026-07-14)
+
+**The pixel oracle had been photographing a broken page for months, filing it as the baseline, and
+passing it on every single run.**
+
+`/ticker` on a phone renders the Range Ladder — the app's central probability visual, the thing that
+says what a range actually *means*. Its sentences were coming out one word per line:
+
+> In / the / past, / 8 / in / 10 / 5- / day / paths / from / here / stayed / inside / this / range.
+
+That is what a reader on a phone has been seeing in production. `ticker-light-phone-linux.png` and
+`ticker-dark-phone-linux.png` are *photographs of it*, committed, green, run after run.
+
+**Why the oracle could not catch it.** A VRT baseline is a comparison against the *previous* picture.
+It catches CHANGE. It cannot catch a page that was already wrong when the first picture was taken —
+in that case the baseline is the bug, and the oracle's job becomes *defending* it. Nothing ever fails.
+Nothing ever will.
+
+PD2's law was "a baseline that is TOLERATED is still a baseline that is WRONG" (the 387px journal
+count, hiding under `maxDiffPixels`). **This is the harder version of it: a baseline that is EXACT can
+still be wrong.** The tolerance was innocent here. The picture itself was the lie.
+
+**How it actually surfaced, which is the part worth internalising.** Not from a test. PD3 moved the
+styleguide's gutter by four pixels — an incidental side-effect of extracting `PageContainer`. That
+made the styleguide's copy of the same component fall into a *different* wrong state, which changed
+its **height**: the candidate baseline came back **272px taller**.
+
+And a page that gets **wider** is not supposed to get **taller**. That sentence is the whole catch. It
+was a smell in a number, in a diff I only had because PD2's law made me diff every candidate rather
+than read the failure list. I pulled the thread because the arithmetic was absurd, not because
+anything was red.
+
+**What to actually do with this.** You cannot re-derive every baseline from first principles. But:
+
+1. **A resize is a louder signal than a diff.** A shot that changes *height* changed its LAYOUT, not
+   its pixels. Never wave one through on "the container moved" — check that the height moved in the
+   direction the change implies. Wider → shorter. Taller on wider is a bug, every time.
+2. **When you touch a shared container, the diff is your one free audit of everything inside it.** Every
+   component in that container just got re-photographed at a width nobody chose. Read the heights.
+3. **A brand-new surface's first baseline deserves eyes.** It is the only moment anyone will ever look
+   at it with fresh judgement. After that it is just "unchanged" forever.
+
+## PD3 — `flex-1` is a flex-basis of ZERO, and a zero-basis item cannot wrap. It can only be crushed. (2026-07-14)
+
+The mechanism behind the ladder bug, worth knowing on its own because it is a trap in ordinary CSS.
+
+```
+<li class="flex flex-wrap ...">
+  <span class="w-10 shrink-0">5d</span>
+  <span>-4.30% to +4.80%</span>
+  <span class="min-w-0 flex-1">In the past, 8 in 10 5-day paths…</span>   <-- flex: 1 1 0%
+  <span class="shrink-0">n=495 · 500d window</span>
+</li>
+```
+
+`flex-1` is `flex: 1 1 0%`. The **flex-basis is zero**, so the item's hypothetical main size is zero,
+so **it never contributes to the line-breaking decision**. The row therefore believes all four items
+"fit" — because the sentence can shrink to nothing to make room for them — and instead of wrapping, it
+**crushes the sentence to about one word wide**.
+
+The behaviour balances on a knife edge:
+- **narrow enough** → the `shrink-0` caption wraps to its own line, the sentence gets full width. Fine.
+  This is what every fixed-width baseline in the suite happened to catch.
+- **eight pixels wider** → the row stops wrapping, and the sentence becomes a vertical column of words.
+
+**The fix is a real minimum, not a smaller font.** `min-w-[18ch]` — because a flex item's `min-width`
+**does** participate in line breaking (the hypothetical main size is the flex base size *clamped by
+min/max*). Give the thing a floor and the line wraps when the floor does not fit, which is what it
+always meant to do.
+
+**The general rule: in a `flex-wrap` row, any item that must stay legible needs a `min-w-*`.** `min-w-0
+flex-1` says "I will shrink to nothing rather than let this line wrap", and for a column of prose that
+is never what you meant.
+
+**And: sweep a width RANGE, not the widths you happen to shoot.** This bug lived in a band that all
+four VRT viewports missed on the styleguide and that one of them (phone) hit on the ticker — where it
+was silently baselined. A 14-width sweep from 320 to 1536, run in a loop against the real page, found
+and then closed the whole window in about a minute.

@@ -95,6 +95,29 @@ rooms:    (G3) app/lib/routes-manifest.json is THE ONE LIST OF ROOMS. The sweeps
           a room exists with no entry — in both directions (a room nobody measures, or an entry for a
           room that is gone, which would let the sweeps "pass" on a 404 page forever). Add a room?
           Add it there. `app/lib/routes.ts` is the typed door.
+          (PD3) `mbp16` is a per-room flag: does this room get a 1512×982 pixel lock? It is FALSE for
+          most rooms and that is the point — **1512 sits INSIDE the `desk:` band (1366–1535) and the
+          container caps at 1360px, so 1366 and 1512 render an IDENTICAL 1296px interior** (measured,
+          all 13 rooms; only `wide` ≥1536 opens up, to 1436px). The mbp16 leg does NOT buy a new layout
+          map. It buys the screen the reader actually uses, the sideways-scroll sweep at 1512, and the
+          one shot in the whole suite that shows the night the Desk's dead gap HAPPENS on.
+grid:     (PD3) THE DESK'S TWO COLUMNS FLOW INDEPENDENTLY — `[data-column="main"]` and
+          `[data-column="rail"]`, two flex stacks that share no row tracks. A grid row is as tall as its
+          tallest cell, so one shared grid let a short module dig a dead hole beside a tall one (334px,
+          measured). THE DOM PRICE IS UNAVOIDABLE AND IS STATED: CSS can only group children that are
+          ADJACENT IN THE DOM, and the ritual interleaves the columns, so a ritual-ordered DOM and
+          column-grouped wrappers are mutually exclusive. The DOM is main-then-rail at every width
+          (amendment 0.2.2); below `lg` the phone's ritual is restored VISUALLY (`display: contents` +
+          `order`, whose numbers ARE the ritual indices). Below lg a sighted keyboard user therefore
+          tabs main-then-rail while seeing the ritual — a WCAG 2.4.3 divergence axe cannot detect, and
+          e2e/grid.spec.ts pins BOTH orders so neither drifts. DO NOT "fix" it with a rail that
+          row-SPANS the main column: the grid then grows the spanned rows to fit a tall rail and the
+          dead gap comes straight back, distributed. **Layout is asserted in BOUNDING BOXES, never the
+          DOM** — a DOM-order test passed happily through this entire rewrite while the screen changed.
+          LAW 2: a module reserves no height (drift rule 24, `min-h-`). ONE empty state exists —
+          components/EmptyModule.tsx — and the CALLER decides when to show it (watch for `[]` being
+          TRUTHY). No shimmer on it: a shimmer promises content is coming, which is FALSE on a night the
+          run happened and found nothing, and that is the common case.
 clocks:   (G3, drift rule 21) NO absolute date literal in prisma/seed.mjs, prisma/fixtures/*.mjs or
           e2e/**/*.ts outside TWO anchors: prisma/fixtures/clock.mjs (the seeded world) and
           e2e/seeded-clock.ts (the browser suite). The rule is NOT "never write a date" — the seeded
@@ -120,17 +143,29 @@ live:     (PD1, IN THE STANDING GATE) `set -a; source .env; set +a` then npm run
 budgets:  npm run check:routes (every room cached) · check:nav (TTFB, needs AUTH_COOKIE_SECRET) · check:bundles
 e2e:      npx playwright test  ·  LOCAL: npm run e2e:local (--ignore-snapshots; CI is the pixel oracle)
           Seeded journeys need MSM_SEEDED=1 and a seeded Postgres — CI sets both; this Mac has neither.
+          (PD3) THE THIN-NIGHT SPECS NEED ONE DATABASE PER PLAYWRIGHT PROJECT. e2e/thin-night.ts thins
+          the edition (brief HELD, 3 movers, no setups), shoots, and puts the exact rows back. CI is
+          structurally safe — every matrix leg is its own runner with its own Postgres, and `workers: 1`
+          makes each leg serial. BUT `e2e:local` runs EVERY project against your ONE database in
+          parallel workers, so the thin-night tests fight and the symptom is a duplicate-primary-key
+          error inside the RESTORE, which reads exactly like a broken layout and is not. Locally, run
+          one project at a time: `npx playwright test --project=mbp16`.
+          ALSO: running the browser suite locally DIRTIES docs/feel-evidence/nav-timing.md —
+          nav-timing.spec.ts appends its samples. Those rows are this Mac under contention, not
+          evidence. `git checkout -- docs/feel-evidence/nav-timing.md` before you commit.
 rehearse: gh workflow run ci.yml -f job=e2e — LIVE since G1. Runs the FULL browser oracle (all three
           shards) on any ref, with no tag involved. Run it on main's HEAD — the exact SHA you are
           about to tag — and the tag run becomes a confirmation instead of a discovery. `gate-1` went
           green on the first try because of this. Add `--ref <branch>` to rehearse a scratch branch.
           THE TRAP: GitHub validates dispatch inputs against the workflow file ON THE TARGET REF, so
           a new input value must be pushed BEFORE you can dispatch it. Push first, then dispatch.
-ci shape: (G0/G1/G2, 2026-07-13) branch pushes run app + pipeline; TAGS RUN ONLY THE BROWSER ORACLE —
-          the tagged SHA already proved app+pipeline on main, and re-running them was 43% of the CI
-          bill. The oracle is SHARDED into three legs (desktop, phone, wide), one Postgres each:
-          15.9 m -> 7.9 m. `workers: 1` is untouched — three legs are three databases, so nothing is
-          shared. One live run per ref AND PER EVENT: the group is `ci-<ref>-<event_name>`, and the
+ci shape: (G0/G1/G2, 2026-07-13; a 4th leg at PD3) branch pushes run app + pipeline; TAGS RUN ONLY THE
+          BROWSER ORACLE — the tagged SHA already proved app+pipeline on main, and re-running them was
+          43% of the CI bill. The oracle is SHARDED into FOUR legs (desktop, phone, wide, mbp16), one
+          Postgres each: 15.9 m -> ~8 m. `workers: 1` is untouched — four legs are four databases, so
+          nothing is shared (and PD3's thin-night mutation DEPENDS on that isolation). A 4th leg costs a
+          RUNNER, not wall-clock: the legs are parallel and the exit still waits on `desktop`.
+          One live run per ref AND PER EVENT: the group is `ci-<ref>-<event_name>`, and the
           event part is load-bearing — a rehearsal on main shares main's ref, and on its first outing
           it CANCELLED the push run it was rehearsing. Push and rehearsal must overlap; they now do.
 docs=free: (G2) `on.push` carries `paths-ignore: ['**/*.md', 'docs/**', '.claude/**']` — a prose-only
@@ -159,18 +194,24 @@ VRT:      baselines are BORN IN CI. Never shoot one on macOS. Since G1 a rehears
           PIXELS mints its own candidates: download `vrt-baselines-candidate-<leg>`, OPEN EVERY IMAGE,
           commit only an explained diff. THE CANDIDATE IS EVERY SHOT, NOT THE SHOTS THAT MOVED —
           `--update-snapshots=all` re-photographs all of them, so copying the whole directory commits
-          files nobody can explain. The triptych (`playwright-failures-<leg>`) is the list of what
-          actually moved; the candidate is only where you fetch those files from. Read
-          .claude/skills/vrt-update FIRST. `-f job=vrt-baselines` remains for a deliberate restyle.
-          BUT (PD2): "WHAT MOVED" AND "WHAT FAILED" ARE NOT THE SAME LIST, and the gap is where bugs
-          live. `maxDiffPixels: 600`, so a shot can CHANGE and still PASS. PD2's 28px mark moved 59
-          baselines and redded only 14 — the other 45 would have gone on passing while showing a top
-          bar the app no longer had. DIFF EVERY CANDIDATE AGAINST ITS COMMITTED BASELINE (decode both,
-          count differing pixels) rather than trusting the failure list, and re-baseline everything
-          that MOVED. That diff is also what surfaced a 387-pixel bug the tolerance had been hiding
-          for months: the Desk's baseline said "none saved tonight" while every real run produced
-          "1 saved tonight", because briefing.spec writes a journal entry, runs first, and never
-          cleans up. A baseline that is TOLERATED is still a baseline that is WRONG.
+          files nobody can explain. Read .claude/skills/vrt-update FIRST. `-f job=vrt-baselines`
+          remains for a deliberate restyle. FOUR legs now (PD3): desktop · phone · wide · mbp16.
+          THREE LAWS, EACH LEARNED THE HARD WAY, IN ASCENDING ORDER OF DANGER:
+          · (PD2) "WHAT MOVED" AND "WHAT FAILED" ARE NOT THE SAME LIST. `maxDiffPixels: 600`, so a shot
+            can CHANGE and still PASS. PD2's 28px mark moved 59 baselines and redded only 14 — the other
+            45 would have gone on passing while showing a top bar the app no longer had. DIFF EVERY
+            CANDIDATE AGAINST ITS COMMITTED BASELINE (decode both, count differing pixels) rather than
+            trusting the failure list. A baseline that is TOLERATED is still a baseline that is WRONG.
+          · (PD3) A RESIZE IS LOUDER THAN A DIFF. A shot whose HEIGHT changed changed its LAYOUT. Check
+            the height moved in the direction the change implies — wider ⇒ shorter. **A page that gets
+            WIDER is not supposed to get TALLER**, and that one sentence is what caught the next law.
+          · (PD3, THE WORST ONE) **A BASELINE PROVES THE PAGE DID NOT CHANGE. IT NEVER PROVED THE PAGE
+            WAS RIGHT.** If the first picture was already wrong, the oracle locks the bug in and DEFENDS
+            it — nothing ever fails, and nothing ever will. `/ticker`'s phone baselines were committed
+            photographs of the Range Ladder rendering ONE WORD PER LINE, in production, for months. A
+            baseline that is EXACT can still be wrong; the tolerance was innocent. **So: any brand-new
+            surface's FIRST baseline gets eyes before it is committed** — that is the only moment anyone
+            will ever look at it with fresh judgement.
 
 ## The control room (/settings#pipeline — N6)
 The reader can run the pipeline by hand: five actions, each in exactly one of ten states, with daily

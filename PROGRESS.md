@@ -1,121 +1,135 @@
 # PROGRESS.md — resumable state
 
-# PD2 IS **COMPLETE** — tagged `pd-2`, CI green on the first try. **The app has a face.**
+# PD3 IS **COMPLETE** — tagged `pd-3`, CI green on the first try. **The hole is gone, and the oracle was caught defending a bug.**
 
-**Checkpoint: POLISH-AND-DEPTH-PLAN.md, PD2 (Part 5 — brand: the identity kit) is DONE.
+**Checkpoint: POLISH-AND-DEPTH-PLAN.md, PD3 (Part 6 — the desktop grid contract v2) is DONE.
 Nothing is blocked. Nothing is in flight.**
 
-**NEXT: PD3 — the desktop grid contract v2** (plan Part 6).
+**NEXT: PD4 — the phone composition** (plan Part 7).
 
-## What PD2 did, in one paragraph
+## What PD3 did, in one paragraph
 
-The app had good plumbing and no identity: a placeholder gradient tile with a letter "M" in the top
-bar, and — it turned out — **no browser tab icon at all**, because `proxy.ts` had allowlisted
-`/favicon.ico` since P0 and no such file ever existed. PD2 built the identity kit. **One master file
-goes in (`assets/brand/logo-source.png`), ten artifacts come out** (`npm run brand`), each with a
-named size, geometry, budget and consumer. There is now exactly one component allowed to render the
-mark (`components/BrandMark.tsx`, the argued second door in drift rule 20), one place a brand colour
-may be stated outside the token sheet (the generator, policed by new drift rule 23), and a link
-preview — the only public face a login-walled product has — generated from the same master and
-photographed by the pixel oracle. Along the way the phase found a **387-pixel bug that the VRT's own
-tolerance had been hiding for months**.
+The Desk had a hole in it. On a thin night — the briefing held, no setup cards — a short module dug a
+dead acre of nothing into the middle of the app's main room, and the user found it by looking at his
+own screen. **The two columns were ONE grid, and a grid row is as tall as its tallest cell**: the held
+Brief shared a row track with the open Session Calendar, and the difference became empty space under
+the Brief. Measured on the `pd-2` build at 1512: **334px**. The columns are two independently-flowing
+stacks now, they share no tracks, and the same night measures **24px, 24px, 24px** — the designed
+rhythm, and the page is 322px shorter. Then the guards, pointed at things they had never been asked
+to look at, found **three more defects that had all been green** — including one that had been shipping
+to production for months with the pixel oracle photographing it and passing it every run.
 
 ## The five things that are now true (a fresh session must know these)
 
-1. **`npm run brand` IS THE ONE GENERATOR.** `npm run icons` is an alias of it; `scripts/icons.mjs`
-   and the old placeholder tile (`public/mark.svg`) are deleted. Ten artifacts, all from
-   `assets/brand/logo-source.png`. The generator prints its own artifact table with byte sizes and
-   **exits non-zero if any budget is missed** — which is how it caught, on its very first run, that
-   the new raster mark encodes to 300 KB at 512px against a 120 KB budget written for the flat SVG
-   tile it replaced (19 KB). Palette quantisation to 128 colours brings the set to 97.3 KB.
-   `public/mark-glyph.svg` SURVIVES — it is still the source for Android's monochrome icon, which
-   must be one flat colour on transparency and therefore cannot come from a rendered logo.
+1. **THE ORACLE WAS DEFENDING A BUG, AND THIS IS THE SHARPEST LESSON THIS BUILD HAS PRODUCED.**
+   `/ticker` on a phone renders the **Range Ladder** — the app's central probability visual. Its
+   sentences were coming out **one word per line**: "In / the / past, / 8 / in / 10 / 5- / day /
+   paths / from / here / stayed / inside / this / range." `ticker-light-phone-linux.png` and
+   `ticker-dark-phone-linux.png` were **committed photographs of that**, green, run after run, for
+   months.
+   > **A VRT baseline proves a page has not CHANGED. It does not prove the page was ever RIGHT.**
+   > If the first baseline is already wrong, the oracle locks the bug in and *defends* it. Nothing
+   > ever fails. PD2's law was "a baseline that is TOLERATED is still WRONG." **This is the harder
+   > version: a baseline that is EXACT can still be wrong.**
 
-2. **THE MASTER'S TRANSPARENCY IS PAINTED ON, and the generator undoes it.** The delivered file has
-   no alpha channel: the transparency *checkerboard* is rendered into the pixels. `brand-geometry.mjs`
-   keys it out by flood-filling light-and-grey pixels **from the border inward** — which is the whole
-   safety argument, because the mark's own whites (the M, the book) are interior and a fill that
-   starts at the edge can never reach them. It then fits the mark's true circle (median reach over 72
-   angular sectors, so a drop shadow on one side cannot inflate it) and cuts a real alpha.
+   The cause: `flex-1` is `flex: 1 1 0%` — **a flex-basis of ZERO**, and a zero-basis flex item **can
+   never cause its line to wrap; it can only be crushed.** Fixed with `min-w-[18ch]` (a flex item's
+   min-width *does* participate in line breaking). **In a `flex-wrap` row, anything that must stay
+   legible needs a `min-w-*`.** It surfaced only because PD3 moved a container 4px, which changed the
+   styleguide's HEIGHT — and **a page that gets wider is not supposed to get taller**, so I looked.
 
-3. **A LIBRARY THAT "WORKS" CAN BE IGNORING YOU.** sharp accepts a `fontfile`, so the OG card's type
-   looked easy. Measured: the same string at the same size rendered to **exactly 1135×159px with our
-   monospace font, with our proportional font, and with no font named at all**. Pango was ignoring the
-   file and substituting a system font. The card would have shipped in the wrong typeface, differently
-   on every machine, and no test on earth would have said so. **The text is now vector outlines**
-   (`brand-type.mjs` + `opentype.js`) from two TTFs vendored in `assets/brand/fonts/` — by the time
-   anything rasterises there is no text left, only shapes.
+2. **LAW 1 — the Desk's two columns flow independently, and the DOM price is real and is stated.**
+   CSS can only group children that are **adjacent in the DOM**, and the ritual interleaves the
+   columns — so a ritual-ordered DOM and column-grouped wrappers are **mutually exclusive, in any CSS
+   that exists**. The DOM is now **main-then-rail at every width** (amendment 0.2.2's order); below
+   `lg` the phone's ritual is restored *visually* with `display: contents` + `order`. **The residual
+   cost: below lg a sighted keyboard user tabs main-then-rail while seeing the ritual — a WCAG 2.4.3
+   divergence axe cannot see, because it is a comparison between two orders, not a property of one.**
+   It is pinned by e2e so it cannot drift. **The alternative (a rail that row-SPANS the main column)
+   is strictly worse — it brings the dead gap straight back, distributed.**
 
-4. **THE TOLERANCE WAS HIDING A REAL BUG — read this before you touch VRT.** `maxDiffPixels: 600`.
-   `e2e/briefing.spec.ts` writes a journal entry, runs before `e2e/vrt.spec.ts` (workers: 1,
-   alphabetical) and never cleans up — so the Desk the *full oracle* photographs says "1 saved
-   tonight" while the baseline minted by the standalone `vrt-baselines` job (which runs `vrt.spec`
-   alone on a fresh DB) says "none saved tonight". **They had disagreed by 387 px for as long as that
-   baseline existed.** PD2's 746-px mark cleared the tolerance and it fell out. Fixed: `Disclosure`
-   takes an opt-in `maskCount` and the journal is its only consumer — the reader still sees the count,
-   the camera does not.
-   **AND: only 14 baselines went red, but 59 had actually CHANGED.** The other 45 moved by 746 px,
-   sat under the tolerance, and would have gone on passing while showing a top bar the app no longer
-   has. All 59 were re-photographed. **A baseline that is tolerated is still a baseline that is wrong.**
+3. **LAW 2 — one empty state, one height, one component.** `components/EmptyModule.tsx`, policed by
+   drift rule 24 (`min-h-` on any surface). `SetupCards` **lost its own empty branch** — six modules
+   each inventing their own empty state is six heights nobody can hold to a budget. **The shimmer is
+   gone:** a shimmer means "content is on its way", which is TRUE on an empty database and **FALSE on
+   a thin night** where the run happened and nothing fired. 124px → 104px. And the copy now separates
+   two facts that read the same before: *"Setup cards arrive with the nightly base rates"* (a
+   schedule — **no timestamp**, because none exists) vs *"No setups fired tonight."* (a **finding**,
+   so it takes the run's stamp). **Watch for `[]` being truthy** — that is how the old code walked
+   straight past its own guard.
 
-5. **THE EDITION RULE still stands (PD1's law, unchanged and still the most dangerous thing here).**
-   > **IF A SURFACE IS DERIVED FROM THE EDITION, IT IS MEASURED AGAINST THE EDITION — never the wall
-   > clock.**
-   PD2 touched no clock. Every later phase that filters, labels or checks anything dated must obey it,
-   and the failure mode is invisible at the hour you usually work (between midnight ET and the
-   ~6:40pm publish).
+4. **TWO 44px DEFECTS THAT WERE GREEN.** The Desk's front-page headlines were a **23px tap target on
+   a phone** and the sweep passed — because the sweep runs on **Linux**, where Playfair sets wider, the
+   headline wraps to two lines, and two lines clear 44px **by accident**. On macOS/iOS metrics it fits
+   one line. **So on the reader's actual iPhone it was under the floor the whole time.** Verified
+   against `pd-2` rather than assumed. And `/academy/[slug]` was the one room in the manifest with an
+   **empty `sweeps` list** — its "← All lessons" link was 17px while its identical twin on
+   `/academy/review` has had a 44px box since it shipped. **Q-G3-2 is CLOSED.**
 
-## Gate size at `pd-2`
+5. **THE 16-INCH LOCK, AND THE ARITHMETIC A FUTURE SESSION MUST NOT RE-DERIVE.** The `mbp16` project
+   (1512×982) is the 4th oracle leg. But **1512 sits INSIDE the `desk:` band (1366–1535) and the
+   container caps at 1360px — so 1366 and 1512 render an IDENTICAL 1296px interior** (measured, all 13
+   rooms; only `wide` ≥1536 opens up, to 1436px). **The project does not buy a new layout map and it
+   would be dishonest to say it does.** It buys: the night the bug happens on (the thin-night shot),
+   the screen the reader actually uses, and the sideways-scroll sweep at 1512. That is why the
+   manifest's new `mbp16` flag is **false for most rooms**.
 
-**23 drift rules · 76 VRT baselines · 23 e2e specs · 638 unit tests · 16 bundle baselines · 14
-manifest rooms · tag run 8 m 17 s.** Pipeline: 535 (504 + 31 skipped without Postgres).
+## Gate size at `pd-3`
 
-Growth this phase, each with a reason (full detail in `docs/pd-evidence/pd2-brand.md`):
-- **+1 drift rule (23)** — the brand's hexes have one door outside the token sheet. Rule 1 never
-  scanned `scripts/` or `public/*.svg`. Proven to bite.
-- **+1 e2e spec (23)** — `brand.spec.ts`: every brand path fetched **unauthenticated**, 200 +
-  content-type; the login mark; the OG card's absolute URL.
-- **+13 unit tests (638)** — the generator's geometry, against **synthetic** fixtures only. A test
-  that asserted today's logo is today's logo would pass forever and prove nothing.
-- **+1 amendment to drift rule 20** — `BrandMark.tsx` is the argued second door for imagery.
-- **Bundles UNMOVED** — worst `/news` 196.3 KB, exactly as before. Images are not code.
+**25 drift rules · 83 VRT baselines · 24 e2e specs · 642 unit tests · 16 bundle baselines · 14
+manifest rooms · 4 oracle legs · tag run 8 m 08 s.** Pipeline: 535 (504 + 31 skipped without Postgres).
+
+Growth this phase, each with a reason (full detail in `docs/pd-evidence/pd3-grid.md`):
+- **+2 drift rules (25)** — 24 = Law 2's `min-h` grep; 25 = `PageContainer` is the one door for the
+  room measure (it had been written by hand in five files, and the styleguide was already out of step
+  by 4px and nobody knew).
+- **+1 e2e spec (24)** — `grid.spec.ts`, which measures **bounding boxes, not the DOM**. A DOM-only
+  assertion would have passed happily through this entire rewrite while the screen showed something
+  else — the old ritual test did exactly that.
+- **+4 unit tests (642)** — EmptyModule's contract, and a guard that a room flagged for the 16-inch
+  lock is actually *shot* at 16 inches.
+- **+7 VRT baselines (83)** — the `mbp16` set, including `desk-thin-night`.
+- **+1 oracle leg (4)** — `mbp16`. **Costs a runner, not wall-clock**: the legs are parallel and the
+  exit still waits on `desktop`.
+- **Bundles UNMOVED** — worst `/news` **196.3 KB**. Structure is not JavaScript.
 
 ## Production is green and watched
 
 `npm run check:live` — **all six assertions pass** (1 PENDING, owed to PD8: the news bylines are plain
-text because that feature does not exist yet). Needs `set -a; source .env; set +a` for
-`AUTH_COOKIE_SECRET`. **Local-only by nature** — CI builds a fresh database and deployment every run,
-so it structurally cannot answer this. It runs at the **post-deploy step of the standing gate**.
+text because that feature does not exist yet). Needs `set -a; source .env; set +a`.
 
-All ten brand paths verified 200 + correct content-type against the deployed origin, unauthenticated.
-The OG card's `og:image` resolves **absolute** (`metadataBase` from `APP_BASE_URL`), which is what an
-unfurler requires. Lighthouse: **CLS 0.000** and **first-load JS 177 KB** (both HARD gates) ·
-advisory perf 86 (was 87) · **LCP 3.83 s, unmoved** from PD1's 3.86 s — the mark did not join the
-critical path.
+`check:nav`: every cached room **45–57 ms**, every sample a cache HIT. `/settings` 385 ms — the argued
+writer-room exemption, unchanged. **Lighthouse: CLS 0.000 and first-load JS 178 KB (both HARD gates).**
+Advisory perf **re-sampled four times before being explained**: 76 · 77 · 83 · 84, LCP 5.16 → 4.53 →
+4.31 → 4.30 s. The first post-deploy sample is the cold outlier and the series converges as the
+deployment warms; the spread is inside the documented ±10 band, bundles are byte-identical, and nothing
+PD3 touched is on the critical path.
 
 ## Known-and-fine (do not chase)
 
-- **Node 20 shadowing.** Claude Code exports its own Node 20 into every shell it spawns; `check:fonts`
-  then dies with a `globSync` export error. Not a regression. Prepend Node 24:
-  `export PATH="$HOME/.nvm/versions/node/v24.18.0/bin:$PATH"`. **The brand generator needs Node 24 too**
-  (`sharp`, `png-to-ico`, `opentype.js`).
-- **`uv run pytest` fails `test_missing_database_url_fails_loudly` if you sourced the root `.env`** —
-  the test asserts a *missing* `DATABASE_URL` fails loudly. Not a regression. Run `env -u DATABASE_URL
-  uv run pytest`.
-- **The 29 Postgres-backed pipeline tests skip on this Mac** — but **they do not have to**:
+- **Node 20 shadowing.** Claude Code exports its own Node 20 into every shell; `check:fonts` then dies
+  with a `globSync` export error. Not a regression. Prepend Node 24:
+  `export PATH="$HOME/.nvm/versions/node/v24.18.0/bin:$PATH"`.
+- **`uv run pytest` fails `test_missing_database_url_fails_loudly` if you sourced the root `.env`.**
+  Not a regression. Run `env -u DATABASE_URL uv run pytest`.
+- **The 29 Postgres-backed pipeline tests skip on this Mac — but they do NOT have to.**
   `docker run -d --name msm-pg -e POSTGRES_PASSWORD=postgres -e POSTGRES_DB=msm_test -p 55433:5432 postgres:16`
   then `TEST_DATABASE_URL="postgresql://postgres:postgres@localhost:55433/msm_test" uv run pytest`.
-  **Do this whenever you touch a database write path. A local green with a skip count is not a green.**
+- **⚠ NEW AT PD3 — the thin-night specs need ONE DATABASE PER PLAYWRIGHT PROJECT.** CI gives this for
+  free (each matrix leg is its own runner with its own Postgres, `workers: 1`). **But `npm run
+  e2e:local` runs EVERY project against the ONE local database in parallel workers** — the thin-night
+  tests in desktop/phone/mbp16 will then thin it simultaneously and fight, and the symptom is a
+  **duplicate-primary-key error inside the restore, which reads like a broken layout and is not.**
+  Run one project at a time locally: `npx playwright test --project=mbp16`.
+- **⚠ Running the e2e suite locally DIRTIES `docs/feel-evidence/nav-timing.md`** — `nav-timing.spec.ts`
+  appends its samples to it. Those rows are this Mac under contention (bimodal, 30–830ms), not evidence.
+  `git checkout -- docs/feel-evidence/nav-timing.md` before committing.
 - **`check:lighthouse` needs** `export CHROME_PATH="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"`
-  and the root `.env` sourced. Advisory perf varies ±10 — **re-sample before explaining a move.**
+  and the root `.env` sourced. **Advisory perf varies ±10 — RE-SAMPLE before explaining a move.**
 - **`/settings` answers in ~385 ms, every sample a cache MISS.** Correct — the app's one *writer* room,
-  `force-dynamic` by design, with an argued exemption. Every cached room answers in 42–94 ms.
-- **`nav-timing — Desk → Scans` on the phone leg is timing-flaky on a contended runner.** PD2 saw it
-  red at median 451 ms against a 400 ms ceiling — on a commit whose *application code was identical* to
-  a passing one (the only difference was 59 PNG baselines, which cannot slow a client-side nav). The
-  samples were bimodal: `[451, 178, 904, 877, 164, 178, 482]` — half of them *faster* than the passing
-  run. `gh run rerun <id> --failed` → green. **Read the samples before believing it; a real slowdown
-  moves every one of them.**
+  `force-dynamic` by design, with an argued exemption. Every cached room answers in 45–57 ms.
+- **`nav-timing — Desk → Scans` on the phone leg is timing-flaky on a contended runner.** Read the
+  samples before believing it; a real slowdown moves every one of them.
 - **P-2 (a GitHub PAT with `workflow` scope) is still NOT PROVISIONED**, so the control room's buttons
   are dark in production. The path is proven working end to end. It is a secret and nothing else.
 - **Three untracked files** (`UI-LIBRARY-EVALUATION.md` + its PDF/HTML) are a finished research
@@ -123,21 +137,21 @@ critical path.
 
 ## Open questions (none blocking — see QUESTIONS-FOR-BISHANT.md)
 
-- **[VETO?] The phone login has no mark.** The brand panel is `hidden lg:flex` by existing design, so
-  the 96px lockup is desktop-only. PD4 owns the phone composition; if Bishan wants it there, it is a
-  two-line change.
-- **[FYI] `e2e/briefing.spec.ts` never cleans up its journal entry.** The camera now looks away, which
-  is the cheap correct fix. The deeper fix needs a journal delete path — a feature, not a test fix.
-- **[FYI] Your logo file has fake transparency.** Handled entirely by the generator; nothing to do. A
-  genuine RGBA re-export would let ~40 lines of pixel-keying be deleted.
-- **Q-N6-1 · Q-PD0-1 — CLOSED at PD1.** The Saturday rows are deleted; the Coinbase calendar rows are
-  gone and both ends are fenced.
-- **[FYI] A tracked file went missing from the working tree during PD1 and was restored.**
-  `Screenshot 2026-07-12 at 6.20.46 PM.png` (repo root, committed in `cb20a9f`). **PD2 did NOT see it
-  disappear again** — one occurrence, not yet a pattern.
-- **Q-G4-1 [VETO?]** PD5's movers delta chip carries `data-p2` (hover = opacity/underline only).
-  **PD5 has not started — nothing is built on it. Reversing it still costs one paragraph.**
-- **Q-G3-2 [WORTH HIS EYES]** `/academy/[slug]` is neither swept nor pixel-locked. A one-line manifest
-  change (`"sweeps": ["touch","scroll","axe"]`). Cheap, and worth doing early in PD.
-- **Q-PD0-2 [FYI]** the 1.2 KB of bundle headroom PD0 spent, and why.
-- Q-G2-1 · Q-G4-2 · Q-G3-1 · Q-G3-3 · Q-G3-4 · Q-G2-2 — all decided, no action needed.
+- **[VETO?] The phone login has no mark.** The brand panel is `hidden lg:flex`, so the 96px lockup is
+  desktop-only and a phone sees no mark on the first page anyone ever opens. **PD4 owns the phone
+  composition — this is the phase to decide it.** Two-line change.
+- **[NEW, PD3 — WORTH HIS EYES] The Desk's phone tab order now differs from its visual order.** Forced
+  by CSS (see #2 above); axe cannot see it; it is pinned by e2e. If Bishan wants the DOM to follow the
+  ritual instead, the price is the dead gap coming back — they cannot both be had.
+- **[NEW, PD3 — FYI] The pixel oracle can enshrine a bug.** `/ticker`'s phone baselines did, for months.
+  **Any brand-new surface's FIRST baseline deserves eyes** — it is the only moment anyone will ever look
+  at it with fresh judgement.
+- **Q-G4-1 [VETO?]** PD5's movers delta chip carries `data-p2` (hover = opacity/underline only). **PD5
+  has not started — nothing is built on it.**
+- **Q-G3-2 — CLOSED at PD3.** `/academy/[slug]` is swept, and the sweep found a real 17px defect on its
+  first run.
+- **Q-N6-1 · Q-PD0-1 — CLOSED at PD1.** Q-PD0-2 · Q-G2-1 · Q-G4-2 · Q-G3-1 · Q-G3-3 · Q-G3-4 · Q-G2-2 —
+  all decided, no action needed.
+- **[FYI] `e2e/briefing.spec.ts` never cleans up its journal entry.** The camera looks away
+  (`Disclosure`'s `maskCount`). The deeper fix needs a journal delete path — a feature, not a test fix.
+- **[FYI] Bishan's logo file has painted-on transparency**; the generator keys it out itself. Nothing to do.
