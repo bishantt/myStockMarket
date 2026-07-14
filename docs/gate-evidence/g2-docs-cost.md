@@ -100,7 +100,7 @@ looked in the wrong place.
 | c | a **docs-only** commit (this file) | `72ff535` | **0** | filtered — *the absence is the pass* |
 | d | a **spec fix** (`.ts`), mid-phase | `5739b11` | **1** — 29296471669, green, 2 m 28 s | **the second control:** code still runs |
 | e | a **workflow_dispatch** rehearsal on a docs-only SHA | `72ff535` | **1** — 29295892971 | path filters do not apply to dispatches |
-| f | **the `gate-2` tag, on a docs-only commit** | `<TAG_SHA>` | **<TAG_RUNS>** | `<TAG_VERDICT>` |
+| f | **the `gate-2` tag, on a docs-only commit** | `8034a7a` | **1** — 29297042789, green, 7 m 59 s | **NOT filtered — the oracle ran** |
 
 **(a) and (d) — the controls.** Both touch files outside the ignore list (`.github/workflows/ci.yml`
 and `app/e2e/news.spec.ts`), and both ran the full `app` + `pipeline` pair green, with `oracle` and
@@ -113,7 +113,17 @@ created no push run at all, and the oracle ran anyway. Path filters apply to `pu
 `workflow_dispatch` — so **the rehearsal remains available on exactly the docs-only commits a phase
 tag lands on.** Had this not held, G2 would have quietly disarmed G1.
 
-**(f) — the edge.** `<TAG_NARRATIVE>`
+**(f) — the edge, settled.** `gate-2` was tagged **on `8034a7a`, a commit whose only changed file is
+a markdown document under `docs/`** — the exact shape that would have been fatal. The push of that tag
+started run **29297042789**, which ran **all three oracle legs green in 7 m 59 s**, with `app`,
+`pipeline` and `vrt-baselines` correctly **skipped**.
+
+**GitHub does not apply path filters to tag pushes.** The documentation was right, and now it is a
+recording of this repository rather than a promise from a vendor that this repository has twice caught
+being wrong. The fallback (`[skip ci]` on docs commits, with the bright line *never `[skip ci]` a
+commit a tag will sit on*) was **not needed and is not adopted.** We live in the cleaner world.
+
+The tag was pushed **once**, went green **first try**, and **never moved.**
 
 ---
 
@@ -215,7 +225,7 @@ These become CLAUDE.md text at G4. From now they are simply how this plan behave
 
 ## 9. Gate at exit
 
-**20 drift rules · 76 VRT baselines · 22 e2e specs · tag run `<TAG_DURATION>`.**
+**20 drift rules · 76 VRT baselines · 22 e2e specs · tag run 7 m 59 s.**
 
 Unchanged from `gate-1` in every dimension — **G2 adds nothing to the gate.** It is the first phase
 of this plan that only ever *removes* work: no new rule, no new baseline, no new spec, no new CI

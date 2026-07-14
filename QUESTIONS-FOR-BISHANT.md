@@ -798,3 +798,47 @@ should still land well below where it started.
 **If you disagree**, the fix is one commit: revert `b137f81` and the oracle goes back to a single
 serial job at ~15 m. The rehearsal — which is most of G1's value, and the thing that made `gate-1` go
 green on the first try — does not depend on the sharding at all and would be unaffected.
+
+---
+
+## Q-G2-1 — [VETO?] I edited an e2e spec during G2, which the plan reserved for G3
+
+**What happened.** G2's rehearsal went red on a tree where **no app code had changed at all** —
+byte-identical to the one `gate-1` proved green. The failing test was the `/news` chip sweep
+(`news.spec.ts:97`, "expected 13 stories reachable, received 0").
+
+It was not a flake. `locator.all()` is the one Playwright call that does not wait for elements, and
+the catalyst filter row is a client component inside a streamed Suspense boundary — so the test
+enumerated a list that had not arrived, swept nothing, and reported zero. It failed on its retry too.
+
+**The conflict.** GATE-EFFICIENCY-PLAN's non-goals reserve spec edits for G3. But *"Red CI blocks a
+phase exit — no exceptions"* is an untouchable (Part 1.3), and Part 5 says that when the plan and an
+untouchable disagree, **the untouchable wins**.
+
+**What I did, and the assumption inside it:** I fixed the test — waited for the row, then asserted it
+had chips to sweep — rather than running `gh run rerun --failed` until it went green. My assumption is
+that you would rather have one out-of-scope, ten-line test fix than a phase tagged on top of a known
+race that was re-rolled into greenness. That command is for a *suspected* flake, and this one was
+understood.
+
+**If you disagree:** the commit is `5739b11` and reverting it costs nothing but the return of the
+flake. Nothing else in G2 depends on it.
+
+**Worth knowing regardless:** it is the **only** `.all()` in the entire e2e suite, so this was an
+instance, not a class — there is no sweep of similar fixes waiting.
+
+---
+
+## Q-G2-2 — [FYI, no action needed] the nightly heartbeat no longer triggers CI
+
+`nightly-a.yml` pushes an **empty** `chore: heartbeat` commit to main after each full nightly run, to
+stop GitHub disabling the cron after 60 idle days. Now that docs commits are filtered, I checked what
+a path filter does to a commit that changes *no* paths at all — GitHub does not document it. Pushed
+one deliberately and looked: **no run is created.**
+
+**The heartbeat still does its job.** What keeps the cron alive is repository *activity*, and GitHub
+counts a **push** as activity — not a workflow run. So the cron survives, and CI stops type-checking a
+commit with no content. It saves ~2.5 minutes a night and changes nothing that matters.
+
+**It does not change the tagging rule.** The heartbeat can still land mid-endgame and move `main`
+under you; that hazard was never about CI. **Tag the SHA you rehearsed, by SHA** — unchanged.

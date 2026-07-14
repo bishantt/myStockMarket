@@ -1,13 +1,17 @@
 # PROGRESS.md — resumable state
 
-# THE GATE-EFFICIENCY BUILD IS RUNNING — G1 is done (2026-07-13), tagged `gate-1`, CI green.
+# THE GATE-EFFICIENCY BUILD IS RUNNING — G2 is done (2026-07-13), tagged `gate-2`, CI green.
 
-**Checkpoint: G0 and G1 complete. G2 is next. Nothing is blocked. Nothing is in flight.**
+**Checkpoint: G0, G1 and G2 complete. G3 is next. Nothing is blocked. Nothing is in flight.**
 
-**`gate-1` went green on the FIRST TRY, in 7 m 58 s, and the tag never moved.** That is the whole
-point of the phase and it is worth stating plainly: the oracle had already run the identical suite on
-the identical SHA before the tag existed, so the tag run was a confirmation, not a discovery. Before
-this, 52% of tag runs failed and `nc-final` needed six pushes of one tag.
+**`gate-2` went green on the FIRST TRY, in 7 m 59 s, and the tag never moved** — the second phase
+running to make that the ordinary outcome rather than the lucky one. Before this reform, 52% of tag
+runs failed and `nc-final` needed six pushes of one tag.
+
+**And G2's rehearsal proved its own worth on an ordinary day.** The phase changed **no app code at
+all**, and the rehearsal *still* went red — a latent race in the `/news` chip sweep. Before G1 that red
+would have arrived **on the tag**. Instead it arrived on a dispatch, cost nothing but the reading, and
+was fixed before a tag existed. See LESSONS ("the one locator call that does not wait").
 
 ## What this build is (read this first if you have no memory of it)
 
@@ -91,25 +95,66 @@ Full evidence with every run id: `docs/gate-evidence/g1-oracle.md`.
    full nightly (it keeps GitHub from disabling the cron after 60 idle days). It landed mid-endgame
    tonight and rejected a push. **Tag the SHA you rehearsed, BY SHA — never `HEAD`.**
 
-## What is NEXT — G2 (read GATE-EFFICIENCY-PLAN.md §G2 in full)
+## Where G2 left the machinery (all of this is live on `main` now)
 
-**G2 — Make documentation free (paths-ignore, with the tag-edge proof) → tag `gate-2`.** A small
-phase by design: its danger is one specific edge, so the phase *is* the proof.
+Full evidence with every run id: `docs/gate-evidence/g2-docs-cost.md`.
 
-Add `paths-ignore: ['**/*.md', 'docs/**', '.claude/**']` to `on.push` so docs commits stop firing
-app+pipeline (58 of 249 commits are docs-only, each paying full CI price). **The dangerous edge:** if
-GitHub evaluated path filters for TAG pushes too, a phase tag landing on a docs-heavy commit would
-silently skip the pixel oracle — the exact "gate that silently never runs" disease. GitHub documents
-that path filters are ignored for tag pushes, **but the vendor's documentation is not a recording**,
-and G1 just re-earned that lesson the hard way. Prove it live: push the ci.yml commit → push a
-docs-only commit and assert **no run was created** → tag `gate-2` **on that docs-only commit** and
-assert the oracle **did** run and is green. If it does not trigger, `git revert` (never rewrite
-history) and adopt the `[skip ci]` fallback — with the bright line: **never `[skip ci]` a commit a tag
-will sit on.**
+- **DOCUMENTATION IS FREE.** `ci.yml`'s `on.push` carries
+  `paths-ignore: ['**/*.md', 'docs/**', '.claude/**']`. A commit that changes only prose starts **no
+  CI run at all**. 58 of the first 249 commits were docs-only at ~2.5 minutes each, proving that a
+  paragraph had not broken the TypeScript compiler.
+- **A MIXED commit (docs + code) still runs in full.** GitHub skips only when *every* changed file
+  matches an ignore pattern. You cannot smuggle code past the gate by attaching a README to it.
+- **THE TAG EDGE IS PROVEN, NOT ASSUMED: GitHub does NOT apply path filters to tag pushes.** This
+  mattered enormously — phase tags in this build deliberately land on docs-only commits. If tags were
+  filtered, `git tag gate-2 <a docs commit>` would have started **nothing**, the phase would have
+  "passed its gate" with the oracle never running, and nothing would have said so. `gate-2` is tagged
+  on `8034a7a`, a commit whose only file is one markdown document, and its push ran the **full
+  three-leg oracle green in 7 m 59 s** (run 29297042789). **The `[skip ci]` fallback was not needed
+  and is not adopted.**
+- **`workflow_dispatch` is unaffected by path filters** — the rehearsal still runs on exactly the
+  docs-only commits a phase tag lands on. Had that not held, G2 would have silently disarmed G1.
+- **The nightly heartbeat (an EMPTY commit) no longer fires CI either** — and it still works, because
+  what keeps the cron alive is a *push*, not a workflow run. **This does not change the tagging rule:
+  main can still move under an endgame. Tag the SHA you rehearsed, BY SHA.**
+- **The safety check that is not in the diff, and matters most:** nothing in the gate *reads* those
+  paths — no test, drift rule or budget script reads a `.md` file, `docs/` or `.claude/`. The workflow
+  files are deliberately NOT ignored, because that is exactly what `test_ci_tag_families.py` and
+  `test_workflow_dispatch.py` read. **If a future guard ever starts reading a document, that
+  `paths-ignore` list is where it breaks — and it breaks silently. Put the path back first.**
 
-**One thing G1 hands G2:** the heartbeat commit is **empty** — it changes no paths at all. Whether
-`paths-ignore` skips it, runs it, or does something else is not documented anywhere worth trusting.
-Find out by looking; it is free evidence sitting in the same experiment.
+## The one thing G2 fixed outside its own scope (know this before G3)
+
+G2's rehearsal went red on `news.spec.ts:97` with **no app code changed**. `locator.all()` is the one
+Playwright call that does **not** auto-wait; the `/news` catalyst filter row is a `"use client"`
+component inside a streamed Suspense boundary, so the test enumerated a list that had not arrived,
+swept nothing, and reported "0 stories reachable" — a red that blamed the product for the instrument's
+mistake. **Fixed (`5739b11`), not re-run into greenness** — it failed on its retry and the mechanism
+was understood. It is the **only `.all()` in the whole suite**. G2's non-goals reserved spec edits for
+G3, but "Red CI blocks a phase exit" is an untouchable and the untouchable wins. Logged for veto as
+**Q-G2-1**.
+
+## What is NEXT — G3 (read GATE-EFFICIENCY-PLAN.md §G3 in full)
+
+**G3 — One list of rooms, and defuse the clocks → tag `gate-3`.** The only phase that edits specs and
+scripts, and it is **full TDD**. Bigger than G2. Its crown is a guard that makes rot-by-omission
+mechanically impossible.
+
+1. **`app/lib/routes-manifest.json`** — one entry per product route (`path`, `seeded`, `sweeps`,
+   `wide`, `navBudget`, `vrtRoom`). JSON so `.mjs` scripts, TS specs and vitest all read it plainly.
+2. **Wire the five hand-kept route lists to it** (list-wiring only, zero behavior change):
+   `a11y.spec.ts`, `hardening.spec.ts`, `vrt.spec.ts`, `check-nav.mjs`, `check-bundles.mjs`.
+3. **The completeness guard (TDD, write it RED first):** a vitest test that walks `app/app/**/page.tsx`,
+   derives the routes, and asserts every product route is in the manifest — with an argued in-file
+   exemption list. **This is how `/news` shipped in N5 and went unmeasured for two tagged phases.**
+   A new `page.tsx` with no manifest entry becomes a red unit test, not a hole found two phases later.
+4. **Drift rule 21 — the fuse-finder:** no absolute date literals in `seed.mjs` or `e2e/*.spec.ts`
+   outside sanctioned constants. "An absolute fixture under a relative rule has a fuse on it — /paper's
+   baseline expired 28 minutes after the run that certified it." Prove it RED first.
+5. Update `.claude/skills/new-surface/SKILL.md`: the manifest is the door now.
+
+**The rehearsal IS the no-behavior-change proof:** same routes swept, same 76 baselines, zero pixel
+diffs.
 
 ## The exit ritual as it now stands (GATE-EFFICIENCY-PLAN Part 3)
 
@@ -122,12 +167,19 @@ never a re-point) → the intelligence files land as **ONE** docs commit *after*
 Bishan and **STOP**.
 
 **The tag run should now be green on the first try** — the rehearsal already ran the identical suite
-on the identical SHA. `gate-1` was. If a tag run ever reds after a green rehearsal, that is a real
-finding and it belongs in the evidence file.
+on the identical SHA. `gate-1` was. `gate-2` was. If a tag run ever reds after a green rehearsal, that
+is a real finding and it belongs in the evidence file.
+
+**That closing docs commit is now FREE (G2)** — it starts no CI run. Which also means the last two
+temptations are gone for good: there is no reason to squeeze the intelligence files in *before* the
+tag to save a CI cycle, and **no reason to ever re-point a green tag onto trailing prose** (that is
+what `nc-final` did twice, at 15.8 minutes each). The tag run's green **IS** the record; cite it by
+run id in the evidence file and write nothing else down.
 
 Every evidence file ends with the **gate-size line** so growth of the gate is a booked number, never
-an accident. At `gate-1`: **20 drift rules · 76 VRT baselines · 22 e2e specs · tag run 7 m 58 s.**
-No growth at G1 — it added no rule, no baseline, no spec, and no test.
+an accident. At `gate-2`: **20 drift rules · 76 VRT baselines · 22 e2e specs · tag run 7 m 59 s.**
+Unchanged in every dimension from `gate-1` — **G2 is the first phase that only ever *removed* work**:
+no new rule, no new baseline, no new spec, no new CI step.
 
 ---
 

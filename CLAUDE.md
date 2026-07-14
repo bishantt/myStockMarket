@@ -83,15 +83,26 @@ rehearse: gh workflow run ci.yml -f job=e2e — LIVE since G1. Runs the FULL bro
           green on the first try because of this. Add `--ref <branch>` to rehearse a scratch branch.
           THE TRAP: GitHub validates dispatch inputs against the workflow file ON THE TARGET REF, so
           a new input value must be pushed BEFORE you can dispatch it. Push first, then dispatch.
-ci shape: (G0/G1, 2026-07-13) branch pushes run app + pipeline; TAGS RUN ONLY THE BROWSER ORACLE — the
-          tagged SHA already proved app+pipeline on main, and re-running them was 43% of the CI bill.
-          The oracle is SHARDED into three legs (desktop, phone, wide), one Postgres each: 15.9 m ->
-          7.9 m. `workers: 1` is untouched — three legs are three databases, so nothing is shared.
-          One live run per ref AND PER EVENT: the group is `ci-<ref>-<event_name>`, and the event part
-          is load-bearing — a rehearsal on main shares main's ref, and on its first outing it CANCELLED
-          the push run it was rehearsing. Push and rehearsal must be able to overlap; they now do.
+ci shape: (G0/G1/G2, 2026-07-13) branch pushes run app + pipeline; TAGS RUN ONLY THE BROWSER ORACLE —
+          the tagged SHA already proved app+pipeline on main, and re-running them was 43% of the CI
+          bill. The oracle is SHARDED into three legs (desktop, phone, wide), one Postgres each:
+          15.9 m -> 7.9 m. `workers: 1` is untouched — three legs are three databases, so nothing is
+          shared. One live run per ref AND PER EVENT: the group is `ci-<ref>-<event_name>`, and the
+          event part is load-bearing — a rehearsal on main shares main's ref, and on its first outing
+          it CANCELLED the push run it was rehearsing. Push and rehearsal must overlap; they now do.
+docs=free: (G2) `on.push` carries `paths-ignore: ['**/*.md', 'docs/**', '.claude/**']` — a prose-only
+          commit starts NO CI run. A MIXED commit (docs + code) still runs in full. PROVEN LIVE, not
+          taken from the vendor's docs: GitHub does NOT apply path filters to TAG pushes (gate-2 sits
+          on a docs-only commit and its push ran the full oracle green), and `workflow_dispatch`
+          ignores them too, so the REHEARSAL still runs on exactly the commits a tag lands on.
+          THE TRAP THIS SETS FOR YOU: nothing in the gate currently READS those paths, which is the
+          only reason this is safe. If you ever write a guard that reads a document, put its path back
+          in the trigger FIRST — otherwise the guard breaks silently. The workflow files are
+          deliberately NOT ignored (test_ci_tag_families.py and test_workflow_dispatch.py read them).
 heartbeat: nightly-a pushes an EMPTY `chore: heartbeat` commit to main after each full nightly (it
-          keeps GitHub from disabling the cron after 60 idle days). So MAIN CAN MOVE UNDER YOUR
+          keeps GitHub from disabling the cron after 60 idle days). Since G2 it starts no CI run —
+          paths-ignore skips an empty commit — and it still works, because what keeps the cron alive
+          is a PUSH, not a run. THAT CHANGES NOTHING ABOUT THE HAZARD: MAIN CAN STILL MOVE UNDER YOUR
           ENDGAME. Tag the SHA you rehearsed, by SHA — never `HEAD`.
 pipeline: uv run pytest      jobs: uv run python -m jobs.job_a (fixtures: MSM_FIXTURES=1)
 modes:    job_a runs in FOUR modes, pinned in MODE_STAGES (pipeline/jobs/job_a.py), and main() REFUSES

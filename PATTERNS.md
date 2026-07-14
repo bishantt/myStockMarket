@@ -525,3 +525,79 @@ justified the serialisation and check whether it still describes the world.**
 
 The trade is booked, not hidden: billed minutes rise ~26% (three legs each pay their own setup),
 wall-clock falls ~46%. Wall-clock is what a human waits for, several times per exit.
+
+## Silence the checks that cannot discover anything — then prove the silence has an edge (G2, 2026-07-13)
+
+**The pattern:** a check earns its place by what it *could* discover, not by what it verifies. When
+you find one that can discover nothing by construction, delete it — and then go looking for the one
+place where "delete it" quietly means "delete the gate."
+
+Docs-only commits were paying full CI: typecheck, lint, drift, 577 unit tests, a production build, a
+Postgres container, pytest — to prove a paragraph had not broken the TypeScript compiler. 58 of 249
+commits, ~2.5 minutes each. The fix is three lines:
+
+```yaml
+on:
+  push:
+    paths-ignore: ["**/*.md", "docs/**", ".claude/**"]
+```
+
+**The two things that make it safe are not in the diff.**
+
+1. **Ask what still reads the paths you are silencing.** If any test, drift rule or budget script
+   read a `.md` file, a docs-only commit could break the build with nothing left to catch it. Nothing
+   did — and the workflow files are deliberately *not* in the list, because that is exactly what the
+   two CI-guard tests read. That check took ten minutes and is the whole reason this is a safe change
+   rather than a new silent hole. **If a future guard starts reading a document, that list is where
+   it breaks, and it breaks silently.**
+
+2. **Find the edge where the filter meets the gate.** This build tags phase exits on docs-only
+   commits. If GitHub filtered *tag* pushes too, the tag would start nothing and the phase would pass
+   its gate with the oracle never running. GitHub documents that it doesn't. **Prove it anyway** —
+   this repo has caught GitHub's own docs being wrong twice. Prove it in **both** directions, with the
+   **same query shape**, so a zero is never an artifact of having looked in the wrong place:
+
+   | push | run created? |
+   |---|---|
+   | `.yml` / `.ts` commit | **yes** — the control: the filter is specific, not a blanket mute |
+   | empty commit | no |
+   | docs-only commit | no — *the absence is the pass* |
+   | `workflow_dispatch` on that docs-only SHA | **yes** — dispatches ignore path filters entirely |
+   | **the tag, on that docs-only commit** | **yes — the full oracle, green** |
+
+**Test the negative case in the direction that would embarrass you**, not only the one that confirms
+the change. The dispatch row above is the one nobody would have thought to check: had path filters
+applied to `workflow_dispatch`, G2 would have silently disarmed G1's rehearsal on precisely the
+commits a phase tag lands on — two individually-correct features composing into a hole, which is the
+same shape G1 hit with the concurrency group. **A phase whose safety rests on an unobserved vendor
+behaviour is not a change; it is an observation with a change attached.**
+
+## The one locator call that does not wait (G2, 2026-07-13)
+
+**The pattern:** `locator.all()` does **not** auto-wait. Everything else in Playwright does — `click`,
+`fill`, `expect(...).toBeVisible()` all retry until the element is there. `.all()` hands back whatever
+is in the DOM at that instant, and an empty array is a perfectly valid answer.
+
+So a loop that enumerates a **streamed** or **client-rendered** list runs zero times, the counter keeps
+its initial value, and the test reports a **finding** — "0 stories reachable" — when what it actually
+did was **measure a page that had not arrived yet.**
+
+```ts
+// WRONG — .all() does not wait; a streamed row that has not landed is an empty list
+for (const chip of await chips.all()) { … }
+
+// RIGHT — wait for the row, then say how many you are about to sweep
+await expect(chips.first()).toBeVisible();
+const row = await chips.all();
+expect(row.length, "the filter row rendered no chips — this sweep measured nothing").toBeGreaterThan(0);
+for (const chip of row) { … }
+```
+
+**The tell:** the failure blames the *product* ("the filter row is broken") on a tree where no product
+code changed. When a red accuses code that nobody touched, suspect the instrument.
+
+**And the discipline that goes with it:** this looked exactly like a flake and `rerun --failed` would
+have made it green. It had failed on its retry, and the mechanism was ten minutes of reading away.
+`rerun --failed` is for a *suspected* flake — re-running a known race until it passes is how a real
+defect becomes folklore. Grep the suite for every `.all()` when you find one; here there was exactly
+one, so it was an instance rather than a class.
