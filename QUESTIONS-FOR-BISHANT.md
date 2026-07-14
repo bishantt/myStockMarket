@@ -8,6 +8,38 @@ Format: newest first. I mark each as [FYI], [VETO?], or [NEED] so you can scan.
 
 ---
 
+## 2026-07-14 — PD7 (news depth: the pipeline)
+
+### Q-PD7-1 — [FYI · BOOKED FOR PD8] the eighth depth stat (sector breadth) is deliberately absent
+
+Plan 9.2 lists `sector:{key}:breadth1d` — "advancers/decliners within the sector's scan universe
+tonight". **I could not compute it in the news stage, and I chose absence over a wrong number.** The
+two tables that looked like they could feed it cannot: `scan_result` holds only the preset MATCHES
+(so a breadth count over it is not the sector's breadth — the near-52w-high scan alone skews it
+advancing), and `price_bar` holds only the 15 served ETFs. The per-symbol returns for the whole
+universe exist only in the in-memory lake during the full nightly, and the newsdesk never sees it —
+it's a Postgres closure in both modes. Fixing it means threading the lake into the newsdesk, or a
+second migration to store a per-sector breadth. Appendix B already ruled that a second migration is
+a deliberate act with its own DECISIONS line, not something a long phase slips in at the end — so I
+left the stat out, the narrator has one less word, and nothing invents a number. **No action needed;
+just so you know one of the eight isn't there and why.**
+
+### Q-PD7-2 — [FYI · no action] the first real dispatch published a sha1 hash to production, and every guard passed it
+
+Worth your eyes because it is the cleanest example yet of the thing your readability rule is really
+about. PD7's live `news` run published this sentence to the production database:
+
+> "This story is carried by 1 outlet tonight (cls:798fa63d458eaeca83850221b351fe71ed9cddae:corroboration)."
+
+The number is true. The citation is correct. The schema validated, the verification gate cleared
+every figure, and the night reported a healthy run. **It is a sha1 hash in a newspaper**, and the
+only thing that caught it was reading the output — no test in the repo could have. Fixed at both
+ends (the prompt now says where citations go; a deterministic guard deletes any section carrying an
+identifier). Recorded here because the brief said the real dispatch IS this phase's picture, and it
+was right. Full story in `docs/pd-evidence/pd7-insight.md`.
+
+---
+
 ## 2026-07-14 — PD6 (the voice: the remaining rooms)
 
 ### Q-PD6-1 — [FYI · BOOKED FOR PD10] the pixel oracle is BLIND to a large, low-contrast change

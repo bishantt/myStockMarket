@@ -1068,3 +1068,49 @@ beside it onto a new line and grows the row. Nothing fails. No guard in this rep
 about it. **Making a chip fit is the LAYOUT's job, not the chip's** (PD4's law). So: after any
 text→chip swap, grep for the fixed widths (`w-24`, `max-w-`, a grid column) around the thing you
 changed, and go and LOOK at the room.
+
+## Pipeline patterns (added during PD7, 2026-07-14)
+
+### The metering proxy: count an LLM's spend at one seam, and let both stages stay ignorant of it
+
+A cost instrument that lives in each stage is a cost instrument copied twice and drifted once. When
+two stages both call `client.messages.create(model=...)` — extraction once per article, narration
+once for the page — wrap the client in a thin proxy that records `usage` on every call, and hand the
+proxy to both. ONE interception point sees the whole night's spend, buckets it by the `model`
+argument (so the two models price apart with nobody telling it which is which), and neither stage
+learns it is being counted — `briefing/extract.py` is untouched by the accounting. The proxy is
+deliberately forgiving of a response with no `usage` (the test fakes return bare objects), because a
+metering wrapper that CRASHES the narration stage over a missing accounting field would be a cost
+instrument that takes the front page down. See `newsdesk/narrate.py` `_MeteredClient`. Token counts
+are MEASURED from the API; only the dollars are arithmetic, from the one price table in `config.py`.
+
+### The rendered value carries its own window: a stat that describes a period must say the period out loud
+
+When a computed value feeds a deterministic gate that parses the value back into its allowed-number
+set, the words of the value are load-bearing. A narrator describing a "52-week range" writes
+"52-week", and 52 is a number the gate will check — so the value must contain it, or an honest
+sentence is flagged for the window it was asked to describe. Render `"71.4% of the way up its
+52-week range (low 82.10, high 154.90)"`, not a bare `"71.4%"`: the window, the low and the high all
+become licensed sources through the ordinary mechanism, and the reader can check the claim. The same
+holds for "50-day average" and "the last 7 sessions". See `briefing/stats.py` `build_depth_stats`.
+
+### Absence over invention: a measure the data cannot support is absent, never defaulted
+
+A registry that feeds a verification gate must never emit a number it guessed, because the gate's job
+is to certify against the registry — so a default the registry invents is a fabrication no gate can
+catch. Every measure in `briefing/depth.py` returns `None` rather than a fallback: a "52-week range"
+over 200 sessions is absent (not computed over four months), a move divided by an unknown ATR is
+absent (not divided by zero), a symbol the lake lacks produces a depth object with every field
+`None`. The cost is that the narrator sometimes has less to say; that is the intended failure mode —
+honest degradation, zero new ways to be wrong. The property test names it: "no stat is emitted for a
+symbol the lake lacks."
+
+### Added-alongside, not replaced: a new record shape ships beside the old one until the reader moves
+
+When a pipeline phase changes a record's shape but ships to production BEFORE the app phase that
+reads the new shape, replacing the old field silently breaks the live surface — and nothing fails,
+because the app reads an absent key as its falsy default. PD7 changed news `verification` from a flat
+`{dropped: true}` to a per-section `sections` map, but `lib/news.ts` reads `verification.dropped`
+right now. So `dropped` stays, and `sections` is added beside it; the app phase migrates the reader
+and THEN retires the old key. The rule: a pipeline change that outruns its consumer keeps the old
+contract until the consumer catches up.

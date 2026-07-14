@@ -723,3 +723,65 @@ another is telling you something about the DOM, not about the viewport.
 2026-07-14 · GitHub Actions stopped starting jobs MID-ENDGAME, two commits from a tag, and the failure looked like nothing I had ever seen: jobs "failed" in 2–3 seconds with **zero steps executed** and empty logs → not a flake and not the code. The repo was PRIVATE, and on a private repo every Actions minute is metered against a 2,000-minute monthly allowance. The real message was not in the logs at all — it was in the run's **check-run annotation**: *"The job was not started because recent account payments have failed or your spending limit needs to be increased."* → Bishan made the repo **public** the same hour (Actions is unmetered on public repos), after a clean scan of the full history. → **THE DIAGNOSTIC LESSON, which is the reusable one: a job with ZERO STEPS did not run. Do not read its logs — it has none. Read `gh api repos/<r>/check-runs/<job-id>/annotations`,** which is where GitHub puts the reason a runner was never allocated. I spent several minutes hunting a code cause for a billing event.
 
 **The measured cost, because "CI is expensive" is not a fact until it has a number** (July 1–14, ~400 runs): ~300 **branch-push** runs, ~1,135 wall-minutes — **roughly two-thirds of the entire spend**, and nobody had ever looked at that number. 65 oracle **dispatches**, 456 wall-minutes. A GREEN rehearsal bills ~25 min (desktop 7.9 + phone 8.5 + wide 3.4 + mbp16 3.4, per-job round-up); a PIXEL-RED one bills ~30–35, because the auto-mint re-photographs all 83 shots. Tag runs DUPLICATED their rehearsals. Nightlies are ~14 min/night. **Estimated total ~2,900–3,200 billable minutes against a 2,000-minute allowance.** (An estimate from wall-times × parallel jobs — the billing API needs a token scope we do not have.) **Today alone ran three phase endgames — pd-4, pd-5 and pd-6 — for nine oracle dispatches and ~10 push runs.** The wall was not one greedy phase; it was two weeks of a gate that nobody had ever costed. Going public retires the meter entirely, so this is now history rather than a constraint — but the shape of it is worth keeping: **the expensive thing was the boring thing (every push, every branch), not the dramatic thing (the oracle).**
+
+## PD7 (2026-07-14) — news depth: the pipeline
+
+### The whole suite is green while production publishes garbage — and only reading the output finds it.
+
+**What happened, twice, in one phase.** PD7 owes a live `news`-mode dispatch. Run 1 published ZERO
+notes to production; the schema had outgrown `_MAX_TOKENS` (v2 is bigger, AND Sonnet 5 thinks by
+default and thinking shares the `max_tokens` cap — a default that changed with the MODEL, not our
+code). Run 2 published seven "context" sections that were each a sha1 HASH restated as a sentence —
+"carried by 1 outlet tonight (cls:798fa63d…:corroboration)". Every guard passed both: the schema
+validated, the verification gate cleared every figure, the E4 lexicon passed, and the night's own log
+reported "14 notes written, 7 context sections published". Nothing was red. It was unshippable.
+
+**Why the tests could not catch it.** The fake clients in the suite have no token cap to overflow and
+no reader to offend — so a truncation and a hash-in-prose are both invisible to them. The schema
+answers "is this well-formed?"; the gate answers "is this number true?"; NEITHER answers "would a
+human want to read this?", and that was the only question that mattered.
+
+**The guard.** There is no unit-test guard for "the output is readable" — the guard is the RITUAL:
+run the real dispatch, query the rows it wrote, and READ THE PROSE. PD7's brief said so in advance
+("Print them. Read them. A schema that validates is not a schema that says something true.") and it
+was exactly right. The two bugs are each now pinned by a constant test and a deterministic guard
+(the token cap; the id-in-prose lexicon rule), but the pins were written AFTER looking found the bug,
+not before. **A pipeline phase's "pictures" are its real dispatch. Do not tag one you have not read.**
+
+### The rendered VALUE of a stat is the gate's source of truth, so the WINDOW is a number too.
+
+**What happened.** The verification gate builds its allowed set by parsing each stat's rendered
+VALUE. So the numbers a value contains are exactly the numbers the narrator is licensed to write —
+and a "52-week range" stat whose value did not contain "52" would make the gate flag an honest
+sentence for the very window it was asked to describe ("52-week" scans as the number 52). The fix is
+not a special case in the gate; it is that each depth stat states its window in the words the
+narrator will use ("71.4% of the way up its 52-week range").
+
+**The guard.** A test runs the real gate over the fixture's own context prose and asserts zero flags
+— which also caught the fixture claiming the gate had cleared a "2" (an ordinal, which verify.py has
+never read as a number). A stat that describes a window must say the window out loud.
+
+### An absence must report the TRUE reason, per section — "silent" and "out of budget" are different sentences.
+
+**What happened.** The v2 `sections` map exists to tell PD8's story page WHY a section is absent (the
+gate held it / the narrator had nothing / it was out of budget) — because those absences print
+identically and only the record can distinguish them. The first live run exposed a sloppy one: the
+fully-silent early return marked EVERY section `silent`, including `context` on clusters that were
+never in the top-8 budget, so 13 sections reported `silent` on a page where only 8 are ever deep. A
+cluster nobody asked for a context is not a cluster whose narrator was stumped.
+
+**The guard.** Two tests pin it: an out-of-budget cluster's silent note reports `out_of_budget`, a
+deep cluster's silent note reports `silent`. Found by reading the arithmetic in the production
+record, not by a red test — 13 > 8 was the tell.
+
+### A writer with three new columns and no round-trip test is betting on luck.
+
+**What happened.** `publish_news` — the one writer for the whole front page — had NO database test of
+its column write. The only test touching it asserted it REFUSES a bad date: a guard on the door, not
+a check of what goes through it. Its INSERT column list, ON CONFLICT clause and per-payload JSON
+adaptation were covered by nothing. Fine while the shape was stable; PD7 added three columns to it.
+
+**The guard.** `test_publish_news_depth.py` writes a row and reads it back — the v2 shape, the v1
+shape (no new fields, the night the narrator never ran), and a re-run that must UPDATE in place. It
+failed loudly the first time because the local test DB predated the migration, which is exactly the
+proof that it tests something real.
