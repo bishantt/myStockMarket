@@ -893,3 +893,43 @@ _EXTRACT_JSON = (
     '"summary": "The Commission cleared it.", "tickers": ["BKR"], "event_type": "ma", '
     '"sentiment": 0.2, "key_numbers": [{"value_str": "$13.6B", "what": "deal value"}], "quote": null}'
 )
+
+
+# ----- the token cap, and the outage that found it (PD7's real dispatch) -----
+#
+# THE WHOLE SUITE WAS GREEN WHILE PRODUCTION PUBLISHED NOTHING. The fake clients above have no token
+# cap to overflow, so nothing here could see that the v2 schema had outgrown `max_tokens` — the first
+# live `news` run came back with 2 calls, 16,384 output tokens (exactly 2 x 8192, the cap hit dead-on
+# both times) and zero notes. These tests cannot reproduce a real truncation either; what they CAN do
+# is pin the two constants that were wrong, so nobody quietly puts them back.
+
+def test_the_output_cap_has_room_for_the_v2_schema() -> None:
+    """~4,000 tokens of JSON plus a bounded reasoning budget. 8192 was not enough for both, and the
+    way it failed — a truncated JSON document the tolerant parser reports as "malformed" — names no
+    cause anywhere. A cap that fails silently must be a cap nobody has to guess at."""
+    from newsdesk.narrate import _MAX_TOKENS
+
+    assert _MAX_TOKENS >= 16000
+
+
+def test_the_narrator_bounds_its_reasoning_budget() -> None:
+    """`max_tokens` caps THINKING PLUS TEXT, and Sonnet 5 thinks by default when `thinking` is
+    omitted — a default that changed with the model, not with our code. Unbounded adaptive thinking
+    is what ate a budget sized for the JSON alone."""
+    from newsdesk.narrate import _EFFORT
+
+    assert _EFFORT in ("low", "medium")
+
+
+def test_effort_rides_inside_output_config_where_the_api_expects_it() -> None:
+    """A top-level `effort` is a 400. This asserts the SHAPE of the call we actually send, which is
+    the one thing a fake client can still tell the truth about."""
+    client = FakeClient(_noteset_json())
+
+    narrate(client, [_cluster()], _stats(), model="claude-sonnet-5")
+
+    sent = client.calls[0]
+    assert sent["max_tokens"] >= 16000
+    assert sent["output_config"]["effort"] == "medium"
+    assert sent["output_config"]["format"]["type"] == "json_schema"
+    assert "effort" not in sent, "effort is not a top-level parameter — it belongs in output_config"

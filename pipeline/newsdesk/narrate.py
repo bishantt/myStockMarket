@@ -73,7 +73,40 @@ NOTE_VERSION = 2
 # citations, is comfortably over 2,500 tokens of JSON before any slack. Run out mid-object and the
 # response is a TRUNCATED JSON document — which the tolerant parser cannot balance, so it reports
 # "malformed" and the page loses all its prose, with nothing anywhere saying "you ran out of room".
-_MAX_TOKENS = 8192
+#
+# **AND THEN 8192 WAS TOO TIGHT, THE SAME WAY, AND PD7's REAL DISPATCH IS THE ONLY THING THAT FOUND
+# IT.** The first live `news` run after the v2 schema landed came back: 2 calls, 16,384 output
+# tokens — EXACTLY 2 x 8192, the cap hit dead-on both times — and the night printed "the narrator
+# failed its schema twice; the page publishes without prose." Production went from 5 notes to ZERO,
+# and every test in this repo stayed green, because the fake clients in the suite have no token cap
+# to overflow. This is the SAME BUG the paragraph above was written for, one cap-size up.
+#
+# TWO THINGS ATE THE BUDGET, and only one of them was obvious:
+#   1. v2 output is bigger — 8 clusters now also carry a 420-char `context` and a `watch` array. But
+#      that is only ~1,000 extra tokens; the whole response is ~4,000 tokens of JSON. It alone could
+#      never have reached 8192. Plan 9.3 said "output cap rises to fit 8x context sections" and PD7
+#      simply missed the instruction.
+#   2. **`max_tokens` CAPS THINKING PLUS TEXT, AND SONNET 5 THINKS BY DEFAULT.** On Sonnet 4.6, a
+#      request that omits `thinking` runs with it OFF. On Sonnet 5 the identical request runs with
+#      ADAPTIVE THINKING — a silent default change that arrived with the model, not with our code.
+#      So the reasoning tokens were quietly consuming a budget sized for the JSON alone. Nothing in
+#      this file asked for thinking; it simply started happening.
+#
+# 16000 leaves ~12,000 tokens of room for reasoning above a ~4,000-token response, and stays under
+# the ~16K line above which a non-streaming request risks an SDK HTTP timeout — so the fix needs no
+# streaming rewrite. `effort` (below) is what keeps the reasoning from expanding to fill it.
+_MAX_TOKENS = 16000
+
+# The reasoning budget, bounded on purpose (a Sonnet 5 control; it does not exist on Haiku, so the
+# extraction stage neither sets it nor may).
+#
+# "medium" and not "low": the narrator is not merely transcribing. It chooses WHICH computed stats
+# belong in a two-sentence context, and it has to write a mechanism rather than restate a headline —
+# and Sonnet 5 respects low effort strictly enough that under-thinking is a real risk on exactly that
+# kind of judgement. It is also not "high": nothing here is an open-ended problem, and unbounded
+# adaptive thinking is what silently overflowed the cap in the first place. Medium is the setting
+# that says: think enough to choose well, and stop.
+_EFFORT = "medium"
 
 # How long Stage A may spend reading articles before it gives up on the tail.
 #
@@ -830,13 +863,21 @@ class Story:
 # ----- internals -----
 
 def _create(client: Any, model: str, system: str, messages: list[dict]) -> Any:
-    """One structured-output Stage B-mini call."""
+    """One structured-output Stage B-mini call.
+
+    `effort` rides INSIDE `output_config`, beside the format — it is not a top-level parameter, and
+    putting it at the top level is a 400. See `_EFFORT` for why the reasoning budget is bounded at
+    all: an unbounded one is what overflowed `max_tokens` and cost production every note it had.
+    """
     return client.messages.create(
         model=model,
         max_tokens=_MAX_TOKENS,
         system=system,
         messages=messages,
-        output_config={"format": {"type": "json_schema", "schema": notes_json_schema()}},
+        output_config={
+            "format": {"type": "json_schema", "schema": notes_json_schema()},
+            "effort": _EFFORT,
+        },
     )
 
 
