@@ -1542,7 +1542,13 @@ phone-wide overflow sweep (Pixel-7 + 360), alignment pass, phone VRT re-baseline
 **Exit gate additions:** 7.5's suites; `pd4-phone.md` with the healed-overflow frame; the
 sweep proves it swept every room.
 
-### PD5 · The voice — richness system + Desk + News [1–1.5 days]
+### PD5 · The voice — richness system + Desk + News [1–1.5 days] — **DONE, tagged `pd-5` (2026-07-14)**
+**[AMENDED IN PLACE. §8.2.3 lists "brief numbers" as a KeyFigure consumer; the brief CANNOT carry one
+honestly today. E5 requires an allow-list, and the briefing's verification record stores its FLAGS, not
+its CLEARED list — a published brief may still carry up to two flagged numbers. Emphasizing them would
+mean the APP deciding what counts as a number, which `briefing/verify.py` already answers. The brief
+ships with glossary doorways and NO emphasized figures; publishing the gate's cleared list is booked
+for PD7 (Q-PD5-1). Evidence: docs/pd-evidence/pd5-voice.md §4.]**
 Part 8: the kit (TickerChip, Term, KeyFigure, Tag sweep), the color dictionary in the
 styleguide, the new drift rules, application to Desk + News feed, the 8.4 negative checklist
 run.

@@ -141,6 +141,41 @@ phone:    (PD4) THE DESK'S PHONE MACRO COMPOSITION — three named groups, no sh
           That is exactly how PD4's own first tape passed every guard while broken. Both questions get
           asked now: hardening.spec sweeps the PAGE (every room, 412 AND 360, and it COUNTS the rooms it
           visited); desk.spec sweeps the CELL, to the CONTENT edge.
+voice:    (PD5) THE RICHNESS KIT — four components, and each is the ONE door to its kind of thing.
+          components/TickerChip.tsx (every ticker symbol) · components/DeltaChip.tsx (every signed
+          move) · components/Term.tsx (every glossary doorway — it SUPERSEDES GlossaryTerm.tsx, which
+          is deleted) · components/KeyFigure.tsx + lib/verified.ts (every emphasized number).
+          · **TickerChip is a DOOR or a LABEL, and HTML decides which.** `door` renders a `<Link>`;
+            without it, a `<span>`. Three of the five consumers REQUIRE the label: a news card is one
+            big `<Link>` and a movers/watchlist row is a `<button>` — an anchor inside either is
+            invalid HTML, and the browser's repair silently kills the outer control. Drift rule 26.
+          · **A DUPLICATED COMPONENT IS NOT A BUG, IT IS A BUG'S HABITAT.** There were FOUR delta
+            chips (StatFigure, Movers, Watchlist, NewsCard) and PD4's wrap fix had landed in exactly
+            ONE. The other three still carried the shape of the bug PD4 spent a phase killing, and
+            nothing failed and nothing would have. Fix a bug ⇒ grep for the component's SIBLINGS.
+          · **EMPHASIS IS EARNED, AND IT IS A TYPE (E5).** `VerifiedFigure` has ONE mint —
+            `splitVerified(text, allowList)` — and the allow-list comes from the PIPELINE's gate
+            (a cluster's `key_numbers`). **A DENY-LIST IS THE TRAP:** it would make the app decide what
+            counts as a number, and `briefing/verify.py` already answers that. Its own header says what
+            a second answer costs. **The Desk's brief therefore carries NO emphasized figures** — the
+            briefing stores its FLAGS, not its CLEARED list, so nothing there can be proven verified.
+            That is not a gap; it is the rule. PD7 fixes it at the source (Q-PD5-1).
+          · **A MATCHER OVER NARRATED PROSE MUST MATCH THE WORDS THE NARRATOR WRITES.** The glossary
+            holds the title "RVOL"; the pipeline writes "relative volume". TermProse landed green on
+            every unit test and decorated NOTHING. Entries carry `aliases` now. Term budget: ≤2 per
+            paragraph (lib/prose.ts) AND first-occurrence-per-view (the React `cache` registry) — two
+            different rules that COMPOSE, which is why a paragraph may honestly show fewer than two.
+            **`cache()` only memoises on a SERVER render**, so the per-view rule is pinned in
+            e2e/voice.spec.ts and CANNOT be unit-tested. A unit test that cannot see the behaviour it
+            names is a green light wired to nothing.
+p2:       (PD5) **A GUARD ONLY GUARDS WHAT IT IS POINTED AT.** The delta chip carries `data-p2`
+          (Q-G4-1, ruled). Movers and Watchlist had carried `transition-colors` on their row hover for
+          six phases and got away with it for ONE reason: their delta chips were UNMARKED, so the P2
+          ancestor walk had never once looked at the two busiest money surfaces on the Desk. The rule
+          was being kept by LUCK. Marking them failed the build on both rows at once (drift rule 6 AND
+          the ancestor walk). Their hover is INSTANT now — a background change with no transition,
+          like NewsCard's always was. P2_FILES: BaseRate · StatFigure · DeltaChip · TickerChip ·
+          CalibrationScatter · SetupCards · MacroPulse · Movers · Watchlist · RangeBands.
 wrap:     (PD4) **THE UNIT OF WRAPPING IS THE ATOM.** A figure and its chip wrap; a chip's INSIDES do
           not. StatFigure's value row is `flex-wrap min-w-0` so the chip drops BELOW the value rather
           than overflowing. The chip is `flex-wrap max-w-full` and holds exactly TWO atoms, each
@@ -186,6 +221,22 @@ e2e:      npx playwright test  ·  LOCAL: npm run e2e:local (--ignore-snapshots;
           (PD4) AND ADD `--workers=1`. One project at a time is NOT ENOUGH: inside a project the local
           worker default is still PARALLEL, which is enough to make ticker-range fail on the shared
           database. It is not a flake and not your code.
+          (PD5) **`reuseExistingServer` WILL SERVE YOU A LIE FOR AN HOUR.** It is TRUE locally, so a
+          server from an earlier run STAYS BOUND to 3210 and keeps serving whichever build it started
+          with — while `npm run build` rewrites `.next` underneath it. PD5 spent an hour chasing a
+          "regression" in settings.spec on the strength of an A/B that showed pd-4 passing and PD5
+          failing. BOTH measurements were taken against a stale server. With the port actually cleared,
+          **pd-4 fails the same test at the same rate** — a local-only flake (ISR revalidation timing
+          under `next start`), never a regression. **`lsof -ti:3210 | xargs kill -9` before ANY local
+          A/B against another commit**, or the answer you get is about the server, not the code.
+          (PD5) **`:visible` IS LOAD-BEARING ON ANY DataTable CELL.** DataTable renders BOTH layouts
+          into the DOM — the desktop table and the phone's card list — and hides one with CSS. A
+          `.first()` selector picks whichever copy comes first, which on a DESKTOP is the HIDDEN one:
+          the locator resolves, the click waits 30s for a box that never arrives, and the test dies
+          pointing at a chip that is on screen in front of you. **It passes on the phone**, where the
+          visible copy happens to be first — a green tick on one leg and a death on the other, from one
+          selector. A spec that passes on one project and dies on another is telling you about the DOM,
+          not the viewport.
           (PD4) **DO NOT HAND-START THE SERVER AND LET PLAYWRIGHT REUSE IT** (`reuseExistingServer` is
           true locally). If your server has no CRON_SECRET, thin-night's ISR cache-bust silently no-ops
           and the Law-2 test photographs a STALE FULL-NIGHT render — 318px where it wants ≤120. It reads
@@ -253,6 +304,14 @@ VRT:      baselines are BORN IN CI. Never shoot one on macOS. Since G1 a rehears
             baseline that is EXACT can still be wrong; the tolerance was innocent. **So: any brand-new
             surface's FIRST baseline gets eyes before it is committed** — that is the only moment anyone
             will ever look at it with fresh judgement.
+          · (PD5, AND IT IS THE SAME LAW A FOURTH TIME — the fix did NOT reach everywhere) DIFFING
+            EVERY CANDIDATE, not just the failures, found THREE shots that had changed WITHOUT FAILING,
+            on pages PD5 never touched: `scans-preset` (~56,000px), `login` (~2,400px),
+            `settings-light` (161px). **The committed `scans-preset` baseline has a ROW HIGHLIGHTED AS
+            IF THE MOUSE WERE RESTING ON IT.** The app is identical; the CAMERA moved. PD4 parked the
+            mouse at (0,0) in `shoot()` and that fixed the ticker — it did not fix this. Left alone
+            deliberately (the oracle passes it; re-baselining from a candidate you cannot vouch for
+            trades one unexplained picture for another). **Q-PD5-2, for PD6.**
           · (PD4, AND IT IS THE SAME LAW A THIRD TIME) **A BASELINE CAN BE A PHOTOGRAPH OF THE TEST
             HARNESS RATHER THAN OF THE APP.** `signIn()` CLICKS the Sign-in button; Chromium leaves the
             pointer resting there and Playwright never moves it. On `/ticker` the candle chart sits under

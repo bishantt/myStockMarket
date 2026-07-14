@@ -8,6 +8,67 @@ Format: newest first. I mark each as [FYI], [VETO?], or [NEED] so you can scan.
 
 ---
 
+## 2026-07-14 — PD5 (the voice: the richness kit)
+
+### Q-PD5-1 — [FYI · BOOKED FOR PD7] the Desk's brief carries glossary doorways but no emphasized numbers
+
+**Nothing is needed from you.** This is a marked assumption, recorded because it looks like a gap and
+is not.
+
+Ruling E5 says a number may be set in mono — the "this was checked" typeface — **only if the
+deterministic gate cleared it**. That requires an *allow-list*.
+
+- A **news story has one.** The pipeline stores `key_numbers`: the figures the gate checked and
+  passed. The news room emphasizes exactly those, and nothing else.
+- The **evening brief does not.** Its verification record stores the **flags** — the entities that
+  *failed* — and a published brief may still legitimately carry up to two of them.
+
+So the only way to emphasize a brief's numbers today would be to work backwards: mono *everything that
+looks like a number* except the flagged ones. That means the **app** would have to decide what counts
+as a number — its own rules about whether "Q3" or "2.1x" is a figure — and the pipeline already
+answers that question. Two answers to it is exactly how the two halves of this product would start
+disagreeing about what has been verified, silently, with every test green.
+
+**What I did:** the brief carries its glossary doorways (a definition is our own claim, so it is always
+safe to make) and **no** emphasized figures. Its numbers read as ordinary prose, which claims nothing.
+
+**The fix is a small pipeline change** — have the gate publish what it *cleared*, not just what it
+flagged — and it is booked for **PD7**, which is the phase that touches the pipeline anyway.
+
+### Q-PD5-2 — [WORTH YOUR EYES · no action] the pixel oracle has a photograph of a hover state in it, again
+
+**Nothing is needed from you.** Recorded because it is the *third* time this class of bug has been
+found, and the pattern is now unmistakable.
+
+The rule for updating a screenshot baseline is: **diff every candidate against its committed one, not
+just the ones that failed** — because a shot can change and still pass (there is a 600-pixel
+tolerance). Doing that on PD5's rehearsal turned up three baselines that had changed **without
+failing**, on pages PD5 never touched: the two scan-preset pages (~56,000 pixels), the login page, and
+one settings shot.
+
+Looking at the pictures explains it. The **committed** baseline for the scan-preset page has a **row
+highlighted, as if the mouse were resting on it**. The fresh photograph does not. The app is identical;
+the *camera* moved.
+
+This is exactly what bit PD4 — the ticker chart's baseline had encoded where the login button
+happened to be, because Chromium leaves the pointer wherever it last clicked. PD4 fixed that one shot
+by parking the mouse at (0,0). The scan-preset page is telling us the fix did not reach everywhere.
+
+**I did not re-photograph it.** The oracle currently passes it, PD5 did not touch that page, and
+re-baselining from a candidate I cannot fully vouch for would be trading one unexplained picture for
+another. It wants a dedicated pass — it is a small, contained job, and it belongs to whichever phase
+next touches the scans room (PD6).
+
+### Q-G4-1 — **CLOSED** ✅ the movers' delta chip carries `data-p2`
+
+You never had to rule on this: the code did. The chip is a market figure, so it holds still — and the
+moment it said so, the build **failed on the Desk's movers and watchlist rows**, which had been
+fading their background on hover since the redesign. They had got away with it because their delta
+chips were unmarked, so the guard had never looked at them. The hover is instant now. Nothing was
+lost but a 120ms fade, and a money figure that never moves was gained.
+
+---
+
 ## 2026-07-14 — PD4 (the phone composition)
 
 ### [FYI — but I think you'll want to know] Your Desk has been scrolling sideways on a narrow phone

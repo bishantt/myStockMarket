@@ -1,13 +1,63 @@
 # PROGRESS.md — resumable state
 
-# PD4 IS **COMPLETE** — tagged `pd-4`. **The phone had been scrolling sideways in production, and the oracle had been photographing a hover state.**
+# PD5 IS **COMPLETE** — tagged `pd-5` (`4fadf4c`), CI green **first try**. **Eleven tags, eleven first-try greens.**
 
-**Checkpoint: POLISH-AND-DEPTH-PLAN.md, PD4 (Part 7 — the phone composition) is DONE.
+**Checkpoint: POLISH-AND-DEPTH-PLAN.md, PD5 (Part 8 — the voice: the richness system) is DONE.
 Nothing is blocked. Nothing is in flight.**
 
-**NEXT: PD5 — the voice: the richness system + Desk + News** (plan Part 8).
+**NEXT: PD6 — the voice, remaining rooms** (plan Part 8.3's PD6 list + Part 12's PD6 entry).
 
-## What PD4 did, in one paragraph
+## What PD5 did, in one paragraph
+
+Built the richness kit — **TickerChip** (one symbol, one treatment), **DeltaChip** (the app's ONE
+delta chip), **Term/TermProse** (the glossary doorway, superseding GlossaryTerm) and
+**KeyFigure/VerifiedProse** (E5 as a *type*: emphasis you cannot fake) — and landed it on the Desk and
+the news room. Wrote the complete **colour dictionary** into the styleguide. Added **drift rules 26
+and 27**. And then found three bugs *by looking at the screen*, every one of which was invisible to a
+fully green test suite: the brief's glossary doorway decorated **nothing** (the glossary knows "RVOL";
+the narrator writes "relative volume"); the news feed's ticker chips had been encoding direction by
+**colour alone** since N5 — a P7 violation sitting in a committed baseline; and the pixel oracle's
+scans-preset baseline turns out to be **a photograph of a hover state**.
+
+## The five things that are now true (a fresh session must know these)
+
+1. **A DUPLICATED COMPONENT IS NOT A BUG. IT IS A BUG'S HABITAT.** PD4 found the delta chip's wrap
+   contract the hard way and fixed it — **in StatFigure**. There were FOUR copies of that chip
+   (StatFigure, Movers, Watchlist, NewsCard). The other three still carried the exact shape of the bug
+   PD4 had just spent a phase killing, and nothing failed, and nothing would have. There is **one**
+   chip now: `components/DeltaChip.tsx`. **When you fix a bug, grep for the component's siblings
+   before you close it.**
+
+2. **Q-G4-1 IS CLOSED: the delta chip carries `data-p2`** — and it cost the Desk its hover transition.
+   Movers and Watchlist had carried `transition-colors` since the redesign and got away with it for
+   ONE reason: their delta chips were unmarked, so the P2 ancestor walk had **never once looked at the
+   two busiest money surfaces on the Desk**. The rule was being kept by luck. Marking them failed the
+   build on both rows immediately. Their hover is INSTANT now. **A guard only guards what it is
+   pointed at.**
+
+3. **THE BRIEF CARRIES GLOSSARY DOORWAYS BUT NO EMPHASIZED FIGURES, AND THE OMISSION IS THE POINT.**
+   E5 needs an ALLOW-list. A news cluster has one (`key_numbers` = what the gate CLEARED). The
+   briefing does not — it stores the FLAGS, and a published brief may still carry up to two of them.
+   Emphasizing brief numbers would mean the APP deciding what counts as a number, with its own regex,
+   and `briefing/verify.py` already answers that. **Booked for PD7 as Q-PD5-1** (have the gate publish
+   what it cleared, not just what it flagged).
+
+4. **THE NEWS FEED HAD A P7 VIOLATION IN A COMMITTED BASELINE.** The old ticker chips read
+   `+2.10% · 1D` in green or red — **direction by hue alone**, no glyph, on the front page, since N5.
+   Every guard was green; the baseline had photographed it and was defending it. `DeltaChip` brings
+   the triangle, so direction is told three ways. The news room is **+29px taller on a phone**, and
+   that height is the honesty fix paying its own way.
+
+5. **THE PIXEL ORACLE HAS A HOVER STATE IN IT, AGAIN (Q-PD5-2).** Diffing EVERY candidate against its
+   committed baseline — not just the failures — found three shots that changed **without failing**, on
+   pages PD5 never touched. The committed `scans-preset` baseline has **a row highlighted as if the
+   mouse were resting on it**. PD4 fixed exactly this on the ticker by parking the mouse at (0,0) in
+   `shoot()`; the fix did not reach everywhere. Left alone deliberately (the oracle passes it, and
+   PD5 did not touch that page). **For PD6, which touches the scans room.**
+
+---
+
+## (Historic) What PD4 did, in one paragraph
 
 The phone was quietly broken and every guard said it was fine. Measured on the **tagged, green
 `pd-3` tree**, before PD4 changed a line: **the Desk overflowed sideways by 16px at 360px, in

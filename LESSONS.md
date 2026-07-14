@@ -632,3 +632,74 @@ disagree in silence.
   exactly like a layout regression. **Let Playwright start its own server**; its `webServer.env` has
   the secret.
 - **`ticker-range` failing only in parallel.** The documented one-database race. Serial, green.
+
+---
+
+## PD5 — the voice (2026-07-14)
+
+### A DUPLICATED COMPONENT IS NOT A BUG. IT IS A BUG'S HABITAT.
+
+PD4 discovered the delta chip's wrap contract the hard way — a chip that shattered into `▲` /
+`+0.29%` / `· 1D`, three lines, one token each — and fixed it. **In StatFigure.** There were FOUR
+copies of that chip in the tree (StatFigure, Movers, Watchlist, NewsCard). The other three were never
+touched, so all three still carried the exact shape of the bug PD4 had just spent a phase killing: no
+`flex-wrap`, no atoms, a chip that could only overflow its cell.
+
+Nothing failed. Nothing would have. The fix lands in one copy and the other three go on being wrong,
+quietly, in production, while the test suite stays green and the lesson file says the bug is fixed.
+
+**When you fix a bug, grep for the component's SIBLINGS before you close it.** If the same contract is
+written down in more than one place, the fix is not the fix — the extraction is.
+
+### THE RULE THAT IS BEING KEPT BY LUCK IS THE RULE THAT IS ABOUT TO BREAK
+
+Movers and Watchlist carried `transition-colors` on their row hover for six phases. P2 says a money
+visual never moves, and the ancestor walk enforces it by walking up from every `[data-p2]` node.
+
+The two rows were fine — because **their delta chips were unmarked**. The app's strictest guard had
+never once looked at the two busiest money surfaces on the Desk. Marking the chips (Q-G4-1) failed the
+build on both rows immediately.
+
+**A guard only guards what it is pointed at.** Ask of every rule you rely on: *what is in scope, and
+what is quietly outside it?* The answer for P2 was "the Desk's two most important rows".
+
+### A MATCHER OVER NARRATED PROSE MUST MATCH THE WORDS THE NARRATOR WRITES
+
+`TermProse` landed on the Desk's brief. Every unit test passed. The rendered brief carried **zero**
+glossary doorways.
+
+The glossary holds the display title **"RVOL"**. The pipeline's narrator writes **"relative volume"**,
+because that is what a person would say. The matcher, knowing only the title, walked straight past it.
+
+The unit tests all passed because they were written against the glossary's own vocabulary — they
+tested the matcher against the words *we* use, never the words *the product* produces. **Only the
+screenshot showed it.** (PD4 said this in different words and it is now a house law: when your tests go
+green, that is not the same as your surface being right. Look at the pictures.)
+
+### `reuseExistingServer` WILL SERVE YOU A LIE FOR AN HOUR
+
+Playwright's `reuseExistingServer` is `true` locally. A server started by an earlier run **stays bound
+to port 3210** and keeps serving whichever build it started with — while `npm run build` rewrites
+`.next` underneath it.
+
+PD5 spent an hour chasing a "PD5 regression" in `settings.spec.ts` on the strength of an A/B against
+`pd-4` that showed pd-4 passing and PD5 failing. **Both measurements were taken against a stale
+server.** With the port actually cleared, `pd-4` fails the same test at the same rate: it is a
+local-only flake (ISR revalidation timing under `next start`), and never was a regression.
+
+**`lsof -ti:3210 | xargs kill -9` before ANY local A/B against another commit.** Otherwise the answer
+you get is about the server, not about the code. (This is the same law as PD4's "is this the APP or is
+this the CAMERA?", wearing a different hat: *is this the code, or is this the harness?*)
+
+### A SELECTOR THAT RESOLVES IS NOT A SELECTOR THAT SEES
+
+`a[href^="/ticker/"]` found the chip. The click then waited **thirty seconds** for it to become
+visible, and died pointing at a chip that was on screen in front of me.
+
+**DataTable renders BOTH layouts into the DOM** — the desktop table and the phone's card list — and
+hides one with CSS. `.first()` picks whichever copy comes first in the document, which on a desktop is
+the **hidden** one. It **passed on the phone**, where the visible copy happens to be first — a green
+tick on one leg and a thirty-second death on the other, from one selector.
+
+**`:visible` is load-bearing on any DataTable cell.** And a spec that passes on one project and dies on
+another is telling you something about the DOM, not about the viewport.

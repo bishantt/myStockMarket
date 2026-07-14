@@ -959,3 +959,75 @@ touching the wall.
 
 **And a sweep proves it swept:** it counts the rooms it visited and fails if it visited none, or
 fewer than the manifest lists. A sweep that measured nothing must not report success.
+
+---
+
+## PD5 — the richness kit (2026-07-14)
+
+### The kit, and which door each thing goes through
+
+| You want to render… | Use | Never |
+|---|---|---|
+| a ticker symbol, anywhere | `components/TickerChip.tsx` | a bare mono span, a raw `<Link href="/ticker/…">` (drift rule 26) |
+| a signed move + its window | `components/DeltaChip.tsx` | a hand-rolled chip. There were four, and three carried a bug (LESSONS) |
+| a word with a definition | `components/Term.tsx` (`Term` / `TermProse`) | a hand-written dotted underline |
+| a gate-verified number in prose | `components/KeyFigure.tsx` (`KeyFigure` / `VerifiedProse`) | mono on any number you like — it is a type error, and a dev-time throw |
+| any table | `components/DataTable.tsx` | a `<table>` (drift rule 16) |
+
+### TickerChip is a DOOR or a LABEL, and HTML decides which
+
+```
+<TickerChip symbol="AAPL" door />   // a <Link> — a table cell, anywhere nothing else is interactive
+<TickerChip symbol="AAPL" />        // a <span> — inside a news card (one big <Link>) or a movers
+                                    //            row (a <button>). An anchor inside either is
+                                    //            INVALID HTML: the browser closes the outer one,
+                                    //            and half the card silently stops being clickable.
+```
+
+The chip **looks identical** either way. Only its interactivity changes — which is the right split:
+the symbol reads as a symbol everywhere, and it is a door only where a door is legal *and wanted*.
+
+### The two-atom rule, now in one place
+
+A delta chip has exactly **two atoms**, each `whitespace-nowrap`:
+
+1. the **signed delta** (`▲ +8.2%` — glyph, sign and number are one fact in three redundant channels)
+2. its **window** (`· 1D` — the delta's *unit*, not a second number)
+
+The chip is `flex-wrap max-w-full`; it breaks **between** the atoms and **never inside one**. A phrase
+broken one word per line has not been wrapped, it has been **shattered**.
+
+`DeltaChip` has two *presentations* of that one contract, and the distinction is a reason, not a knob:
+
+- `chip` — the delta **stands alone** (a movers row, beside a StatFigure). It brings its own wash: a
+  bare coloured number floating on the paper does not read as a unit.
+- `inline` — the delta sits **inside another chip** (a TickerChip's trailing move). The wash and the
+  padding are already there. A second one would be a pill inside a pill.
+
+### Emphasis is a CLAIM, so it takes a type and not a string
+
+```
+splitVerified(text, allowList)  →  the ONLY mint of a VerifiedFigure
+<KeyFigure figure={...} />      →  accepts nothing else
+```
+
+`allowList` comes from the **pipeline's gate** (a news cluster's `key_numbers`). The app never decides
+what counts as a number — `briefing/verify.py` already answers that, and a second answer is how the
+two halves of the product start disagreeing about what is verified. **A deny-list is the trap**; an
+allow-list is the rule.
+
+Where no allow-list exists (the Desk's brief today), **nothing is emphasized.** Unemphasized prose
+claims nothing, which is the honest default — not a gap.
+
+### Term: two disciplines, stacked, and they compose
+
+- **the budget** — at most **2 doorways per paragraph** (`lib/prose.ts`). An underline forest is noise.
+- **the registry** — **first occurrence per view** (`React.cache`, per request). The same word is
+  dotted once on the page, however many modules mention it.
+
+They compose, which is why a paragraph can honestly render **fewer** than two: MacroPulse spends
+"Breadth" at the top of the Desk, so the brief 200px below renders it plain — correctly.
+
+**The registry is only real on a SERVER render.** `cache()` does not memoise under vitest's client
+render, so the per-view rule is pinned in `e2e/voice.spec.ts`, not in a unit test. A unit test that
+cannot see the behaviour it names is a green light wired to nothing.
