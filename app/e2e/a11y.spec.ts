@@ -1,6 +1,7 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type BrowserContext, type Page } from "@playwright/test";
 
+import { sweptBy } from "../lib/routes";
 import { THEME_COOKIE } from "../lib/theme";
 
 /**
@@ -49,27 +50,22 @@ const PASSWORD = "correct horse battery staple";
 const THEMES = ["light", "dark"] as const;
 
 /**
- * Every room a reader can reach. The sweep is only as honest as this list.
+ * Every room a reader can reach — read from lib/routes-manifest.json, the ONE list of rooms (G3).
+ *
+ * The sweep is only as honest as this list, and until G3 the list was hand-kept right here. That is
+ * how /news — the densest room in the app for exactly the rules this file checks — shipped in N5 and
+ * went through two tagged phases without axe ever opening it. Nothing failed, because nothing was
+ * asked to look.
+ *
+ * The manifest is now the single source, and lib/routes-manifest.test.ts fails the unit suite if a
+ * `page.tsx` exists with no entry in it. A room can no longer arrive unswept: it reds at the next
+ * `npm test`, seconds after it is written, rather than two phases later.
  *
  * These exist whatever is in the database — an empty room still renders its empty state, and an
  * empty state is a room with markup in it.
  */
-const ROUTES = [
-  "/",
-  // The Front Page (N5): dense with chips and a scrolling filter row, which is exactly the shape
-  // that ships a keyboard trap.
-  "/news",
-  "/scans",
-  "/scans/unusual-volume",
-  "/paper",
-  "/track-record",
-  "/ticker/SPY",
-  // /settings carries the control room (N6) — five action rows, the live states and the P-2 notice.
-  "/settings",
-  "/academy",
-  "/academy/glossary",
-  "/academy/review",
-];
+const SWEPT = sweptBy("axe");
+const ROUTES = SWEPT.filter((room) => !room.seeded).map((room) => room.path);
 
 /**
  * Rooms that only EXIST when the database is seeded, and the reason they are separated (N7).
@@ -83,8 +79,11 @@ const ROUTES = [
  * That is this build's oldest hazard wearing an accessibility gate's clothes — a guard that passes
  * because the thing it measures is ABSENT rather than correct. The `open()` helper below now makes
  * that impossible to do quietly, so these routes must state the condition they need instead.
+ *
+ * The manifest's `seeded` flag is what draws this line now, so a new seeded room cannot be added to
+ * the always-there list by accident.
  */
-const SEEDED_ROUTES = ["/news/nc-fed-hold"];
+const SEEDED_ROUTES = SWEPT.filter((room) => room.seeded).map((room) => room.path);
 
 async function signIn(page: Page) {
   await page.goto("/login");

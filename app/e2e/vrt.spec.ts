@@ -1,6 +1,8 @@
 import { expect, test, type APIRequestContext, type Page } from "@playwright/test";
+import { VRT_ROOMS } from "../lib/routes";
 import { THEME_COOKIE } from "../lib/theme";
 import { VRT_RESET_SECRET } from "../playwright.config";
+import { SEEDED_EVENING } from "./seeded-clock";
 
 /**
  * vrt.spec.ts — visual regression. The styling counterpart of TDD (UI-REDESIGN-PLAN Part 9).
@@ -150,26 +152,16 @@ async function resetMutableStateThePixelsWouldOtherwiseCatch(request: APIRequest
   await request.post(`/api/revalidate?secret=${VRT_RESET_SECRET}`);
 }
 
-/**
- * THE CLOCK IS PINNED, AND THE FIRST BASELINE RUN IS WHY.
+/*
+ * THE CLOCK IS PINNED, AND THE FIRST BASELINE RUN IS WHY — see e2e/seeded-clock.ts, which now owns
+ * SEEDED_EVENING and is the only file in the browser suite allowed to write a date (drift rule 21).
  *
- * The pipeline strip grades freshness in the BROWSER, against the reader's clock — deliberately, so
- * that a cached render can never photograph a dead pipeline as a healthy one. Which means the Desk
- * now renders something that depends on WHEN IT IS.
- *
- * The seeded database has one completed run, for a fixed trading day. Real time keeps moving. So the
- * first baseline run photographed the strip in its AGING state ("no run for Friday's session"),
- * which was correct — and would have escalated to DEAD a day later, and the baseline would have
- * started failing on its own, with nobody having changed a line of code. A picture that rots with
- * the calendar is not an oracle; it is a chore with a countdown on it.
- *
- * So the browser's clock is fixed to the evening of the seeded session: the run has landed, no
- * further session is owed, and the strip is FRESH — permanently, on every run, forever. The desk
- * shots assert that state before photographing it, so if the seed's date ever moves, this fails
- * loudly instead of quietly photographing the wrong rung of the ladder.
+ * The short version: the pipeline strip grades freshness in the BROWSER, against the reader's clock,
+ * so the Desk renders something that depends on WHEN IT IS. Pinning the clock to the seeded session's
+ * evening keeps the strip permanently FRESH. The desk shots assert that state before photographing
+ * it, so if the seed's date ever moves, this fails loudly instead of quietly photographing the wrong
+ * rung of the ladder.
  */
-const SEEDED_SESSION = "2026-07-09"; // the trading day prisma/seed.mjs publishes
-const SEEDED_EVENING = new Date(`${SEEDED_SESSION}T23:00:00-04:00`); // 11pm ET that night
 
 test.describe("visual regression — the design system", () => {
   test.beforeEach(async ({ page, request }) => {
@@ -206,44 +198,46 @@ test.describe("visual regression — the design system", () => {
   // STYLE change rather than a data change. Without the seed these shots would fail every night for
   // the most boring possible reason.
 
-  const SEEDED_ROOMS = [
-    { path: "/", name: "desk" },
-    // The Front Page and one story (N5). Worth locking above almost anything else, because the room
-    // is carried today by GENERATED imagery — the media bucket does not exist (P-1), so every card
-    // renders its designed catalyst card rather than a photograph. The claim those rungs make is
-    // "this reads as an editorial choice, not as a failure", and that claim is only ever true or
-    // false in a picture. No test can hold it. The oracle can.
-    { path: "/news", name: "news" },
-    { path: "/news/nc-fed-hold", name: "news-story" },
-    { path: "/scans", name: "scans" },
-    // The match table (F3). This is the page that replaced the dead "+ N more", so its pixels are
-    // worth locking: the recipe card, the named default order, the lottery chip, and the pagination
-    // footer all live here.
-    { path: "/scans/unusual-volume", name: "scans-preset" },
-    { path: "/paper", name: "paper" },
-    { path: "/track-record", name: "track-record" },
-    { path: "/academy", name: "academy" },
-    { path: "/academy/glossary", name: "academy-glossary" },
-    { path: "/academy/review", name: "academy-review" },
-    /*
-     * THE CONTROL ROOM (N6). Worth locking for one reason above all the others: on this page, the
-     * most important thing the product says is a SENTENCE, not a control.
-     *
-     * Plan 8.1 found that on a normal weeknight the pipeline has already run and a manual re-run
-     * would recompute identical data — so the honest control for that case is the EXPLANATION. The
-     * pinned VRT clock (SEEDED_EVENING, 11pm on the seeded session) lands `full` in exactly that
-     * state, so the baseline photographs the flagship C5 line:
-     *
-     *     "Tonight's run already succeeded at 18:41 ET — there is nothing newer to fetch."
-     *
-     * A row whose whole job is to be READ is a row whose failure mode is typographic, and no DOM
-     * assertion can see that. This is the oracle's question, not a test's.
-     *
-     * (/settings had NO baseline at all before this — the one room in the app that is a writer, and
-     * the pixel oracle had never looked at it.)
-     */
-    { path: "/settings", name: "settings" },
-  ];
+  /*
+   * The rooms with a generated baseline, read from lib/routes-manifest.json — the ONE list of rooms
+   * (G3). Every manifest entry that carries a `vrtRoom` slug is shot here, light and dark, at every
+   * viewport the project matrix asks for. The list used to be hand-kept in this file, which is how a
+   * room could ship with no pixel lock and nobody notice; lib/routes-manifest.test.ts now reds the
+   * unit suite if a `page.tsx` exists with no manifest entry behind it.
+   *
+   * WHAT STAYED IN THIS FILE, deliberately: the per-shot quirks below (which project skips which
+   * theme, the Desk's freshness assertion) and the arguments for why particular rooms are worth
+   * locking at all. Those are the oracle's business, not the manifest's:
+   *
+   *   · /news and /news/nc-fed-hold — worth locking above almost anything else, because the room is
+   *     carried today by GENERATED imagery: the media bucket does not exist (P-1), so every card
+   *     renders its designed catalyst card rather than a photograph. The claim those rungs make is
+   *     "this reads as an editorial choice, not as a failure", and that claim is only ever true or
+   *     false in a picture. No test can hold it. The oracle can.
+   *
+   *   · /scans/unusual-volume — the match table (F3), the page that replaced the dead "+ N more".
+   *     The recipe card, the named default order, the lottery chip and the pagination footer all
+   *     live here.
+   *
+   *   · /settings — THE CONTROL ROOM (N6), worth locking for one reason above all the others: on
+   *     this page, the most important thing the product says is a SENTENCE, not a control. Plan 8.1
+   *     found that on a normal weeknight the pipeline has already run and a manual re-run would
+   *     recompute identical data — so the honest control for that case is the EXPLANATION. The
+   *     pinned VRT clock (SEEDED_EVENING, 11pm on the seeded session) lands `full` in exactly that
+   *     state, so the baseline photographs the flagship C5 line:
+   *
+   *         "Tonight's run already succeeded at 18:41 ET — there is nothing newer to fetch."
+   *
+   *     A row whose whole job is to be READ is a row whose failure mode is typographic, and no DOM
+   *     assertion can see that. This is the oracle's question, not a test's. (/settings had NO
+   *     baseline at all before N6 — the one room in the app that is a writer, and the pixel oracle
+   *     had never looked at it.)
+   *
+   * The ticker room is NOT here, and the manifest says why: its shots are written by hand further
+   * down, against /ticker/AAPL, because the Range Ladder only renders with seeded vol bands behind
+   * it — while the sweeps and the nav budget open /ticker/SPY, which needs no seed.
+   */
+  const SEEDED_ROOMS = VRT_ROOMS;
 
   for (const room of SEEDED_ROOMS) {
     for (const theme of ["light", "dark"] as const) {

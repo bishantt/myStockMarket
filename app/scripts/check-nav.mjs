@@ -51,25 +51,40 @@ const COLD_CEILING_MS = 1500;
 
 const SAMPLES = 5;
 
-/** The nine product rooms, plus one representative per on-demand family, plus the static controls. */
-const PRODUCT_ROUTES = [
-  "/",
-  "/news",
-  "/news/nc-fed-hold",
-  "/scans",
-  "/scans/unusual-volume",
-  "/paper",
-  "/track-record",
-  "/ticker/SPY",
-  "/settings",
-  "/academy",
-  "/academy/review",
-  "/academy/reading-a-base-rate-sentence",
-];
-const CONTROL_ROUTES = ["/login", "/academy/glossary"];
+/**
+ * The rooms to probe — read from lib/routes-manifest.json, the ONE list of rooms (G3).
+ *
+ * This list used to be hand-kept here, which is the same rot the sweeps had: a room ships, nobody
+ * adds it to the probe set, and its latency is never measured. Nothing fails, because nothing was
+ * asked to look. The manifest is now the single source and lib/routes-manifest.test.ts reds the unit
+ * suite if a `page.tsx` exists with no entry behind it.
+ *
+ * Each room's `navBudget` says what this script does with it:
+ *   gated   — timed, and B2 fails if the warm median misses the budget
+ *   control — timed and reported beside the rooms, never gated: it is the static fast path they are
+ *             all measured against, so gating the yardstick would be circular
+ *   pending — probed BEFORE it is built (see PENDING below)
+ *   none    — not probed, and the manifest's note says why (today: /offline, which is by definition
+ *             the page you get when the network did not work)
+ */
+const manifest = JSON.parse(readFileSync(join(process.cwd(), "lib", "routes-manifest.json"), "utf8"));
+const rooms = manifest.routes;
+
+const PRODUCT_ROUTES = rooms
+  .filter((r) => r.navBudget === "gated" || r.navBudget === "pending")
+  .map((r) => r.path);
 
 /**
- * Routes the plan will build, listed in the probe set BEFORE they exist.
+ * The controls: the static fast path the product rooms are measured against.
+ *
+ * /login is named here by hand and is NOT in the manifest, deliberately — it is the wall, not a room
+ * behind it (argued in lib/routes-manifest.test.ts's exemption list). It is the purest static page
+ * the app serves, which is exactly what makes it the right control.
+ */
+const CONTROL_ROUTES = ["/login", ...rooms.filter((r) => r.navBudget === "control").map((r) => r.path)];
+
+/**
+ * Routes a later phase will build, probed BEFORE they exist.
  *
  * They are here on purpose. A route family left out of the probe set until the day it ships is a
  * gap that quietly becomes permanent — nobody adds it later, because nothing is failing. So the
@@ -79,10 +94,16 @@ const CONTROL_ROUTES = ["/login", "/academy/glossary"];
  *
  * The moment one of these starts answering 200 it is gated like everything else — no edit needed,
  * and no way to ship it slow by forgetting to take it off a list.
+ *
+ * EMPTY TODAY, and that is a correction rather than a deletion (G3). The only entry was
+ * `/scans/unusual-volume`, marked pending against "F3 builds the per-preset match table" — and F3
+ * built it, phases ago. The marker never came off, so the route carried a standing licence to answer
+ * 404 without failing the gate. It answers 200 now and is gated like every other room; the mechanism
+ * stays, driven by the manifest, for the next route that is probed before it exists.
  */
-const PENDING = {
-  "/scans/unusual-volume": "F3 builds the per-preset match table",
-};
+const PENDING = Object.fromEntries(
+  rooms.filter((r) => r.navBudget === "pending").map((r) => [r.path, r.note]),
+);
 
 const EVIDENCE = join(process.cwd(), "..", "docs", "feel-evidence");
 const FINGERPRINT_FILE = join(EVIDENCE, ".deployed-build");

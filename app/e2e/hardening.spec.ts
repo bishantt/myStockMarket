@@ -1,5 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 
+import { sweptBy, type Sweep } from "../lib/routes";
+
 /**
  * hardening.spec.ts — the sweeps (R6, §7.1).
  *
@@ -14,26 +16,37 @@ import { expect, test, type Page } from "@playwright/test";
 const USER = "testuser";
 const PASSWORD = "correct horse battery staple";
 
-/** Every route a reader can reach. The sweep is only as honest as this list. */
-const ROUTES = [
-  "/",
-  "/scans",
-  // Added at F3/F1: a route family left out of the sweep is a gap that quietly becomes permanent.
-  "/scans/unusual-volume",
-  "/ticker/SPY",
-  "/paper",
-  "/track-record",
-  // /settings carries the control room (N6): five action rows of real buttons.
-  "/settings",
-  // The Front Page (N5), added at N7 — and it is the single densest room in the app for this rule:
-  // two horizontally-scrolling chip rows, a pagination control and a card grid of links. It shipped
-  // in N5 and this sweep never looked at it, which is the gap the plan warned this list would grow.
-  "/news",
-  "/academy",
-  "/academy/glossary",
-  "/academy/review",
-  "/styleguide",
-];
+/**
+ * Every route a reader can reach — read from lib/routes-manifest.json, the ONE list of rooms (G3).
+ *
+ * The sweep is only as honest as this list, and it used to be hand-kept here. A route family left
+ * out of a sweep is a gap that quietly becomes permanent, because nothing fails: /news shipped in
+ * N5 — two horizontally-scrolling chip rows, a pagination control and a card grid of links, which
+ * is the single densest room in the app for the 44px rule — and this sweep did not look at it until
+ * N7. The manifest now owns the list, and lib/routes-manifest.test.ts reds the unit suite the moment
+ * a `page.tsx` exists with no entry behind it.
+ *
+ * THE ONE ROUTE THAT IS NOT IN THE MANIFEST, and why it is named here by hand: /styleguide is not a
+ * product room — no reader ever opens it — so it is deliberately absent from the manifest (argued in
+ * routes-manifest.test.ts's exemption list). But it IS the densest control surface in the repo, one
+ * of every button, input and disclosure the design system owns, on a single page. That makes it the
+ * best possible target for a touch-target and sideways-scroll sweep, and the worst possible one for
+ * an accessibility sweep of "rooms". So this file sweeps it and a11y.spec.ts does not — a real
+ * difference between the two lists, preserved on purpose rather than smoothed away.
+ */
+/**
+ * Two sweeps live in this file and they are separate rules, so they read the manifest separately.
+ *
+ * They happen to walk the same rooms today — every swept room carries all three sweeps. Deriving
+ * both from one list would still work, and would quietly make the manifest's `sweeps` field a lie
+ * the first time a room asked for one sweep and not the other. A field that nothing reads is a
+ * measurement that is not being taken.
+ */
+const always = (sweep: Sweep) => sweptBy(sweep).filter((room) => !room.seeded).map((room) => room.path);
+const seeded = (sweep: Sweep) => sweptBy(sweep).filter((room) => room.seeded).map((room) => room.path);
+
+const ROUTES = [...always("touch"), "/styleguide"];
+const SCROLL_ROUTES = [...always("scroll"), "/styleguide"];
 
 /**
  * Rooms that only EXIST when the database is seeded (N7).
@@ -41,8 +54,12 @@ const ROUTES = [
  * Ask for a story by a cluster id that is not there and the route calls `notFound()`, so an unseeded
  * sweep measures the 404 page — and passes. See `open()` for the recording, and for why the status
  * code cannot tell you this.
+ *
+ * The manifest's `seeded` flag draws this line now, so a new seeded room cannot land in the
+ * always-there list by accident.
  */
-const SEEDED_ROUTES = ["/news/nc-fed-hold"];
+const SEEDED_ROUTES = seeded("touch");
+const SEEDED_SCROLL_ROUTES = seeded("scroll");
 
 async function signIn(page: Page) {
   await page.goto("/login");
@@ -323,13 +340,13 @@ test.describe("no page scrolls sideways, anywhere", () => {
     expect(overflow, `horizontal overflow on ${route}`).toBeLessThanOrEqual(1);
   }
 
-  for (const route of ROUTES) {
+  for (const route of SCROLL_ROUTES) {
     test(`${route} stays on-axis`, async ({ page }) => {
       await checkOnAxis(page, route);
     });
   }
 
-  for (const route of SEEDED_ROUTES) {
+  for (const route of SEEDED_SCROLL_ROUTES) {
     test(`${route} stays on-axis (seeded)`, async ({ page }) => {
       test.skip(process.env.MSM_SEEDED !== "1", "needs a seeded test database (MSM_SEEDED=1)");
       await checkOnAxis(page, route);

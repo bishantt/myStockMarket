@@ -121,6 +121,25 @@ const BASELINE_KB = {
   "/offline": 163.0,
   "/paper": 194.7,
   "/scans": 186.2,
+  /*
+   * THE MATCH TABLE, BASELINED AT LAST (G3) — and the way it was found is the reason this number is
+   * worth reading twice.
+   *
+   * /scans/[preset] shipped in F3. It is the app's one DataTable: sortable headers, pagination, the
+   * recipe card, the lottery chip. It has never had a baseline. Not because anyone decided it did not
+   * need one — because `BASELINE_KB["/scans/[preset]"]` came back `undefined`, the verdict column
+   * printed an empty string, and the route was reported without ever being judged. Every run, since
+   * F3, this guard walked past the room it should most want to watch.
+   *
+   * That is not a failure. It is a SILENCE, and a silence in a gate is indistinguishable from a pass
+   * — which is the whole disease this phase exists to cure. The routes manifest is what surfaced it:
+   * the moment there was one list of rooms to reconcile against, the hole had nowhere to hide.
+   *
+   * 153.6 KB, measured as an upper bound (like every on-demand family — no prerendered HTML exists
+   * for a bracket route, so the chunk set comes from the client-reference manifest, which may name a
+   * chunk the rendered page turns out not to need). Comfortably under the 200KB ceiling.
+   */
+  "/scans/[preset]": 153.6,
   "/settings": 181.7,
   // Rebaselined at F2: 163.0 → 173.3. The styleguide is the LIVING SPEC — its job is to render one
   // of everything, so it necessarily grows whenever the design system does, and section 9 added the
@@ -132,6 +151,57 @@ const BASELINE_KB = {
   "/ticker/[symbol]": 148.5,
   "/track-record": 185.1,
 };
+
+/**
+ * THE BASELINE KEYS AND THE ONE LIST OF ROOMS MUST AGREE (G3, recommendation R8).
+ *
+ * The baseline VALUES stay above — they are measurements, and a measurement belongs next to the
+ * instrument that took it. What moves to lib/routes-manifest.json is the question of WHICH ROOMS
+ * EXIST, because that question was being answered in five places and they disagreed.
+ *
+ * This check is the reconciliation, and it found a real hole the moment it was written: the manifest
+ * knows about `/scans/[preset]` — the match table, the app's one DataTable — and BASELINE_KB did
+ * not. The room shipped in F3 and its first-load JavaScript has never been baselined. The bundle
+ * guard walked straight past it every single run: `BASELINE_KB[route]` came back undefined, the
+ * verdict column printed an empty string, and the route was reported without ever being judged. Not
+ * a failure — a silence. That is the same rot-by-omission that let /news ship unswept, wearing a
+ * budget's clothes instead of a sweep's.
+ *
+ * So the two lists are now held against each other, in both directions, before any measuring starts.
+ */
+const NOT_A_PRODUCT_ROOM = {
+  // Not rooms, so not in the manifest — but they are still built, still shipped to a browser, and
+  // still capable of growing a surprise 40KB. They keep their baselines here, named and argued.
+  "/login": "the login wall — the first thing anyone loads, and the leanest page we ship",
+  "/styleguide": "the living spec — it grows with the design system on purpose, but not unwatched",
+};
+
+function reconcileWithTheManifest() {
+  const manifest = JSON.parse(readFileSync(join(ROOT, "lib", "routes-manifest.json"), "utf8"));
+  const families = manifest.routes.map((r) => r.family);
+  const baselined = Object.keys(BASELINE_KB);
+
+  const unbaselined = families.filter((f) => !baselined.includes(f));
+  const orphaned = baselined.filter((k) => !families.includes(k) && NOT_A_PRODUCT_ROOM[k] === undefined);
+
+  if (unbaselined.length === 0 && orphaned.length === 0) return;
+
+  console.error("\n✗ B4 fails: the baselines and lib/routes-manifest.json disagree about what exists.\n");
+  for (const route of unbaselined) {
+    console.error(
+      `    ${route} is a room in the manifest with NO baseline here — so its first-load JavaScript ` +
+        `is never judged, and it could double without anything failing. Read its number off the ` +
+        `table above and add it to BASELINE_KB, with the reason.`,
+    );
+  }
+  for (const route of orphaned) {
+    console.error(
+      `    ${route} has a baseline here but is not a room in the manifest — either it was deleted ` +
+        `(remove the baseline) or it is not a product room (add it to NOT_A_PRODUCT_ROOM with a reason).`,
+    );
+  }
+  process.exit(1);
+}
 
 const reporting = process.argv.includes("--report");
 
@@ -247,6 +317,10 @@ if (missing.length > 0) {
   console.log(`\n  note: ${missing.length} manifest-named chunk(s) had no file on disk and counted as 0 KB:`);
   for (const m of [...new Set(missing)]) console.log(`    ${m}`);
 }
+
+// Reconcile AFTER the table is printed. A check that tells you to read a number off a table it
+// never showed you is a check that makes you run it twice.
+reconcileWithTheManifest();
 
 const regressions = rows.filter((r) => BASELINE_KB[r.route] !== undefined && r.kb > BASELINE_KB[r.route] + SLACK_KB);
 const overCeiling = rows.filter((r) => r.kb > CEILING_KB);
