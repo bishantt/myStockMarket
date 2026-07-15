@@ -5,8 +5,7 @@ import { FOCUS_CAP } from "@/lib/watchlist";
 import { ThemeToggle } from "@/components/desk/ThemeToggle";
 import { PipelinePanel } from "@/components/settings/PipelinePanel";
 import { readPanel } from "@/lib/pipeline-runs";
-import { toTradingDate } from "@/lib/pipeline";
-import { formatEtClock, formatEtDate } from "@/lib/time";
+import { formatEtClockPadded, formatEtDate, formatUtcDate } from "@/lib/time";
 import { AddWatchlistForm } from "./AddWatchlistForm";
 import { WatchlistManager, type ManagedItem } from "./WatchlistManager";
 
@@ -98,8 +97,8 @@ async function pipelinePanel() {
       // browser against the reader's clock (see PipelinePanel).
       lastRunDisplay: run?.finishedAt
         ? {
-            session: toTradingDate(run.runDate),
-            finishedAt: `${formatEtDate(run.finishedAt)} ${formatEtClock(run.finishedAt)}`,
+            session: formatUtcDate(run.runDate),
+            finishedAt: `${formatEtDate(run.finishedAt)} ${formatEtClockPadded(run.finishedAt)}`,
             stages: (run.stageStatus ?? {}) as Record<string, string>,
             sources: (run.sourceStatus ?? {}) as Record<string, string>,
           }

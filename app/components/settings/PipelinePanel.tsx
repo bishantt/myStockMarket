@@ -7,7 +7,7 @@ import { OutcomeChip, type OutcomeTone } from "@/components/OutcomeChip";
 import { copy, fill } from "@/lib/copy";
 import { controlPanel, type ActionRow, type ManualRunRow, type RunState } from "@/lib/pipeline-control";
 import type { CompletedRun } from "@/lib/freshness";
-import { formatEtClock, formatEtDate } from "@/lib/time";
+import { formatEtClock, formatEtClockPadded, formatEtDate } from "@/lib/time";
 
 /**
  * PipelinePanel — the control room (N6, plan 8.5).
@@ -176,7 +176,7 @@ function LastRun({ lastRun }: { lastRun: Props["lastRun"] }) {
   if (!lastRun) {
     return (
       <p className="pt-3 font-ui text-sm text-muted">
-        No run has completed yet. The nightly lands at ~6:37pm ET on trading days.
+        No run has completed yet. The nightly lands at ~6:37 PM ET on trading days.
       </p>
     );
   }
@@ -425,7 +425,7 @@ function History({ history }: { history: ManualRunRow[] }) {
               className="flex flex-wrap items-center gap-x-3 gap-y-1 border-b border-hairline py-2 last:border-b-0"
             >
               <span className="font-mono text-2xs text-muted">
-                {formatEtDate(run.requestedAt)} {formatEtClock(run.requestedAt)} ET
+                {formatEtDate(run.requestedAt)} {formatEtClockPadded(run.requestedAt)} ET
               </span>
               <span className="font-ui text-sm text-ink">{run.action}</span>
               <RunOutcomeChip status={run.status} />

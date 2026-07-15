@@ -231,10 +231,10 @@ describe("buildMacro", () => {
     )!;
     expect(macro.spx.source).toBe("index");
     expect(macro.spx.value).toBe("6,812.34");
-    expect(macro.spx.staleAsOf).toBe("as of Jul 9");
+    expect(macro.spx.staleAsOf).toBe("as of Thu, Jul 9");
     // And the footer says it too, rather than letting the masthead's as-of speak for a number it
     // does not describe.
-    expect(macro.provenance).toContain("FRED, as of Jul 9");
+    expect(macro.provenance).toContain("FRED, as of Thu, Jul 9");
   });
 
   it("puts no date on levels that ARE tonight's — a date on every row every night is chrome", () => {

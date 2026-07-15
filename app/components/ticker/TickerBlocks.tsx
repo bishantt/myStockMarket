@@ -11,7 +11,7 @@ import type {
   TickerMentionData,
   TickerPaperData,
 } from "@/lib/ticker-depth";
-import { formatUtcDate, formatUtcWeekday } from "@/lib/time";
+import { formatUtcDate } from "@/lib/time";
 
 /**
  * The ticker page's PD8 display blocks (plan 10.1 blocks 4/6/7). Each renders what the schema serves,
@@ -67,7 +67,7 @@ export function TickerCalendar({ rows }: { rows: TickerCalendarRow[] }) {
           <Tag variant="catalyst">{row.code}</Tag>
           <span className="font-ui text-sm text-ink-2">{row.title}</span>
           <span className="font-mono text-2xs text-muted">
-            {formatUtcWeekday(row.date)} {formatUtcDate(row.date)}
+            {formatUtcDate(row.date)}
             {row.timing ? ` · ${row.timing}` : ""}
           </span>
           {row.consensus !== null ? (

@@ -493,6 +493,30 @@ const RULES = [
     },
   },
   {
+    id: 29,
+    name: "E1 — one door for date/time rendering: only lib/time.ts constructs an Intl.DateTimeFormat",
+    /*
+     * THE SIBLING OF RULE 22, ONE STEP UP. Rule 22 keeps weekday WORDS to one door; this keeps the whole
+     * date/time FORMATTER to one. CC2 (ruling R1) rewrote every reader-facing shape — 12-hour clocks,
+     * weekday-bearing dates — and could do it cleanly only because exactly ONE file turns an instant into
+     * a string. A second Intl.DateTimeFormat is a second answer to "how does this app tell time", and the
+     * day the two disagree no test notices, because each is individually valid (rule 22's exact failure).
+     *
+     * TWO DOORS, for the same reason rule 22 has two:
+     *   lib/time.ts         RENDERS an instant or a bare date as a reader-facing string.
+     *   lib/market-hours.ts DECIDES with time — it asks New York what the ET date and minute are so it can
+     *                       answer "is the market open?". No reader sees that string; it is arithmetic.
+     * A third file fails the build. scripts/ is out of SEARCH_DIRS (the guards' own en-CA parsers are
+     * already out of scope), as is the pipeline's Python — R1 scopes this to the app, which renders here.
+     */
+    skip: ["lib/time.ts", "lib/market-hours.ts"],
+    match: (line) => {
+      if (/^\s*(\*|\/\/|\/\*)/.test(line)) return false;
+      const code = line.replace(/(?<![:/])\/\/.*$/, "");
+      return /\bIntl\.DateTimeFormat\s*\(/.test(code);
+    },
+  },
+  {
     id: 14,
     name: "PERF — internal links go through next/link, and nobody turns prefetch off",
     /*

@@ -56,7 +56,7 @@ describe("PipelineStrip — the quiet state", () => {
 
     // The three facts a reader needs and could not previously get: what am I looking at, was it
     // written, and when does the next edition land. Module 00 answered only the first.
-    expect(strip.textContent).toContain("Fri Jul 10");
+    expect(strip.textContent).toContain("Fri, Jul 10");
     expect(strip.textContent).toContain("next:");
     expect(strip.textContent).toContain("Mon");
   });
@@ -180,7 +180,7 @@ describe("PipelineStrip — the clock is the reader's, not the cache's", () => {
     // verdict and nothing moves.
     renderAt(FRESH);
     await vi.waitFor(() => {
-      expect(screen.getByRole("status").textContent).toContain("Fri Jul 10");
+      expect(screen.getByRole("status").textContent).toContain("Fri, Jul 10");
     });
     expect(screen.queryByRole("alert")).toBeNull();
   });

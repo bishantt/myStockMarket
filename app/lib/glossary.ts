@@ -68,15 +68,15 @@ export const GLOSSARY: Record<string, GlossaryEntry> = {
   },
   "pre-market": {
     term: "Pre-market",
-    short: "Trading before the 9:30am ET open — thin and wide.",
-    long: "The pre-market session runs before the 9:30am ET regular open. Volume is thin and spreads are wide, so prices there are less reliable than during regular hours.",
+    short: "Trading before the 9:30 AM ET open — thin and wide.",
+    long: "The pre-market session runs before the 9:30 AM ET regular open. Volume is thin and spreads are wide, so prices there are less reliable than during regular hours.",
     lesson: "the-us-trading-day",
     aliases: ["premarket"],
   },
   "after-hours": {
     term: "After-hours",
-    short: "Trading after the 4:00pm ET close — thin and wide.",
-    long: "The after-hours session runs after the 4:00pm ET regular close. Like the pre-market, it has thin volume and wide spreads, which is why earnings reactions there can look larger than they settle at.",
+    short: "Trading after the 4:00 PM ET close — thin and wide.",
+    long: "The after-hours session runs after the 4:00 PM ET regular close. Like the pre-market, it has thin volume and wide spreads, which is why earnings reactions there can look larger than they settle at.",
     lesson: "the-us-trading-day",
   },
   gap: {

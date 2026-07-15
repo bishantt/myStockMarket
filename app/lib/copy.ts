@@ -413,9 +413,9 @@ export const copy = {
     // The C5 explanations: each names the reason AND the next moment something changes — "not
     // available" without a "next" is a dead end.
     naMarketOpen:
-      "Markets are open — today's closing data doesn't exist until 4:00pm ET. The nightly run lands ~{nightly} ET.",
+      "Markets are open — today's closing data doesn't exist until 4:00 PM ET. The nightly run lands ~{nightly} ET.",
     naWeekend:
-      "It's the weekend — {lastDay}'s close is the latest data that exists; nothing new lands before {nextDay} 4:00pm ET.",
+      "It's the weekend — {lastDay}'s close is the latest data that exists; nothing new lands before {nextDay} 4:00 PM ET.",
     naHoliday: "US markets are closed today ({name}) — {lastDay}'s close stands until {nextDay}.",
     naAlreadyRan: "Tonight's run already succeeded at {time} — there is nothing newer to fetch.",
 

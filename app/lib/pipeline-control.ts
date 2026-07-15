@@ -161,7 +161,7 @@ function whyFullCannotRun(lastRun: CompletedRun | null, now: Date): string | nul
   // The market is open: today's closing data does not exist yet. Running now would ingest a half-formed
   // bar over the last good close — plan 8.1's "impossible by design", the reason for job_a.py's mode guard.
   if (marketState(now) === "open") {
-    return fill(copy.control.naMarketOpen, { nightly: "6:37pm" });
+    return fill(copy.control.naMarketOpen, { nightly: "6:37 PM" });
   }
 
   // The close has happened. If tonight's edition already landed there is nothing newer to fetch, and the

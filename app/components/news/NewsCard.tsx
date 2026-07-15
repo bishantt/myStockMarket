@@ -10,7 +10,7 @@ import { cx } from "@/lib/cx";
 import { directionOf, signedPercent } from "@/lib/format";
 import { catalystLabel, sourcesLine } from "@/lib/news";
 import type { NewsCard as Card } from "@/lib/news";
-import { formatEtClock, formatEtDate } from "@/lib/time";
+import { formatEtStamp } from "@/lib/time";
 
 /**
  * NewsCard — one story on the Front Page, in either of the room's two tiers (plan 7.7).
@@ -203,9 +203,7 @@ export function NewsCard({ card, tier }: NewsCardProps) {
             {primarySource.source}
           </ExternalLink>
         ) : null}
-        <span className="font-mono text-2xs text-muted">
-          {formatEtDate(card.firstSeen)} · {formatEtClock(card.firstSeen)} ET
-        </span>
+        <span className="font-mono text-2xs text-muted">{formatEtStamp(card.firstSeen)}</span>
       </div>
     </div>
   );

@@ -16,7 +16,7 @@ import { copy, fill } from "@/lib/copy";
 import { db } from "@/lib/db";
 import { ACADEMY_DOORWAY, catalystLabel, formatModel, sourcesLine, toCard } from "@/lib/news";
 import { getSymbolRecord, hasRecord, type SymbolRecord as SymbolRecordData } from "@/lib/record";
-import { formatEtClock, formatEtDate, formatUtcDate, formatUtcWeekday } from "@/lib/time";
+import { formatEtStamp, formatUtcDate } from "@/lib/time";
 
 /**
  * StoryPageBody — the story page v2 anatomy, as ONE server component (PD9, plan 11.1 / E9).
@@ -259,7 +259,6 @@ export async function StoryPageBody({ clusterId }: StoryPageBodyProps) {
                     <Tag variant="catalyst">{watch.code}</Tag>
                     <span>{watch.title}</span>
                     <span className="font-mono text-2xs text-muted">
-                      {formatUtcWeekday(new Date(`${watch.date}T00:00:00Z`))}{" "}
                       {formatUtcDate(new Date(`${watch.date}T00:00:00Z`))}
                       {scope ? ` · ${scope}` : ""}
                     </span>
@@ -288,9 +287,7 @@ export async function StoryPageBody({ clusterId }: StoryPageBodyProps) {
                 <ExternalLink href={article.url} className="font-ui text-sm py-3 md:py-0">
                   {article.source}
                 </ExternalLink>
-                <span className="font-mono text-2xs text-muted">
-                  {formatEtDate(article.published)} · {formatEtClock(article.published)} ET
-                </span>
+                <span className="font-mono text-2xs text-muted">{formatEtStamp(article.published)}</span>
                 <span className="w-full font-serif text-sm text-ink-2">{article.headline}</span>
               </li>
             ))}
@@ -318,7 +315,7 @@ export async function StoryPageBody({ clusterId }: StoryPageBodyProps) {
       <footer className="border-t border-hairline pt-3">
         <p className="font-ui text-2xs text-muted">
           {fill(copy.news.provenance, {
-            time: `${formatEtDate(card.firstSeen)} ${formatEtClock(card.firstSeen)} ET`,
+            time: formatEtStamp(card.firstSeen),
             model: provenanceModel(card.modelMeta, card.summary.length > 0),
           })}
         </p>

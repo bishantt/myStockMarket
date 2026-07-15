@@ -12,7 +12,7 @@ import { copy, fill } from "@/lib/copy";
 import { getLatestVolBands, getTicker } from "@/lib/ticker";
 import { getTickerCalendar, getTickerMention, getTickerPaper } from "@/lib/ticker-depth";
 import { getSymbolRecord, hasRecord } from "@/lib/record";
-import { formatUtcDate, formatUtcWeekday } from "@/lib/time";
+import { formatUtcDate } from "@/lib/time";
 
 /**
  * TickerPageBody — the instrument room v2, as ONE server component (PD9, plan 11.1 / E9).
@@ -58,7 +58,7 @@ export async function TickerPageBody({ symbol }: TickerPageBodyProps) {
   // bare trading date formats from its UTC components; reading it in ET would print the day before.
   const lastBar = ticker.candles.at(-1);
   const chartThrough = lastBar
-    ? `${formatUtcWeekday(new Date(`${lastBar.time}T00:00:00Z`))} ${formatUtcDate(new Date(`${lastBar.time}T00:00:00Z`))}`
+    ? formatUtcDate(new Date(`${lastBar.time}T00:00:00Z`))
     : "—";
 
   const identity = [ticker.exchange, ticker.sector, ticker.industry]

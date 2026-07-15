@@ -68,10 +68,9 @@ function tradingDate(date: string): Date {
   return new Date(`${date}T00:00:00Z`);
 }
 
-/** "Fri Jul 10" — the session a reader recognises. */
+/** "Fri, Jul 10" — the session a reader recognises; formatUtcDate carries the weekday itself now (R1). */
 function sessionLabel(date: string): string {
-  const d = tradingDate(date);
-  return `${formatUtcWeekday(d)} ${formatUtcDate(d)}`;
+  return formatUtcDate(tradingDate(date));
 }
 
 /**
@@ -141,8 +140,7 @@ export function PipelineStrip({
     new Date(now),
   );
 
-  // "next: Mon 18:37 ET". 24-hour and zero-padded, like every other clock in the app — the house
-  // renders mono numerals in ET and nothing else (CLAUDE.md, Timing).
+  // "next: Mon 6:37 PM ET" — 12-hour with AM/PM, the house clock shape since CC2 (ruling R1).
   const next = `${formatEtWeekday(nextRunAt)} ${formatEtClock(nextRunAt)} ET`;
 
   /* ── DEAD: the one surface in this app allowed to shout ───────────────────────────────────── */
