@@ -8,6 +8,45 @@ Format: newest first. I mark each as [FYI], [VETO?], or [NEED] so you can scan.
 
 ---
 
+## 2026-07-15 — CC1 (the two live defects + three paper cuts — first phase of the two-plan commission)
+
+CC1 fixed the font that renders wrong on some refreshes, the Daily Brief that publishes empty every
+night, the held-state skeleton, the doubled CPI, and the ticker record's raw scan slug. Tagged
+`cc-1`. Three heads-ups, none blocking.
+
+### [FYI] Part 0 decisions are still unanswered — the plan's defaults stand
+I checked DECISIONS.md for answers to CLARITY-AND-CADENCE Part 0 (P-1 the media bucket, P-2 the
+GitHub PAT for the control room, the dawn-cron hour, the retention windows). None are provisioned or
+vetoed, so every default proceeds when its phase arrives — text-first news (CC5), a display-only
+control room (CC7), a 10:30 UTC Mon–Fri dawn cron (CC8), and the Appendix D retention numbers (CC10).
+Nothing to do now; provision or name a number any time and that phase absorbs it.
+
+### [FYI · handed to CC4] Q-CC1-1 — the ticker-slug fix is proven by unit test, not by a picture
+Appendix C predicted a "ticker sheet (title not slug)" VRT delta for CC1. It did not happen, and
+that is honest rather than a gap. The seeded world never reproduced the leak: all three seeded
+`signal_log` rows are RESOLVED (they carry resolutions, so they render no active-signal label) and
+they use DETECTOR keys (`golden-cross`), which mapped correctly all along. The production leak is on
+ACTIVE, unresolved, SCAN-fired signals (`gap-3plus`), which the seed does not model. Reproducing it
+means adding an active preset-keyed signal to the seed — which surfaces on the forecasts /
+track-record surfaces and re-shoots several baselines, a swing too wide for a scoped paper-cut phase
+(the exact end-of-phase swing this build has regressed on). **I proved the fix with a unit test that
+observes the exact defect at `patternLabel`** and **handed the rendered proof to CC4**, which already
+touches Track record / forecasts and budgets a wide re-shoot. If you'd rather it had a picture sooner,
+say so and I'll add the seed signal in a small dedicated pass.
+
+### [still open, now inherited by CC4] Q-PD6-3 — the watchlist reason truncates on a phone
+Unchanged from PD10. On a 412px phone `/settings`'s watchlist row squeezes the reason (the only
+copy you authored) to zero characters. It was PD10's to defer and it is now **CC4's** (the hierarchy
++ phone-paper-cuts phase names it explicitly, §4.3 / D10). No action from you needed; noting it so it
+does not fall between the two plans.
+
+### [still pending your device] the PD10 iOS on-glass photo checklist
+Still owed to your iPhone (docs/pd-evidence/pd10-hardening.md §4): open a story sheet → scroll →
+overscroll-dismiss → land where you left, in mobile Safari and again installed-standalone. Not any
+phase's work; kept alive so it is not forgotten.
+
+---
+
 ## 2026-07-15 — PD10 (hardening, evidence, docs — **the build is COMPLETE**)
 
 PD10 was the last phase. It added no features: it swept the detail sheet's own touch targets and

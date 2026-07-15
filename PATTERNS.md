@@ -1159,3 +1159,31 @@ overlay is centred with a FLEX wrapper, never a translate — because a centerin
 ancestor transform over the figures inside (E7 does not care that it is "just the container"). And the
 wrapper's weight code-splits behind the first open (`next/dynamic`), because it drags in a dialog library
 that must not land in the shared chunk the tightest route in the app carries.
+
+## A Sonnet-5 structured-output call: bound the thinking, or it eats the budget (CC1, 2026-07-15)
+
+Every Sonnet-5 `messages.create` that produces structured JSON in this pipeline uses ONE budget shape,
+and it must not drift between them (`newsdesk/narrate.py` and `briefing/synthesize.py` learned it a phase
+apart, each the hard way):
+
+```python
+_MAX_TOKENS = 16000        # room for reasoning ABOVE the small JSON, and under the ~21333 line
+_EFFORT = "medium"         # the bound that stops thinking from expanding to fill max_tokens
+client.messages.create(
+    model=model, max_tokens=_MAX_TOKENS, system=system, messages=messages,
+    output_config={"format": {"type": "json_schema", "schema": ...}, "effort": _EFFORT},  # effort rides INSIDE
+)
+```
+
+Three facts, each of which cost a production incident. (1) **Sonnet-5 runs adaptive thinking by default**
+(Sonnet-4.6 did not), and that thinking is spent against `max_tokens`; a budget sized for the JSON alone
+(4096) gets consumed entirely by reasoning and the call returns `stop_reason=max_tokens` with a lone
+`thinking` block and ZERO text. When a structured call returns 0 chars, this is always it — dump
+`stop_reason` and the content-block types and you will see it in one line. (2) **`effort` bounds the
+thinking**, and it goes INSIDE `output_config` beside `format`; at the top level it is a 400. "medium",
+not "low" (Sonnet-5 under-thinks on low for a narrator that must choose which stats to cite), not "high"
+(unbounded is what overflowed the cap). (3) **A non-streaming call is refused above ~21333 tokens**
+(`3600*max_tokens/128000 > 600` ⇒ ValueError "Streaming is required"), so `max_tokens` cannot simply be
+raised to the sky; 16000 is the room that fits under that ceiling AND leaves output space. Pin the value
+and the effort with a unit test — the scripted fake client in the suite has no thinking budget to
+overflow, so nothing else can catch a regression here.
