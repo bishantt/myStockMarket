@@ -1,102 +1,104 @@
 # PROGRESS.md — resumable state
 
-# PD7 IS **COMPLETE** — tagged `pd-7` (`306e1c8`), rehearsal green on all four legs (one thin-night
-scans flake reran to green — known, not mine). **Thirteen tags.**
+# PD8 IS **COMPLETE** — tagged `pd-8`, rehearsal green on the reshoot, all baselines explained.
+**Fourteen tags.**
 
-**Checkpoint: POLISH-AND-DEPTH-PLAN.md, PD7 (the PIPELINE half of Part 9 — the news depth engine) is
-DONE. Nothing is blocked. Nothing is in flight.**
+**Checkpoint: POLISH-AND-DEPTH-PLAN.md, PD8 (the SURFACES of Part 9 + Part 10) is DONE. Nothing is
+blocked. Nothing is in flight.**
 
-**NEXT: PD8 — news & ticker depth, the SURFACES** (plan Part 9.6/9.7, 10.1, 9.8). PD7 unblocks it;
-PD8 blocks PD9. PD8 is an APP phase — it renders everything PD7 just computed.
+**NEXT: PD9 — Sheets, the detail overlay (Part 11).** PD8 unblocks it; PD9 is the LAST feature phase
+before PD10 (hardening/docs). PD9 is an intercepting-routes phase: a story or ticker opens OVER the
+app on mobile and dismisses back to exactly where the reader was.
 
-## What PD7 did, in one paragraph
+## What PD8 did, in one paragraph
 
-The LLM narrates only what the pipeline computed, so the pipeline computed more. The verification gate
-now publishes its CLEARED list, not only its flags (Q-PD5-1) — which unblocks ruling E5's "emphasis is
-earned" on the Desk. The stats registry grew four per-ticker measures (52-week position, ATR-relative
-move, streak, distance from the 50-day) plus per-cluster corroboration, recurrence and next-calendar
-stats. The news insight schema grew a `context` section and a `watch` list, gated PER SECTION, with a
-new deterministic lexicon (E4) that deletes advice verbs and unearned frequency adverbs. `model_meta`
-and a nightly cost print close the accounting gap 0.2.3 opened. A migration (`pd_news_depth`) added
-three columns. **Nothing renders — PD8 does that.**
+Depth arrives in two moves and the pipeline went first (PD7). PD8 is the second move: the surfaces
+that speak it. The **story page v2** grew a ten-block anatomy — Context tonight (verified figures in
+mono, glossary doorways ≤2), the snapshotted watch rows (each a door to the Desk calendar's day),
+"what our record says" on the affected names, and a provenance footer that prints the models it
+actually ran. Every block names its absence, read from `verification.sections`, and the old
+`verification.dropped` boolean retired into one version-dispatching reader. The **feed byline** became
+a real external door in its own footer box (E8), verified live in production. The **ticker page v2**
+grew from two queries to six — an identity line, a 52-week strip, tonight's mention, the record here,
+the calendar, the paper position — all from what the schema already serves. A non-served name renders
+the honest subset. **Q-PD6-2 solved:** the touch sweep visits nc-fda-nonopioid now (real controls to
+measure). The record layer is shared by both pages; the setup-card view builder is extracted once.
 
-## The six things a fresh session must know (each was found by LOOKING, not by a red test)
+## The seven things a fresh session must know
 
-1. **THE REAL DISPATCH IS THE ONLY THING THAT FOUND THE BUGS, and the whole suite was green through
-   two production outages.** PD7 owes a live `news`-mode dispatch, and it ran three times. Run 1
-   published ZERO notes (the v2 schema outgrew `_MAX_TOKENS`; Sonnet 5 thinks by default and thinking
-   shares the cap). Run 2 published SEVEN contexts that were all a sha1 HASH restated as a sentence
-   ("carried by 1 outlet tonight (cls:798fa63d…:corroboration)") — the schema validated, the gate
-   cleared every figure, and it was unshippable. Both are fixed and pinned. **PD8: read the prose
-   your surfaces render. `docs/pd-evidence/pd7-insight.md` §5–6 is the whole story.**
+1. **READ THE PROSE, and it is now a BROWSER assertion.** PD7 published a sha1 hash into a sentence.
+   PD8 rendered the seeded surfaces and read them (all English, no hashes), AND pinned it:
+   `news.spec.ts` fails if the story context ever contains `tkr:`/`cls:`/`cal:`. A green VRT tells you
+   the pixels are stable; it does not tell you the sentence is English.
 
-2. **THE EIGHTH STAT (sector breadth) IS DELIBERATELY ABSENT — Q-PD7-1, YOURS IF YOU WANT IT.** It
-   cannot be computed in the news stage: `scan_result` holds only preset MATCHES (breadth over it is
-   not the sector's), `price_bar` holds 15 ETFs, and the universe's returns live only in the in-memory
-   lake, which the newsdesk (a Postgres closure in BOTH modes) never sees. Fixing it means threading
-   the lake into the newsdesk seam OR a second migration — a booked, deliberate act, not an
-   end-of-phase slip (Appendix B's own rule).
+2. **The 52-week strip states its window HONESTLY.** "52-week range · {n} sessions" only at ≥240
+   sessions, else "Trading range · {n} sessions". The seed's 22 bars read "Trading range · 22
+   sessions"; production (252 bars) reads "52-week range · 252 sessions". This delivers the plan's
+   strip as an explicit-window band — no seed bar bump (which would re-baseline the Desk's watchlist
+   sparkline). DECISIONS logged.
 
-3. **`verification.dropped` STAYS, AND IT IS LOAD-BEARING RIGHT NOW.** `lib/news.ts` reads it to tell
-   the reader "the gate held this line" apart from "the narrator had nothing to say". The v2 `sections`
-   map is added ALONGSIDE it, not instead — PD7 ships before PD8, so replacing the key would have
-   blinded the live story page and nothing would have failed. **PD8 may migrate the story page to read
-   `sections` and THEN retire `dropped`.**
+3. **`verification.dropped` IS RETIRED.** `lib/news.ts:readSectionStatus` reads the per-section
+   verdict and falls back to the old `dropped` flag ONLY for why_it_matters (the one field v1 knew).
+   One reader with a version fallback, not two live readers. The seeded JPMorgan row (v1 gate-drop)
+   still resolves to "dropped"; the fixture test proves it.
 
-4. **THE FIXTURE NIGHT CARRIES FOUR PINNED SHAPES**, and regenerating it found the fixture modelling
-   prose its own producer would refuse (two uncited "usually"/"rarely" lines, deleted by E4), a
-   `cleared` list claiming a "2" the gate never cleared (an ordinal), and a watch row pointing at a
-   calendar event that does not exist in the seeded world. `nc-fda-nonopioid` is the FULL v2 shape and
-   is **the only story with three catalyst links** — so it is the only affected table with rows.
-   **Q-PD6-2 is half-solved: point the touch sweep there, not at `nc-fed-hold` (zero links).**
+4. **The record layer is SHARED (lib/record + SymbolRecord).** Both pages ask "does our ledger hold
+   evidence?" — one loader, one component. `buildSetupCardView` was extracted from lib/morning.ts, so
+   the Desk reads it too. The setup card renders READ-ONLY off the Desk (its weakener writes are a
+   Desk-scoped action; rendering them off-Desk revalidates the wrong path).
 
-5. **`publish_news`'s COLUMN WRITE now has a database test** (`test_publish_news_depth.py`) — it had
-   NONE before PD7, only the E1 date invariant. A phase that adds columns to a writer with no
-   round-trip test is a phase betting on luck.
+5. **Calendar day anchors are NEW.** CalendarTimeline stamps `id="cal-{iso}"` on the first visible
+   row of each day; a story's watch rows link `/#cal-{iso}`. A hash link never 404s — a watch date
+   past the Desk's forward window lands on the module without scrolling.
 
-6. **THE COST IS MEASURED, NOT PROMISED.** $0.2253/night (run 2), under 0.2.3's ~$0.36–0.39 estimate.
-   `config.py` carries Sonnet 5's LIST price while it runs an intro rate through 2026-08-31, so the
-   printed figure is an UPPER BOUND — deliberately, because a cost instrument that under-reports is
-   worse than none.
+6. **The seed's coverage, confirmed empirically:** served (bars) = SPY/QQQ/DIA/IWM/AAPL/NVDA/MSFT
+   (22 bars each); vol bands only AAPL (the Range Ladder); setup cards SPY/QQQ/SMCI; all 3 signals
+   RESOLVED (no active signals in the seed); AAPL has an open paper buy. VRT targets: **AAPL**
+   (served-full) and **SMCI** (non-served, which richly exercises the record block).
 
-## The gate at `pd-7`
+7. **Q-PD5-1's second half — the Desk BRIEF's KeyFigure — is DEFERRED (Q-PD8-1).** The story context
+   honors E5 (via `sections.context.cleared`), but the Desk's evening brief is a surface outside
+   PD8's Part 9.6/9.7/10 scope, and its own verification record may need the same `cleared` wiring.
 
-- App unit tests: **710** (unchanged — pipeline phase). Pipeline: **610** (was 535; +75, of which 31
-  are Postgres-backed and skip locally without Docker). New files: `briefing/depth.py`,
-  `briefing/lexicon.py`, and their tests, plus `test_publish_news_depth.py`.
-- Anti-drift: **28 rules** (unchanged). Rooms: **14**. Oracle legs: **4**. e2e specs: **25**.
-- **VRT baselines: 83** — **10 re-shot** (the `/news` feed only, both themes × 4 viewports; two card
-  sentences changed under E4 and the phone page came back 20px SHORTER). 0 added. All 83 candidates
-  were diffed against committed, not just the 4 failures: 16 moved, 12 were the CAMERA (login gradient
-  dither, sub-tolerance jitter on untouched pages) and left alone.
-- **Bundles unchanged — PD7 spent no first-load JS.** Worst still `/news` (~195.8 KB vs 200 KB ceiling).
-- Migration **`pd_news_depth`** — 3 columns, all nullable/defaulted, no backfill. `check:migrations`
-  clean against production (Vercel applied it on deploy). `check:live` **green — 5 pass, 2 pending**
-  (news bylines owed to PD8; masthead owed to whichever nightly has not run). `check:lighthouse`
-  **CLS 0.000, first-load 152–181 KB** — both hard gates; LCP/perf are the advisory synthetic-4G
-  numbers that swing ±10 between samples (re-sampled: LCP 5.29 → 4.49s).
+## The gate at `pd-8`
 
-## The local harness, as actually used this phase (it all works — use it)
+- App unit tests: **710 → 733** (+23: v2 news readers, formatModel, computeRangeStrip, hasRecord,
+  calendar-anchor, SymbolRecord + RangeStrip component tests). Pipeline: **576 + 35 skipped**
+  (unchanged — app phase). New files: `lib/record.ts`, `lib/ticker-depth.ts`, `lib/setup-card-view.ts`,
+  `lib/calendar-anchor.ts`, `components/SymbolRecord.tsx`, `components/news/StoryContext.tsx`,
+  `components/ticker/RangeStrip.tsx`, `components/ticker/TickerBlocks.tsx` (+ their tests).
+- Anti-drift: **28** (unchanged; RangeStrip joined P2_FILES). Rooms: **14**. e2e specs: **25**. Oracle
+  legs: **4**.
+- **VRT baselines: 83 → 91** — 8 new (news-story-dropped ×4, news-story-sparse ×2, ticker-thin ×2),
+  21 re-shot (news feed byline, story anatomy repointed to nc-fda-nonopioid, ticker v2 blocks). All
+  candidates diffed against committed; login-desktop (176px dither) and track-record-dark-desktop
+  (0px) left alone as the CAMERA.
+- **Bundles:** every route within slack, under the 200KB ceiling. `/news` 197.4 (baseline 195.1),
+  `/news/[cluster]` 165.3 (161.6), `/ticker/[symbol]` 150.4 (148.5). Worst `/paper` 198.1 (shared-chunk
+  drift, 1.9 under ceiling). Fonts pass, 317 KB headroom.
+- **`check:live` — all 7 GREEN**, including the news bylines (20 outbound links in production), which
+  closes one of pd-7's two pending live assertions. **`check:migrations` clean** — NO migration this
+  phase. **Lighthouse:** CLS 0.000 hard gate holds (advisory perf re-sampled).
 
-A seeded Postgres in Docker turns 149 skipped browser tests into 222 that actually run. PD6's whole
-touch-target finding came out of it, and it would have reached CI otherwise.
+## The local harness (all works — use it)
 
+Docker Postgres IS available on this Mac now (the daemon is running). The seeded browser suite:
 ```bash
 docker run -d --name msm-e2e -e POSTGRES_PASSWORD=test -e POSTGRES_DB=msmtest -p 55434:5432 postgres:16
 export DATABASE_URL="postgresql://postgres:test@localhost:55434/msmtest" DIRECT_URL="$DATABASE_URL"
 npx prisma migrate deploy && npm run db:seed
 export MSM_SEEDED=1
-lsof -ti:3210 | xargs kill -9          # ALWAYS, before any run — reuseExistingServer will lie to you
-npx playwright test --project=phone --workers=1 --ignore-snapshots
+lsof -ti:3210 | xargs kill -9          # ALWAYS, before any run — reuseExistingServer will lie
+npx playwright test --project=phone --workers=1 --ignore-snapshots e2e/news.spec.ts
 ```
+PD8 ran this heavily — the touch sweep, the content assertions, and the read-the-prose dump all came
+out of it, and none would have been catchable without it locally.
 
-**The seed only deletes the three watchlist symbols it creates**, so a failed `settings.spec` leaves
-`QQQ`/`DIA` behind and poisons the next run. Delete them between runs.
+## Two local e2e failures that are NOT yours (both re-confirmed)
 
-## Two local e2e failures that are NOT yours (both re-confirmed at PD6)
-
-- **`scans.spec.ts:44`** — passes in isolation. The thin-night specs mutate the shared local database;
-  CI gives every leg its own.
-- **`settings.spec.ts:29`** — **fails on the tagged, green `pd-5` tree too.** I stashed PD6, rebuilt
-  `pd-5`, ran it against the same database, and it failed *earlier*, at a different assertion. A local
-  ISR-revalidation flake, and it has now been confirmed against two different tags. Do not chase it.
+- **`scans.spec.ts:44`** — the thin-night database race (passes in isolation; CI gives each leg its
+  own Postgres). Reran clean at pd-7's tag.
+- **`settings.spec.ts:29`** — a local ISR-revalidation flake; fails on tagged green trees too.
+- **grid.spec on mbp16** flaked ONCE at PD8's first rehearsal (the documented "measured 0/0 before the
+  stylesheet applied" CSSOM race — it passed on desktop + wide, the identical ≥lg layout, so the code
+  is fine). The reshoot rehearsal is the confirmation.

@@ -1443,3 +1443,30 @@ the rail is taller than the main column, the grid stretches the rows to fit it a
 merely *spread out* between the modules instead of pooled under one.
 
 **No action needed unless you disagree.**
+
+---
+
+## Q-PD8-1 — the Desk's evening brief could now emphasize its verified figures (E5), and I deferred it
+
+**Status: deferred, capability available. No action needed unless you want it sooner.**
+
+PD7 made the gate publish its CLEARED list, and Q-PD5-1's headline was "this unblocks ruling E5 on the
+Desk". PD8 honoured E5 on the surface it BUILT — the news story page's "Context tonight" prose sets its
+verified figures in mono (via `verification.sections.context.cleared`). But the Desk's evening BRIEF
+still carries **no emphasized figures**: its lede reads as plain prose.
+
+I did not wire the brief's KeyFigure this phase, on purpose:
+
+1. **It is outside PD8's scope.** PD8 is Part 9.6/9.7 (story + feed) and Part 10 (ticker). The Desk
+   brief is a different surface (`components/desk/BriefArticle.tsx`), not in those sections.
+2. **It would churn the Desk VRT** — the flagship room — for a feature that belongs to a different
+   part of the plan.
+3. **The briefing's own record may need the same wiring the news notes got.** The seeded briefing's
+   `verificationJson` is `{status, checked, held_reason, flags}` — I did not confirm it carries a
+   `cleared` list the way a news cluster's `verification.sections` does. If it does not, the brief
+   cannot honestly emphasize anything yet, and forcing it would be the deny-list trap E5 forbids.
+
+**My assumption:** the brief's KeyFigure is a small, clean follow-on for a later phase (or a quick
+Desk-scoped task whenever you want it), not a PD8 deliverable. The story page proves the capability
+works end to end; the brief is the same pattern applied to one more surface. Marked in DECISIONS and
+here. If you'd rather it landed now, say so and it is an afternoon's work.

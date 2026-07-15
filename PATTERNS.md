@@ -1114,3 +1114,30 @@ because the app reads an absent key as its falsy default. PD7 changed news `veri
 right now. So `dropped` stays, and `sections` is added beside it; the app phase migrates the reader
 and THEN retires the old key. The rule: a pipeline change that outruns its consumer keeps the old
 contract until the consumer catches up.
+
+## Shared read + shared component when two surfaces ask the same question (PD8)
+
+The story page and the ticker page both ask a name "does our ledger hold evidence?" — so it is ONE
+loader (`lib/record.ts:getSymbolRecord`) and ONE component (`components/SymbolRecord.tsx`), never two.
+Two answers to one question drift apart, and then two surfaces tell the reader two different truths
+(the same law the news room keeps for "a mover"). When you catch a second page reaching for the same
+data, extract the read AND the render before writing the second copy — PD5's four delta chips are the
+scar. Corollary: the row → view-model mapping lives in ONE builder (`lib/setup-card-view.ts`), read by
+the Desk loader and the per-symbol record alike.
+
+## A nested anchor is a sibling footer, not a stretched link (PD8)
+
+A card that is one big `<Link>` cannot contain a second anchor — the browser closes the outer one and
+the card's bottom half silently stops working (drift rule 26's whole reason). The feed's byline door
+out is a SIBLING of the story link: the card became a `<div>` holding the story `<Link>` and a footer
+row with the external anchor in its own box, hairline-separated, ≥44px on touch. No stretched-link
+pseudo-element, no `z-index` fight — two real controls side by side, each valid HTML.
+
+## State the window, then you can degrade honestly (PD8)
+
+The 52-week strip is a "52-week range" claim, and a claim about a year is a lie over a month. Rather
+than fake the year (or bump the seed and re-baseline an unrelated flagship shot), the strip states the
+TRUE session count and calls itself "52-week" only when the window really is one. This is the §5.2 rule
+(every number states its window) turned into a degradation strategy: a surface that names its own scope
+can shrink that scope honestly instead of overclaiming a fixed label. Absence beats invention; so does
+an honest smaller window beat a fabricated full one.
