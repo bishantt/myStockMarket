@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>myStockMarket — Lean Codebase Plan</title>
+<link rel="stylesheet" href="print.css">
+</head>
+<body>
+
+<div class="cover">
+  <div class="brand">
+    <svg class="tick" viewBox="0 0 20 20" aria-hidden="true">
+      <rect x="2.5" y="7" width="3.6" height="7.5" rx="1" fill="#475569"/>
+      <line x1="4.3" y1="4.5" x2="4.3" y2="16.8" stroke="#475569" stroke-width="1.1"/>
+      <rect x="8.2" y="4" width="3.6" height="8" rx="1" fill="#c3c2b7"/>
+      <line x1="10" y1="2" x2="10" y2="14.5" stroke="#c3c2b7" stroke-width="1.1"/>
+      <rect x="13.9" y="9" width="3.6" height="6.8" rx="1" fill="#475569"/>
+      <line x1="15.7" y1="6.5" x2="15.7" y2="18" stroke="#475569" stroke-width="1.1"/>
+    </svg>
+    <span class="doc-title-string">myStockMarket · Lean Codebase Plan</span>
+  </div>
+  <div class="doc-kind">Lean Codebase Plan · Plan B of the 2026-07-15 commission · hygiene, efficiency, and the comment standard</div>
+  <h1>Lean, Not Forgetful</h1>
+  <p class="subtitle">A measured verdict first: one line in three is commentary, and almost none of it is noise — it is verbose signal. So: the one-line comment standard for all new code, compression of the two dozen hot files where the token cost actually lives, a sacred list that keeps every scar, an evidence-led deletion table, and the practice fixes — one sign-in helper instead of twenty, the VRT diff tool the law already assumes, guard plumbing shared without moving a single assertion.</p>
+  <p class="epigraph">&ldquo;Strip the noise, keep the scars.&rdquo; <span class="attr">— the organizing rule</span></p>
+  <div class="meta">
+    <span><b>Executor</b> Claude Opus 4.8</span>
+    <span><b>Date</b> July 2026</span>
+    <span><b>Working copy</b> LEAN-CODEBASE-PLAN.md (repo root)</span>
+    <span><b>Phases</b> lc-1 … lc-3</span>
+  </div>
+</div>
+
+<p><strong>The repo sheds weight without shedding memory.</strong> Plan B of two (its sibling is CLARITY-AND-CADENCE-PLAN.md). Three phases, <code>lc-1</code> … <code>lc-3</code>. Written 2026-07-15 from a measured audit of every tracked file: comment density per directory, reference counts for every deletion candidate, and a sweep of the build/test practice for disproportionate token and time costs. Executor: Claude Opus 4.8, one phase per session, under CLAUDE.md's standing rules.</p>
+<p><strong>Who this document speaks to.</strong> Executed by Claude Opus 4.8; the imperatives address that executor. Part 0's rows and Part 1's argument ("what you asked for", "your instinct") address <strong>Bishan</strong>, the commissioning user — the executor never answers or waits on them; silence means the stated default. One deliberate exception: the blockquoted CLAUDE.md amendment in Part 1 is the standard's own text, and its "you" correctly addresses whichever session edits a file in future.</p>
+<p><strong>THE AUTONOMY CONTRACT (binding; restates the standing directive of 2026-07-11).</strong> One phase per session; within a phase never ask, never wait. Questions become QUESTIONS-FOR-BISHANT.md entries with marked assumptions; Part 0's defaults proceed unanswered; only an unworkaroundable blocker stops work. Session ritual per CLAUDE.md at both ends of every session.</p>
+<p><strong>Sequencing.</strong> Runs AFTER Plan A's CC1 (the two live product defects do not wait on hygiene) and BEFORE CC2–CC10 (so the new comment standard governs nine sessions of new code, the hot files those sessions will read repeatedly are already lean, and this plan's wide mechanical touches never churn files Plan A just rewrote). Within this plan: the standard first, consolidation second, compression last. <strong>Deletions and wide touches happen only when no other session is mid-phase</strong> — check PROGRESS.md's checkpoint and <code>git status</code> first; stage by explicit path, never <code>git add -A</code> (the 2026-07-12 parallel-session sweep is the scar).</p>
+
+<div class="toc"><h2>Contents</h2><ol><li>Decisions I need from Bishan</li>
+<li>The comment standard (and where your instinct was wrong)</li>
+<li>The measurements (evidence, 2026-07-15)</li>
+<li>The sacred list and the risk register (never strip, never reword)</li>
+<li>The deletion table (LC1 executes <code>delete</code> rows after a fresh re-check)</li>
+<li>Practice-efficiency fixes (all behavior-preserving; no guard weakened)</li>
+<li>The phases</li>
+<li>Adversarial pass</li>
+<li>Appendix — Evidence files this plan produces</li></ol></div>
+
+<section class="part">
+<div class="part-head">
+<div class="kicker">Part 0</div>
+<h2>Decisions I need from Bishan</h2>
+<p class="dek">Defaults proceed; veto any row.</p>
+</div>
+<table class="avoid-break"><thead><tr><th>#</th><th>Decision</th><th>Default</th></tr></thead><tbody><tr><td>0.1</td><td><strong>The deletion list</strong> (Part 4's table).</td><td>Every row marked <code>delete</code> is deleted in LC1 after a fresh reference re-check. Rows marked <code>ask</code> wait for your word.</td></tr>
+<tr><td>0.2</td><td><strong>dummy/</strong> (your 52 screenshots, 45 MB, untracked).</td><td>KEPT until Plan A's CC5 tags (they are its evidence), then deleted. Say the word to keep them longer.</td></tr>
+<tr><td>0.3</td><td><strong>README.md rewrite.</strong> It is the public landing page of a now-public repo and says "build not started" — affirmatively false.</td><td>LC1 rewrites it: what the product is, the document map, the honesty principles, current status. ~1 page, mechanical voice.</td></tr>
+<tr><td>0.4</td><td><strong>nav-timing.spec.ts appends samples on local runs</strong>, forcing the documented <code>git checkout --</code> ritual.</td><td>Gate the append on <code>process.env.CI</code> (local runs stop dirtying evidence). This changes how evidence is collected, so it is yours to veto.</td></tr>
+<tr><td>0.5</td><td><strong>The comment verdict below</strong> — targeted compression, not a total strip.</td><td>Part 1's counter-proposal is what this plan executes. If you want the total retroactive strip anyway, say so and LC3 becomes a 3-session grind with the risk register in Part 3 accepted item by item.</td></tr></tbody></table>
+</section>
+
+<section class="part">
+<div class="part-head">
+<div class="kicker">Part 1</div>
+<h2>The comment standard (and where your instinct was wrong)</h2>
+<p class="dek"><strong>What you asked for:</strong> comment only the genuinely important; at most ONE line, TWO when truly necessary; delete restatement; keep the hard-won why. Applied retroactively everywhere.</p>
+</div>
+<p><strong>What the measurement says:</strong> the repo is ~70,500 lines and ~21,650 of them (≈30%) are comments or docstrings. But a restatement scan found only <strong>5–10 true noise comments in the entire repo</strong>. The volume is not noise — it is deliberate multi-line rationale, written under your own 2026-07-10 readability directive. The bloat is <em>verbose signal</em>, not junk. And a mass rewrite carries real, enumerated risk: six test files start with a machine-read <code>// @vitest-environment node</code> pragma; <code>eslint-disable</code> / <code>@ts-expect-error</code> / <code># noqa</code> pragmas red the gate if touched; 28 trailing <code>// 2026-07-12</code> clock comments are REQUIRED by drift rule 21's design; several file headers are governance artifacts other guards cite (verified.ts, copy.ts, paper.mjs, brand-assets.mjs, the argued skip-lists inside check-drift.mjs); and <strong>eleven drift rules match banned tokens without a comment exemption</strong>, so <em>rewording</em> a comment in a policed file can red the build even though <em>deleting</em> whole comment lines never can.</p>
+<p><strong>The professional counter-proposal (this plan's law):</strong></p>
+<ol><li><strong>New code, from the day LC1 tags:</strong> your standard, verbatim — comment only where a reader genuinely benefits; ≤1 line, 2 only when truly necessary; never restate the code; the why (honesty rationale, bug archaeology, platform quirk) always earns its place.</li>
+<li><strong>Retroactive work targets where the cost lives:</strong> the top ~25 files by comment mass hold a fifth of all comment lines and are exactly the files every session reads (job_a.py, morning.ts, copy.ts, check-drift.mjs, page.tsx, publish.py, nightly.py, schema.prisma, the big specs…). LC3 compresses those — every why survives at ≤2 lines, essays become sentences, restatement dies. The long tail (400+ files whose comments are modest and rarely read) is NOT ground through in a dedicated pass.</li>
+<li><strong>The boy-scout rule covers the tail:</strong> any session that edits a file brings that file's comments to standard in the same commit. The tail converges without ever burning a session on it.</li>
+<li><strong>The sacred list (Part 3) is never stripped or reworded</strong>, in the top-25 pass or anywhere else.</li></ol>
+<p>This gets you the actual benefit — the hot files every session pays for become half their comment weight, and no new essay is ever written again — at a tenth of the risk and cost of a total strip.</p>
+<p><strong>The CLAUDE.md amendment (LC1 writes this, dated 2026-07-15, superseding the 2026-07-10 Readability point 3; points 1, 2 and 4 stand unchanged):</strong></p>
+<blockquote class="avoid-break"><p><strong>3. Comments are one line of why.</strong> (Amended 2026-07-15 — supersedes the "every non-trivial function gets a docstring" rule; the codebase it built taught us the failure mode.) Comment only where a reader would genuinely be lost without it. One line; two only when truly necessary. Never restate what the code says. The why always earns its place: an honesty-rule rationale, a hard-won bug, a platform quirk — keep those, tightly. Machine-read pragmas, the clocks rule's derived-date comments, and file-header laws cited by guards are load-bearing and are never stripped. When you edit a file, bring its comments to this standard in the same commit.</p></blockquote>
+</section>
+
+<section class="part">
+<div class="part-head">
+<div class="kicker">Part 2</div>
+<h2>The measurements (evidence, 2026-07-15)</h2>
+
+</div>
+<table class="avoid-break"><thead><tr><th>directory</th><th>files</th><th>total lines</th><th>comment+docstring</th><th>%</th></tr></thead><tbody><tr><td>app/components</td><td>107</td><td>14,111</td><td>4,317</td><td>30.6%</td></tr>
+<tr><td>app/lib</td><td>94</td><td>13,147</td><td>4,085</td><td>31.1%</td></tr>
+<tr><td>app/app</td><td>53</td><td>6,239</td><td>1,666</td><td>26.7%</td></tr>
+<tr><td>app/scripts</td><td>15</td><td>3,871</td><td>1,554</td><td>40.1%</td></tr>
+<tr><td>app/e2e</td><td>28</td><td>5,890</td><td>2,193</td><td>37.2%</td></tr>
+<tr><td>pipeline</td><td>129</td><td>22,511</td><td>6,596</td><td>29.3%</td></tr>
+<tr><td>app/prisma</td><td>27</td><td>3,763</td><td>1,238</td><td>32.9%</td></tr></tbody></table>
+<p>Top files by comment mass (the LC3 worklist, refreshed at execution time by the same script): check-drift.mjs 478 · job_a.py 397 · copy.ts 353 · morning.ts 345 · narrate.py 327 · vrt.spec.ts 318 · nightly.py 288 · schema.prisma 286 · fixtures/news.mjs 275 · desk.spec.ts 253 · publish.py 235 · news.ts 203 · (desk)/page.tsx 199 · PipelinePanel.tsx 199 · hardening.spec.ts 189 — plus the next ten by the same measure, to ~25 files.</p>
+<p>The measuring script (comment_stats.py — full-line comments via tokenizer, docstrings via ast, string literals never miscounted) is committed in LC1 under <code>scripts/</code> in the pipeline tree as <code>pipeline/scripts/comment_stats.py</code>, so the before/after claim in LC3's evidence file is reproducible, not folklore.</p>
+</section>
+
+<section class="part">
+<div class="part-head">
+<div class="kicker">Part 3</div>
+<h2>The sacred list and the risk register (never strip, never reword)</h2>
+
+</div>
+<ol><li><strong>Machine-read pragmas:</strong> <code>// @vitest-environment node</code> (line 1 of six test files); <code>eslint-disable(-next-line)</code> (BrandMark.tsx, PipelinePanel.tsx, PipelineStrip.tsx); <code>@ts-expect-error</code> (RangeControl.test.tsx ×2); <code># noqa: …</code> (~20 pipeline sites). Stripping any of these reds lint, tsc, ruff, or flips a test's runtime.</li>
+<li><strong>Clock-rule derived dates:</strong> the 28 trailing <code>// 20xx-xx-xx</code> comments in seed.mjs, fixtures, and e2e — drift rule 21's own docstring ENCOURAGES them; they are the rule working.</li>
+<li><strong>File-header laws and argued registers:</strong> verified.ts (the E5 allow-list law), copy.ts (the Appendix J contract), fixtures/paper.mjs (rule 21 cites it as "the recording"), brand-assets.mjs's BRAND_FIELD provenance (rule 23 expects it), every argued entry inside check-drift.mjs's skip lists (P11: "argued in place" is a constitutional requirement), and the <code>run-name:</code> comment block in nightly-a.yml/nightly-b.yml (the dispatch-recovery law; test_workflow_dispatch.py guards the line it explains).</li>
+<li><strong>The eleven comment-sensitive drift rules:</strong> rules 3, 4, 5, 9, 10, 11, 13, 14, 18, 19, 20 have no comment exemption, and rules 6/24 exempt only whole-line comments. Consequence, and LC3's rule of thumb: <strong>deleting a comment line is always drift-safe; writing or rewording one is not automatically safe.</strong> Compression therefore prefers deleting lines to rewriting them, and any rewritten line in a policed file is checked against the rule list before commit.</li>
+<li><strong>Tests that read source files</strong> (the fonts display-pin from CC1, design-system checks): they match code tokens, not comments — verified — but LC3 re-runs the full unit suite per directory batch anyway, which is what actually proves it.</li></ol>
+</section>
+
+<section class="part">
+<div class="part-head">
+<div class="kicker">Part 4</div>
+<h2>The deletion table (LC1 executes <code>delete</code> rows after a fresh re-check)</h2>
+
+</div>
+<table class="avoid-break"><thead><tr><th>path</th><th>tracked</th><th>size</th><th>evidence</th><th>verdict</th></tr></thead><tbody><tr><td><code>Screenshot 2026-07-12 at 6.20.46 PM.png</code> (repo root; U+202F in name)</td><td>yes</td><td>1.3 MB</td><td>rode into a F5 feat commit; only reference is QUESTIONS-FOR-BISHANT.md:403, which itself says "delete it again and commit"</td><td><strong>delete</strong></td></tr>
+<tr><td>docs/KICKOFF-PROMPT.md</td><td>yes</td><td>12 KB</td><td>the session-1 bootstrap; the build it bootstrapped is complete; zero references</td><td><strong>delete</strong></td></tr>
+<tr><td>.github/workflows/.gitkeep</td><td>yes</td><td>0 B</td><td>directory holds five workflows</td><td><strong>delete</strong></td></tr>
+<tr><td>pipeline/adapters/fixtures/.gitkeep</td><td>yes</td><td>0 B</td><td>directory holds nine fixture trees</td><td><strong>delete</strong></td></tr>
+<tr><td>.vercel-auth-hash.tmp</td><td>no (disk)</td><td>60 B</td><td>.gitignore's own comment says "delete after deploy" (2026-07-10)</td><td><strong>delete</strong></td></tr>
+<tr><td>root node_modules/ (pixelmatch+pngjs, no root package.json)</td><td>no (disk)</td><td>small</td><td>residue of a hand-rolled VRT diff — replaced by the committed tool in LC1 (Part 5.4)</td><td><strong>delete</strong></td></tr>
+<tr><td>.DS_Store ×11 (disk only; none tracked)</td><td>no</td><td>~100 KB</td><td>OS junk</td><td><strong>delete</strong></td></tr>
+<tr><td>dummy/ (52 PNGs)</td><td>no</td><td>45 MB</td><td>Plan A's CC1–CC5 evidence</td><td><strong>ask</strong> (default: delete after CC5 tags — Part 0.2)</td></tr>
+<tr><td>README.md</td><td>yes</td><td>—</td><td>states "build not started"; omits five plan documents; the repo is public</td><td><strong>rewrite</strong> (Part 0.3)</td></tr>
+<tr><td>GATE-EFFICIENCY-ANALYSIS.md</td><td>yes</td><td>—</td><td>cited by GATE-EFFICIENCY-PLAN.md ("read it in full"), by four ci.yml comments, and by two gate-evidence files</td><td><strong>keep</strong></td></tr>
+<tr><td>FigmaDesignRef/ (1.9 MB Vite app)</td><td>yes</td><td>1.9 MB</td><td>design provenance, cited once by UI-REDESIGN-PLAN.md:22; never built or imported</td><td><strong>keep</strong> (flagged; if ever pruned, the citing line gets a dated note — and note its own CLAUDE.md/AGENTS.md can confuse tree-walking agent tooling)</td></tr>
+<tr><td>news/ (3 reference PNGs)</td><td>yes</td><td>3.3 MB</td><td>cited by NEWS-AND-CONTROL-PLAN.md:806 as the commissioned reference set</td><td><strong>keep</strong> (retained record)</td></tr>
+<tr><td>UI-LIBRARY-EVALUATION.md + its PDF + HTML</td><td>untracked</td><td>—</td><td>NEXT-SESSION-PROMPT.md:19: "a finished research deliverable, deliberately uncommitted — leave them"</td><td><strong>keep</strong></td></tr></tbody></table>
+<p>Swept and found clean (no candidates): app/public (every asset referenced), assets/ (brand master + fonts + licenses, all consumed), prisma/fixtures (all imported by seed), e2e helpers (all imported), app/components and app/lib (zero orphan modules), app/scripts (all 13 reachable), pipeline/scripts (recorder convention per the new-provider-adapter skill — but see 5.6).</p>
+</section>
+
+<section class="part">
+<div class="part-head">
+<div class="kicker">Part 5</div>
+<h2>Practice-efficiency fixes (all behavior-preserving; no guard weakened)</h2>
+
+</div>
+<ol><li><strong>One e2e session helper.</strong> <code>signIn(page)</code> is byte-identical in 15 spec files, inlined 5 more times in desk.spec.ts, and every spec repeats the USER/PASSWORD header. LC2 creates <code>app/e2e/session.ts</code> exporting <code>USER</code>, <code>PASSWORD</code>, <code>signIn</code> and rewrites all 24 specs to import it. Pure extraction; vrt's own <code>shoot()</code> mouse-parking stays untouched where it is.</li>
+<li><strong><code>waitForLayout</code> becomes importable.</strong> CLAUDE.md commands every box-measuring spec to call it, but it is a private function inside grid.spec.ts — the law currently requires copy-paste. LC2 moves it into the shared helper, exported. This <em>strengthens</em> a standing rule.</li>
+<li><strong>Guard-script plumbing dedupes.</strong> The session-cookie mint exists three times (check-nav, check-live, lighthouse-check) and manifest parsing twice each (routes manifest: check-nav + check-bundles; build manifest: check-routes + check-bundles). LC2 extracts <code>app/scripts/lib/session-cookie.mjs</code> and <code>app/scripts/lib/manifest.mjs</code>. Every assertion, threshold and rule stays inside its guard file. Proof of preservation: capture each guard's full stdout on the same built app before and after; diff must be empty.</li>
+<li><strong>The VRT candidate-diff tool gets committed once.</strong> The standing law says "diff every candidate, decode both, count differing pixels" and no tool exists — it has been re-derived by hand at least once (the orphaned root pixelmatch/pngjs prove it). LC1 commits <code>app/scripts/vrt-diff.mjs</code> (~40 lines: two dirs in, per-file changed-pixel counts out, deps in app devDependencies) and cites it from .claude/skills/vrt-update/SKILL.md. A mandatory ritual becomes cheap instead of re-derived — the opposite of weakening it.</li>
+<li><strong>One false sentence in CLAUDE.md.</strong> Endgame step 3 says the rehearsal runs "all three shards"; the oracle has four legs since PD3 (ci.yml's own matrix). LC1 corrects the word. (The constitution is otherwise out of this plan's scope, deliberately — it is the user's document.)</li>
+<li><strong>record-fixtures.yml drift.</strong> The new-provider-adapter skill says every recorder joins that workflow's steps; only 3 of 10 are steps. LC2 reconciles (add the seven, or amend the skill to say recorders run locally — executor judgment, one line in DECISIONS.md either way).</li>
+<li><strong>nav-timing local-append ritual</strong> — Part 0.4's decision; if approved, the append gates on CI and the documented checkout ritual is deleted from CLAUDE.md's e2e notes in the same commit.</li></ol>
+</section>
+
+<section class="part">
+<div class="part-head">
+<div class="kicker">Part 6</div>
+<h2>The phases</h2>
+<p class="dek">Standing gate per phase: the Endgame (CLAUDE.md) — local gate → push → confirm branch CI → rehearse when pixels or e2e are touched → tag <code>lc-N</code> by SHA → one docs commit. FIRST STEP of LC1: wire the <code>lc-*</code> tag family into ci.yml's tag filter (test_ci_tag_families.py names the expectation; push before any dispatch).</p>
+</div>
+<p><strong>LC1 — The standard, the deletions, the tool. Tag <code>lc-1</code>.</strong> CLAUDE.md amendment (Part 1's text verbatim) + the "three shards"→"four legs" correction + commit comment_stats.py + commit vrt-diff.mjs + skill citation + execute Part 4's <code>delete</code> rows (fresh <code>grep -r</code> per row first; a row that has gained a reference since 2026-07-15 is skipped and logged) + README rewrite (0.3). No pixels change; no rehearsal needed (docs+scripts push runs the normal branch CI). Evidence file: docs/lean-evidence/lc1.md with the deletion receipts (path, size, ref recheck output).</p>
+<p><strong>LC2 — Consolidation. Tag <code>lc-2</code>.</strong> Part 5.1–5.3 + 5.6 (+ 5.7 if approved). The e2e rewrite touches 24 specs — mechanical, but it IS the browser suite, so the gate includes a full rehearsal (<code>gh workflow run ci.yml -f job=e2e</code> on the exact SHA) and the guard-output before/after diffs from 5.3 land in the evidence file. VRT: no pixels should move; if any leg reds, that is a finding, not a baseline to refresh.</p>
+<p><strong>LC3 — The hot-file compression. Tag <code>lc-3</code>.</strong> The top-25 list (Part 2, refreshed), under Part 1's law and Part 3's register. Mechanics: work in four batches (app/lib+app — components — e2e+scripts — pipeline+prisma); after each batch run the comment-only PROVER plus that tree's tests before moving on. <strong>The prover</strong> (committed as pipeline/scripts/comment_prover.py, used for every batch):</p>
+<ul><li>TS/TSX/MJS: tokenize old and new with the TypeScript scanner; the non-comment token streams must be identical. Any difference = the batch is rejected, not explained.</li>
+<li>Python: <code>ast.dump</code> equality after normalizing docstrings out of both trees, PLUS an assertion that the only changed string constants ARE docstrings. (Docstring compression legitimately edits the AST; nothing else may.)</li>
+<li>prisma / css / yaml (no tokenizer): whole-line-deletion-only — every diff hunk in these files must consist of removed full-line comments or shortened comment lines; the prover checks the hunks mechanically and anything else is rejected.</li></ul>
+<p>Gate: full local gate + <code>uv run pytest</code> + one rehearsal at the end (comments do not render, but the suite proving that is the point) + before/after comment_stats.py table in the evidence file (docs/lean-evidence/lc3.md). Expected outcome, honestly stated: roughly half the comment mass in those 25 files (≈4–6k lines) with every why intact; the repo-wide percentage moves modestly — the recurring token cost of the hot files is the prize, not the global number.</p>
+</section>
+
+<section class="part">
+<div class="part-head">
+<div class="kicker">Part 7</div>
+<h2>Adversarial pass</h2>
+
+</div>
+<ol><li><strong>The prover passes but a pragma died.</strong> Pragmas are comments — token-stream equality would still pass. Counter: the prover explicitly greps the sacred patterns (Part 3.1) in old vs new and requires identical counts per file; and the gate's lint/tsc/ruff/vitest would red anyway.</li>
+<li><strong>A reworded comment trips a drift rule.</strong> Rule of thumb enforced in review: prefer deletion; any rewritten line in app/** runs check:drift before commit (it is in the local gate regardless).</li>
+<li><strong>Another session is mid-phase during LC's wide touches.</strong> The sequencing law in the cover: check PROGRESS.md + git status; explicit-path staging only; if in doubt, LC waits — hygiene never races product work.</li>
+<li><strong>Deleting KICKOFF-PROMPT orphans a citation someday.</strong> The fresh per-row re-check at execution time is the counter; a row that gained a reference is skipped and logged, never forced.</li>
+<li><strong>The e2e consolidation subtly changes login timing.</strong> signIn is byte-identical today — the import changes nothing but the byte count. The rehearsal (full four-leg oracle) is the proof, and any flake there gets read, not re-run blind (the G2 lesson).</li>
+<li><strong>Compression lobotomizes a war story the next session needed.</strong> The sacred list keeps the named laws verbatim, and compression keeps every why at ≤2 lines — shorter, not gone. The DECISIONS/LESSONS files (untouched by this plan) remain the long-form memory. If a compressed why proves too thin in practice, restoring prose is a one-file <code>git log -p</code> away — nothing is lost from history.</li></ol>
+</section>
+
+<section class="part">
+<div class="part-head">
+<div class="kicker">§</div>
+<h2>Appendix — Evidence files this plan produces</h2>
+<p class="dek">docs/lean-evidence/lc1.md (deletion receipts, README before/after, tool listings) · lc2.md (guard-output identity diffs, spec-count table, rehearsal run id) · lc3.md (comment_stats before/ after per file, prover output per batch, rehearsal run id). Each ends with the standard gate-size line, per the Endgame's rule 8.</p>
+</div>
+
+</section>
+
+</body>
+</html>
