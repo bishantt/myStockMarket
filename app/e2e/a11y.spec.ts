@@ -1,6 +1,8 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type BrowserContext, type Page } from "@playwright/test";
 
+import { signIn } from "./session";
+
 import { sweptBy } from "../lib/routes";
 import { THEME_COOKIE } from "../lib/theme";
 
@@ -43,9 +45,6 @@ import { THEME_COOKIE } from "../lib/theme";
  * theme is checking half its colours.
  */
 
-const USER = "testuser";
-const PASSWORD = "correct horse battery staple";
-
 /** Both themes. Colour is half of what axe checks, and this app has two palettes. */
 const THEMES = ["light", "dark"] as const;
 
@@ -84,14 +83,6 @@ const ROUTES = SWEPT.filter((room) => !room.seeded).map((room) => room.path);
  * the always-there list by accident.
  */
 const SEEDED_ROUTES = SWEPT.filter((room) => room.seeded).map((room) => room.path);
-
-async function signIn(page: Page) {
-  await page.goto("/login");
-  await page.getByLabel("Username").fill(USER);
-  await page.getByLabel("Password").fill(PASSWORD);
-  await page.getByRole("button", { name: "Sign in" }).click();
-  await expect(page).toHaveURL("/");
-}
 
 /**
  * Open a room, and PROVE it is the room — not an error page, and not the login wall (N7).

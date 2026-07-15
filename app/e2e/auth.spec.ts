@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { SESSION_COOKIE_NAME } from "../lib/auth";
+import { PASSWORD, signIn, USER } from "./session";
 
 /**
  * The login wall, exercised in a real browser (plan §6.2: "auth — wrong password, cookie
@@ -9,16 +10,6 @@ import { SESSION_COOKIE_NAME } from "../lib/auth";
  * The credentials come from playwright.config.ts, which starts a production build with a
  * fixture username and bcrypt hash.
  */
-
-const USER = "testuser";
-const PASSWORD = "correct horse battery staple";
-
-async function signIn(page: import("@playwright/test").Page) {
-  await page.goto("/login");
-  await page.getByLabel("Username").fill(USER);
-  await page.getByLabel("Password").fill(PASSWORD);
-  await page.getByRole("button", { name: "Sign in" }).click();
-}
 
 test("an unauthenticated visitor is sent to the login page, not the Desk", async ({ page }) => {
   await page.goto("/");

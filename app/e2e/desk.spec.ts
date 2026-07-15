@@ -1,5 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 
+import { signIn } from "./session";
+
 import { SEEDED_EVENING } from "./seeded-clock";
 
 /**
@@ -20,18 +22,11 @@ import { SEEDED_EVENING } from "./seeded-clock";
  * asserted, only the deltas and context, so a change to the seed's history length never breaks this.
  */
 
-const USER = "testuser";
-const PASSWORD = "correct horse battery staple";
-
 test.describe("Desk — the seeded morning", () => {
   test.skip(process.env.MSM_SEEDED !== "1", "needs a seeded test database (MSM_SEEDED=1)");
 
   test.beforeEach(async ({ page }) => {
-    await page.goto("/login");
-    await page.getByLabel("Username").fill(USER);
-    await page.getByLabel("Password").fill(PASSWORD);
-    await page.getByRole("button", { name: "Sign in" }).click();
-    await expect(page).toHaveURL("/");
+    await signIn(page);
   });
 
   test("the macro strip shows the S&P hero as a TRUE INDEX LEVEL, the FRED cells, and breadth", async ({ page }) => {
@@ -174,11 +169,7 @@ test.describe("The Desk, chunked", () => {
   test.skip(process.env.MSM_SEEDED !== "1", "needs a seeded test database (MSM_SEEDED=1)");
 
   test.beforeEach(async ({ page }) => {
-    await page.goto("/login");
-    await page.getByLabel("Username").fill(USER);
-    await page.getByLabel("Password").fill(PASSWORD);
-    await page.getByRole("button", { name: "Sign in" }).click();
-    await expect(page).toHaveURL("/");
+    await signIn(page);
   });
 
   /**
@@ -331,11 +322,7 @@ test.describe("C2 — every number on the Desk carries its window", () => {
   test.skip(process.env.MSM_SEEDED !== "1", "needs a seeded test database (MSM_SEEDED=1)");
 
   test.beforeEach(async ({ page }) => {
-    await page.goto("/login");
-    await page.getByLabel("Username").fill(USER);
-    await page.getByLabel("Password").fill(PASSWORD);
-    await page.getByRole("button", { name: "Sign in" }).click();
-    await expect(page).toHaveURL("/");
+    await signIn(page);
     await page.goto("/");
   });
 
@@ -398,11 +385,7 @@ test.describe("The macro board", () => {
   test.skip(process.env.MSM_SEEDED !== "1", "needs a seeded test database (MSM_SEEDED=1)");
 
   test.beforeEach(async ({ page }) => {
-    await page.goto("/login");
-    await page.getByLabel("Username").fill(USER);
-    await page.getByLabel("Password").fill(PASSWORD);
-    await page.getByRole("button", { name: "Sign in" }).click();
-    await expect(page).toHaveURL("/");
+    await signIn(page);
   });
 
   test("every cell states the window its own source published for", async ({ page }) => {
@@ -462,11 +445,7 @@ test.describe("The phone's macro grids", () => {
   test.skip(({ isMobile }) => !isMobile, "the grids only exist below md — phone project only");
 
   test.beforeEach(async ({ page }) => {
-    await page.goto("/login");
-    await page.getByLabel("Username").fill(USER);
-    await page.getByLabel("Password").fill(PASSWORD);
-    await page.getByRole("button", { name: "Sign in" }).click();
-    await expect(page).toHaveURL("/");
+    await signIn(page);
   });
 
   test("shows all five market figures and all four money stats — nothing behind a swipe", async ({ page }) => {

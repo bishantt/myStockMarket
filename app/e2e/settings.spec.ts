@@ -1,5 +1,7 @@
 import { expect, test } from "@playwright/test";
 
+import { signIn } from "./session";
+
 /**
  * Watchlist writes, end to end (plan §9.2 — the watchlist is the one thing the app itself writes).
  *
@@ -12,18 +14,11 @@ import { expect, test } from "@playwright/test";
  * row. The test cleans up after itself (it removes what it added), leaving the seed as it found it.
  */
 
-const USER = "testuser";
-const PASSWORD = "correct horse battery staple";
-
 test.describe("Watchlist management", () => {
   test.skip(process.env.MSM_SEEDED !== "1", "needs a seeded test database (MSM_SEEDED=1)");
 
   test.beforeEach(async ({ page }) => {
-    await page.goto("/login");
-    await page.getByLabel("Username").fill(USER);
-    await page.getByLabel("Password").fill(PASSWORD);
-    await page.getByRole("button", { name: "Sign in" }).click();
-    await expect(page).toHaveURL("/");
+    await signIn(page);
   });
 
   test("add a name, see it on the Desk, focus it, then remove it", async ({ page }, testInfo) => {

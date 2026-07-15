@@ -1,5 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 
+import { signIn } from "./session";
+
 import { sweptBy, type Sweep } from "../lib/routes";
 
 /**
@@ -12,9 +14,6 @@ import { sweptBy, type Sweep } from "../lib/routes";
  *
  * So the sweep walks every route and checks every control.
  */
-
-const USER = "testuser";
-const PASSWORD = "correct horse battery staple";
 
 /**
  * Every route a reader can reach — read from lib/routes-manifest.json, the ONE list of rooms (G3).
@@ -60,14 +59,6 @@ const SCROLL_ROUTES = [...always("scroll"), "/styleguide"];
  */
 const SEEDED_ROUTES = seeded("touch");
 const SEEDED_SCROLL_ROUTES = seeded("scroll");
-
-async function signIn(page: Page) {
-  await page.goto("/login");
-  await page.getByLabel("Username").fill(USER);
-  await page.getByLabel("Password").fill(PASSWORD);
-  await page.getByRole("button", { name: "Sign in" }).click();
-  await expect(page).toHaveURL("/");
-}
 
 /**
  * Open a room, and PROVE it is the room — not an error page, and not the login wall (N7).

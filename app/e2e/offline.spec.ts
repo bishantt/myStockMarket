@@ -1,5 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 
+import { PASSWORD, USER } from "./session";
+
 /**
  * Offline behaviour (plan §5.5.2, §5.2). These prove the two things that make offline SAFE and
  * HONEST: a Desk visited while connected renders from the service-worker cache when reloaded
@@ -10,9 +12,6 @@ import { expect, test, type Page } from "@playwright/test";
  * config). These run against the production build the config starts, because the worker only
  * exists in a real build.
  */
-
-const USER = "testuser";
-const PASSWORD = "correct horse battery staple";
 
 /** Sign in and land on the Desk. */
 async function signIn(page: Page) {

@@ -1,4 +1,6 @@
 import { expect, test } from "@playwright/test";
+
+import { signIn } from "./session";
 import { PAPER_DARK } from "../lib/tokens";
 import { THEME_COOKIE } from "../lib/theme";
 
@@ -18,16 +20,9 @@ import { THEME_COOKIE } from "../lib/theme";
  *      simply gone.
  */
 
-const USER = "testuser";
-const PASSWORD = "correct horse battery staple";
-
 test.describe("Midnight — one theme, every room", () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto("/login");
-    await page.getByLabel("Username").fill(USER);
-    await page.getByLabel("Password").fill(PASSWORD);
-    await page.getByRole("button", { name: "Sign in" }).click();
-    await expect(page).toHaveURL("/");
+    await signIn(page);
 
     await page.goto("/settings");
     await page.getByRole("button", { name: "Dark", exact: true }).click();

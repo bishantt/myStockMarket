@@ -1,5 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 
+import { signIn } from "./session";
+
 /**
  * The control room, end to end (N6, plan 8.7).
  *
@@ -19,17 +21,6 @@ import { expect, test, type Page } from "@playwright/test";
  * including the case where it never resolves, which is the one that could otherwise leave the reader
  * watching a spinner forever for a run that does not exist.
  */
-
-const USER = "testuser";
-const PASSWORD = "correct horse battery staple";
-
-async function signIn(page: Page) {
-  await page.goto("/login");
-  await page.getByLabel("Username").fill(USER);
-  await page.getByLabel("Password").fill(PASSWORD);
-  await page.getByRole("button", { name: "Sign in" }).click();
-  await expect(page).toHaveURL("/");
-}
 
 /** The row for one action — a list item, located by its label. */
 function actionRow(page: Page, label: string) {

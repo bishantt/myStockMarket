@@ -6,10 +6,12 @@
 #
 # It is checked in rather than deleted after use (a deliberate amendment to the skill, which was
 # written when this was a one-off): N4 needs it for the news adapters' extended fields, and gold's
-# real success fixture cannot be recorded until P-5 lands. Adding a provider means adding a step
-# here — that is the whole maintenance cost, and it is cheaper than the alternative, which this repo
-# has already paid for once: three FRED fixtures that were hand-written to LOOK recorded, and spent
-# three phases proving that the parser agreed with someone's imagination.
+# real success fixture cannot be recorded until P-5 lands. Adding a KEYED provider means adding a
+# step here — the key lives only in secrets, so its fixture can only be recorded from Actions. A
+# KEYLESS provider records from the laptop instead (the skill's rule), which is why record_erapi.py
+# and record_nrb.py have no step: neither reads a key. That is the whole maintenance cost, and it is
+# cheaper than the alternative this repo has already paid for once: three FRED fixtures that were
+# hand-written to LOOK recorded, and spent three phases proving the parser agreed with an imagination.
 #
 # Recording GoldAPI is attempted deliberately even though its key (P-5) is absent: the unkeyed 403
 # is itself a real, useful recording — it pins the route and the auth header — and the run says so
@@ -56,6 +58,43 @@ jobs:
           MARKETAUX_KEY: ${{ secrets.MARKETAUX_KEY }}
           MSM_FIXTURES_OUT: ${{ github.workspace }}/recorded
         run: uv run python scripts/record_news.py
+
+      - name: Record Alpaca (the daily bars + asset universe the P1 adapter reads)
+        env:
+          ALPACA_KEY_ID: ${{ secrets.ALPACA_KEY_ID }}
+          ALPACA_SECRET: ${{ secrets.ALPACA_SECRET }}
+          MSM_FIXTURES_OUT: ${{ github.workspace }}/recorded
+        run: uv run python scripts/record_alpaca.py
+
+      - name: Record SEC EDGAR (the submissions envelope the filings adapter parses)
+        env:
+          EDGAR_USER_AGENT: ${{ secrets.EDGAR_USER_AGENT }}
+          MSM_FIXTURES_OUT: ${{ github.workspace }}/recorded
+        run: uv run python scripts/record_edgar.py
+
+      - name: Record Finnhub (company news + the basic financial-metrics endpoint)
+        env:
+          FINNHUB_KEY: ${{ secrets.FINNHUB_KEY }}
+          MSM_FIXTURES_OUT: ${{ github.workspace }}/recorded
+        run: uv run python scripts/record_finnhub.py
+
+      - name: Record FMP (the earnings-calendar responses the P2 adapter reads)
+        env:
+          FMP_KEY: ${{ secrets.FMP_KEY }}
+          MSM_FIXTURES_OUT: ${{ github.workspace }}/recorded
+        run: uv run python scripts/record_fmp.py
+
+      - name: Record the FRED release calendar (P2's CalendarTimeline dates)
+        env:
+          FRED_KEY: ${{ secrets.FRED_KEY }}
+          MSM_FIXTURES_OUT: ${{ github.workspace }}/recorded
+        run: uv run python scripts/record_fred_calendar.py
+
+      - name: Record Marketaux (a small multi-symbol news pull)
+        env:
+          MARKETAUX_KEY: ${{ secrets.MARKETAUX_KEY }}
+          MSM_FIXTURES_OUT: ${{ github.workspace }}/recorded
+        run: uv run python scripts/record_marketaux.py
 
       - name: Upload the recordings
         uses: actions/upload-artifact@v4

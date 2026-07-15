@@ -50,8 +50,9 @@
  * and the standing gate has run the gating form ever since.
  */
 
-import { existsSync, readFileSync, readdirSync, statSync, appendFileSync, mkdirSync } from "node:fs";
-import { join, relative } from "node:path";
+import { existsSync, readFileSync, appendFileSync, mkdirSync } from "node:fs";
+import { join } from "node:path";
+import { routeInventory } from "./lib/manifest.mjs";
 
 const ROOT = process.cwd();
 const NEXT = join(ROOT, ".next");
@@ -88,41 +89,6 @@ if (!existsSync(NEXT)) {
 }
 
 const prerender = JSON.parse(readFileSync(join(NEXT, "prerender-manifest.json"), "utf8"));
-const appPaths = JSON.parse(readFileSync(join(NEXT, "app-path-routes-manifest.json"), "utf8"));
-
-/**
- * Every page.tsx in the tree, as the URL path it actually serves.
- *
- * We walk the filesystem rather than trusting the manifest alone, because the failure we fear is
- * a route that exists and is dynamic — and a purely manifest-driven inventory would happily
- * report "all routes cached" about a set that quietly excluded the broken one.
- */
-function routeInventory() {
-  const pages = [];
-  const walk = (dir) => {
-    for (const entry of readdirSync(dir)) {
-      const full = join(dir, entry);
-      if (statSync(full).isDirectory()) {
-        if (entry === "node_modules" || entry === ".next") continue;
-        walk(full);
-      } else if (entry === "page.tsx") {
-        pages.push(relative(join(ROOT, "app"), full));
-      }
-    }
-  };
-  walk(join(ROOT, "app"));
-
-  // "(desk)/scans/page.tsx" → the app-router key "/(desk)/scans/page" → the served path "/scans".
-  // The route-group parentheses do not appear in the URL, and the manifest is the authority on
-  // that mapping, so we ask it rather than re-deriving the rule here.
-  return pages
-    .map((file) => {
-      const key = "/" + file.replace(/\.tsx$/, "");
-      return { file: `app/${file}`, route: appPaths[key] ?? null, key };
-    })
-    .filter((r) => r.route !== null)
-    .sort((a, b) => a.route.localeCompare(b.route));
-}
 
 /** The `export const revalidate = N` a page declares, or null if it declares none. */
 function declaredRevalidate(file) {
@@ -174,7 +140,7 @@ function verdictFor(route, file) {
   return { ok: false, how: "dynamic — re-rendered on every request" };
 }
 
-const inventory = routeInventory();
+const inventory = routeInventory(ROOT);
 const product = inventory.filter((r) => !NOT_PRODUCT.test(r.route));
 const controls = inventory.filter((r) => NOT_PRODUCT.test(r.route));
 

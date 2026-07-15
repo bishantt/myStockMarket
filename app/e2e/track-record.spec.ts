@@ -1,4 +1,6 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test } from "@playwright/test";
+
+import { signIn } from "./session";
 
 /**
  * The track record (APP-FEEL-PLAN §4.4).
@@ -11,17 +13,6 @@ import { expect, test, type Page } from "@playwright/test";
  *   · the outcome word is IN the chip, so a miss reads as a miss without relying on hue (P7);
  *   · and it is the same table, at the same weight, as the hits.
  */
-
-const USER = "testuser";
-const PASSWORD = "correct horse battery staple";
-
-async function signIn(page: Page) {
-  await page.goto("/login");
-  await page.getByLabel("Username").fill(USER);
-  await page.getByLabel("Password").fill(PASSWORD);
-  await page.getByRole("button", { name: "Sign in" }).click();
-  await expect(page).toHaveURL("/");
-}
 
 test.describe("Track record", () => {
   test.skip(process.env.MSM_SEEDED !== "1", "needs a seeded test database (MSM_SEEDED=1)");

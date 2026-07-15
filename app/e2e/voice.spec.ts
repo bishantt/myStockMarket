@@ -1,4 +1,6 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test } from "@playwright/test";
+
+import { signIn } from "./session";
 
 /**
  * voice.spec.ts — the richness kit, proven in a real browser (PD5, plan §8.6).
@@ -18,17 +20,6 @@ import { expect, test, type Page } from "@playwright/test";
  * And one navigation guarantee: a TickerChip is a DOOR, and going back through it must return the
  * reader to where they were reading — the bfcache sanity check that Part 11's overlay will lean on.
  */
-
-const USER = "testuser";
-const PASSWORD = "correct horse battery staple";
-
-async function signIn(page: Page) {
-  await page.goto("/login");
-  await page.getByLabel("Username").fill(USER);
-  await page.getByLabel("Password").fill(PASSWORD);
-  await page.getByRole("button", { name: "Sign in" }).click();
-  await expect(page).toHaveURL("/");
-}
 
 test.describe("the voice — glossary doorways on the Desk", () => {
   test.skip(process.env.MSM_SEEDED !== "1", "needs a seeded test database (MSM_SEEDED=1)");

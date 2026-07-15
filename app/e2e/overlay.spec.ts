@@ -1,5 +1,7 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
 
+import { signIn } from "./session";
+
 /**
  * The detail sheet — the @modal overlay (POLISH-AND-DEPTH-PLAN Part 11, PD9).
  *
@@ -19,17 +21,6 @@ import { expect, test, type Locator, type Page } from "@playwright/test";
  * A PHONE SPEC by nature — the sheet is the phone presentation, and the overscroll pull is a touch
  * gesture. The beforeEach skips any other project so a desktop leg cannot mis-measure it.
  */
-
-const USER = "testuser";
-const PASSWORD = "correct horse battery staple";
-
-async function signIn(page: Page) {
-  await page.goto("/login");
-  await page.getByLabel("Username").fill(USER);
-  await page.getByLabel("Password").fill(PASSWORD);
-  await page.getByRole("button", { name: "Sign in" }).click();
-  await expect(page).toHaveURL("/");
-}
 
 /**
  * Open a seeded story from the feed and return the launcher link, so the caller can assert focus

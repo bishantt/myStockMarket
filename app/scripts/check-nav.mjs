@@ -35,7 +35,8 @@
 import { appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { createHash } from "node:crypto";
-import { SignJWT } from "jose";
+import { readRoutesManifest } from "./lib/manifest.mjs";
+import { mintSessionCookie } from "./lib/session-cookie.mjs";
 
 const TARGET = (process.argv.find((a) => a.startsWith("https://")) ?? "https://mystockmarket-eight.vercel.app").replace(/\/$/, "");
 const REPORT = process.argv.includes("--report");
@@ -67,7 +68,7 @@ const SAMPLES = 5;
  *   none    — not probed, and the manifest's note says why (today: /offline, which is by definition
  *             the page you get when the network did not work)
  */
-const manifest = JSON.parse(readFileSync(join(process.cwd(), "lib", "routes-manifest.json"), "utf8"));
+const manifest = readRoutesManifest();
 const rooms = manifest.routes;
 
 const PRODUCT_ROUTES = rooms
@@ -109,24 +110,12 @@ const EVIDENCE = join(process.cwd(), "..", "docs", "feel-evidence");
 const FINGERPRINT_FILE = join(EVIDENCE, ".deployed-build");
 
 const secret = process.env.AUTH_COOKIE_SECRET;
-const username = process.env.AUTH_USER ?? "bishantt";
 if (!secret) {
   console.error("AUTH_COOKIE_SECRET is not set. Export it — it must match the target deployment's secret.");
   process.exit(2);
 }
 
-/** Mint a session cookie identical to lib/auth.createSessionToken, so the login wall lets us in. */
-async function mintCookie() {
-  const key = new TextEncoder().encode(secret);
-  const iat = Math.floor(Date.now() / 1000);
-  const token = await new SignJWT({ username })
-    .setProtectedHeader({ alg: "HS256" })
-    .setIssuedAt(iat)
-    .setExpirationTime(iat + 30 * 24 * 60 * 60)
-    .sign(key);
-  return `msm_session=${token}`;
-}
-const cookie = await mintCookie();
+const cookie = await mintSessionCookie(secret);
 
 /**
  * A fingerprint of the deployed build: the hashed set of JavaScript chunks the login page asks

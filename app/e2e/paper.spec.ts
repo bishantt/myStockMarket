@@ -1,5 +1,7 @@
 import { expect, test } from "@playwright/test";
 
+import { signIn } from "./session";
+
 /**
  * Journey 7 — the paper desk: the entry form, the sizing helper, and the cooling-off interstitial
  * that fires when an order follows a just-seen signal (plan §7 P6 acceptance). Behind the login wall.
@@ -9,16 +11,9 @@ import { expect, test } from "@playwright/test";
  * trades, so in CI these journeys run against a populated ledger and must keep passing anyway.)
  */
 
-const USER = "testuser";
-const PASSWORD = "correct horse battery staple";
-
 test.describe("The paper desk", () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto("/login");
-    await page.getByLabel("Username").fill(USER);
-    await page.getByLabel("Password").fill(PASSWORD);
-    await page.getByRole("button", { name: "Sign in" }).click();
-    await expect(page).toHaveURL("/");
+    await signIn(page);
   });
 
   test("the paper desk shows the cost mirror and the sizing helper", async ({ page }) => {
@@ -56,11 +51,7 @@ test.describe("The paper desk", () => {
  */
 test.describe("The ticket", () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto("/login");
-    await page.getByLabel("Username").fill(USER);
-    await page.getByLabel("Password").fill(PASSWORD);
-    await page.getByRole("button", { name: "Sign in" }).click();
-    await expect(page).toHaveURL("/");
+    await signIn(page);
   });
 
   test("SIDE HAS NO DEFAULT — neither Buy nor Sell is pressed on arrival (M9)", async ({ page }) => {

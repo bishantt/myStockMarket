@@ -1,4 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
+
+import { signIn } from "./session";
 import { appendFileSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
 
@@ -61,17 +63,6 @@ const DESTINATIONS = [
 ] as const;
 
 const SAMPLES = 8; // the first is discarded — it carries first-compile and warm-up noise
-
-const USER = "testuser";
-const PASSWORD = "correct horse battery staple";
-
-async function signIn(page: Page) {
-  await page.goto("/login");
-  await page.getByLabel("Username").fill(USER);
-  await page.getByLabel("Password").fill(PASSWORD);
-  await page.getByRole("button", { name: "Sign in" }).click();
-  await expect(page).toHaveURL("/");
-}
 
 /**
  * Watch for layout shift during the navigation we are about to make (B5).

@@ -1,5 +1,7 @@
 import { expect, test } from "@playwright/test";
 
+import { signIn } from "./session";
+
 /**
  * The ticker's range control (NEWS-AND-CONTROL-PLAN Part 5.4).
  *
@@ -14,18 +16,11 @@ import { expect, test } from "@playwright/test";
  * somebody checks that nothing got slow. So: route interception, and the assertion is zero.
  */
 
-const USER = "testuser";
-const PASSWORD = "correct horse battery staple";
-
 test.describe("the ticker's range control", () => {
   test.skip(process.env.MSM_SEEDED !== "1", "needs a seeded test database (MSM_SEEDED=1)");
 
   test.beforeEach(async ({ page }) => {
-    await page.goto("/login");
-    await page.getByLabel("Username").fill(USER);
-    await page.getByLabel("Password").fill(PASSWORD);
-    await page.getByRole("button", { name: "Sign in" }).click();
-    await expect(page).toHaveURL("/");
+    await signIn(page);
   });
 
   test("switching the range fetches NOTHING — the data is already here", async ({ page }) => {

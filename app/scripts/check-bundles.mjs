@@ -26,10 +26,11 @@
  *      npm run check:bundles -- --report    appends the table to docs/feel-evidence/bundles.md
  */
 
-import { existsSync, readFileSync, readdirSync, statSync, appendFileSync, mkdirSync } from "node:fs";
-import { join, relative } from "node:path";
+import { existsSync, readFileSync, appendFileSync, mkdirSync } from "node:fs";
+import { join } from "node:path";
 import { gzipSync } from "node:zlib";
 import { createContext, runInContext } from "node:vm";
+import { readRoutesManifest, routeInventory } from "./lib/manifest.mjs";
 
 const ROOT = process.cwd();
 const NEXT = join(ROOT, ".next");
@@ -214,7 +215,7 @@ const NOT_A_PRODUCT_ROOM = {
 };
 
 function reconcileWithTheManifest() {
-  const manifest = JSON.parse(readFileSync(join(ROOT, "lib", "routes-manifest.json"), "utf8"));
+  const manifest = readRoutesManifest(ROOT);
   const families = manifest.routes.map((r) => r.family);
   const baselined = Object.keys(BASELINE_KB);
 
@@ -247,7 +248,6 @@ if (!existsSync(NEXT)) {
   process.exit(2);
 }
 
-const appPaths = JSON.parse(readFileSync(join(NEXT, "app-path-routes-manifest.json"), "utf8"));
 const buildManifest = JSON.parse(readFileSync(join(NEXT, "build-manifest.json"), "utf8"));
 
 /** Gzipped size of a built asset, in bytes. Missing files count as 0 and are named in the output. */
@@ -291,30 +291,6 @@ function scriptsFromManifest(manifestFile, manifestKey) {
   return set;
 }
 
-/** Every page.tsx mapped to the URL it serves (same inventory rule as check-routes.mjs). */
-function routeInventory() {
-  const pages = [];
-  const walk = (dir) => {
-    for (const entry of readdirSync(dir)) {
-      const full = join(dir, entry);
-      if (statSync(full).isDirectory()) {
-        if (entry === "node_modules" || entry === ".next") continue;
-        walk(full);
-      } else if (entry === "page.tsx") {
-        pages.push(relative(join(ROOT, "app"), full));
-      }
-    }
-  };
-  walk(join(ROOT, "app"));
-  return pages
-    .map((file) => {
-      const key = "/" + file.replace(/\.tsx$/, "");
-      return { route: appPaths[key] ?? null, key };
-    })
-    .filter((r) => r.route && !/^\/(_not-found|_global-error)/.test(r.route))
-    .sort((a, b) => a.route.localeCompare(b.route));
-}
-
 /** Where a route's prerendered HTML would sit, if it was prerendered at all. */
 function htmlPathFor(route) {
   const name = route === "/" ? "index" : route.replace(/^\//, "");
@@ -322,7 +298,7 @@ function htmlPathFor(route) {
 }
 
 const rows = [];
-for (const { route, key } of routeInventory()) {
+for (const { route, key } of routeInventory(ROOT).filter((r) => !/^\/(_not-found|_global-error)/.test(r.route))) {
   const html = htmlPathFor(route);
   let scripts;
   let exact;

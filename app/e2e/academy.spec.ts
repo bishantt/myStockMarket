@@ -1,20 +1,15 @@
 import { expect, test } from "@playwright/test";
 
+import { signIn } from "./session";
+
 /**
  * Journey — the Academy room opens, a lesson reads, and the return rail leads home (plan §9.3, P5).
  * Behind the same login wall as the Desk; no seeded database needed (lessons are files).
  */
 
-const USER = "testuser";
-const PASSWORD = "correct horse battery staple";
-
 test.describe("The Academy", () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto("/login");
-    await page.getByLabel("Username").fill(USER);
-    await page.getByLabel("Password").fill(PASSWORD);
-    await page.getByRole("button", { name: "Sign in" }).click();
-    await expect(page).toHaveURL("/");
+    await signIn(page);
   });
 
   test("the curriculum map lists the M0 lessons and a lesson reads", async ({ page }) => {

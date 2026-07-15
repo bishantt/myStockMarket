@@ -1,4 +1,6 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test } from "@playwright/test";
+
+import { signIn } from "./session";
 
 /**
  * The Front Page (NEWS-AND-CONTROL-PLAN Part 7.7, 7.8).
@@ -19,17 +21,6 @@ import { expect, test, type Page } from "@playwright/test";
  * Seeded-only: 14 clusters across 7 catalyst types, 45 articles, one cluster with a gate-dropped
  * narrative, and one cluster from the prior session (so Today and This week actually differ).
  */
-
-const USER = "testuser";
-const PASSWORD = "correct horse battery staple";
-
-async function signIn(page: Page) {
-  await page.goto("/login");
-  await page.getByLabel("Username").fill(USER);
-  await page.getByLabel("Password").fill(PASSWORD);
-  await page.getByRole("button", { name: "Sign in" }).click();
-  await expect(page).toHaveURL("/");
-}
 
 test.describe("The Front Page", () => {
   test.skip(process.env.MSM_SEEDED !== "1", "needs a seeded test database (MSM_SEEDED=1)");

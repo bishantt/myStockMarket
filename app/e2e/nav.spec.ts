@@ -1,5 +1,7 @@
 import { expect, test } from "@playwright/test";
 
+import { signIn } from "./session";
+
 /**
  * Navigation — the desktop top bar and the phone's bottom tab bar (D2).
  *
@@ -10,17 +12,6 @@ import { expect, test } from "@playwright/test";
  * The regression cover from the original iPhone bugs stays: the active room must track the route
  * (Scans used not to highlight), and no page may ever scroll sideways.
  */
-
-const USER = "testuser";
-const PASSWORD = "correct horse battery staple";
-
-async function signIn(page: import("@playwright/test").Page) {
-  await page.goto("/login");
-  await page.getByLabel("Username").fill(USER);
-  await page.getByLabel("Password").fill(PASSWORD);
-  await page.getByRole("button", { name: "Sign in" }).click();
-  await expect(page).toHaveURL("/");
-}
 
 test.describe("Navigation", () => {
   test.beforeEach(async ({ page }) => {

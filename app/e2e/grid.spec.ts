@@ -1,5 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 
+import { waitForLayout } from "./layout";
+import { signIn } from "./session";
 import { applyThinNight } from "./thin-night";
 
 /**
@@ -22,9 +24,6 @@ import { applyThinNight } from "./thin-night";
  * So these tests measure BOUNDING BOXES — where things actually ARE on the screen. That is the only
  * thing a reader ever experiences, and it is the only thing worth asserting about a layout.
  */
-
-const USER = "testuser";
-const PASSWORD = "correct horse battery staple";
 
 /** The width at which the spread engages (`lg`). Below it: one column, and the full ritual. */
 const SPREAD_AT = 1024;
@@ -60,14 +59,6 @@ type Station = { index: number; top: number; bottom: number; left: number };
 const MAIN_STATIONS = '[data-column="main"] > *';
 const RAIL_STATIONS = '[data-column="rail"] > *';
 
-async function signIn(page: Page) {
-  await page.goto("/login");
-  await page.getByLabel("Username").fill(USER);
-  await page.getByLabel("Password").fill(PASSWORD);
-  await page.getByRole("button", { name: "Sign in" }).click();
-  await expect(page).toHaveURL("/");
-}
-
 /**
  * Measure the stations a selector names.
  *
@@ -79,34 +70,6 @@ async function signIn(page: Page) {
  * single wrapper that the main column positions, and the three cards inside it have their own little
  * grid. It takes its index from the first masthead in it, which is 07.
  */
-/**
- * WAIT FOR THE PAGE TO BE STYLED BEFORE MEASURING IT (PD4) — this is a bug fix, not a precaution.
- *
- * Every assertion in this file is a BOUNDING BOX, and a bounding box read before the stylesheet lands
- * is a measurement of unstyled HTML: every block element starts at x = 0, so both columns report
- * `left: 0` and the rail is, technically, not to the right of the main column.
- *
- * That is exactly how this file failed in CI — `mainRight: 0`, `railLeft: 0`, on a Desk that was
- * perfectly fine. It reproduced on the retry and not at all locally, because it is a RACE and CI is a
- * slower machine. `page.goto()` resolves on `load`, which does not guarantee that the CSSOM has been
- * applied to a layout this test then forces.
- *
- * The tokens are the honest signal: `--color-paper` is defined in globals.css and is an empty string
- * until that stylesheet is in effect. Fonts come next, because every height in this file (the dead
- * gap, the empty band) depends on text having its real metrics.
- *
- * PD3's law says layout is asserted in bounding boxes. PD4's corollary: **a bounding box is only
- * evidence once the thing that decides it has arrived.**
- */
-async function waitForLayout(page: Page) {
-  await page.waitForFunction(
-    () => getComputedStyle(document.documentElement).getPropertyValue("--color-paper").trim() !== "",
-    undefined,
-    { timeout: 15_000 },
-  );
-  await page.evaluate(() => document.fonts.ready);
-}
-
 async function stations(page: Page, selector: string): Promise<Station[]> {
   await waitForLayout(page);
 

@@ -1,4 +1,6 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test } from "@playwright/test";
+
+import { signIn } from "./session";
 
 /**
  * The scans room (APP-FEEL-PLAN §4.2).
@@ -17,17 +19,6 @@ import { expect, test, type Page } from "@playwright/test";
  * Seeded-only, like the other data journeys: the fixture is 32 unusual-volume matches (two pages at
  * 25), with the lottery-risk and null-metric rows deliberately below the movers' cut.
  */
-
-const USER = "testuser";
-const PASSWORD = "correct horse battery staple";
-
-async function signIn(page: Page) {
-  await page.goto("/login");
-  await page.getByLabel("Username").fill(USER);
-  await page.getByLabel("Password").fill(PASSWORD);
-  await page.getByRole("button", { name: "Sign in" }).click();
-  await expect(page).toHaveURL("/");
-}
 
 test.describe("Scans", () => {
   test.skip(process.env.MSM_SEEDED !== "1", "needs a seeded test database (MSM_SEEDED=1)");

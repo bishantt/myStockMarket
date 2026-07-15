@@ -27,7 +27,7 @@
 
 import { appendFileSync, existsSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
-import { SignJWT } from "jose";
+import { mintSessionCookie } from "./lib/session-cookie.mjs";
 import { checkLive } from "./live-truth.mjs";
 
 const TARGET = (process.argv.find((a) => a.startsWith("https://"))
@@ -39,18 +39,6 @@ if (!secret) {
   console.error("AUTH_COOKIE_SECRET is not set. Export it — it must match the target deployment's secret.");
   console.error("(It is in the repo-root .env: `set -a; source .env; set +a`.)");
   process.exit(2);
-}
-
-/** Mint a session cookie identical to lib/auth.createSessionToken, so the login wall lets us in. */
-async function mintCookie() {
-  const key = new TextEncoder().encode(secret);
-  const iat = Math.floor(Date.now() / 1000);
-  const token = await new SignJWT({ username: process.env.AUTH_USER ?? "bishantt" })
-    .setProtectedHeader({ alg: "HS256" })
-    .setIssuedAt(iat)
-    .setExpirationTime(iat + 60 * 60)
-    .sign(key);
-  return `msm_session=${token}`;
 }
 
 async function fetchPage(cookie, path) {
@@ -69,7 +57,7 @@ async function fetchPage(cookie, path) {
   return res.text();
 }
 
-const cookie = await mintCookie();
+const cookie = await mintSessionCookie(secret, { ttlSeconds: 60 * 60 });
 const [deskHtml, newsHtml] = await Promise.all([fetchPage(cookie, "/"), fetchPage(cookie, "/news")]);
 
 const now = new Date();

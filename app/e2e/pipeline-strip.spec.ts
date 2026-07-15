@@ -1,5 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 
+import { signIn } from "./session";
+
 /**
  * The pipeline strip's three states, driven by a fake clock (NEWS-AND-CONTROL-PLAN Part 4.4).
  *
@@ -26,9 +28,6 @@ import { expect, test, type Page } from "@playwright/test";
  * edition.
  */
 
-const USER = "testuser";
-const PASSWORD = "correct horse battery staple";
-
 /**
  * The app's OWN alert, and not the framework's.
  *
@@ -41,14 +40,6 @@ const PASSWORD = "correct horse battery staple";
  */
 const appAlert = (page: Page) =>
   page.locator('[role="alert"]:not([id="__next-route-announcer__"])');
-
-async function signIn(page: Page) {
-  await page.goto("/login");
-  await page.getByLabel("Username").fill(USER);
-  await page.getByLabel("Password").fill(PASSWORD);
-  await page.getByRole("button", { name: "Sign in" }).click();
-  await expect(page).toHaveURL("/");
-}
 
 const MONTHS = [
   "January", "February", "March", "April", "May", "June",

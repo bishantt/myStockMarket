@@ -1,5 +1,7 @@
 import { expect, test } from "@playwright/test";
 
+import { signIn } from "./session";
+
 /**
  * Journey — the evening briefing renders, cites its sources, and the PM journal writes (plan §6.2,
  * P3). The unit tests prove the parser and view-model; this proves the whole path: a real browser
@@ -11,18 +13,11 @@ import { expect, test } from "@playwright/test";
  * without the flag the group skips. Every asserted string is a literal from the seeded briefing.
  */
 
-const USER = "testuser";
-const PASSWORD = "correct horse battery staple";
-
 test.describe("Daily brief — the seeded evening briefing", () => {
   test.skip(process.env.MSM_SEEDED !== "1", "needs a seeded test database (MSM_SEEDED=1)");
 
   test.beforeEach(async ({ page }) => {
-    await page.goto("/login");
-    await page.getByLabel("Username").fill(USER);
-    await page.getByLabel("Password").fill(PASSWORD);
-    await page.getByRole("button", { name: "Sign in" }).click();
-    await expect(page).toHaveURL("/");
+    await signIn(page);
   });
 
   test("the brief shows the Today's-focus headline and the labeled item slots", async ({ page }) => {

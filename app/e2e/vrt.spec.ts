@@ -1,5 +1,6 @@
 import { expect, test, type APIRequestContext, type Page } from "@playwright/test";
 import { VRT_ROOMS } from "../lib/routes";
+import { signIn } from "./session";
 import { THEME_COOKIE } from "../lib/theme";
 import { VRT_RESET_SECRET } from "../playwright.config";
 import { SEEDED_EVENING } from "./seeded-clock";
@@ -28,9 +29,6 @@ import { applyThinNight } from "./thin-night";
  * `npx playwright test --ignore-snapshots` locally, or regenerate a local set knowingly.
  */
 
-const USER = "testuser";
-const PASSWORD = "correct horse battery staple";
-
 /**
  * THE LAYOUT-ONLY PROJECTS — `wide` (1536) and `mbp16` (1512), the two viewports that exist to lock
  * a GRID rather than a palette.
@@ -52,14 +50,6 @@ const locksLayoutOnly = (testInfo: { project: { name: string } }) =>
 test.use({ contextOptions: { reducedMotion: "reduce" } });
 
 /** Sign in. Every surface in this app is behind the login wall, including the styleguide. */
-async function signIn(page: Page) {
-  await page.goto("/login");
-  await page.getByLabel("Username").fill(USER);
-  await page.getByLabel("Password").fill(PASSWORD);
-  await page.getByRole("button", { name: "Sign in" }).click();
-  await expect(page).toHaveURL("/");
-}
-
 /**
  * Wait until the page's real fonts are on screen — not merely until the browser says it is idle.
  *

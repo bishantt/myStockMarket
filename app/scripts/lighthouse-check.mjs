@@ -21,7 +21,7 @@ import { execFileSync } from "node:child_process";
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { SignJWT } from "jose";
+import { mintSessionCookie } from "./lib/session-cookie.mjs";
 
 const BUDGETS = {
   performance: 90, // score, >=
@@ -39,7 +39,6 @@ const ADVISORY = new Set(["performance", "lcp"]);
 
 const target = (process.argv[2] ?? "https://mystockmarket-eight.vercel.app").replace(/\/$/, "");
 const secret = process.env.AUTH_COOKIE_SECRET;
-const username = process.env.AUTH_USER ?? "bishantt";
 
 if (!secret) {
   console.error("AUTH_COOKIE_SECRET is not set. Export it (it must match the target deployment).");
@@ -50,22 +49,10 @@ if (!process.env.CHROME_PATH) {
   process.exit(2);
 }
 
-/** Mint a session cookie identical to lib/auth.createSessionToken so the Desk is reachable. */
-async function mintCookie() {
-  const key = new TextEncoder().encode(secret);
-  const iat = Math.floor(Date.now() / 1000);
-  const token = await new SignJWT({ username })
-    .setProtectedHeader({ alg: "HS256" })
-    .setIssuedAt(iat)
-    .setExpirationTime(iat + 30 * 24 * 60 * 60)
-    .sign(key);
-  return `msm_session=${token}`;
-}
-
 const work = mkdtempSync(join(tmpdir(), "msm-lh-"));
 try {
   const headersFile = join(work, "headers.json");
-  writeFileSync(headersFile, JSON.stringify({ Cookie: await mintCookie() }));
+  writeFileSync(headersFile, JSON.stringify({ Cookie: await mintSessionCookie(secret) }));
   const reportFile = join(work, "report.json");
 
   console.log(`Lighthouse (mobile, authenticated) → ${target}/`);

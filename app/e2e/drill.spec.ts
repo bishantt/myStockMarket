@@ -1,5 +1,7 @@
 import { expect, test } from "@playwright/test";
 
+import { signIn } from "./session";
+
 /**
  * Journey 2 — drill & return (plan §6.3, §3.6). A watchlist row opens the rail WITHOUT a route
  * change; Esc closes it and leaves you where you were; "Open full view" now opens the ticker SHEET
@@ -12,18 +14,11 @@ import { expect, test } from "@playwright/test";
  * parallel safely.
  */
 
-const USER = "testuser";
-const PASSWORD = "correct horse battery staple";
-
 test.describe("Drill & return", () => {
   test.skip(process.env.MSM_SEEDED !== "1", "needs a seeded test database (MSM_SEEDED=1)");
 
   test.beforeEach(async ({ page }) => {
-    await page.goto("/login");
-    await page.getByLabel("Username").fill(USER);
-    await page.getByLabel("Password").fill(PASSWORD);
-    await page.getByRole("button", { name: "Sign in" }).click();
-    await expect(page).toHaveURL("/");
+    await signIn(page);
   });
 
   test("a watchlist row opens the rail without a route change, and Esc closes it", async ({ page }) => {
