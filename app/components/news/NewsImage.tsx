@@ -1,67 +1,41 @@
 import Image from "next/image";
 
-import { catalystLabel } from "@/lib/news";
 import type { NewsCardImage } from "@/lib/news";
 import { cx } from "@/lib/cx";
 
 /**
- * NewsImage — the ONE component in this app allowed to render a news visual (plan 7.9).
+ * NewsImage — the ONE component in this app allowed to render a news visual (plan 7.9, drift rule 20).
  *
  * The imagery drift rule points here: no other `<img>` or `next/image` may reference the media
  * bucket. One door in, so the etiquette (fetched at ingest, never hotlinked at render), the
- * attribution and the zero-layout-shift contract are kept in one file rather than remembered in
- * five.
+ * attribution and the zero-layout-shift contract are kept in one file rather than remembered in five.
  *
- * THE LADDER, AND WHY ITS BOTTOM RUNGS ARE THE POINT.
+ * IT RENDERS A REAL STORED IMAGE, OR NOTHING (CC5, R4). Two rungs only:
  *
  *   L1  the publisher's own image, delivered through the news API we license
  *   L2  og:image / twitter:image, fetched from the article page at ingest
- *   L3  the publisher identity card — the outlet's mark on a designed ground
- *   L4  the catalyst identity card — the event's own name, set large
  *
- * L1 and L2 are stored rows and arrive as `image`. L3 and L4 are built here, from tokens, and they
- * are FIRST-CLASS OUTCOMES rather than empty states: same geometry, same frame, same visual weight
- * as a photograph. A text-treatment card sitting next to a photo card must read as an editorial
- * choice, not as a hole where a picture failed to load. Every card ships a visual; there is no
- * failure state on this page.
+ * Both are stored rows and arrive as `image`. A card with no stored image renders NO image frame at
+ * all — the room is text-first now, and the headline is the visual. The generated catalyst/publisher
+ * cards (the old L3/L4 rungs) are GONE: after weeks of nothing-but-L4 nights, a grey slab carrying
+ * the catalyst word — taller than the headline it sat above — was an eye-magnet that said nothing the
+ * card's own tag did not (R4 retires it; the finding amended UI-REDESIGN §7.7/7.9's "every card ships
+ * a visual"). The caller decides when to render this: NewsImage is only mounted when a real image
+ * exists, so its prop is non-null by construction.
  *
- * TODAY, ALMOST EVERY CARD IS L4, AND THAT IS NOT A BUG. The media bucket does not exist yet
- * (provisioning row P-1), so the pipeline stores no images and records `news-images:
- * not_configured` on every run. Every article in the recorded feed DID carry a publisher image
- * (160 of 160), so L1 will answer for nearly every card the moment a bucket exists — which is a
- * secret and one environment variable, not a code change. The rungs below it are built properly
- * because they have to carry the room until then, and because the night a publisher serves nothing
- * they carry it again.
- *
- * L3 IS BUILT AND DORMANT. A favicon must be fetched once per domain into our own bucket, with the
- * same etiquette as any other image — so hotlinking one at render is exactly what 7.9 forbids, and
- * without the bucket there is nowhere to keep it. The branch exists, the styleguide exercises it,
- * and it lights up on its own the day P-1 lands. This is a latch, not dead code.
- *
- * ON COLOUR (a deliberate amendment to the plan's "sector-tinted wash"). The plan tints the
- * generated card by sector. Twelve sector hues is twelve new colours whose only job is decoration,
- * and the design law this app is built on says colour is scarce and always means something
- * (UI-REDESIGN-PLAN, which outranks the plan on looks). A reader cannot learn twelve hues, so they
- * would carry no meaning and would only add noise beside the two colours that DO mean something
- * here — up and down. So the ground is one restrained wash in both themes, and the card is
- * distinguished by TYPOGRAPHY: the catalyst's own word, set large in the display serif, with the
- * tickers in mono beneath it. Deterministic from (eventType, tickers), so the pixel oracle can lock
- * it.
+ * TODAY, ALMOST NO CARD HAS AN IMAGE, AND THAT IS THE DESIGN TARGET. The media bucket does not exist
+ * yet (provisioning row P-1), so the pipeline stores no images and records `news-images:
+ * not_configured` on every run. Every article in the recorded feed DID carry a publisher image (160
+ * of 160), so L1 will answer for nearly every card the moment a bucket exists — which is a secret and
+ * one environment variable, not a code change.
  */
 
 /** The three slots a news visual is rendered into, and the geometry each one owes. */
 type Slot = "lead" | "thumb" | "story";
 
 type NewsImageProps = {
-  /** The stored image (L1/L2), or null to fall to the generated rungs. */
-  image: NewsCardImage | null;
-  eventType: string;
-  tickers: string[];
-  /**
-   * The outlet, for L3. Today this is always null in the room: a favicon lives in the media bucket,
-   * and there is no bucket (P-1). The styleguide passes one so the rung is exercised and locked.
-   */
-  favicon?: { url: string; source: string } | null;
+  /** A real stored image (L1/L2). The caller only mounts NewsImage when one exists, so never null. */
+  image: NewsCardImage;
   slot: Slot;
   /** The lead card is the only thing above the fold by definition, so it is the only eager one. */
   eager?: boolean;
@@ -75,7 +49,7 @@ type NewsImageProps = {
  * page looks perfect and quietly ships a 1200px file into a 112px box.
  */
 const SIZES: Record<Slot, string> = {
-  lead: "(min-width: 1024px) 720px, 100vw",
+  lead: "(min-width: 1024px) 520px, 100vw",
   thumb: "112px",
   story: "(min-width: 1024px) 720px, 100vw",
 };
@@ -83,21 +57,12 @@ const SIZES: Record<Slot, string> = {
 /**
  * The frame every rung shares. The 1.91:1 ratio is the one the publishers themselves shoot for.
  *
- * WHAT THE FIRST VRT SHOT OF THIS ROOM SHOWED, and no test could: a 1.91:1 photograph across a
- * 1366px desktop column is **715 pixels tall**, so above the fold there was the masthead, the two
- * filter rows, and a picture — and nothing else. **The lead story's own headline was below the
- * fold.** A front page whose lead headline you have to scroll to find is not a front page; it is a
- * poster.
- *
- * The ratio is not the problem — the COLUMN is. It is right at 390px, where the same image is a
- * comfortable 204px and there is no fold to lose. So the lead card turns sideways above `lg` (see
- * NewsCard) and the picture takes 55% of it, which is how a broadsheet has always set a lead: the
- * headline BESIDE the photograph, not under it.
+ * The lead keeps its ratio at every width; what changes is the COLUMN it sits in. Above `lg` the lead
+ * card turns sideways (see NewsCard) and the photo takes 40% of it — beside the headline, not under
+ * it — so its height falls out of that instead of swallowing the fold. On a phone it stacks, which is
+ * right there: at 390px the same ratio is a comfortable 204px and there is no fold to lose.
  */
 const FRAME: Record<Slot, string> = {
-  // The lead keeps its ratio at every width. What changes is the COLUMN it sits in: the card turns
-  // sideways above `lg` (see NewsCard), so the photo occupies 55% of the card rather than all of it,
-  // and its height falls out of that instead of swallowing the fold.
   lead: "aspect-[1.91/1] w-full",
   thumb: "aspect-[4/3] w-28 shrink-0",
   // The story page has no filter rows above it and only one thing to say, so its picture may be the
@@ -106,101 +71,28 @@ const FRAME: Record<Slot, string> = {
   story: "aspect-[1.91/1] w-full lg:max-h-[420px]",
 };
 
-export function NewsImage({
-  image,
-  eventType,
-  tickers,
-  favicon = null,
-  slot,
-  eager = false,
-  className,
-}: NewsImageProps) {
-  const frame = cx(
-    FRAME[slot],
-    "relative overflow-hidden rounded-card border border-hairline",
-    className,
-  );
-
+export function NewsImage({ image, slot, eager = false, className }: NewsImageProps) {
   // L1 / L2 — a real photograph. It renders TRUE in both themes: dimming a photo in dark mode is a
   // designed lie about the photo. The frame adapts; the picture does not.
-  if (image) {
-    return (
-      <div className={frame}>
-        <Image
-          src={slot === "thumb" ? image.urlThumb : slot === "lead" ? image.urlCard : image.urlFull}
-          alt=""
-          width={image.width}
-          height={image.height}
-          sizes={SIZES[slot]}
-          loading={eager ? "eager" : "lazy"}
-          placeholder={image.blurDataUrl ? "blur" : "empty"}
-          blurDataURL={image.blurDataUrl ?? undefined}
-          className="size-full object-cover"
-        />
-      </div>
-    );
-  }
-
-  // L3 — the publisher identity card. Dormant until P-1 (see the note above).
-  if (favicon) {
-    return (
-      <div className={cx(frame, "flex items-center justify-center gap-2 bg-accent-muted")}>
-        <Image src={favicon.url} alt="" width={24} height={24} className="size-6 rounded-sm" />
-        <span className="font-display text-sm text-ink-2">{favicon.source}</span>
-      </div>
-    );
-  }
-
-  // L4 — the catalyst identity card. The event names itself.
-  return <CatalystCard eventType={eventType} tickers={tickers} slot={slot} frame={frame} />;
-}
-
-/**
- * The generated card: the catalyst's word, and the companies it touches.
- *
- * Deterministic from its inputs and built entirely from tokens, so it themes natively and the
- * visual-regression baselines can lock it. It is `aria-hidden` because it says nothing the card's
- * own headline and tags do not already say out loud — a screen reader should not have to hear the
- * word "EARNINGS" twice before reaching the story.
- */
-function CatalystCard({
-  eventType,
-  tickers,
-  slot,
-  frame,
-}: {
-  eventType: string;
-  tickers: string[];
-  slot: Slot;
-  frame: string;
-}) {
-  const label = catalystLabel(eventType);
-  const named = tickers.slice(0, 3).join(" · ");
-
   return (
     <div
-      aria-hidden="true"
-      data-testid="news-image-generated"
-      className={cx(frame, "flex flex-col items-center justify-center gap-1 bg-band-outer px-2 text-center")}
+      className={cx(
+        FRAME[slot],
+        "relative overflow-hidden rounded-card border border-hairline",
+        className,
+      )}
     >
-      <span
-        className={cx(
-          "font-display uppercase leading-none tracking-[0.06em] text-ink-2",
-          slot === "thumb" ? "text-2xs" : "text-lg desk:text-2xl",
-        )}
-      >
-        {label}
-      </span>
-      {named ? (
-        <span
-          className={cx(
-            "font-mono uppercase tracking-[0.08em] text-muted",
-            slot === "thumb" ? "text-[9px]" : "text-2xs",
-          )}
-        >
-          {named}
-        </span>
-      ) : null}
+      <Image
+        src={slot === "thumb" ? image.urlThumb : slot === "lead" ? image.urlCard : image.urlFull}
+        alt=""
+        width={image.width}
+        height={image.height}
+        sizes={SIZES[slot]}
+        loading={eager ? "eager" : "lazy"}
+        placeholder={image.blurDataUrl ? "blur" : "empty"}
+        blurDataURL={image.blurDataUrl ?? undefined}
+        className="size-full object-cover"
+      />
     </div>
   );
 }

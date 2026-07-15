@@ -155,10 +155,63 @@ test.describe("The Front Page", () => {
     await expect(aside).toContainText("likely noise");
   });
 
-  test("a macro story that names no company says so, rather than showing an empty slot", async ({
+  test("a macro story that names no company says 'Market-wide' on the card (CC5, C9)", async ({
     page,
   }) => {
-    await expect(page.getByTestId("news-lead")).toContainText("No direct listing in our universe.");
+    // At card scale the fact is one mono word, not the full sentence eight times over. The Fed hold
+    // names no ticker; the card says "Market-wide" where the chips would sit. The full sentence keeps
+    // its room on the story sheet, asserted below.
+    const lead = page.getByTestId("news-lead");
+    await expect(lead).toContainText("Market-wide");
+    await expect(lead).not.toContainText("No direct listing in our universe.");
+  });
+
+  test("the source count rides the byline, and speaks only when corroboration exists (CC5)", async ({
+    page,
+  }) => {
+    // D5's "1 SOURCE on every card" noise is gone: the count moved into the byline and speaks only
+    // when it outranks the default. The Fed hold is carried by five outlets, and the byline says so
+    // beside the outlet door and the timestamp. The old standalone mono-caps sources row is retired.
+    await expect(page.getByTestId("news-lead")).toContainText("5 sources");
+  });
+
+  test("R4 — the generated image frame is gone from the feed everywhere (no reserved geometry)", async ({
+    page,
+  }) => {
+    // The L4 grey slab is DELETED, not hidden — it shipped on every no-photo card, taller than the
+    // headline, saying nothing the catalyst Tag did not (D5/R4). No card may reserve its geometry.
+    await expect(page.getByTestId("news-image-generated")).toHaveCount(0);
+  });
+
+  test("R4 — a text-first lead's headline is its tallest element, nothing decorative stands over it", async ({
+    page,
+  }, testInfo) => {
+    test.skip(testInfo.project.name !== "desktop", "the headline-is-tallest check is measured against desktop metrics");
+
+    // Filter to a catalyst whose top story carries no stored photo, so the LEAD is text-first.
+    await page.getByRole("button", { name: "Earnings", exact: true }).click();
+    const lead = page.getByTestId("news-lead");
+    await expect(lead).toContainText("Super Micro");
+    await expect(lead.locator("img")).toHaveCount(0); // no photo — and no generated frame either
+
+    // D5's bug was the grey frame TOWERING over the headline. With the frame gone the headline is the
+    // card's visual anchor, taller than the meta rows that share the story link with it — the catalyst
+    // tags above and the affected chips below. Two things are deliberately NOT in the comparison: the
+    // byline is a separate footer sibling whose height is a 44px touch target (accessibility, not
+    // decoration), and why-it-matters is editorial prose that may legitimately run to more than one line.
+    const { headlineH, chromeMax } = await lead.evaluate((card) => {
+      const height = (element: Element | null | undefined) =>
+        element ? element.getBoundingClientRect().height : 0;
+      const textColumn = card.querySelector("a > div");
+      return {
+        headlineH: height(card.querySelector("h3")),
+        chromeMax: Math.max(
+          height(textColumn?.firstElementChild), // the catalyst / sector tag row
+          height(card.querySelector("[data-testid='card-tickers']")), // the affected chips
+        ),
+      };
+    });
+    expect(headlineH).toBeGreaterThanOrEqual(chromeMax);
   });
 
   test("the photograph actually LOADS — a broken image is invisible to every other assertion", async ({
@@ -273,6 +326,26 @@ test.describe("A story page", () => {
     await expect(page.getByRole("heading", { name: "Context tonight" })).toBeVisible();
     await expect(page.getByTestId("news-context-dropped")).toContainText("traced back to no source");
     await expect(page.getByRole("heading", { name: "What our record says" })).toBeVisible();
+  });
+
+  test("R4 — a story with no stored photo shows no image frame between headline and body (CC5)", async ({
+    page,
+  }) => {
+    // The Super Micro story has no stored image. Before CC5 the L4 placeholder filled the slot right
+    // under the headline — the exact hole D5 named. Now there is no figure there at all, and the
+    // reader falls straight from the headline into the first paragraph.
+    await page.goto("/news/nc-smci-earnings");
+    await expect(page.getByTestId("news-image-generated")).toHaveCount(0);
+    await expect(page.locator("figure")).toHaveCount(0);
+  });
+
+  test("the full 'no direct listing' sentence survives on the story sheet, where there is room to mean it (CC5)", async ({
+    page,
+  }) => {
+    // The card says "Market-wide" in one word; the story sheet keeps the full sentence, because here
+    // there is room to mean it and it appears once, not eight times over.
+    await page.goto("/news/nc-fed-hold");
+    await expect(page.getByText("No direct listing in our universe.")).toBeVisible();
   });
 
   test("the byline outlet on the FEED is a real door out, ≥44px and separated", async ({ page }) => {

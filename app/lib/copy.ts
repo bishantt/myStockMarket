@@ -249,6 +249,13 @@ export const copy = {
     reset: "Clear filters",
     /** C9. It affects everything and names nothing — which is a fact about the story, not a gap. */
     noListing: "No direct listing in our universe.",
+    /**
+     * C9 at CARD scale (CC5). The full sentence above needs room to mean it and keeps it on the story
+     * sheet; a card in a two-up grid has none, and eight identical sentences on one screen is noise.
+     * So a macro story's ticker row prints this one mono word where the chips would sit — the same
+     * fact, said at a glance.
+     */
+    marketWide: "Market-wide",
     noStoryHeader: "Moved without a story",
     sources: "{n} sources",
     oneSource: "1 source",

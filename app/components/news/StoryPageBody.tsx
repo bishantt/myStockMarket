@@ -129,27 +129,27 @@ export async function StoryPageBody({ clusterId }: StoryPageBodyProps) {
         </p>
       </header>
 
-      {/* The picture — editorial furniture, kept high where a broadsheet sets it. */}
-      <figure className="flex flex-col gap-1.5">
-        <NewsImage
-          image={card.image}
-          eventType={card.eventType}
-          tickers={symbols}
-          slot="story"
-          eager
-        />
-        {card.image?.attributionSource ? (
-          <figcaption className="font-ui text-2xs text-muted">
-            {card.image.attributionUrl ? (
-              <ExternalLink href={card.image.attributionUrl}>
-                {fill(copy.news.photoVia, { source: card.image.attributionSource })}
-              </ExternalLink>
-            ) : (
-              fill(copy.news.photoVia, { source: card.image.attributionSource })
-            )}
-          </figcaption>
-        ) : null}
-      </figure>
+      {/* The picture — editorial furniture, and ONLY when a real one is stored (L1/L2). No stored
+          image means no figure at all now (CC5, R4): the old generated placeholder that filled this
+          slot on every no-photo story was exactly the hole D5 named, a grey slab wedged between the
+          headline and the first paragraph. Today that is nearly every story (P-1 is unprovisioned),
+          so the common case is a clean text-first read. */}
+      {card.image ? (
+        <figure className="flex flex-col gap-1.5">
+          <NewsImage image={card.image} slot="story" eager />
+          {card.image.attributionSource ? (
+            <figcaption className="font-ui text-2xs text-muted">
+              {card.image.attributionUrl ? (
+                <ExternalLink href={card.image.attributionUrl}>
+                  {fill(copy.news.photoVia, { source: card.image.attributionSource })}
+                </ExternalLink>
+              ) : (
+                fill(copy.news.photoVia, { source: card.image.attributionSource })
+              )}
+            </figcaption>
+          ) : null}
+        </figure>
+      ) : null}
 
       {/* Block 3 — what happened. The neutral factual summary; absent when there is no extract. */}
       {card.summary ? (

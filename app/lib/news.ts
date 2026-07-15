@@ -312,6 +312,16 @@ export function sourcesLine(sources: number): string {
   return sources === 1 ? copy.news.oneSource : fill(copy.news.sources, { n: sources });
 }
 
+/**
+ * The count as the card's BYLINE says it (CC5, D5): it speaks only when it OUTRANKS the default.
+ * One outlet is the baseline and null prints nothing — "1 SOURCE on every card" was D5's noise. Two
+ * or more is the news: corroboration is the only thing a source count buys the reader. Distinct from
+ * `sourcesLine`, which the story sheet and the Desk module still use to state the count outright.
+ */
+export function bylineSourceCount(sources: number): string | null {
+  return sources > 1 ? fill(copy.news.sources, { n: sources }) : null;
+}
+
 // ---------------------------------------------------------------------------------------------
 // The boundary: a database row becomes a card
 // ---------------------------------------------------------------------------------------------

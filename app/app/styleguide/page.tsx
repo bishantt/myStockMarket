@@ -1196,12 +1196,11 @@ function SuppressedGauge() {
 }
 
 /**
- * The four image rungs side by side (plan 7.9). It exists so the fallbacks can be JUDGED, not assumed:
- * the claim ("a text-treatment card beside a photo card reads as an editorial choice, not a failure") is
- * only knowable by putting them together and looking. The oracle locks them; a human decides. Today L4 is
- * what the whole Front Page renders (the media bucket does not exist yet, P-1), so this is the room, not a
- * corner case; L3 has no producer until the bucket lands (hotlinking a favicon at render is what 7.9
- * forbids), so it is a latch exercised only here, not dead code.
+ * The two image rungs (plan 7.9, CC5/R4). News imagery is a real STORED photo or nothing — a card
+ * with no photo is text-first, its headline the visual. The old generated catalyst/publisher cards
+ * (L3/L4) are gone: after weeks of nothing-but-generated nights, a grey slab carrying the catalyst
+ * word said nothing the card's own Tag did not. So there is one thing to specimen here — the photo,
+ * in its lead frame and its thumb — and the oracle locks it.
  */
 function NewsImageLadder() {
   const photo = {
@@ -1219,52 +1218,28 @@ function NewsImageLadder() {
     <Section
       id="news-imagery"
       index={14}
-      title="News imagery — the four rungs"
-      intro="L1 and L2 are the publisher's own photo. L3 and L4 are generated from tokens, and they are first-class outcomes: same geometry, same frame, same visual weight. Every card on the Front Page is L4 today, because the media bucket does not exist yet (P-1)."
+      title="News imagery — the photograph"
+      intro="A news visual is a real stored photo (L1 the publisher's own, L2 its og:image) or nothing at all. A card with no photo is text-first; the headline is the visual (R4 retired the generated frames). The media bucket is unprovisioned today (P-1), so nearly every card is text-first."
     >
       <div className="grid grid-cols-1 gap-4 desk:grid-cols-2">
         <figure className="flex flex-col gap-2">
-          <NewsImage image={photo} eventType="macro" tickers={[]} slot="lead" />
+          <NewsImage image={photo} slot="lead" />
           <figcaption className="font-mono text-2xs uppercase tracking-[0.04em] text-muted">
-            L1 · the publisher&apos;s photo
+            L1 · the publisher&apos;s photo, in the lead frame
           </figcaption>
         </figure>
 
         <figure className="flex flex-col gap-2">
-          <NewsImage
-            image={null}
-            eventType="ma"
-            tickers={["AMD", "NVDA"]}
-            favicon={{ url: "/fixtures/news/chip-merger.jpg", source: "Bloomberg" }}
-            slot="lead"
-          />
+          <div className="flex items-start gap-3">
+            <NewsImage image={photo} slot="thumb" />
+            <p className="font-ui text-2xs text-muted">
+              The row tier&apos;s thumbnail — the same frame, sized for a scan.
+            </p>
+          </div>
           <figcaption className="font-mono text-2xs uppercase tracking-[0.04em] text-muted">
-            L3 · publisher identity (dormant until P-1)
+            L2 · og:image, in the thumb frame
           </figcaption>
         </figure>
-
-        <figure className="flex flex-col gap-2">
-          <NewsImage image={null} eventType="fda" tickers={["MRNA", "LLY", "PFE"]} slot="lead" />
-          <figcaption className="font-mono text-2xs uppercase tracking-[0.04em] text-muted">
-            L4 · catalyst identity, with tickers
-          </figcaption>
-        </figure>
-
-        <figure className="flex flex-col gap-2">
-          <NewsImage image={null} eventType="macro" tickers={[]} slot="lead" />
-          <figcaption className="font-mono text-2xs uppercase tracking-[0.04em] text-muted">
-            L4 · catalyst identity, no listing (C9)
-          </figcaption>
-        </figure>
-      </div>
-
-      <div className="flex items-start gap-3 pt-2">
-        <NewsImage image={null} eventType="earnings" tickers={["SMCI"]} slot="thumb" />
-        <NewsImage image={photo} eventType="macro" tickers={[]} slot="thumb" />
-        <p className="font-ui text-2xs text-muted">
-          The row tier&apos;s thumbnails, generated and photographic. The frames match, which is the
-          whole claim.
-        </p>
       </div>
     </Section>
   );

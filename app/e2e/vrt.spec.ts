@@ -169,9 +169,10 @@ test.describe("visual regression — the design system", () => {
    * hand-kept here (how a room could ship with no lock), and routes-manifest.test.ts now reds if a page.tsx
    * has no entry. WHAT STAYED HERE deliberately: the per-shot quirks and the arguments for locking
    * particular rooms — the oracle's business, not the manifest's:
-   *   · /news + /news/nc-fed-hold — carried today by GENERATED imagery (P-1, no media bucket), so every
-   *     card is a designed catalyst card; "reads as an editorial choice, not a failure" is only true or
-   *     false in a picture, which no test can hold.
+   *   · /news + /news/nc-fda-nonopioid — the room is TEXT-FIRST (CC5/R4). The lead and the shot story
+   *     carry a real stored fixture photo (fed-decision / fda-approval); every no-photo card is its
+   *     headline and words, with no generated frame. "The headline leads, a photo only supports" is
+   *     true or false only in a picture, which no DOM test can hold.
    *   · /scans/unusual-volume — the match table (F3): recipe card, named order, lottery chip, pagination.
    *   · /settings — THE CONTROL ROOM (N6), worth locking because its most important thing is a SENTENCE:
    *     the pinned clock lands `full` in its "already succeeded at 18:41 ET" C5 line, whose failure mode is

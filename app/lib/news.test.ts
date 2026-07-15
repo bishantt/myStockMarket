@@ -18,6 +18,7 @@ import {
   type NewsCard,
   activeCatalystChips,
   activeSectorChips,
+  bylineSourceCount,
   catalystLabel,
   countLine,
   filterCards,
@@ -215,6 +216,24 @@ describe("catalyst labels", () => {
     expect(catalystLabel("fda")).toBe("FDA");
     expect(catalystLabel("macro")).toBe("Fed/Macro");
     expect(catalystLabel("other")).toBe("Other");
+  });
+});
+
+describe("the byline's source count (CC5)", () => {
+  // The count moves into the byline and speaks ONLY when it outranks the default. One source is the
+  // overwhelming case (D5's "1 SOURCE on every card" noise), and one outlet saying a thing is the
+  // baseline — nothing to remark on. Two or more IS the news: corroboration is what a count buys.
+  it("says nothing when a single outlet carried the story", () => {
+    expect(bylineSourceCount(1)).toBeNull();
+  });
+
+  it("says nothing for a story with no kept articles rather than printing '0 sources'", () => {
+    expect(bylineSourceCount(0)).toBeNull();
+  });
+
+  it("names the count the moment corroboration exists", () => {
+    expect(bylineSourceCount(2)).toBe("2 sources");
+    expect(bylineSourceCount(5)).toBe("5 sources");
   });
 });
 
