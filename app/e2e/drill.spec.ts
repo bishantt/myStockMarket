@@ -29,7 +29,9 @@ test.describe("Drill & return", () => {
 
     const rail = page.getByRole("dialog");
     await expect(rail).toBeVisible();
-    await expect(rail.getByText("AAPL")).toBeVisible();
+    // The rail's HEADING, specifically — the exit link now reads "Full view: AAPL →" (10.2), so a
+    // bare getByText("AAPL") matches two elements and trips strict mode.
+    await expect(rail.getByRole("heading", { name: "AAPL" })).toBeVisible();
     // Level 2 is not a route: opening the rail did not navigate.
     await expect(page).toHaveURL("/");
 
