@@ -23,15 +23,21 @@ from typing import Any, Iterable
 from briefing.schema import BriefDraft, ExtractResult, synthesis_json_schema
 from briefing.verify import Stat
 
-# Synthesis writes the whole briefing in one turn. The ceiling has to cover the model's EXTENDED
+# Synthesis writes the whole briefing in one turn, and the ceiling has to cover the model's EXTENDED
 # THINKING as well as the output: claude-sonnet-5 thinks before it writes, and that reasoning is
 # spent against `max_tokens` too. At 4096 the thinking alone routinely consumed the whole budget and
-# the call stopped with `stop_reason=max_tokens` and a `thinking` block but NO text — a 0-char
+# the call stopped with `stop_reason=max_tokens` and a lone `thinking` block but NO text — a 0-char
 # "response" that held the whole briefing, intermittently, roughly every other night (CC1 found this
 # by dumping the message shape on failure). The output itself is small and bounded (≤5 items), so the
-# headroom is almost entirely for thinking; 32000 clears it with margin. It is a CEILING, not a
-# target — the model spends only what it needs — so the raise costs nothing on a night it thinks less.
-_MAX_TOKENS = 32000
+# headroom is almost all for thinking; it is a CEILING not a target — the model spends only what it
+# needs — so raising it costs nothing on a night it thinks less.
+#
+# 21000, not higher, for a hard SDK reason: a NON-STREAMING call refuses any max_tokens that could
+# run past 10 minutes (`3600 * max_tokens / 128000 > 600` ⇒ ValueError "Streaming is required"), which
+# caps us at 21333. (Sonnet-5 is NOT in the SDK's per-model non-streaming table — only the opus-4s are,
+# at 8192 — so that lower cap does not apply here.) 21000 sits just under the time ceiling with margin,
+# is ~5× the old budget, and keeps this a plain one-shot call rather than forcing a streaming rewrite.
+_MAX_TOKENS = 21000
 
 # The Stage B system prompt, from Appendix G — with the 47a713f rule (below) applied to this second
 # narrator. That commit caught the Front Page's narrator publishing "carried by 1 outlet tonight

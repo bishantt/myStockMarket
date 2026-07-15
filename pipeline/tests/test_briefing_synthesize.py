@@ -114,3 +114,20 @@ def test_synthesize_returns_none_after_two_failures():
     draft = synthesize(client, [_extract("news-1")], STATS, model=MODEL)
     assert draft is None
     assert len(client.messages.calls) == 2  # one call, one retry, then give up
+
+
+def test_max_tokens_covers_thinking_but_stays_a_non_streaming_call():
+    """The synthesis budget lives in a narrow band, and both edges held a real briefing (CC1).
+
+    Too LOW and claude-sonnet-5's extended thinking eats the whole budget before it writes any JSON —
+    `stop_reason=max_tokens`, a lone `thinking` block, a 0-char "response", and the briefing holds
+    (this happened at 4096, roughly every other night).
+
+    Too HIGH and the SDK refuses the non-streaming call outright: any max_tokens that could run past
+    10 minutes raises "Streaming is required" (`3600 * max_tokens / 128000 > 600` ⇒ > 21333). Sonnet-5
+    is not in the SDK's per-model non-streaming table, so that time guard is the only ceiling.
+    """
+    from briefing.synthesize import _MAX_TOKENS
+
+    assert _MAX_TOKENS > 4096, "extended thinking starves the JSON output below this (CC1)"
+    assert 3600 * _MAX_TOKENS / 128_000 <= 600, "would force a streaming call (the SDK 10-minute guard)"
