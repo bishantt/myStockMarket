@@ -8,6 +8,34 @@ Format: newest first. I mark each as [FYI], [VETO?], or [NEED] so you can scan.
 
 ---
 
+## 2026-07-15 — LC2 (consolidation — second phase of LEAN-CODEBASE)
+
+LC2 built one e2e session helper (all 24 login-bearing specs import it), made `waitForLayout`
+importable, deduped the guard-script plumbing (session-cookie + manifest libs), and reconciled
+`record-fixtures.yml` with the `new-provider-adapter` skill. Tagged `lc-2`. Behavior-preserving; no
+guard weakened. Two heads-ups, neither blocking.
+
+### [FYI] Two of the plan's "identical N copies" counts were off — measured, not trusted
+LEAN-CODEBASE said `signIn` was byte-identical in 15 spec files (it was 12 — auth, nav and offline
+each differ) and the cookie mint was identical three times (it is two TTLs — check-live signs a
+one-hour cookie, the others thirty days). Neither changed the plan's intent, only HOW the extraction
+had to preserve behavior: the shared `signIn` took the true common shape, the three variants were
+kept, and the cookie helper took a `ttlSeconds` parameter. Both proven byte-identical (stdout for the
+deterministic guards, token for the cookie). Logged in DECISIONS.md and LESSONS.md. Nothing to decide.
+
+### [FYI] The 5.6 recorder reconciliation — I added the keyed recorders, left the keyless ones local
+The plan offered two options (add the missing recorders as steps, OR amend the skill to say recorders
+run locally). The skill's actual rule is keyed→step, keyless→local, so I added the 6 keyed recorders
+whose secrets are provisioned (alpaca, edgar, finnhub, fmp, fred_calendar, marketaux) as steps and
+left the 2 keyless ones (erapi, nrb) to run from the laptop. Amending the skill would have been false
+for the keyed providers. Settled and logged in DECISIONS.md; noted here only so you know it was a
+judgment call.
+
+### [VETO?] Q-LC1-1 is still open (carried from LC1, unanswered)
+The vrt-diff.mjs devDependency question (below, in the LC1 section) had no veto in DECISIONS.md at LC2
+start, so per the handoff I left it as-is (vrt-diff reuses Playwright's pngjs/pixelmatch). If you want
+the explicit-deps form, LC3 can fold it in — it is a two-line change.
+
 ## 2026-07-15 — LC1 (the standard, the deletions, the tool — first phase of LEAN-CODEBASE)
 
 LC1 set the comment standard (CLAUDE.md point 3, "comments are one line of why"), committed two

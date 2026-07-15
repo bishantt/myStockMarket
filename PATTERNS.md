@@ -1187,3 +1187,19 @@ not "low" (Sonnet-5 under-thinks on low for a narrator that must choose which st
 raised to the sky; 16000 is the room that fits under that ceiling AND leaves output space. Pin the value
 and the effort with a unit test — the scripted fake client in the suite has no thinking budget to
 overflow, so nothing else can catch a regression here.
+
+## e2e session helper — import the login, never re-inline it (LC2)
+Where it lives: app/e2e/session.ts (USER, PASSWORD, signIn) · app/e2e/layout.ts (waitForLayout)
+Shape:
+```ts
+import { signIn } from "./session";
+// in a test/beforeEach:
+await signIn(page);          // goto /login → fill → click → toHaveURL("/") (the assert IS the redirect wait)
+```
+Use when: a new spec needs to be past the login wall, or a box-measuring spec needs the page styled
+before it reads a bounding box (import `waitForLayout`). Do NOT re-inline the five-line login or copy
+`waitForLayout` — 24 specs import these; a copy is a bug's habitat (LC2 deduped 15 hand-rolled
+`signIn`s). The one exception the codebase sanctions: a login that GENUINELY differs (offline waits
+for `serviceWorker.ready`; auth's inline logins land on `/styleguide` or test failure) keeps its own
+steps but still imports `USER`/`PASSWORD` — a different login is preserved, not forced through the
+shared one.
