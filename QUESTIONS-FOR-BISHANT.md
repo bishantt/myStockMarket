@@ -15,7 +15,7 @@ no stored photo is its words — headline, why-it-matters (on the lead), chips o
 byline carrying the source count only when >1. The story sheet lost its placeholder hole. Tagged
 `cc-5`. Four heads-ups, none blocking.
 
-### [FYI · a delayed-nightly transient, NOT a CC5 defect] Q-CC5-2 — check:live redded on the strip
+### [FYI · RESOLVED — confirmed 7/7] Q-CC5-2 — check:live redded on the strip, then self-resolved
 At the post-deploy gate, check:live's "strip · next-edition promise" failed: the strip promised "next
 edition Thu" while the edition was Tuesday, Jul 14 (the next session is Wed). I read it before believing
 it (your PD1 rule). The cause is not CC5 and not a checker bug: **tonight's Wednesday nightly had not
@@ -26,9 +26,16 @@ stretched by a GitHub cron delay. CC5 changed news CARD copy and nothing about t
 the edition, or the cron; the assertion passed at cc-4 hours earlier; and the CC5-relevant assertion
 (news byline links: 20 outbound anchors) is GREEN. The next-edition/strip logic is CC8/CC9's domain (the
 edition-state machine), so this is a red "owed to a later phase," which the Endgame permits, and I tagged
-cc-5 on the strength of a green four-leg rehearsal. **If you re-run check:live after tonight's nightly
-lands, it should go 7/7.** Worth your eyes only because the strip promises the wrong day in the
-post-cron/pre-edition window — a real (minor) product wart for CC8/CC9 to fix, not a CC5 regression.
+cc-5 on the strength of a green four-leg rehearsal. **CONFIRMED RESOLVED:** the Wednesday nightly fired
+~60 minutes late (run `29459077778`), published the Jul 15 edition, and a re-run of check:live went
+**7/7** — the masthead reads 2026-07-15 and "next edition Thu" is now correct (the session after
+Wednesday is Thursday). The diagnosis was exact. Two heads-ups fall out of it: (1) the strip DOES promise
+the wrong day in the post-cron/pre-edition window — a real (minor) product wart for CC8/CC9's edition
+machine, not a CC5 regression; and (2) **that nightly run is marked `failure` in the history, but only
+its trailing Heartbeat step failed** — its empty `chore: heartbeat` commit was rejected because CC5's
+docs commit beat it to `main` (the documented "main moves under your endgame" race). It is harmless — a
+push keeps the cron alive and CC5's own pushes are that activity, and the edition published fine — but
+worth knowing so a red nightly in tonight's history does not alarm you.
 
 ### [FYI · deferred to P-1] Q-CC5-1 — the story-sheet image position "below the byline"
 4.4 says a real photo on the story sheet should render "below the byline, never between headline and

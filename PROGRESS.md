@@ -68,10 +68,12 @@ photo, Option B), login and scans are byte-identical. 24 re-shot, 0 added. 97 to
 - **Push CI (5382f06 = 24 baselines): 29458095546 green. Rehearsal #2 (5382f06): 29458095405 GREEN,
   all four legs.**
 - **Tag run (cc-5 on 5382f06): 29458574720 — four-leg oracle, green.**
-- **Post-deploy: check:live 6/7 — the ONE red (strip · next-edition) is a DELAYED-NIGHTLY transient,
-  NOT a CC5 defect** (see below). check:nav report mode, worst 407ms (settings writer room, no
-  regression). check:lighthouse gates green (CLS 0.000/0.011, first-load JS 183 KB < 200, a11y 100);
-  advisory perf 75→83 on re-sample (synthetic-4G noise, per the endgame rule), in line with cc-4.
+- **Post-deploy: check:live 6/7 at first → CONFIRMED 7/7 after the delayed nightly landed.** The one red
+  (strip · next-edition) was a DELAYED-NIGHTLY transient, NOT a CC5 defect (see below); the Wednesday
+  nightly fired ~60 min late (run `29459077778`), published the Jul 15 edition, and check:live re-ran
+  7/7. check:nav report mode, worst 407ms (settings writer room, no regression). check:lighthouse gates
+  green (CLS 0.000/0.011, first-load JS 183 KB < 200, a11y 100); advisory perf 75→83 on re-sample
+  (synthetic-4G noise, per the endgame rule), in line with cc-4.
 
 ## The check:live red — read it, it is a transient owed to CC8/CC9 (NOT a blocker, NOT CC5's)
 
@@ -83,8 +85,12 @@ transitional window, extended by a GitHub cron delay. **CC5 touches no strip/mas
 (it changed news CARD copy), the assertion PASSED at cc-4 hours earlier, and the CC5-relevant assertion
 (news byline links: 20 outbound anchors) is GREEN — proving the new byline works in production. The
 next-edition/strip logic is CC8/CC9's explicit domain (R6 + the edition-state machine + check:live
-`--window=morning`), so this is a red "owed to a later phase," which the Endgame permits. If you re-run
-check:live after tonight's nightly lands it should go 7/7. Logged as Q-CC5-2.
+`--window=morning`), so this is a red "owed to a later phase," which the Endgame permits. **CONFIRMED:
+the Wednesday nightly fired ~60 min late (`29459077778`), published the Jul 15 edition, and check:live
+re-ran 7/7 — the masthead now reads 2026-07-15 and "next edition Thu" is correct. Exactly as diagnosed.**
+That nightly shows `failure` in the history, but only its trailing Heartbeat step failed (its empty
+commit was rejected because CC5's docs commit `c4e928a` beat it to main — the documented "main moves
+under your endgame" race; harmless, the edition published fine). Logged as Q-CC5-2 (resolved).
 
 ## Open / carried forward (none blocking)
 

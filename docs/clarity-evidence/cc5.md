@@ -87,15 +87,24 @@ eyes on the new text-first lead composition):
 
 ## Post-deploy (production)
 
-- **check:live 6/7.** The ONE red — "strip · next-edition promise" (strip says "next edition Thu" while
-  the edition is Tuesday Jul 14, whose next session is Wed) — is a DELAYED-NIGHTLY transient, NOT a CC5
-  defect. Root cause read, not assumed: tonight's Wednesday nightly-a had not fired at 44 min past its
-  22:37 UTC cron (last night's ran 52 min late), so production correctly served Tuesday's edition while
-  the strip's WALL-CLOCK next-edition rolled to Thursday — the PD1 transitional window, stretched by a
-  GitHub cron delay. CC5 touches no strip/masthead/edition/cron code; the assertion passed at cc-4; and
-  the CC5-relevant assertion (news byline links: 20 outbound anchors) is GREEN, proving the new byline
-  works in production. The next-edition/strip logic is CC8/CC9's domain (R6 + the edition-state machine),
-  so this is a red owed to a later phase, which the Endgame permits. Logged Q-CC5-2.
+- **check:live 6/7 at first, now CONFIRMED 7/7 — the one red was a delayed-nightly transient and it
+  self-resolved.** At the post-deploy step the "strip · next-edition promise" redded (strip said "next
+  edition Thu" while the edition was Tuesday Jul 14, whose next session is Wed). Root cause read, not
+  assumed: the Wednesday nightly-a had not fired at 44 min past its 22:37 UTC cron (last night's ran 52
+  min late), so production correctly served Tuesday's edition while the strip's WALL-CLOCK next-edition
+  rolled to Thursday — the PD1 transitional window, stretched by a GitHub cron delay. CC5 touches no
+  strip/masthead/edition/cron code; the assertion passed at cc-4; and the CC5-relevant assertion (news
+  byline links: 20 outbound anchors) was GREEN throughout, proving the new byline works in production.
+  **Confirmation:** the Wednesday nightly fired ~60 min late (run `29459077778`), published the Jul 15
+  edition, and a re-run of check:live went **7/7** — the masthead reads 2026-07-15 and "next edition Thu"
+  is now correct (the session after Wednesday IS Thursday). The diagnosis was exact. Logged Q-CC5-2 as
+  resolved.
+  - **A benign heartbeat race, worth knowing:** that nightly run shows `failure` in the history, but ONLY
+    its trailing "Heartbeat" step failed — the pipeline and publish steps all passed. The heartbeat
+    pushes an empty `chore: heartbeat` commit, and it was REJECTED (non-fast-forward) because CC5's docs
+    commit `c4e928a` had landed on main first. This is the exact "main can move under your endgame"
+    hazard CLAUDE.md documents; it is harmless (a PUSH keeps the cron alive, and CC5's own pushes are that
+    activity), and the edition published fine.
 - **check:nav** report mode, worst 407ms (settings writer room — no regression from cc-4's 411ms).
 - **check:lighthouse** gates green: CLS 0.000 then 0.011 (< 0.05), first-load JS 183 KB (< 200), a11y
   100. Advisory perf 75 → 83 on re-sample (synthetic-4G ±10 noise, per the endgame rule); LCP 5.20 →
