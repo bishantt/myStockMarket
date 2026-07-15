@@ -8,6 +8,46 @@ Format: newest first. I mark each as [FYI], [VETO?], or [NEED] so you can scan.
 
 ---
 
+## 2026-07-15 — CC3 (The masthead and the toggle)
+
+CC3 gave the Desk one truth per line (R3): the market state appears once (the pill, now on the phone
+too), the data vintage once (the masthead's new line 3 "Tuesday's close · updated 7:36 PM ET"), the
+pipeline provenance once (the slimmed strip "14 sources · 2 degraded · next edition Wed ~6:37 PM ET").
+And it added a one-tap Light ↔ Dark toggle to every top bar, both zones. Tagged `cc-3`. Three
+heads-ups, none blocking.
+
+### [FYI] The theme toggle writes the cookie CLIENT-SIDE, not through the Settings server action
+The canonical three-way control (System/Light/Dark in Settings) stays exactly as it was — a form
+posting a server action. The new one-tap top-bar toggle instead writes `document.cookie` in the
+browser (same cookie name, same year-long lifetime) and stamps `data-theme` for the instant flip. The
+reason is offline: the app is an installed PWA, and a server-action round trip fails with no network,
+where a client cookie write does not — and the only thing that ever reads the cookie is the pre-paint
+script, in the browser, on the next load. So there are two writers of one cookie shape. If you'd
+rather both go through one door, the clean move is a shared client writer, but that would change the
+"unchanged" three-way control, which the plan told me to leave alone. Logged in DECISIONS.
+
+### [FYI] The toggle's icon names the DESTINATION (moon = "switch to dark"), matching its aria-label
+A light app shows a moon (tap → dark); a dark app shows a sun (tap → light). This agrees with the
+spoken label "Switch to {mode} theme", so a screen-reader user and a sighted user read the same fact.
+The other common convention (icon shows the CURRENT state) would disagree with the label. Veto if you
+prefer current-state.
+
+### [FYI] A copy change nearly redded check:live — caught at the gate, fixed
+Slimming the strip changed "next: Fri" to "next edition Fri". `checkNextEdition` (the production-truth
+guard) greps that phrase, so it would have failed check:live the moment CC3 deployed — the one guard
+that tests the deployed product, broken by a copy change nothing local would catch. I found it by
+reading the guard before running it, fixed the regex + fixture + test, and verified 7/7 green against
+production. Logged as a lesson (any strip/masthead copy change must grep scripts/live-truth.mjs).
+
+### [VETO? · Q-LC1-1 STILL open, carried through CC3] vrt-diff.mjs is broken (pixelmatch absent)
+CC3's VRT re-shoot needed the "diff every candidate" pass again (the toggle moved every room's top bar
+and most fell inside the 600px tolerance — the PD5 trap). vrt-diff.mjs still throws
+`ERR_MODULE_NOT_FOUND: pixelmatch`, so I used the pngjs-only counter from PATTERNS.md again. It works;
+the tool is just dead. The fix is one line — `npm i -D pixelmatch` — or a pngjs rewrite. Your call
+(still unanswered since LC1); I keep working around it.
+
+---
+
 ## 2026-07-15 — CC2 (Time, told properly)
 
 CC2 rewrote every reader-facing timestamp to R1's shapes: 12-hour clocks with AM/PM ("7:36 PM"),
