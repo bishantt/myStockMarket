@@ -108,11 +108,17 @@ function sessionLabel(date: string): string {
 export function PipelineStrip({
   run,
   serverNow,
+  sourceCount,
+  degradedCount,
 }: {
   /** The newest run that actually finished — the edition on screen. Null if none ever has. */
   run: (Omit<CompletedRun, "finishedAt"> & { finishedAt: string }) | null;
   /** The render clock, as an ISO string, so the first client paint matches the server's HTML. */
   serverNow: string;
+  /** How many sources reported for the run — the fresh line's provenance (CC3, R3). */
+  sourceCount: number;
+  /** How many of those degraded. Named plainly; a degraded source is honesty, not an error. */
+  degradedCount: number;
 }) {
   const [now, setNow] = useState(serverNow);
 
@@ -135,13 +141,11 @@ export function PipelineStrip({
   }, []);
 
   const completed = run ? { runDate: run.runDate, finishedAt: new Date(run.finishedAt) } : null;
-  const { state, lastGoodSession, finishedAt, expectedSession, nextRunAt } = freshness(
+  const { state, lastGoodSession, expectedSession, nextRunAt } = freshness(
     completed,
     new Date(now),
   );
 
-  // "next: Mon 6:37 PM ET" — 12-hour with AM/PM, the house clock shape since CC2 (ruling R1).
-  const next = `${formatEtWeekday(nextRunAt)} ${formatEtClock(nextRunAt)} ET`;
 
   /* ── DEAD: the one surface in this app allowed to shout ───────────────────────────────────── */
   if (state === "dead" && lastGoodSession) {
@@ -178,12 +182,15 @@ export function PipelineStrip({
   }
 
   /* ── FRESH / NEVER: one quiet line, and nothing else ─────────────────────────────────────── */
+  // Provenance voice only (CC3, R3): the session and the ran-time now live in the masthead's line 3,
+  // so the strip names the sources, the degraded count, and when the next edition lands.
   const line =
-    state === "fresh" && lastGoodSession && finishedAt
+    state === "fresh"
       ? fill(copy.strip.fresh, {
-          day: sessionLabel(lastGoodSession),
-          time: `${formatEtClock(finishedAt)} ET`,
-          next,
+          n: sourceCount,
+          degraded: degradedCount,
+          day: formatEtWeekday(nextRunAt),
+          time: `${formatEtClock(nextRunAt)} ET`,
         })
       : copy.strip.never;
 

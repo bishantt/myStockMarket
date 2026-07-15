@@ -57,23 +57,22 @@ describe("marketState", () => {
 });
 
 describe("the Desk's market state is the READER's, not the cache's", () => {
-  it("is corrected against the reader's clock after mount, not frozen into the cache", async () => {
+  it("keeps the market state on the reader's clock, and OUT of the cached masthead (CC3, R3)", async () => {
     /*
      * THE BUG THIS PINS SHIPPED, AND THE PIXEL ORACLE FOUND IT.
      *
-     * `/` is an ISR-cached route (budget B1). The Desk header received
-     * `marketOpen={marketState(new Date()) === "open"}` from the server page and printed it
-     * straight out — so "markets open" was evaluated when the page was GENERATED and then served to
-     * every reader until the cache turned over. A Desk built at 3:55pm went on telling people
-     * "markets open" long past the close.
+     * `/` is an ISR-cached route (budget B1). The Desk header once received
+     * `marketOpen={marketState(new Date()) === "open"}` from the server page and printed it straight
+     * out — so "markets open" was evaluated when the page was GENERATED and then served to every
+     * reader until the cache turned over. A Desk built at 3:55pm went on telling people "markets
+     * open" long past the close. It is F4's cooling-off bug again: a server-interpolated "now"
+     * records the moment the page was BUILT, not the moment the reader arrived.
      *
-     * It is F4's cooling-off bug again: a server-interpolated "now" records the moment the page was
-     * BUILT, not the moment the reader arrived. On a cached page those are different moments.
-     *
-     * No test could see it — the string was well-formed, merely stale. It surfaced because the VRT
-     * baselines began depending on what the market happened to be doing when CI ran, which is a
-     * baseline that means nothing. The server's value survives as the FIRST PAINT only; the reader's
-     * own clock decides, and this asserts the correction is actually there.
+     * CC3 answered it more sharply than the first fix did (ruling R3, one truth per line): the market
+     * state LEFT the masthead entirely for the pill, which is now the single market-state truth. So
+     * the masthead's line 3 no longer depends on "now" at all — it is a static server render of the
+     * run's own fixed dates — and the pill, a client component, reads the reader's own clock. Both
+     * halves are pinned here: the header must not print the state, and the pill must ask the reader.
      */
     const fs = await import("node:fs/promises");
     const path = await import("node:path");
@@ -82,18 +81,17 @@ describe("the Desk's market state is the READER's, not the cache's", () => {
       path.join(process.cwd(), "components/desk/DeskHeader.tsx"),
       "utf8",
     );
-    const line = await fs.readFile(
-      path.join(process.cwd(), "components/desk/MarketStateLine.tsx"),
+    const pill = await fs.readFile(
+      path.join(process.cwd(), "components/desk/MarketState.tsx"),
       "utf8",
     );
 
-    // The header must delegate the time-dependent phrase rather than print it itself.
-    expect(header).toContain("MarketStateLine");
-    expect(header).not.toMatch(/state:\s*marketOpen\s*\?/);
+    // The masthead no longer states the market's open/closed condition — that is the pill's one job.
+    expect(header).not.toMatch(/marketOpen/);
+    expect(header).not.toMatch(/marketState/);
 
-    // …and the delegate must consult the READER's clock, not the one the cache was built with.
-    expect(line).toContain("use client");
-    expect(line).toMatch(/useSyncExternalStore\(/);
-    expect(line).toMatch(/marketState\(new Date\(\)\)/);
+    // …and the pill consults the READER's clock, not the one the cache was built with.
+    expect(pill).toContain("use client");
+    expect(pill).toMatch(/marketState\(new Date\(\)\)/);
   });
 });

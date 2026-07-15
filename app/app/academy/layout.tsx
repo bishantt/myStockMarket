@@ -1,7 +1,9 @@
 import Link from "next/link";
+import { Settings as SettingsIcon } from "lucide-react";
 
 import { AppWash } from "@/components/AppWash";
 import { PageContainer } from "@/components/PageContainer";
+import { ThemeToggleButton } from "@/components/ThemeToggleButton";
 import { TabBar } from "@/components/desk/TabBar";
 
 /**
@@ -42,17 +44,30 @@ export default function AcademyLayout({ children }: { children: React.ReactNode 
                 Academy
               </Link>
 
-              {/*
-               * The return rail — always a way back to the Desk. It is hidden on phones, where the
-               * bottom tab bar's Desk tab already IS the way home: two doorways competing for one
-               * 375px row is one doorway too many (§4.2).
-               */}
-              <Link
-                href="/"
-                className="hidden min-h-11 items-center font-ui text-sm text-ink-2 transition-colors duration-(--duration-quick) hover:text-accent-deep md:flex"
-              >
-                ← Back to Desk
-              </Link>
+              <div className="flex shrink-0 items-center gap-3">
+                {/*
+                 * The return rail — always a way back to the Desk. It is hidden on phones, where the
+                 * bottom tab bar's Desk tab already IS the way home: two doorways competing for one
+                 * 375px row is one doorway too many (§4.2).
+                 */}
+                <Link
+                  href="/"
+                  className="hidden min-h-11 items-center font-ui text-sm text-ink-2 transition-colors duration-(--duration-quick) hover:text-accent-deep md:flex"
+                >
+                  ← Back to Desk
+                </Link>
+
+                {/* The same pair the Desk carries (CC3, §4.2): one-tap theme, then the gear. The
+                 * Academy has no market state — a reading room is timeless — so it gets no pill. */}
+                <ThemeToggleButton />
+                <Link
+                  href="/settings"
+                  aria-label="Settings"
+                  className="flex size-11 items-center justify-center rounded-control text-muted transition-colors duration-(--duration-quick) hover:text-accent-deep md:size-auto md:p-1"
+                >
+                  <SettingsIcon size={16} strokeWidth={1.75} aria-hidden="true" />
+                </Link>
+              </div>
             </PageContainer>
           </div>
         </header>

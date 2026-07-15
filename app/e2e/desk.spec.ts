@@ -206,12 +206,13 @@ test.describe("The Desk, chunked", () => {
     await page.clock.setFixedTime(SEEDED_EVENING);
     await page.goto("/");
 
-    // Now the strip is in its FRESH state: quiet, no colour, no card, no masthead. It states the
-    // three facts module 00's whole card never managed — the session on screen, when the pipeline
-    // wrote it, and when the next edition lands.
-    const strip = page.getByRole("status").filter({ hasText: "Data through" });
+    // Now the strip is in its FRESH state: quiet, no colour, no card. Since CC3 (R3) it speaks in
+    // provenance voice ONLY — how many sources reported, how many degraded, and when the next
+    // edition lands. The data vintage it used to carry moved up to the masthead's line 3.
+    const strip = page.getByRole("status").filter({ hasText: "next edition" });
     await expect(strip).toBeVisible();
-    await expect(strip).toContainText("next:");
+    await expect(strip).toContainText("sources");
+    await expect(strip).toContainText("degraded");
 
     // And it is the doorway to the control room (Part 8, built in N6).
     await expect(strip.getByRole("link")).toHaveAttribute("href", /\/settings/);

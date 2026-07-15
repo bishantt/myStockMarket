@@ -19,6 +19,11 @@ import { cx } from "@/lib/cx";
  * It renders client-side because the state depends on the reader's current instant, and a
  * server-rendered clock would be stale the moment it arrived. It shows nothing until mounted rather
  * than guessing — an indicator that flickers from wrong to right is worse than one that waits.
+ *
+ * SINCE CC3 THIS IS THE SINGLE MARKET-STATE TRUTH (ruling R3, D10). The state left the masthead's
+ * status line, so the pill carries it alone — on the phone too, where the market state used to be
+ * stated nowhere. "Market" collapses below `sm` so the phone reads just "CLOSED", which is what fits
+ * beside the wordmark and the two icon buttons at 360px.
  */
 export function MarketState() {
   const [state, setState] = useState<State | null>(null);
@@ -36,13 +41,14 @@ export function MarketState() {
   const open = state === "open";
 
   return (
-    <span className="hidden items-center gap-1.5 md:flex">
+    <span className="flex shrink-0 items-center gap-1.5">
       <span
         aria-hidden="true"
         className={cx("size-1.5 rounded-pill", open ? "bg-ink" : "bg-muted")}
       />
+      {/* "Market " collapses below sm — the phone reads "CLOSED"; the same-line trailing space is kept. */}
       <span className="font-mono text-2xs uppercase tracking-[0.06em] text-muted">
-        {open ? "Market open" : "Market closed"}
+        <span className="hidden sm:inline">Market </span>{open ? "open" : "closed"}
       </span>
     </span>
   );

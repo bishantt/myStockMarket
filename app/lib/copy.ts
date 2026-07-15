@@ -160,9 +160,19 @@ export const copy = {
 
   desk: {
     edition: "The Desk — Evening Edition",
-    status: "Markets {state} · data as of {close} · updated {stamp}",
+    /**
+     * The masthead's line 3 (CC3, ruling R3). Reader voice, weekday first. The market's state left
+     * this line for the pill — one truth per line — and the data vintage the strip used to carry
+     * ("Data through Tue's close") is stated HERE now, once: "{weekday}'s close".
+     */
+    status: "{weekday}'s close · updated {stamp}",
     /** Module 07 as a GLANCE: a figure, not a paragraph pointing at another page. */
     scanCount: "{n} matches across {k} scans",
+  },
+
+  /** Chrome aria copy. The toggle names its DESTINATION so the spoken label and the icon agree. */
+  theme: {
+    toggleAria: "Switch to {mode} theme",
   },
 
   /**
@@ -172,7 +182,12 @@ export const copy = {
    * is — a live pipeline earns one quiet line, a stale one amber, a dead one the loudest surface.
    */
   strip: {
-    fresh: "Data through {day} close · pipeline ran {time} · next: {next}",
+    /**
+     * CC3 (R3): PROVENANCE voice only. The data vintage and the ran-time moved up to the masthead
+     * (line 3, "Tuesday's close · updated 7:36 PM ET"); this line names what a provenance stamp
+     * should — sources reporting, sources degraded, and when the next edition lands.
+     */
+    fresh: "{n} sources · {degraded} degraded · next edition {day} ~{time}",
     aging: "No run for {day}'s session · showing {lastDay}'s data · check the pipeline →",
     dead: "The pipeline has not run since {lastDay}. Every number on this page is from that night. Check the pipeline →",
     /** An empty database is not a dead pipeline — it is one that has not started. No alarm. */

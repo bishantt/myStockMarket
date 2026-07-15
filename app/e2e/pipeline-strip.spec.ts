@@ -114,14 +114,16 @@ test.describe("the pipeline strip — the escalation, on the real page", () => {
     await readAt(page, session, 0);
     await page.reload();
 
-    const strip = page.getByRole("status").filter({ hasText: "Data through" });
+    const strip = page.getByRole("status").filter({ hasText: "next edition" });
     await expect(strip).toBeVisible();
 
-    // The three facts module 00's entire card never managed: what am I looking at, was it written,
-    // and when does the next edition land.
-    await expect(strip).toContainText("Data through");
-    await expect(strip).toContainText("pipeline ran");
-    await expect(strip).toContainText("next:");
+    // Provenance voice only since CC3 (R3): the sources that reported, how many degraded, and when
+    // the next edition lands. The vintage and ran-time moved up to the masthead's line 3, so the
+    // strip no longer restates them.
+    await expect(strip).toContainText("sources");
+    await expect(strip).toContainText("degraded");
+    await expect(strip).toContainText("next edition");
+    await expect(strip).not.toContainText("Data through");
 
     // Quiet. No banner, no alert role, nothing shouting on a night when nothing is wrong.
     await expect(appAlert(page)).toHaveCount(0);

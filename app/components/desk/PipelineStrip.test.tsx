@@ -20,14 +20,17 @@ const ranFor = (date: string) => ({ runDate: date, finishedAt: `${date}T22:41:00
 const etJuly = (date: string, hhmm: string) =>
   new Date(`${date}T${hhmm}:00-04:00`).toISOString();
 
+/** The source counts the Desk passes in — the fresh line's provenance (CC3). Constant across states. */
+const SOURCES = { sourceCount: 14, degradedCount: 2 };
+
 /** Friday's run, read on Saturday — the healthy weekend. */
-const FRESH = { run: ranFor("2026-07-10"), serverNow: etJuly("2026-07-11", "09:00") };
+const FRESH = { run: ranFor("2026-07-10"), serverNow: etJuly("2026-07-11", "09:00"), ...SOURCES };
 /** Friday's run, read Monday night — Monday's edition never landed. */
-const AGING = { run: ranFor("2026-07-10"), serverNow: etJuly("2026-07-13", "22:00") };
+const AGING = { run: ranFor("2026-07-10"), serverNow: etJuly("2026-07-13", "22:00"), ...SOURCES };
 /** Friday's run, read Tuesday night — two sessions gone. */
-const DEAD = { run: ranFor("2026-07-10"), serverNow: etJuly("2026-07-14", "22:00") };
+const DEAD = { run: ranFor("2026-07-10"), serverNow: etJuly("2026-07-14", "22:00"), ...SOURCES };
 /** A database with no completed run at all. */
-const NEVER = { run: null, serverNow: etJuly("2026-07-13", "22:00") };
+const NEVER = { run: null, serverNow: etJuly("2026-07-13", "22:00"), ...SOURCES };
 
 /**
  * Only `Date` is faked, never the timers.
@@ -44,21 +47,30 @@ beforeEach(() => vi.useFakeTimers({ toFake: ["Date"] }));
 afterEach(() => vi.useRealTimers());
 
 /** Render the strip as a reader whose clock agrees with the render they were served. */
-function renderAt(scenario: { run: { runDate: string; finishedAt: string } | null; serverNow: string }) {
+function renderAt(scenario: {
+  run: { runDate: string; finishedAt: string } | null;
+  serverNow: string;
+  sourceCount: number;
+  degradedCount: number;
+}) {
   vi.setSystemTime(new Date(scenario.serverNow));
   return render(<PipelineStrip {...scenario} />);
 }
 
 describe("PipelineStrip — the quiet state", () => {
-  it("states the session on screen, when the pipeline ran, and when it runs next", () => {
+  it("speaks in provenance — sources, degraded, and when the next edition lands (CC3, R3)", () => {
     renderAt(FRESH);
     const strip = screen.getByRole("status");
 
-    // The three facts a reader needs and could not previously get: what am I looking at, was it
-    // written, and when does the next edition land. Module 00 answered only the first.
-    expect(strip.textContent).toContain("Fri, Jul 10");
-    expect(strip.textContent).toContain("next:");
+    // The strip is provenance voice only now: the session and ran-time moved to the masthead's line
+    // 3 ("Tuesday's close · updated 7:36 PM ET"), so this line names how many sources reported, how
+    // many degraded, and the next edition. Nothing here restates the vintage.
+    expect(strip.textContent).toContain("14 sources");
+    expect(strip.textContent).toContain("2 degraded");
+    expect(strip.textContent).toContain("next edition");
     expect(strip.textContent).toContain("Mon");
+    // The vintage lives up in the masthead now, never here.
+    expect(strip.textContent).not.toContain("Data through");
   });
 
   it("is a doorway to the control room", () => {
@@ -165,7 +177,13 @@ describe("PipelineStrip — the clock is the reader's, not the cache's", () => {
     // says Wednesday night, with Monday, Tuesday and Wednesday all missed.
     vi.setSystemTime(new Date("2026-07-15T22:00:00-04:00"));
 
-    render(<PipelineStrip run={ranFor("2026-07-10")} serverNow={etJuly("2026-07-13", "08:00")} />);
+    render(
+      <PipelineStrip
+        run={ranFor("2026-07-10")}
+        serverNow={etJuly("2026-07-13", "08:00")}
+        {...SOURCES}
+      />,
+    );
 
     // The effect runs on mount and regrades. The banner is what the reader actually ends up seeing.
     await vi.waitFor(() => {
@@ -180,7 +198,7 @@ describe("PipelineStrip — the clock is the reader's, not the cache's", () => {
     // verdict and nothing moves.
     renderAt(FRESH);
     await vi.waitFor(() => {
-      expect(screen.getByRole("status").textContent).toContain("Fri, Jul 10");
+      expect(screen.getByRole("status").textContent).toContain("next edition");
     });
     expect(screen.queryByRole("alert")).toBeNull();
   });

@@ -10,6 +10,7 @@ import { PageContainer } from "@/components/PageContainer";
 import { MarketState } from "@/components/desk/MarketState";
 import { RoomNav } from "@/components/desk/RoomNav";
 import { TabBar } from "@/components/desk/TabBar";
+import { ThemeToggleButton } from "@/components/ThemeToggleButton";
 import { Wordmark } from "@/components/Wordmark";
 
 /**
@@ -127,7 +128,11 @@ function DeskNav() {
           </div>
 
           <div className="ml-auto flex shrink-0 items-center gap-3">
+            {/* The single market-state truth (R3), now on the phone too (D10). */}
             <MarketState />
+
+            {/* One-tap Light ↔ Dark, left of the gear (CC3, §4.2). System stays in Settings. */}
+            <ThemeToggleButton />
 
             {/* Settings leaves the phone tab bar and lives here, behind a gear (§4.2). */}
             <Link

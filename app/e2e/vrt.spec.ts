@@ -218,7 +218,8 @@ test.describe("visual regression — the design system", () => {
         if (room.path === "/") {
           await page.goto("/");
           await expect(
-            page.getByRole("status").filter({ hasText: "Data through" }),
+            // Since CC3 the FRESH strip speaks in provenance voice — "…next edition {day} ~{time}".
+            page.getByRole("status").filter({ hasText: "next edition" }),
             "the strip is not FRESH — the pinned clock and the seed's session have drifted apart",
           ).toBeVisible();
         }

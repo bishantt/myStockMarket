@@ -17,7 +17,6 @@ import { PipelineStrip } from "@/components/desk/PipelineStrip";
 import { RailProvider } from "@/components/rail/Rail";
 import { OfflineRibbon } from "@/components/OfflineRibbon";
 import { getLatestCompletedRun, getLatestRun } from "@/lib/pipeline";
-import { marketState } from "@/lib/market-hours";
 import { getMorning } from "@/lib/morning";
 import { getTrackRecord } from "@/lib/track-record";
 import { formatEtDate } from "@/lib/time";
@@ -103,11 +102,7 @@ export default async function DeskPage() {
   return (
     <RailProvider>
       {runDate ? (
-        <DeskHeader
-          runDate={runDate}
-          updatedAt={lastRunFinishedAt}
-          marketOpen={marketState(new Date()) === "open"}
-        />
+        <DeskHeader runDate={runDate} updatedAt={lastRunFinishedAt} />
       ) : null}
 
       {/*
@@ -118,7 +113,12 @@ export default async function DeskPage() {
        * It mounts HERE, above the grid and outside the ritual (01 → 07 stays inviolable), and renders even
        * when nothing has run: an empty database gets the quiet "not yet" line, not silence.
        */}
-      <PipelineStrip run={lastCompleted} serverNow={new Date().toISOString()} />
+      <PipelineStrip
+        run={lastCompleted}
+        serverNow={new Date().toISOString()}
+        sourceCount={morning.sources.length}
+        degradedCount={morning.sources.filter((s) => s.status !== "ok").length}
+      />
 
       {/* The offline band — shows only when the browser is offline, naming what is on screen. */}
       <OfflineRibbon syncedDate={asOf ? formatEtDate(asOf) : "—"} />

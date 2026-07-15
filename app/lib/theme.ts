@@ -16,12 +16,33 @@
 
 export const THEME_COOKIE = "msm-theme";
 
+/**
+ * A year — a theme is a preference, not a session. Both writers of the cookie use this: the Settings
+ * server action (theme-actions.ts) and the top-bar one-tap toggle, which writes it client-side so a
+ * reader offline in the PWA can still change theme without a round trip that would fail.
+ */
+export const THEME_COOKIE_MAX_AGE = 60 * 60 * 24 * 365;
+
 export const THEMES = ["system", "light", "dark"] as const;
 export type Theme = (typeof THEMES)[number];
 
 /** Coerce an arbitrary cookie value to a valid theme, defaulting to "system". */
 export function normaliseTheme(value: string | undefined | null): Theme {
   return THEMES.includes(value as Theme) ? (value as Theme) : "system";
+}
+
+/**
+ * The theme one tap on the top-bar toggle should produce (CC3, Part 4.2).
+ *
+ * The toggle is a two-state control — Light ↔ Dark — with System reachable only from Settings. It
+ * flips the RESOLVED appearance, not the raw preference: "system" is resolved against the OS first,
+ * so a reader on system-follows-a-dark-OS who taps once gets explicit light (the opposite of what
+ * they see), never dark again. Pure by construction: the OS preference is passed in, so the browser
+ * reads `matchMedia` and this function stays testable.
+ */
+export function nextTheme(current: Theme, prefersDark: boolean): "light" | "dark" {
+  const showingDark = current === "dark" || (current === "system" && prefersDark);
+  return showingDark ? "light" : "dark";
 }
 
 /**

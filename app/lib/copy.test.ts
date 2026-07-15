@@ -231,6 +231,35 @@ describe("module 07 reads as a glance", () => {
 });
 
 /**
+ * CC3 — the masthead, the strip, and the toggle (CLARITY-AND-CADENCE Part 4.2, Appendix A).
+ *
+ * Ruling R3 is "one truth per line": the market's state appears once (the pill), the data vintage
+ * once (the masthead's line 3), the pipeline's provenance once (the strip). These three strings are
+ * the contract that keeps a fact from appearing in two dialects, so they are pinned verbatim.
+ */
+describe("CC3 — masthead status, slimmed strip, theme toggle (Appendix A)", () => {
+  it("renders the masthead's reader-voice line 3 — weekday first, then the updated stamp (R3)", () => {
+    expect(fill(copy.desk.status, { weekday: "Tuesday", stamp: "7:36 PM ET" })).toBe(
+      "Tuesday's close · updated 7:36 PM ET",
+    );
+  });
+
+  it("renders the pipeline strip in PROVENANCE voice only — sources, degraded, next edition (R3)", () => {
+    // The data vintage ("Data through Tue's close") left this line for the masthead; it names only
+    // what a provenance stamp should — how many sources reported, how many degraded, when the next
+    // edition lands. "close" appears nowhere here, so the vintage is stated exactly once, up top.
+    expect(fill(copy.strip.fresh, { n: 14, degraded: 2, day: "Wed", time: "6:37 PM ET" })).toBe(
+      "14 sources · 2 degraded · next edition Wed ~6:37 PM ET",
+    );
+  });
+
+  it("names the theme toggle's DESTINATION, so the label and the icon agree", () => {
+    expect(fill(copy.theme.toggleAria, { mode: "dark" })).toBe("Switch to dark theme");
+    expect(fill(copy.theme.toggleAria, { mode: "light" })).toBe("Switch to light theme");
+  });
+});
+
+/**
  * THE WINDOW VOCABULARY IS A CLOSED SET (ruling C2, NEWS-AND-CONTROL-PLAN Part 5.2, mechanism 1).
  *
  * C2 says every number states the period it covers. The failure mode of a rule like that is not

@@ -1002,7 +1002,12 @@ function FreshnessLadder() {
         {specimens.map((s) => (
           <Surface key={s.label} level="card" as="div" className="p-5">
             <h3 className="font-mono text-2xs uppercase tracking-[0.08em] text-muted">{s.label}</h3>
-            <PipelineStrip run={s.run} serverNow={new Date(s.at).toISOString()} />
+            <PipelineStrip
+              run={s.run}
+              serverNow={new Date(s.at).toISOString()}
+              sourceCount={14}
+              degradedCount={2}
+            />
           </Surface>
         ))}
       </div>
