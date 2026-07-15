@@ -1227,3 +1227,29 @@ pragma or a derived-date the rule needs. Rule of thumb the prover encodes: **del
 is always safe; rewording one is not automatically** — prefer deletion, and in `app/**` run
 `check:drift` on any reworded line before commit (drift rules 3/4/5/9/10/11/13/14/18/19/20 match
 banned tokens with no comment exemption).
+
+## Count VRT candidate pixels without pixelmatch (the vrt-diff fallback — CC2)
+
+`scripts/vrt-diff.mjs` currently throws `ERR_MODULE_NOT_FOUND: pixelmatch` (it vanished from
+node_modules; Q-LC1-1). Until it is fixed, count candidate-vs-baseline differing pixels with pngjs
+alone (pngjs IS still present). Write the script INSIDE `app/` (module resolution is relative to the
+script's own location, so a scratchpad copy cannot see `app/node_modules`), run under Node 24, delete
+it after — do not commit it:
+
+```js
+import { PNG } from "pngjs";                       // present; pixelmatch is not
+const a = PNG.sync.read(readFileSync(candidate));
+const b = PNG.sync.read(readFileSync(committedBaseline));
+if (a.width !== b.width || a.height !== b.height) → RESIZE (always a real change)
+let d = 0; for (let i = 0; i < a.data.length; i += 4)
+  if (per-channel |a-b| > 30 on R,G,or B) d++;     // 30 tolerates AA jitter
+```
+
+`> ~200px` cleanly separated real timestamp changes from AA jitter at CC2 (login jittered 129px; the
+smallest real move was 408px). But the TRUE authority on "what moved" is the triptych (the
+`playwright-failures-<leg>` artifact's `*-diff.png`) — this counter only quantifies and surfaces the
+moved-but-passed shots (a change under the 600px tolerance keeps an OLD, now-wrong baseline). At CC2
+that was the four `scans-preset` shots (585px, the masked as-of `<time>` box widening as the date
+gained its weekday) and `track-record` on the phone (408/412px) — all updated so no stale-tolerated
+baseline survived. Open EVERY diff image before copying; a diff you cannot explain is a bug, not a
+baseline (the one VRT rule).

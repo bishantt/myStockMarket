@@ -8,6 +8,34 @@ Format: newest first. I mark each as [FYI], [VETO?], or [NEED] so you can scan.
 
 ---
 
+## 2026-07-15 — CC2 (Time, told properly)
+
+CC2 rewrote every reader-facing timestamp to R1's shapes: 12-hour clocks with AM/PM ("7:36 PM"),
+dates that carry their weekday ("Tue, Jul 14"), a padded clock for the one mono column (the control
+room table), and a one-line provenance stamp for footers. It added a new drift rule (only lib/time.ts
+may build an Intl.DateTimeFormat). Tagged `cc-2`. Two heads-ups, neither blocking.
+
+### [VETO? · Q-LC1-1 now has proof] vrt-diff.mjs is BROKEN — pixelmatch vanished, exactly as this risk warned
+At CC2's VRT re-shoot, `node scripts/vrt-diff.mjs` threw `ERR_MODULE_NOT_FOUND: pixelmatch`. The LC1
+decision (your open Q-LC1-1) was to let vrt-diff reuse Playwright's pngjs+pixelmatch instead of
+declaring them — "they will not vanish while Playwright does snapshots." One of them vanished: only
+pngjs is still in `app/node_modules`; pixelmatch is gone (a dependency tree dropped it silently, no
+test to catch it because nothing runs vrt-diff in CI). **Nothing was blocked** — the triptych diff
+images are the real proof, and I used a throwaway pngjs-only counter for the pixel numbers. But the
+committed tool is dead until someone acts. The fix is one line — `npm i -D pixelmatch` (the explicit
+form I offered you at LC1) — or a small rewrite onto pngjs alone. **I did NOT do it in CC2** (a
+timestamps-only phase should not churn package-lock, and this is squarely your Q-LC1-1 call). CC4 is
+the next big VRT phase; it can use the pngjs workaround or you can flip the switch before then.
+
+### [FYI] I normalized the hardcoded clocks too, not only the formatter output
+R1 says "every clock the reader sees is 7:36 PM ET". A few clocks are hardcoded literals, not formatter
+output — the glossary's pre-market/after-hours definitions ("9:30am ET", "4:00pm ET"), the control
+room's "nightly lands ~6:37pm ET", the weekend/market-open explanations. I moved all of them to the
+house shape ("9:30 AM ET", "4:00 PM ET", "6:37 PM"), because leaving them would render two clock
+dialects in the same app — the exact thing R1 abolishes. "midnight ET" stays a word (it is not an
+HH:MM clock and reads clearer than "12:00 AM"). Nothing to decide; noted so the glossary and
+control-room copy changes are not a surprise in the VRT diff.
+
 ## 2026-07-15 — LC3 (hot-file comment compression — the LAST LEAN phase)
 
 LC3 compressed the comments in the 25 hottest files to the "one line of why" standard, proving each

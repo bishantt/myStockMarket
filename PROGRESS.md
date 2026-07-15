@@ -1,66 +1,75 @@
 # PROGRESS.md — resumable state
 
-# LC3 IS DONE — tagged `lc-3` (2026-07-15). LEAN-CODEBASE is COMPLETE. Next phase: CC2.
+# CC2 IS DONE — tagged `cc-2` (2026-07-15). Next phase: CC3.
 
 **Two plans are active (2026-07-15): CLARITY-AND-CADENCE-PLAN.md (Plan A, `cc-1`…`cc-10`) and
-LEAN-CODEBASE-PLAN.md (Plan B, `lc-1`…`lc-3`). Fixed execution order:**
+LEAN-CODEBASE-PLAN.md (Plan B, `lc-1`…`lc-3`, COMPLETE). Fixed execution order:**
 
-> **CC1 ✓ → LC1 ✓ → LC2 ✓ → LC3 ✓ → CC2 → CC3 → CC4 → CC5 → CC6 → CC7 → CC8 → CC9 → CC10**
+> **CC1 ✓ → LC1 ✓ → LC2 ✓ → LC3 ✓ → CC2 ✓ → CC3 → CC4 → CC5 → CC6 → CC7 → CC8 → CC9 → CC10**
 
-**Checkpoint: LC3 (hot-file comment compression) is DONE and tagged `lc-3` by SHA on `16f83cd`.
-LEAN-CODEBASE (all three phases) is finished. Nothing is blocked. Nothing is in flight. The next
-phase is CC2** (CLARITY-AND-CADENCE-PLAN.md — "Time, told properly"), and NEXT-SESSION-PROMPT.md is
-the paste-ready prompt for it.
+**Checkpoint: CC2 ("Time, told properly") is DONE and tagged `cc-2` by SHA on `a9356a9`. Nothing is
+blocked. Nothing is in flight. The next phase is CC3** (CLARITY-AND-CADENCE-PLAN.md — "The masthead
+and the toggle"), and NEXT-SESSION-PROMPT.md is the paste-ready prompt for it.
 
-## What LC3 did, in one paragraph
+## What CC2 did, in one paragraph
 
-LC3 compressed the comments in the 25 hottest files (a fifth of all comment lines, the files every
-session reads) to the "one line of why" standard. Every WHY survives at ≤2 lines; essays became
-sentences; restatement died. **It changed no line of code and no rendered pixel** — comments do not
-render, and the whole thing was proved comment-only per batch by a new tool. First act:
-`pipeline/scripts/comment_prover.py`, which proves an edit is comment-only three ways (TS/JS/MJS: the
-TypeScript **parser**'s leaf-token streams identical — the parser not the raw scanner, which swallows
-comments into mis-scanned regex/template tokens; Python: `ast.dump` identical after zeroing docstrings
-+ a non-docstring-string check; prisma/css: whole-line-deletion-only) plus a sacred-pattern count
-guard. The sacred list (Part 3) was left verbatim throughout: `# noqa`/`@vitest-environment`/
-`eslint-disable` pragmas, the clock derived-date comments, check-drift.mjs's argued skip-lists, and
-brand-assets.mjs's BRAND_FIELD provenance. **Result: 5800 → 4034 comment lines (−1766, 30%.)** The
-plan predicted "half"; the honest 30% is the sacred list doing its job (see QUESTIONS + evidence).
+CC2 rewrote every reader-facing timestamp to ruling R1's shapes — and nothing else ("the cleanest
+possible diff list: every timestamp string"). Clocks are 12-hour with AM/PM ("7:36 PM"), never
+24-hour; every date carries its weekday ("Tue, Jul 14"). lib/time.ts is the one door: formatEtClock
+(no pad), NEW formatEtClockPadded ("07:36 PM", the control-room mono column), formatEtDate/formatUtcDate
+gained a weekday, NEW formatEtStamp ("Tue, Jul 14 · 7:36 PM ET", footer/sheet provenance);
+formatUtcDateLong (the masthead) unchanged. The bare-date-vs-instant split (UTC components vs ET) is
+intact — only shapes changed. A NEW check-drift rule (29) fails the build if any app file besides
+lib/time.ts constructs an Intl.DateTimeFormat (market-hours.ts is the argued second door — it DECIDES
+on time, never renders it). Four beyond the formatters: the double-weekday trap (four sites dropped a
+now-redundant formatUtcWeekday prefix), the ISO leak (settings renders runDate through formatUtcDate),
+the formatEtStamp consumers (news footers/sheets), and the hardcoded reader-facing clocks (glossary,
+control-room, copy.ts — normalized to the house shape).
 
-## The gate at `lc-3` (all green on `16f83cd`)
+## The gate at `cc-2` (all green on `a9356a9`)
 
-- **App unit: 753 passed. Pipeline: 579 passed, 35 skipped (614).** Unchanged — LC3 adds no test.
-  **typecheck · lint · build · check:routes** (B1 14/15 cached) **· check:bundles** (B4 worst /paper
-  198.2 KB < 200) **· check:fonts** (243 KB, 317 KB headroom) **· check:drift** (28/28) **·
-  check:migrations** (live DB matches the repo schema — no migration in LC3).
-- **e2e:** deferred to the CI rehearsal (comments-only, prover-proven byte-identical; the Mac reds
-  ~46 Linux-born snapshots). The four-leg oracle is the authoritative proof — see below.
-- **Branch CI (push, `16f83cd`): run `29432105571` green** (app + pipeline). **Rehearsal (four-leg
-  oracle): run `29432136961`.** **Tag run (`lc-3`): run `29432745654` — four-leg oracle, green.**
-  Full evidence: `docs/lean-evidence/lc3.md`.
+- **App unit: 761 passed (was 753; +8 formatter assertions in the rewritten time.test.ts). Pipeline:
+  579 passed, 35 skipped — UNCHANGED (CC2 touches no pipeline code).** typecheck · lint · build ·
+  check:routes (B1 14/15 cached) · check:bundles (B4 worst /paper 198.3 KB < 200) · check:fonts
+  (243 KB, 317 KB headroom) · **check:drift 29/29 — the new Intl rule live** · check:migrations (no
+  migration in CC2 — the live DB still matches the repo schema).
+- **e2e:local (--ignore-snapshots, desktop):** 219 passed. One stale-shared-DB false red (the mbp16
+  thin-night test's scanResult.deleteMany had left unusual-volume thinned from a prior run; the page
+  rendered "First 3 of 3" correctly — a data-state artifact CLAUDE.md documents, confirmed green on a
+  fresh re-seed). Every timestamp-bearing spec passed — no text assertion broke.
 
-## VRT at `lc-3`
+## VRT at `cc-2` — 65 of 97 baselines re-shot, timestamps only
 
-Zero baselines changed. Comments do not render, so no pixel moved (no `vrt-baselines-candidate-*`
-artifact minted by the rehearsal). **97 VRT baselines total (0 updated, 0 added).**
+The first rehearsal (on `1b0153d`) redded all four legs on pixels, as planned (every timestamp shot
+moves — the phase's entire VRT budget). I opened the triptychs and confirmed timestamps only: the
+pipeline strip + Desk status line (12-hour clocks), the session calendar + track-record date columns
+(dates gained their weekday, tables rebalanced), the news card footers + story stamps (formatEtStamp),
+the control-room table (padded clock + the killed ISO leak), the glossary's pre-market/after-hours
+clocks, the ticker session dates, and the masked as-of `<time>` boxes widening as the date grew. Copied
+65 moved baselines (>200px or resized); login (129px, AA jitter, no timestamp) left unchanged. Committed
+on `a9356a9` and RE-rehearsed green. **97 VRT baselines total (65 updated, 0 added).**
 
-## The prover — the one new tool LC3 leaves behind
+## CI evidence (fill from docs/clarity-evidence/cc2.md)
 
-`pipeline/scripts/comment_prover.py` (committed FIRST, `064688e`). Run it before/after any comment
-edit: `cd pipeline && uv run python -m scripts.comment_prover <path>...` — must print `PROVED —
-comment-only`. It is a dev instrument (like comment_stats.py and vrt-diff.mjs from LC1), self-tested
-on 30 adversarial cases, not in the gate suite. A REJECT is a real finding, not a baseline to wave
-through. See PATTERNS.md ("Prove a comment-only edit").
+- **Branch CI (push, `1b0153d`): run 29438058728 — app + pipeline, green.**
+- **Rehearsal #1 (four-leg oracle, `1b0153d`): run 29438058091 — RED on pixels (expected), minted the
+  candidate baselines.**
+- **Baselines pushed on `a9356a9`; Re-rehearsal (four-leg oracle, `a9356a9`): run 29439520970 — GREEN.**
+- **Tag run (`cc-2` on `a9356a9`): run 29440186576 — four-leg oracle, green (7 m 37 s).**
+- **Post-deploy: Vercel Production = a9356a9 (success); check:live 7/7 green; check:nav no regression.**
+  Full evidence: `docs/clarity-evidence/cc2.md`.
 
-## What outlives LC3 (all in QUESTIONS-FOR-BISHANT.md; none is a phase, none blocking)
+## Open / carried forward (none blocking)
 
-1. **Q-LC1-1 — vrt-diff.mjs reuses Playwright's pngjs/pixelmatch, not its own devDependencies.** Still
-   open (no veto in DECISIONS.md through LC1/LC2/LC3, so left as-is per the handoff). LEAN is done, so
-   it now travels with the CC phases or waits for Bishan. A two-line change if he wants the explicit form.
-2. **Carried from CC1 (still open, none a phase):** Q-CC1-1 (the ticker-slug fix, its rendered picture
-   handed to CC4), Q-PD6-3 (watchlist reason truncation on a phone, now CC4's), the PD10 iOS on-glass
-   photo checklist (owed to Bishan's iPhone), and CLARITY Part 0 (P-1/P-2/dawn-cron/retention — every
-   default proceeds when its phase arrives: CC5/CC7/CC8/CC10).
+1. **Q-LC1-1 escalated with proof: vrt-diff.mjs is BROKEN — `pixelmatch` is absent from node_modules.**
+   The LC1 decision relied on pixelmatch resolving transitively via Playwright; it no longer does (only
+   pngjs remains). I worked around it with a throwaway pngjs-only comparator to count candidate pixels;
+   the DIFF IMAGES (triptychs) are the real proof anyway. The tool needs `npm i -D pixelmatch` (the
+   explicit form Bishan was offered at LC1) OR a rewrite onto pngjs alone. NOT fixed in CC2 (timestamps
+   only; a dep churn is out of scope). See QUESTIONS-FOR-BISHANT.md.
+2. **CC1 carries:** Q-CC1-1 (ticker-slug rendered proof → CC4), Q-PD6-3 (watchlist reason truncation →
+   CC4), the PD10 iOS on-glass photos (Bishan's device), CLARITY Part 0 (P-1/P-2/dawn-cron/retention —
+   defaults land at CC5/CC7/CC8/CC10).
 
 ## The local harness (unchanged — still works; Node 24 required for the guard scripts)
 
@@ -72,17 +81,14 @@ npx prisma migrate deploy && npm run db:seed && export MSM_SEEDED=1
 lsof -ti:3210 | xargs kill -9                     # ALWAYS, before any run
 npx playwright test --project=desktop --workers=1 --ignore-snapshots   # one project at a time
 ```
-The guard scripts (`check:fonts`, `check:routes`, `check:bundles`, `check:migrations`, `check:live`)
-need **Node 24** — Claude Code runs Node 20, which shadows nvm, so prepend it:
-`PATH="$HOME/.nvm/versions/node/v24.18.0/bin:$PATH" npm run check:fonts`. **The glob trap:**
-`~/.nvm/versions/node/v24*` matches TWO installed dirs and breaks the PATH — name the version
-(`v24.18.0`) explicitly. `check:live`/`check:nav`/`check:lighthouse` need `set -a; source .env; set +a`
-first (AUTH_COOKIE_SECRET is in the repo-root .env), and Lighthouse needs `CHROME_PATH`.
+Guard scripts (`check:fonts/routes/bundles/migrations/live/nav/lighthouse/drift`) need **Node 24** —
+Claude Code runs Node 20 and shadows nvm, so prepend `PATH="$HOME/.nvm/versions/node/v24.18.0/bin:$PATH"`
+(name the version — the glob `v24*` matches TWO dirs and breaks). `check:live/nav/lighthouse` need
+`set -a; source .env; set +a`; Lighthouse needs `CHROME_PATH`.
 
-## The three committed LEAN tools (LC1–LC3 left them; every future session may use them)
+## The committed dev tools (LC1–LC3 + the VRT diff)
 
-- `pipeline/scripts/comment_stats.py` — `uv run python -m scripts.comment_stats` (from `pipeline/`):
-  comment density per directory + the top-25 worklist + the before/after instrument.
-- `pipeline/scripts/comment_prover.py` — the LC3 prover (above).
-- `app/scripts/vrt-diff.mjs` — `node scripts/vrt-diff.mjs <candidate-dir>` (from `app/`): decodes every
-  VRT candidate against its committed twin and prints differing-pixel counts, if a rehearsal leg reds.
+- `pipeline/scripts/comment_stats.py` — comment density per directory + top-25 worklist.
+- `pipeline/scripts/comment_prover.py` — proves an edit is comment-only.
+- `app/scripts/vrt-diff.mjs` — candidate-vs-baseline pixel diff. **CURRENTLY BROKEN (pixelmatch absent);
+  see Q-LC1-1.** A pngjs-only workaround pattern is in PATTERNS.md.
