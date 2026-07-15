@@ -182,11 +182,20 @@ def _macro_stats(market_context: Mapping[str, Any] | None) -> list[Stat]:
         out.append(Stat("macro-vix", f"{float(vix):.2f}", label="VIX"))
     ten_year = market_context.get("ten_year")
     if ten_year is not None:
-        out.append(Stat("macro-10y", f"{float(ten_year):.2f}%", label="10-year Treasury yield"))
+        # The value STATES ITS WINDOW (PD7's rule, applied to the macro stats at CC1/D2): the narrator
+        # writes "the 10-year yield was 4.35%", and "10" is a number the gate must license — so the
+        # value carries "10-year" in the same words the narrator will use.
+        out.append(Stat("macro-10y", f"{float(ten_year):.2f}% 10-year yield", label="10-year Treasury yield"))
     out.append(Stat("breadth-advancers", str(int(market_context["advancers"])), label="advancing issues"))
     out.append(Stat("breadth-decliners", str(int(market_context["decliners"])), label="declining issues"))
+    # Two fixes ride this one value (CC1/D2). (1) `pct_above_50dma` is stored as a 0–1 FRACTION
+    # (nightly.py, baserates.py); rendering it with a bare `%` published "0.61%" where the Desk says
+    # 61%, and the honest brief that narrated "61%" was flagged and HELD every night. The ×100 makes
+    # the value speak the Desk's number. (2) The value states its window ("50-day average") so the
+    # narrator's own "50" traces to a source instead of flagging the sentence that describes it.
     out.append(
-        Stat("breadth-pct50", f"{float(market_context['pct_above_50dma']):.2f}%",
+        Stat("breadth-pct50",
+             f"{float(market_context['pct_above_50dma']) * 100:.2f}% of the universe above its 50-day average",
              label="share of the universe above its 50-day average")
     )
     return out
@@ -199,8 +208,11 @@ def _mover_stats(movers: Iterable[Mapping[str, Any]]) -> list[Stat]:
         ret_1 = mover.get("ret_1")
         if ret_1 is not None:
             direction = "gain" if float(ret_1) >= 0 else "decline"
+            # UNSIGNED magnitude, and the value states its window: "1.20% 1-day gain". The gate checks
+            # numbers, not the direction word, so "gain"/"decline" ride safely inside the value, and
+            # "1-day" licenses the "1" a narrator writes when it names the window (CC1/D2).
             out.append(
-                Stat(f"mover-{symbol}", f"{abs(float(ret_1)) * 100:.2f}%",
+                Stat(f"mover-{symbol}", f"{abs(float(ret_1)) * 100:.2f}% 1-day {direction}",
                      label=f"{symbol} 1-day {direction}")
             )
         rvol = mover.get("rvol20")

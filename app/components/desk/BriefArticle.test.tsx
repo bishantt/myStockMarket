@@ -33,12 +33,11 @@ const PUBLISHED: BriefView = {
 };
 
 describe("BriefArticle", () => {
-  it("renders the unavailable line and NO prose when held — but keeps the slot skeleton", () => {
-    // A held briefing means the verification gate refused to print a number it could not check.
-    // None of the LLM's prose may survive that — but the STRUCTURE does, deliberately (§5.1). The
-    // shape of a market note (what happened / why it matters / by the numbers / yes, but) is part
-    // of what this module teaches, and a reader on a held night still learns the shape and still
-    // sees exactly what is missing. An empty paragraph teaches nothing.
+  it("renders ONLY the unavailable line when held — no prose, no slot skeleton (CC1)", () => {
+    // A held briefing means the verification gate refused to print a number it could not check. The
+    // module shows the calm "briefing unavailable" line and nothing else. CC1 retired the slot
+    // skeleton it used to render: a skeleton is a promise that content is arriving, and on a held
+    // night the run happened and the content is deliberately not coming (the no-shimmer-on-empty law).
     const held: BriefView = { ...PUBLISHED, status: "held" };
     render(<BriefArticle asOf={ASOF} brief={held} />);
 
@@ -47,9 +46,10 @@ describe("BriefArticle", () => {
     // Not one word of the withheld briefing appears.
     expect(screen.queryByText("AI-server demand carried the tape")).not.toBeInTheDocument();
 
-    // But the slot skeleton does — as labels over empty rules, never as content.
-    expect(screen.getByText("What happened")).toBeInTheDocument();
-    expect(screen.getByText("Yes, but")).toBeInTheDocument();
+    // And no slot labels — the skeleton is gone. Their absence is the promise the module no longer
+    // makes.
+    expect(screen.queryByText("What happened")).not.toBeInTheDocument();
+    expect(screen.queryByText("Yes, but")).not.toBeInTheDocument();
   });
 
   it("renders the headline, the labeled slots, and a source superscript link when published", () => {

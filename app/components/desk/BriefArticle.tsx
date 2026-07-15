@@ -183,17 +183,18 @@ function Superscripts({ numbers, footnotes }: { numbers: number[]; footnotes: Br
 }
 
 /**
- * The held state — designed, not merely worded.
+ * The held state — one calm line, and nothing else (CC1, the no-shimmer-on-empty law).
  *
  * When the verification gate holds tonight's briefing (an LLM sentence carried a number the gate
- * could not verify against the database), the module does NOT collapse to a one-line apology. It
- * renders the full slot skeleton — every slot masthead, in faint, with a quiet rule where the prose
- * would sit — and the honest line beneath the first.
+ * could not verify against the database), the module shows the neutral "briefing unavailable" line
+ * over the verified scans below — and no more.
  *
- * The reason is pedagogical. The briefing's structure IS part of what it teaches: a market note has
- * a what-happened, a why-it-might-matter, a by-the-numbers, and a yes-but. A reader who sees that
- * shape on a held night still learns the shape, and still sees exactly what is missing. An empty
- * paragraph teaches nothing.
+ * It USED to render the full slot skeleton — every slot masthead in faint, over empty hairline
+ * rules — on a pedagogical argument: the shape of a market note is part of what the briefing
+ * teaches. CC1 retires that. A skeleton is a promise that content is arriving; on a held night the
+ * run happened and the content is deliberately NOT coming, so the skeleton promises something that
+ * is false. That is the same law that governs EmptyModule (an empty state is information, not an
+ * apology, and never a shimmer): the calm sentence is the whole honest truth of a held night.
  *
  * It is never amber. A held briefing is the gate WORKING — the system refusing to print a number it
  * could not check — and the two amber consumers are spoken for (§3.3, P11).
@@ -202,18 +203,6 @@ function HeldState() {
   return (
     <div className="pt-4">
       <p className="max-w-[62ch] font-prose text-base text-ink-2">{copy.brief.unavailable}</p>
-
-      <div aria-hidden="true" className="flex flex-col gap-4 pt-6">
-        {SLOTS.map(({ key, label }) => (
-          <div key={String(key)} className="flex flex-col gap-2">
-            <span className="font-mono text-2xs uppercase tracking-[0.08em] text-muted">
-              {label}
-            </span>
-            <div className="h-px w-full bg-hairline" />
-            <div className="h-px w-3/4 bg-hairline" />
-          </div>
-        ))}
-      </div>
     </div>
   );
 }

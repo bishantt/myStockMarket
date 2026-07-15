@@ -304,3 +304,53 @@ def test_the_cleared_list_survives_serialization():
     ).to_json()
 
     assert payload["cleared"] == ["18.20"]
+
+
+# ----- CC1 / D2: the honest evening brief must stop holding over its own windows -----
+#
+# Production held EVERY briefing, every night, with the reason "flagged entity in today's focus".
+# Two collaborating bugs did it, both in the macro/mover stats and both fixed at their source in
+# stats.py (never in the gate — the gate's strictness is the product working):
+#   1. `pct_above_50dma` is a 0–1 FRACTION, rendered with a bare `%`, so the source said "0.61%"
+#      while the Desk and the narrator said "61%" — and 61 does not trace to 0.61.
+#   2. The macro/mover values did not STATE THEIR WINDOWS, so the narrator's own "50-day", "10-year"
+#      and "1-day" scanned as the numbers 50, 10 and 1 with nothing to match (PD7 fixed exactly this
+#      for the depth stats and never reached these).
+# A flag anywhere in Today's-focus holds the whole briefing, so either bug alone was enough.
+
+def test_the_honest_evening_brief_no_longer_holds_over_its_own_windows():
+    """Drive the REAL build_stats() with production-shaped sources, then narrate the production
+    sentence shapes over them. It must verify `ok` with zero flags. RED before stats.py multiplied
+    the breadth fraction by 100 and stated its windows; GREEN after (D2)."""
+    from briefing.stats import build_stats
+
+    stats = build_stats(
+        market_context={
+            "vix": 17.16, "ten_year": 4.35,
+            "advancers": 3210, "decliners": 1780,
+            "pct_above_50dma": 0.61,  # the 0–1 FRACTION the pipeline actually stores
+        },
+        movers=[{"symbol": "SPY", "ret_1": 0.0123, "rvol20": 2.4}],
+        calendar=[],
+        run_date=RUN_DATE,
+    )
+
+    # The premise, pinned here so a regression of either fix breaks loudly at the SOURCE rather than
+    # silently letting the gate hold an honest brief again: the breadth stat speaks the Desk's number
+    # AND its window.
+    breadth = next(s for s in stats if s.stat_id == "breadth-pct50")
+    assert breadth.value == "61.00% of the universe above its 50-day average"
+
+    draft = _draft(
+        focus_headline="Breadth held as the tape drifted higher",
+        focus_body=(
+            "About 61% of the universe closed above its 50-day average, with 3210 advancers to "
+            "1780 decliners. The VIX settled at 17.16 and the 10-year yield at 4.35%. SPY posted a "
+            "1.23% 1-day gain on 2.4x its usual volume."
+        ),
+    )
+
+    result = verify(draft, extracts=[], stats=stats, instruments=INSTRUMENTS, run_date=RUN_DATE)
+
+    assert result.status == "ok", f"held on: {[f.to_json() for f in result.flags]}"
+    assert result.flags == ()

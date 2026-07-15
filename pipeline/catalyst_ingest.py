@@ -91,8 +91,34 @@ def gather_catalysts(
         except Exception as error:  # noqa: BLE001 — fred's macro-series status is reported by the macro stage
             print(f"catalysts: fred calendar down ({error})")
 
+    # Collapse duplicate rows before they reach the Desk (D7). FRED posts ONE release under several
+    # series, so CPI appeared TWICE on the same date in production; select_releases de-dupes only on
+    # (release_id, date), and two different ids for the same release code slip past it. The reader
+    # identity of a calendar row is (code, date, symbol) — the chip, the day, the name — so that is
+    # the key the assembly de-dupes on.
+    calendar = _dedupe_calendar(calendar)
+
     # Only replace the calendar if a calendar source actually ran; otherwise leave it untouched.
     return CatalystBundle(news_items=news, calendar_events=calendar if calendar_ran else None, source_status=status)
+
+
+def _dedupe_calendar(calendar: list[dict]) -> list[dict]:
+    """Drop rows that repeat a (code, date, symbol) identity, keeping the first (stable order).
+
+    That triple is the row as the Desk renders it, so two rows sharing it are one event told twice —
+    whatever their upstream provenance (two FRED series for one CPI print, an FMP earnings row that
+    arrived twice). Two genuinely different events — a different symbol, a different chip code, or a
+    different day — share no key and both survive.
+    """
+    seen: set[tuple] = set()
+    out: list[dict] = []
+    for event in calendar:
+        key = (event.get("code"), event.get("date"), event.get("symbol"))
+        if key in seen:
+            continue
+        seen.add(key)
+        out.append(event)
+    return out
 
 
 def _finnhub_news(item: Any) -> dict:

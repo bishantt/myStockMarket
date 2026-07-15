@@ -87,6 +87,29 @@ def test_a_release_repeated_on_one_date_is_written_once():
     assert len(fomc) == 1
 
 
+class DuplicateCpiFred:
+    """The D7 production shape: FRED posted CPI under two DIFFERENT release_ids on one date. Because
+    select_releases de-dupes only on (release_id, date), both survived it — and the Desk showed CPI
+    twice on Jul 14. The same-id repeat that FakeFred models is caught upstream; this one is not."""
+
+    def release_calendar(self, start, end):
+        return [
+            ReleaseDate(release_id=10, name="Consumer Price Index", date=date(2026, 7, 14)),
+            ReleaseDate(release_id=733, name="Consumer Price Index", date=date(2026, 7, 14)),
+        ]
+
+
+def test_the_same_code_under_two_release_ids_on_one_date_is_written_once():
+    """D7. Two different release_ids both map to the CPI chip on the same day; select_releases keeps
+    both. The assembly now de-dupes on the row's reader identity (code, date, symbol), so exactly one
+    CPI reaches the Desk. RED before _dedupe_calendar; GREEN after."""
+    bundle = gather_catalysts(
+        [], date(2026, 7, 9), finnhub=None, marketaux=None, fmp=None, fred=DuplicateCpiFred()
+    )
+    cpi = [e for e in bundle.calendar_events if e["code"] == "CPI"]
+    assert len(cpi) == 1
+
+
 def test_every_release_row_carries_its_chip_code_and_importance():
     bundle = gather_catalysts([], date(2026, 7, 9), finnhub=None, marketaux=None, fmp=None, fred=FakeFred())
     by_code = {e["code"]: e for e in bundle.calendar_events}

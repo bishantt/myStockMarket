@@ -65,7 +65,7 @@ concurrency:
 on:
   push:
     branches: ["**"]
-    tags: ["phase-*", "redesign-*", "feel-*", "nc-*", "gate-*", "pd-*"]
+    tags: ["phase-*", "redesign-*", "feel-*", "nc-*", "gate-*", "pd-*", "cc-*"]
     # DOCUMENTATION IS FREE (G2). A commit that changes nothing but prose starts no run at all.
     #
     # This repo writes a lot of prose on purpose — evidence chapters, five intelligence files, the
@@ -272,7 +272,7 @@ jobs:
     # GitHub validates dispatch inputs against the workflow file ON THE TARGET REF, so `job=e2e` is
     # only an accepted value once this line is on the ref you are dispatching. Push first, then
     # dispatch; a 422 here means the ref does not know about the input yet.
-    if: startsWith(github.ref, 'refs/tags/phase-') || startsWith(github.ref, 'refs/tags/redesign-') || startsWith(github.ref, 'refs/tags/feel-') || startsWith(github.ref, 'refs/tags/nc-') || startsWith(github.ref, 'refs/tags/gate-') || startsWith(github.ref, 'refs/tags/pd-') || (github.event_name == 'workflow_dispatch' && inputs.job == 'e2e')
+    if: startsWith(github.ref, 'refs/tags/phase-') || startsWith(github.ref, 'refs/tags/redesign-') || startsWith(github.ref, 'refs/tags/feel-') || startsWith(github.ref, 'refs/tags/nc-') || startsWith(github.ref, 'refs/tags/gate-') || startsWith(github.ref, 'refs/tags/pd-') || startsWith(github.ref, 'refs/tags/cc-') || (github.event_name == 'workflow_dispatch' && inputs.job == 'e2e')
     runs-on: ubuntu-latest
 
     # FOUR LEGS, ONE PER PLAYWRIGHT PROJECT (G1; `mbp16` added at PD3). The suite used to run every

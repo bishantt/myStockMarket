@@ -16,16 +16,20 @@ from briefing.stats import build_stats
 
 def test_macro_strip_is_rendered():
     stats = build_stats(
+        # pct_above_50dma is a 0–1 FRACTION at its source (nightly.py, baserates.py). Feeding 0.6075
+        # here models the real unit; the earlier fixture fed 60.75 and so certified the ×100 bug (D2).
         market_context={"vix": 14.2, "ten_year": 4.35, "advancers": 5091, "decliners": 3987,
-                        "pct_above_50dma": 60.75},
+                        "pct_above_50dma": 0.6075},
         movers=[], calendar=[], run_date=date(2026, 7, 11),
     )
     values = {s.stat_id: s.value for s in stats}
     assert values["macro-vix"] == "14.20"
-    assert values["macro-10y"] == "4.35%"
+    # The value states its window so the narrator's "10-year" traces to a source (D2).
+    assert values["macro-10y"] == "4.35% 10-year yield"
     assert values["breadth-advancers"] == "5091"
     assert values["breadth-decliners"] == "3987"
-    assert values["breadth-pct50"] == "60.75%"
+    # ×100 into the Desk's number, AND the window words the narrator will use (D2).
+    assert values["breadth-pct50"] == "60.75% of the universe above its 50-day average"
 
 
 def test_movers_are_unsigned_magnitudes_with_direction_in_the_label():
@@ -36,9 +40,11 @@ def test_movers_are_unsigned_magnitudes_with_direction_in_the_label():
         calendar=[], run_date=date(2026, 7, 11),
     )
     by_id = {s.stat_id: s for s in stats}
-    assert by_id["mover-SPY"].value == "1.20%"
+    # Unsigned magnitude, with the window ("1-day") stated in the value and the direction word riding
+    # safely inside it (the gate checks numbers, not signs or direction words) — D2.
+    assert by_id["mover-SPY"].value == "1.20% 1-day gain"
     assert "gain" in by_id["mover-SPY"].label
-    assert by_id["mover-ACME"].value == "2.30%"      # unsigned magnitude, not "-2.30%"
+    assert by_id["mover-ACME"].value == "2.30% 1-day decline"      # unsigned magnitude, not "-2.30%"
     assert "decline" in by_id["mover-ACME"].label
     assert by_id["rvol-ACME"].value == "3.1"
 
@@ -62,7 +68,7 @@ def test_missing_vix_and_ten_year_are_skipped():
     # FRED can be down — VIX and the 10-year are nullable and simply absent from the table then.
     stats = build_stats(
         market_context={"vix": None, "ten_year": None, "advancers": 10, "decliners": 5,
-                        "pct_above_50dma": 55.0},
+                        "pct_above_50dma": 0.55},
         movers=[], calendar=[], run_date=date(2026, 7, 11),
     )
     ids = {s.stat_id for s in stats}

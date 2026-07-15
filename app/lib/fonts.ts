@@ -36,11 +36,17 @@ import { Inter, JetBrains_Mono, Newsreader, Playfair_Display } from "next/font/g
  * Never a number. Never body text. Never below 19px (the "serif floor", §3.1): a display serif's
  * hairlines collapse at text sizes, which is precisely why Newsreader exists below it.
  *
- * It loads `display: "swap"`, alone among the four. The others use `optional`, where a missed swap
- * costs nothing structural because next/font's metric-adjusted fallbacks hold the line boxes. But
- * Playfair SETS the headlines: with `optional`, one slow first load ships Georgia headlines for the
- * whole session, and no metric-matched fallback can mask a display serif at 46–56px. One swap frame
- * is the cheaper price, and it is a deliberate choice (§7.4).
+ * It loads `display: "swap"` — and since CC1 (ruling R2) so do the other three. `optional` gives a
+ * font ~100ms and then commits to whoever won that race FOR THE WHOLE SESSION: on a cold cache or a
+ * post-deploy hash change the fallback wins, the real download completes a moment later into an
+ * unused cache, and only the NEXT refresh renders correctly. That is exactly the bug D1 diagnosed —
+ * the mono that carries every number and every masthead missed its window and shipped a sans fallback
+ * for an entire session, which is the "font renders wrong on some refreshes" symptom. `swap` paints
+ * the fallback and swaps the real face in the instant it arrives; next/font's metric-adjusted
+ * fallbacks make that swap frame near-invisible, and a whole session in the wrong voice is the worse
+ * trade. Playfair chose `swap` from the start for this reason at the headline scale (no metric match
+ * can mask a display serif at 46–56px); CC1 applies the same reasoning to the three faces below that
+ * were still gambling on `optional`. The CC1 gate re-runs check:lighthouse to prove CLS did not move.
  */
 export const playfair = Playfair_Display({
   subsets: ["latin"],
@@ -63,7 +69,7 @@ export const inter = Inter({
   // 500 is gone — the first rung of the §3.1 drop ladder. 600 covers every emphasis in the UI, and
   // the difference between 500 and 600 at 13.5px is not a difference a reader can name.
   weight: ["400", "600"],
-  display: "optional",
+  display: "swap",
   variable: "--font-inter",
 });
 
@@ -78,7 +84,7 @@ export const inter = Inter({
 export const jetbrainsMono = JetBrains_Mono({
   subsets: ["latin"],
   weight: ["400", "500", "600"],
-  display: "optional",
+  display: "swap",
   variable: "--font-jetbrains",
 });
 
@@ -94,7 +100,7 @@ export const jetbrainsMono = JetBrains_Mono({
 export const newsreader = Newsreader({
   subsets: ["latin"],
   style: ["normal", "italic"],
-  display: "optional",
+  display: "swap",
   variable: "--font-newsreader",
 });
 

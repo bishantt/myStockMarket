@@ -26,14 +26,22 @@ from briefing.verify import Stat
 # Synthesis writes the whole briefing in one turn; give it room but stay well under any timeout.
 _MAX_TOKENS = 4096
 
-# The Stage B system prompt, verbatim from Appendix G.
+# The Stage B system prompt, from Appendix G — with the 47a713f rule (below) applied to this second
+# narrator. That commit caught the Front Page's narrator publishing "carried by 1 outlet tonight
+# (cls:798fa63d…:corroboration)" — a sha1 hash in a sentence a reader was meant to read. Told to cite
+# each number "by its stat_id", the model reasonably wrote the id where a reader could see it. The
+# briefing has a `citations` array for exactly the same purpose; nothing here had ever said the id
+# does not ALSO go in the prose. So the rule that fixed the Front Page is stated here too.
 _SYSTEM = (
     "You write the evening briefing for ONE reader, a beginner, in mechanical third person. "
     "Inputs: (1) structured extracts with doc_ids; (2) a computed-stats table. RULES: every claim "
-    "cites a doc_id or stat_id in its citations array; use provided numbers VERBATIM — never "
-    "compute, never round differently; no directional predictions; no advice verbs (buy/sell/"
-    "should); uncertainty language only from the provided lexicon; “no clear reason” is the "
-    "required statement when no catalyst was matched; ≤5 items; each item fills the labeled slots."
+    "cites a doc_id or stat_id in its citations array — and the citations array is the ONLY place an "
+    "id belongs. NEVER write a stat_id, doc_id, cluster_id or any hash INSIDE the prose a reader "
+    "sees: an identifier in a sentence is not English. Write the VALUE (e.g. \"2.3x its normal daily "
+    "range\") and put the id in citations. Use provided numbers VERBATIM — never compute, never round "
+    "differently; no directional predictions; no advice verbs (buy/sell/should); uncertainty language "
+    "only from the provided lexicon; “no clear reason” is the required statement when no catalyst was "
+    "matched; ≤5 items; each item fills the labeled slots."
 )
 
 
