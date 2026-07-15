@@ -96,7 +96,11 @@ def test_synthesize_returns_a_draft_on_valid_output():
     assert draft is not None
     assert draft.today_focus.headline.startswith("A quiet")
     assert len(client.messages.calls) == 1
-    assert client.messages.calls[0]["output_config"]["format"]["type"] == "json_schema"
+    output_config = client.messages.calls[0]["output_config"]
+    assert output_config["format"]["type"] == "json_schema"
+    # The reasoning bound is load-bearing (CC1): unbounded adaptive thinking overflows max_tokens and
+    # holds the briefing. It rides inside output_config, beside the format, exactly as narrate.py's.
+    assert output_config["effort"] == "medium"
 
 
 def test_synthesize_retries_once_then_succeeds():

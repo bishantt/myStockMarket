@@ -23,21 +23,23 @@ from typing import Any, Iterable
 from briefing.schema import BriefDraft, ExtractResult, synthesis_json_schema
 from briefing.verify import Stat
 
-# Synthesis writes the whole briefing in one turn, and the ceiling has to cover the model's EXTENDED
-# THINKING as well as the output: claude-sonnet-5 thinks before it writes, and that reasoning is
-# spent against `max_tokens` too. At 4096 the thinking alone routinely consumed the whole budget and
-# the call stopped with `stop_reason=max_tokens` and a lone `thinking` block but NO text — a 0-char
-# "response" that held the whole briefing, intermittently, roughly every other night (CC1 found this
-# by dumping the message shape on failure). The output itself is small and bounded (≤5 items), so the
-# headroom is almost all for thinking; it is a CEILING not a target — the model spends only what it
-# needs — so raising it costs nothing on a night it thinks less.
-#
-# 21000, not higher, for a hard SDK reason: a NON-STREAMING call refuses any max_tokens that could
-# run past 10 minutes (`3600 * max_tokens / 128000 > 600` ⇒ ValueError "Streaming is required"), which
-# caps us at 21333. (Sonnet-5 is NOT in the SDK's per-model non-streaming table — only the opus-4s are,
-# at 8192 — so that lower cap does not apply here.) 21000 sits just under the time ceiling with margin,
-# is ~5× the old budget, and keeps this a plain one-shot call rather than forcing a streaming rewrite.
-_MAX_TOKENS = 21000
+# The token budget and the reasoning budget, sized exactly as the front-page narrator's are
+# (newsdesk/narrate.py, PD7). The two Sonnet-5 narrators in this pipeline solve the IDENTICAL problem
+# and must not drift: claude-sonnet-5 runs ADAPTIVE THINKING by default, and that reasoning is spent
+# against `max_tokens`. At 4096 the thinking alone routinely consumed the whole budget and the call
+# returned `stop_reason=max_tokens` with a lone `thinking` block and NO text — a 0-char "response"
+# that held the briefing, intermittently, roughly every other night (CC1 found it by dumping the
+# message shape on failure; the front page had lost every note the same way at PD7). Two levers fix it
+# TOGETHER: 16000 leaves ~12k of room for reasoning above the small bounded JSON — and stays under the
+# ~21k line at which a non-streaming call is refused for possibly running past ten minutes, so no
+# streaming rewrite — and `effort` (below) keeps the reasoning from expanding to fill even that.
+_MAX_TOKENS = 16000
+
+# The reasoning budget, bounded on purpose (a Sonnet-5 control; Haiku has no such lever, so the
+# extraction stage neither sets it nor may). "medium", not "low": synthesis is not transcribing — it
+# chooses WHICH extracts and stats belong in the brief — and Sonnet-5 under-thinks on low. Not "high":
+# nothing here is open-ended, and unbounded adaptive thinking is what overflowed the cap to begin with.
+_EFFORT = "medium"
 
 # The Stage B system prompt, from Appendix G — with the 47a713f rule (below) applied to this second
 # narrator. That commit caught the Front Page's narrator publishing "carried by 1 outlet tonight
@@ -132,13 +134,20 @@ def build_synthesis_prompt(extracts: list[ExtractResult], stats: list[Stat]) -> 
 # ----- internals -----
 
 def _create(client: Any, model: str, system: str, messages: list[dict]) -> Any:
-    """One structured-output synthesis call."""
+    """One structured-output synthesis call.
+
+    `effort` rides INSIDE `output_config`, beside the format — it is not a top-level parameter (that
+    is a 400), and it is the bound that stops Sonnet-5's adaptive thinking from overflowing
+    `max_tokens` and returning an empty response. Same shape as newsdesk/narrate.py."""
     return client.messages.create(
         model=model,
         max_tokens=_MAX_TOKENS,
         system=system,
         messages=messages,
-        output_config={"format": {"type": "json_schema", "schema": synthesis_json_schema()}},
+        output_config={
+            "format": {"type": "json_schema", "schema": synthesis_json_schema()},
+            "effort": _EFFORT,
+        },
     )
 
 
