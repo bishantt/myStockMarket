@@ -317,6 +317,13 @@ each row carrying the existing noise line). A catalyst card with zero affected t
 universe says "No direct listing in our universe" rather than inventing exposure. Guards: e2e
 on the seeded no-catalyst mover; the cluster builder's unit tests pin both cases.
 
+**[AMENDED 2026-07-15, CLARITY CC5 — card scale vs sheet scale.]** The full sentence "No direct listing
+in our universe." keeps its room on the STORY SHEET, where it appears once and can mean it. On a CARD —
+in a two-up grid, eight macro stories to a screen — it prints the single mono word "Market-wide" where
+the chips would sit. Same fact, said at a glance; the intent (name the absence, never invent exposure)
+is unchanged. (The CLARITY plan cited this rule as "UI-REDESIGN-PLAN §7.7/7.9 + C9"; the rule actually
+lives here in NEWS-AND-CONTROL — a citation slip, corrected in place.)
+
 **C10 · The Front Page never pushes.** No push notifications, no unread badges, no "N new
 stories" pills, no auto-refresh while the reader is on the page (nightly data; the page
 states its press time). The room re-renders on navigation like every other ISR room and its
@@ -958,6 +965,14 @@ story page). All inserts land in the same Job-A publish transaction.
   lead spanning both columns) + context rail 4/12 (the "Moved without a story" card, the
   press-time/provenance card, the filter state). Pagination by "Page N of M" (M6) at 20
   clusters/page; Today rarely exceeds one page.
+- **[AMENDED 2026-07-15, CLARITY CC5/R4 — supersedes the anatomy below; the room is TEXT-FIRST now.]**
+  A card renders an image ONLY when a real one is stored (L1/L2); with none it is its words. The
+  anatomy is: catalyst + sector Tag · serif headline (a LEAD up to 3 lines, a ROW 2) · why-it-matters
+  in italic (the LEAD's alone) · ticker chips OR the single mono word "Market-wide" · a byline
+  (outlet · date · time · source count, the count only when >1). The standalone "3 sources" footer
+  whisper is gone — it lives in the byline. The `{h}h ago` relative time was already replaced by an
+  absolute ET stamp (the ISR-cache scar). The lead's photo, when one exists, sits right-of-headline at
+  40% (was a full-bleed top image). See CLARITY 4.4.
 - **Card anatomy (every card, both tiers):** image (7.9) · catalyst-type Tag + sector Tag ·
   headline (serif, 2-line clamp with title attr for overflow; a number inside the headline
   renders emphasized in mono ONLY when it is one of the cluster's gate-verified
@@ -989,6 +1004,16 @@ every number machine-verified against its sources`). Return rail back to /news p
 scroll + filters (client state survives bfcache/back).
 
 ### 7.9 The image pipeline (the non-negotiable, engineered)
+
+> **[REPEALED 2026-07-15, CLARITY CC5/R4 — L3 and L4 are DELETED, not latched.]** After weeks of
+> nothing-but-L4 nights (P-1 never provisioned), the finding was that a generated grey slab carrying
+> the catalyst word — taller than the headline it sat above — is an eye-magnet that says nothing the
+> card's own Tag does not. NewsImage is now L1/L2 (a real stored photo) or nothing; the code for the
+> generated L3/L4 rungs is REMOVED (LEAN would flag a latch as dead code). The "L3/L4 are first-class
+> outcomes … every card ships a visual, zero failure states" contract below is retired: a card with no
+> photo is text-first, and its headline is the visual. What stays fixed is the LADDER (L1 absorbs a
+> faster provider path), never the frame. The one-door rule (drift 20) and L1/L2 fetch-at-ingest
+> etiquette are unchanged.
 
 **Sourcing ladder (fetch at ingest, in the pipeline; NEVER at render):**
 - **L1 — the provider's own image field** (Finnhub `image`, Marketaux `image_url`) — this IS

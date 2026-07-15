@@ -8,6 +8,59 @@ Format: newest first. I mark each as [FYI], [VETO?], or [NEED] so you can scan.
 
 ---
 
+## 2026-07-15 — CC5 (News, text-first)
+
+CC5 rebuilt the news TEXT-FIRST (R4/D5): the generated L4/L3 image frames are deleted, so a card with
+no stored photo is its words — headline, why-it-matters (on the lead), chips or "Market-wide", and a
+byline carrying the source count only when >1. The story sheet lost its placeholder hole. Tagged
+`cc-5`. Four heads-ups, none blocking.
+
+### [FYI · a delayed-nightly transient, NOT a CC5 defect] Q-CC5-2 — check:live redded on the strip
+At the post-deploy gate, check:live's "strip · next-edition promise" failed: the strip promised "next
+edition Thu" while the edition was Tuesday, Jul 14 (the next session is Wed). I read it before believing
+it (your PD1 rule). The cause is not CC5 and not a checker bug: **tonight's Wednesday nightly had not
+fired at 44 minutes past its 22:37 UTC cron** (last night's ran 52 minutes late), so production correctly
+served Tuesday's edition, and the strip's next-edition — which follows the wall clock — had rolled
+forward to Thursday because Wednesday's cron TIME had passed. It is the exact PD1 transitional window,
+stretched by a GitHub cron delay. CC5 changed news CARD copy and nothing about the strip, the masthead,
+the edition, or the cron; the assertion passed at cc-4 hours earlier; and the CC5-relevant assertion
+(news byline links: 20 outbound anchors) is GREEN. The next-edition/strip logic is CC8/CC9's domain (the
+edition-state machine), so this is a red "owed to a later phase," which the Endgame permits, and I tagged
+cc-5 on the strength of a green four-leg rehearsal. **If you re-run check:live after tonight's nightly
+lands, it should go 7/7.** Worth your eyes only because the strip promises the wrong day in the
+post-cron/pre-edition window — a real (minor) product wart for CC8/CC9 to fix, not a CC5 regression.
+
+### [FYI · deferred to P-1] Q-CC5-1 — the story-sheet image position "below the byline"
+4.4 says a real photo on the story sheet should render "below the byline, never between headline and
+body" — but it ALSO says CC5 "only removes the placeholder block" and to "keep the excellent structure."
+Those conflict, and a REAL photo between the headline and the body is exactly how a news article is laid
+out; D5's actual complaint was the grey PLACEHOLDER hole, not a photo. So I removed the placeholder (the
+figure renders only when a real image exists) and left real photos where they are. The "below the byline"
+reposition is deferred to when P-1 lands and a real photo actually renders in production — moving a
+working photo on the best surface in the app, for a path invisible in production today, is the
+end-of-phase over-reach this build has regressed on. Say the word if you'd rather I reposition it now.
+
+### [FYI · Part 0] P-1 (the news media bucket) — the default proceeded, text-first
+CC5's design target was the no-image case, so nothing is blocked. NewsImage keeps its L1/L2 code; the
+moment you provision a bucket, lead stories gain real photos with no further code change. Today the
+seeded world's three fixture photos (fed-hold, fda, amd) exercise the image paths in VRT.
+
+### [still open, unanswered since LC1] Q-LC1-1 — vrt-diff.mjs is broken (pixelmatch absent)
+CC5's re-shoot needed "diff every candidate" again (the PD5 law — I confirmed the moved set equalled the
+failed set, so nothing hid under the tolerance). `scripts/vrt-diff.mjs` still throws
+`ERR_MODULE_NOT_FOUND: pixelmatch`, so I used the pngjs-only counter from PATTERNS.md again. The fix is
+one line — `npm i -D pixelmatch` — or a pngjs rewrite. Your call, still.
+
+### [FYI · your call] Q-CC5-3 — `dummy/` is authorised-to-delete but I LEFT it
+Part 4.4 said CC5 may retire the `dummy/` screenshots once the news room is rebuilt. It is rebuilt, so
+the news-placeholder shots in there are stale. But `dummy/` is UNTRACKED (never committed) audit evidence
+— 51 screenshots both plans were built from, not only news — that YOU created, and CLAUDE.md says to
+surface rather than delete files I did not create. Deleting untracked files is irreversible and the only
+cost of keeping them is a little local disk, so I left the whole folder alone. `rm -rf dummy/` whenever
+you want it gone. The UI-LIBRARY-EVALUATION trio (untracked `.md` + PDF + HTML) is a finished deliverable
+and is also left in place.
+
+
 ## 2026-07-15 — CC4 (One hierarchy grammar)
 
 CC4 applied ONE header/meta grammar to every market room (serif room titles, mono-600-ink-2 section
