@@ -62,9 +62,15 @@ def synthesize(
 
     for attempt in range(2):
         text = _message_text(_create(client, model, system, messages))
-        draft = _parse_draft(text)
+        draft, reason = _parse_draft(text)
         if draft is not None:
             return draft
+        # SAY WHY it failed. A synthesis failure holds the WHOLE briefing, and the reason used to be
+        # swallowed by a bare `except`, so "synthesis failed validation" reached the record with no
+        # trace of what the model actually got wrong — a >5-item list, an empty required slot, a
+        # non-JSON response. That blind spot is exactly the PD7 lesson one level down: a held night
+        # must be auditable. The reason now prints into the job log.
+        print(f"synthesize: attempt {attempt + 1} produced no usable draft — {reason}")
         # Append the failed attempt and a correction turn, then retry once (Appendix G).
         messages.append({"role": "assistant", "content": text})
         messages.append(
@@ -117,17 +123,22 @@ def _create(client: Any, model: str, system: str, messages: list[dict]) -> Any:
     )
 
 
-def _parse_draft(text: str) -> BriefDraft | None:
-    """Parse the model text into a BriefDraft, tolerating prose around the JSON object."""
+def _parse_draft(text: str) -> tuple[BriefDraft | None, str]:
+    """Parse the model text into a BriefDraft, tolerating prose around the JSON object.
+
+    Returns (draft, "") on success or (None, reason) on failure — the reason names WHAT went wrong so
+    the caller can log it. The API's structured-output layer cannot enforce lengths or the ≤5-item
+    cap (schema.py strips those), so the model can return API-valid JSON that pydantic then rejects;
+    that rejection is the common held-for-synthesis-failure cause and must not vanish."""
     from briefing.extract import _extract_json_object  # shared tolerant JSON finder
 
     payload = _extract_json_object(text)
     if payload is None:
-        return None
+        return None, f"no JSON object found in a {len(text)}-char response"
     try:
-        return BriefDraft.model_validate(payload)
-    except Exception:  # noqa: BLE001 — an invalid draft triggers the retry / hold, not a crash
-        return None
+        return BriefDraft.model_validate(payload), ""
+    except Exception as error:  # noqa: BLE001 — an invalid draft triggers the retry / hold, not a crash
+        return None, f"schema validation failed — {error}"
 
 
 def _message_text(message: Any) -> str:
