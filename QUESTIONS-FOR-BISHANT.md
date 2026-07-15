@@ -8,6 +8,24 @@ Format: newest first. I mark each as [FYI], [VETO?], or [NEED] so you can scan.
 
 ---
 
+## 2026-07-15 — LC1 (the standard, the deletions, the tool — first phase of LEAN-CODEBASE)
+
+LC1 set the comment standard (CLAUDE.md point 3, "comments are one line of why"), committed two
+tools (comment_stats.py, vrt-diff.mjs), executed Part 4's deletions after a fresh per-row reference
+re-check, rewrote the README, and gated the nav-timing evidence append on CI. Tagged `lc-1`. One
+heads-up, not blocking.
+
+### [VETO?] Q-LC1-1 — vrt-diff.mjs uses Playwright's pngjs/pixelmatch instead of its own devDependencies
+LEAN-CODEBASE Part 5.4 says the VRT diff tool's "deps in app devDependencies". I did NOT add them:
+both `pngjs` (7.0.0) and `pixelmatch` (5.3.0) already resolve from `app/node_modules` because
+Playwright carries them, and the tool's header says to run it from `app/`. My reasoning: LC1's whole
+theme is shedding weight — this same phase deletes the orphaned root `node_modules/` that was a
+hand-rolled pixelmatch/pngjs install — so re-adding them as explicit deps and churning the lockfile
+would work against the phase. They are Playwright's own snapshot-comparison deps, so they will not
+vanish while it does VRT, and if they ever do, adding the two lines is a one-minute fix. If you would
+rather the tool own its deps explicitly (the plan's literal text), say so and LC2 adds them — it is
+a devDependencies + package-lock change, nothing more. Recorded in DECISIONS.md (2026-07-15).
+
 ## 2026-07-15 — CC1 (the two live defects + three paper cuts — first phase of the two-plan commission)
 
 CC1 fixed the font that renders wrong on some refreshes, the Daily Brief that publishes empty every
