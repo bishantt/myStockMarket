@@ -8,6 +8,61 @@ Format: newest first. I mark each as [FYI], [VETO?], or [NEED] so you can scan.
 
 ---
 
+## 2026-07-15 — CC4 (One hierarchy grammar)
+
+CC4 applied ONE header/meta grammar to every market room (serif room titles, mono-600-ink-2 section
+headers, Newsreader deks), rode the dead-space fixes (the Sectors & Scans module, Paper's rebalance,
+Track's teaching empty state, the Academy measure), and landed D10's phone cuts (the unified tape, the
+once-per-card noise line, the "This week" chip, the chip-scroll fade, the watchlist reason). Tagged
+`cc-4`. Four heads-ups, none blocking.
+
+### [FYI · a plan/guard collision, resolved on the guard's side] The as-of "faint on a match" is MUTED
+4.3 said a module's as-of stamp renders `text-faint` when it equals the edition's updated stamp and
+`ink-2` when it differs. `text-faint` is a 2.2:1 grey, and TWO guards born from the F7 axe lesson forbid
+it on information — drift rule 18 (greps for bare `text-faint`) and the axe sweep (fails a 2.2:1
+timestamp). So the MATCH case recedes to `text-muted` (the quiet grey, clears AA) and the DIFFER case
+comes forward to `ink-2`. The hierarchy the plan wanted — a differing stamp outranks a matching one — is
+preserved exactly; only the absolute faintness is traded, to keep the timestamp legible. Today every
+module matches (one run), so today's as-of is muted; the differ→ink-2 path is live and unit-tested,
+dormant until CC9's morning edition. Veto if you'd rather I carve a rule-18 exception and ship faint.
+
+### [FYI] The as-of treatment is proven by a UNIT test, not an e2e — because VRT masks every timestamp
+4.3 said "its e2e guard proves the two renderings differ." But the VRT harness MASKS every `time`
+element (they encode wall-clock time), so a screenshot cannot see the as-of colour at all — and the
+seeded world has ONE run, so no module's stamp differs from the edition's, so an e2e could only ever
+exercise the MATCH rendering. The SectionMasthead unit test proves BOTH renderings (match→muted,
+differ→ink-2) directly, which is the complete guard the mechanism needs. CC9's morning edition is the
+first world where a real differing stamp exists; if you want an e2e then, that is its natural home.
+
+### [FYI · Q-CC1-1 got a related picture, not the exact one] The Sectors & Scans module renders scan LABELS
+CC1 handed CC4 the ticker-slug rendered proof (Appendix C's "ticker sheet — title not slug"). CC4 renders
+scan LABELS in the new Sectors & Scans module ("Gap of 3% or more", not "gap-3plus") — so the label path
+is now visible in production. But the ACTUAL leak CC1 fixed is on ACTIVE, unresolved, scan-fired signals
+on the /ticker record, which the seed still does not model (its signal_log rows are resolved detector
+keys). So Q-CC1-1 remains unit-proven at `patternLabel`, with a related label surface now rendered. If
+you still want the exact ticker-record picture, it needs a seeded active scan-fired signal — a small
+dedicated pass. Not blocking.
+
+### [CLOSED at CC4] Q-PD6-3 — the watchlist reason on a phone
+Closed the way the plan chose (4.3): the reason CLAMPS at one line with the full text in a `title`
+attribute, so a truncated reason is recoverable on hover/long-press rather than silently lost. PD6 had
+sketched a phone reflow; the plan chose the lighter fix, and that is what shipped. Veto if you'd rather
+have the reflow (it is a larger `/settings` layout change).
+
+### [still open, unanswered since LC1] Q-LC1-1 — vrt-diff.mjs is broken (pixelmatch absent)
+CC4's re-shoot needed "diff every candidate" again (the PD5 law caught styleguide + the story sheet
+moving WITHOUT failing). `node scripts/vrt-diff.mjs` still throws `ERR_MODULE_NOT_FOUND: pixelmatch`, so
+I used the pngjs-only counter from PATTERNS.md again (write inside app/, run under Node 24, delete after)
+plus opening every actual/diff image. The fix is one line — `npm i -D pixelmatch` — or a pngjs rewrite.
+Your call, still.
+
+### [FYI · Part 0] P-1 (the news media bucket) is CC5's decision point
+CC5 rebuilds the news text-first and deletes the L4/L3 image frames. The L1/L2 rungs only ever render if
+P-1 (a media bucket) is provisioned. If you have not provisioned it, the default proceeds — text-first,
+no image case — which is 4.4's explicit design TARGET anyway, so nothing is blocked. Provision it any
+time and CC5's L1/L2 code (kept) lights up.
+
+
 ## 2026-07-15 — CC3 (The masthead and the toggle)
 
 CC3 gave the Desk one truth per line (R3): the market state appears once (the pill, now on the phone
