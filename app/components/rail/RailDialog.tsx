@@ -89,10 +89,18 @@ function RailBody({ payload }: { payload: RailPayload }) {
 
       {payload.note ? <p className="font-ui text-sm text-ink-2">{payload.note}</p> : null}
 
+      {/*
+       * PD9: the full view is an in-app /ticker navigation, so it is intercepted into the ticker SHEET
+       * over the room (E9 — in-app is always the overlay; the standalone page is the deep-link truth
+       * reached only by a hard load). The sheet opens on top of the still-open rail and covers it, and
+       * a single Back closes both: the rail pushed a history entry when it opened, so popping the
+       * ticker route also fires the rail's own popstate. So this stays a plain in-app link — wrapping
+       * it in Dialog.Close would unmount it mid-click and cancel the navigation.
+       */}
       <Link
         href={`/ticker/${encodeURIComponent(payload.symbol)}`}
-        // min-h-11: the sheet's only exit to the full page, and a 44px target on the device where
-        // the sheet actually lives.
+        // min-h-11: the rail's exit to the ticker view, and a 44px target on the device where the
+        // sheet actually lives.
         className="mt-auto flex min-h-11 w-fit items-center font-ui text-xs uppercase tracking-[0.06em] text-ink underline underline-offset-4 hover:text-accent"
       >
         {fill(copy.ticker.railFullView, { sym: payload.symbol })}

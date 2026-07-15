@@ -84,6 +84,15 @@ function routesOnDisk(): string[] {
   walk(APP_DIR);
 
   return pages
+    // A parallel-route SLOT page is not a new room — it is an alternate PRESENTATION of a room that
+    // already exists and is already measured under its canonical path. PD9's `@modal` slot renders
+    // /news/[cluster] and /ticker/[symbol] as detail sheets; those two rooms are in the manifest and
+    // swept there, and the sheet's own coverage is the overlay e2e (e2e/overlay.spec.ts) and its VRT
+    // shots, not this room census. Without this filter the walk would derive a phantom route like
+    // `/@modal/[cluster]` — a "room" with no manifest entry — and red the completeness guard on a
+    // page that is not a room at all. A slot segment starts with `@`; the intercepting markers inside
+    // it start with `(` and are already dropped below.
+    .filter((file) => !file.split(/[/\\]/).some((segment) => segment.startsWith("@")))
     .map((file) => {
       const segments = file
         .replace(/[/\\]page\.tsx$/, "")

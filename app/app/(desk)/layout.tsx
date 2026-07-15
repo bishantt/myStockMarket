@@ -53,7 +53,8 @@ async function watchlistSymbols(): Promise<string[]> {
 
 export default async function DeskLayout({
   children,
-}: Readonly<{ children: React.ReactNode }>) {
+  modal,
+}: Readonly<{ children: React.ReactNode; modal: React.ReactNode }>) {
   // The ⌘K palette index: fixed routes + every authored lesson + the watchlist's tickers.
   const lessons = getLessonManifest();
   const watchlist = await watchlistSymbols();
@@ -91,6 +92,15 @@ export default async function DeskLayout({
         </PageContainer>
 
         <TabBar />
+
+        {/*
+         * The @modal parallel slot (PD9). Null on every hard load and every room whose reader has
+         * not opened anything (its default.tsx returns null); it fills only when an in-app tap on a
+         * story or a ticker chip activates an intercepting route, which renders the detail sheet OVER
+         * this still-mounted room. Because the room never unmounts, dismissing the sheet restores
+         * scroll, filters and focus for free.
+         */}
+        {modal}
       </div>
     </div>
   );

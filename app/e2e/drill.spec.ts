@@ -2,8 +2,10 @@ import { expect, test } from "@playwright/test";
 
 /**
  * Journey 2 — drill & return (plan §6.3, §3.6). A watchlist row opens the rail WITHOUT a route
- * change; Esc closes it and leaves you where you were; "Open full view" pushes the ticker route and
- * Back returns to the Desk. Gated to the seeded test database (MSM_SEEDED), never production.
+ * change; Esc closes it and leaves you where you were; "Open full view" now opens the ticker SHEET
+ * over the Desk (PD9 — an in-app /ticker navigation is intercepted into the overlay; the rail closes
+ * so the reader escalates from the peek into the sheet, not into two stacked dialogs) and Back
+ * returns to the Desk. Gated to the seeded test database (MSM_SEEDED), never production.
  *
  * The seed puts AAPL on the watchlist and gives it served bars, so its rail opens and its ticker
  * page draws a real chart. Read-only, so the two projects (desktop rail, phone sheet) run in
@@ -40,7 +42,7 @@ test.describe("Drill & return", () => {
     await expect(page).toHaveURL("/");
   });
 
-  test("Open full view pushes the ticker route; Back returns to the Desk", async ({ page }) => {
+  test("Open full view opens the ticker sheet over the Desk; Back returns to the Desk", async ({ page }) => {
     await page.getByRole("button", { name: "Open AAPL details" }).first().click();
     const rail = page.getByRole("dialog");
     await expect(rail).toBeVisible();
@@ -51,16 +53,18 @@ test.describe("Drill & return", () => {
     // artifact. The link is genuinely the target, so dispatch the click to it directly.
     await openFull.click({ force: true });
 
+    // PD9: the in-app /ticker navigation is intercepted into the ticker SHEET. The URL is the ticker's
+    // own (E9's canonical URL), and the rail has closed, so the sheet is the one dialog on screen. It
+    // carries the SAME body the standalone page does — the company name heading and the real chart.
     await expect(page).toHaveURL(/\/ticker\/AAPL$/);
-    // The page is headed by the company NAME, with the symbol above it as a mono eyebrow (§5.5) —
-    // a page about Apple should say "Apple", not only "AAPL". Both are on the page.
-    await expect(page.getByRole("heading", { name: /Apple/ })).toBeVisible();
-    await expect(page.getByText("AAPL", { exact: true })).toBeVisible();
-    // The candles render from price_bar — the chart canvas mounts.
-    await expect(page.getByRole("img", { name: "Price chart" })).toBeVisible();
+    const sheet = page.getByRole("dialog");
+    await expect(sheet.getByRole("heading", { name: /Apple/ })).toBeVisible();
+    await expect(sheet.getByRole("img", { name: "Price chart" })).toBeVisible();
 
+    // Back dismisses the sheet and lands on the Desk exactly as it was.
     await page.goBack();
     await expect(page).toHaveURL("/");
+    await expect(page.getByRole("dialog")).toHaveCount(0);
   });
 
   test("a name with no served bars shows an honest no-chart note, not a blank grid", async ({ page }) => {

@@ -503,6 +503,78 @@ test.describe("visual regression — the design system", () => {
     await shoot(page, "/ticker/SMCI", "ticker-thin");
   });
 
+  /*
+   * PD9 VRT — the detail sheet, OPEN (Appendix D).
+   *
+   * The sheet renders the SAME body the standalone story/ticker pages render — those are already
+   * pinned above, in both themes. So what these six shots lock is the CHROME that only the overlay
+   * has: the scrim, the grabber and card-radius top corners of the phone bottom sheet, the ✕, the L4
+   * glass, and the centred max-720 overlay on the desktop. Brand-new pictures, so each candidate gets
+   * eyes before its baseline is committed (the law that has bitten this repo four times: an EXACT
+   * baseline can still be wrong).
+   *
+   * Two things make these different from every other shot here. First, the sheet must be MOUNTED — it
+   * exists only after an in-app tap intercepts a route — so each opens it the way a reader does.
+   * Second, they shoot the VIEWPORT, not the full page: the sheet is `position: fixed`, and a
+   * full-page shot of a fixed layer is not the thing the reader sees. reducedMotion is forced for the
+   * whole file, so the opacity fade is already settled when the camera fires.
+   */
+  async function shootOpenSheet(page: Page, name: string) {
+    await expect(page.getByRole("dialog")).toBeVisible();
+    await expect(page.locator(".skeleton-bone")).toHaveCount(0);
+    await waitForFonts(page);
+    // Park the pointer on the scrim's top-left corner: off every chart (no crosshair) and a hover,
+    // never a click, so it does not dismiss the sheet it is about to photograph.
+    await page.mouse.move(0, 0);
+    await expect(page).toHaveScreenshot(`${name}.png`, {
+      mask: [page.locator('[data-vrt="mask"], time')],
+    });
+  }
+
+  /** Open the SMCI story sheet from the feed — the story launcher used across the overlay suite. */
+  async function openStorySheet(page: Page) {
+    await page.goto("/news");
+    await expect(page.locator(".skeleton-bone")).toHaveCount(0);
+    await page
+      .getByTestId("news-row")
+      .filter({ hasText: "Super Micro" })
+      .first()
+      .getByRole("link")
+      .first()
+      .click();
+  }
+
+  for (const theme of ["light", "dark"] as const) {
+    const label = theme === "light" ? "Morning" : "Midnight";
+
+    test(`detail sheet — a story, on a phone — ${label}`, async ({ page }, testInfo) => {
+      test.skip(!process.env.MSM_SEEDED, "needs the seeded database");
+      test.skip(testInfo.project.name !== "phone", "the bottom sheet is the phone presentation");
+      await useTheme(page, theme);
+      await openStorySheet(page);
+      await shootOpenSheet(page, `sheet-story-phone-${theme}`);
+    });
+
+    test(`detail sheet — a ticker, on a phone — ${label}`, async ({ page }, testInfo) => {
+      test.skip(!process.env.MSM_SEEDED, "needs the seeded database");
+      test.skip(testInfo.project.name !== "phone", "the bottom sheet is the phone presentation");
+      await useTheme(page, theme);
+      // A real TickerChip door: the standalone story's affected-names table. The tap intercepts into
+      // a ticker sheet over the story page.
+      await page.goto("/news/nc-fda-nonopioid");
+      await page.locator('a[href^="/ticker/"]').first().click();
+      await shootOpenSheet(page, `sheet-ticker-phone-${theme}`);
+    });
+
+    test(`detail sheet — a centred overlay, on a desktop — ${label}`, async ({ page }, testInfo) => {
+      test.skip(!process.env.MSM_SEEDED, "needs the seeded database");
+      test.skip(testInfo.project.name !== "desktop", "the centred overlay is the ≥md presentation");
+      await useTheme(page, theme);
+      await openStorySheet(page);
+      await shootOpenSheet(page, `sheet-overlay-desktop-${theme}`);
+    });
+  }
+
 
   // ── login: the first thing anyone sees ───────────────────────────────────────────────────
 

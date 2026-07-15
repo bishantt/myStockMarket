@@ -441,6 +441,19 @@ summary::-webkit-details-marker { display: none; }
  */
 .content-fade { animation: route-fade var(--duration-fade) var(--ease-quiet) both; }
 
+/*
+ * The DETAIL-SHEET fade (PD9) — the @modal overlay's one sanctioned motion, and it is OPACITY ONLY.
+ *
+ * The detail sheet opens over rooms that carry probability and money figures, so a [data-p2] node
+ * WILL have this class as an animating ancestor. It is admitted to the P2 ancestor walk's allowlist
+ * BY NAME (p2-motion.test.tsx), on the identical terms as `.route-fade` and for the identical reason:
+ * it fades the whole settled layer as one, moving nothing RELATIVE to anything else. A `translateY`
+ * slide-up is a veto — a transform on an ancestor of a price MOVES the price, and no "it is only the
+ * container" changes what the reader sees (E7). The sheet arrives by fading, or it does not arrive.
+ * Reusing `.route-fade` would have inherited an exemption this class must earn under its own name.
+ */
+.sheet-fade { animation: route-fade var(--duration-fade) var(--ease-quiet) both; }
+
 /* The single quiet shimmer, for loading placeholders only — never on a probability or money
  * placeholder, which loads as text (§3.6). Low-contrast, slow, and reduced-motion-aware. */
 @keyframes quiet-shimmer { 0%, 100% { opacity: 0.5; } 50% { opacity: 0.8; } }

@@ -641,6 +641,16 @@ export const copy = {
     sources: "Per-provider detail",
   },
 
+  overlay: {
+    /**
+     * The detail sheet (PD9, plan 11.2). The ✕ is the sheet's first focusable control and its
+     * plainest exit — labelled with the same word the rail's close carries, so the two overlays
+     * speak alike. The reader also has Esc, the scrim, an overscroll-past-top pull, and the back
+     * gesture; the label names only the button a screen reader will announce.
+     */
+    close: "Close",
+  },
+
   pulse: {
     /**
      * M8, for a shelf: the reader is told what is off-screen and how to reach it.

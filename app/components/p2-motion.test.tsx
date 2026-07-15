@@ -2,6 +2,7 @@ import { render } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { BaseRate } from "@/components/BaseRate";
 import { StatFigure } from "@/components/StatFigure";
+import { DetailOverlay } from "@/components/DetailOverlay";
 import { SetupCards } from "@/components/desk/SetupCards";
 import type { SetupCardView } from "@/components/desk/SetupCards";
 import type { BaseRateData } from "@/lib/baserate";
@@ -41,8 +42,23 @@ import type { Column } from "@/lib/table";
  * exempted by name, and by name only.
  */
 
-/** The class allowed to animate an ancestor of a P2 node — the uniform, opacity-only route fade. */
-const SANCTIONED_ANIMATION = "route-fade";
+/**
+ * The classes allowed to animate an ancestor of a P2 node — the uniform, opacity-only fades.
+ *
+ * The list is short and CLOSED, and it grows one named class at a time with the reason beside it.
+ * A blanket exemption, a wildcard, or a widened selector would be a veto: the moment this admits a
+ * PATTERN instead of a name, the guard has stopped being able to fail.
+ */
+const SANCTIONED_ANIMATIONS = new Set([
+  // The route fade (§3.6): the whole page arrives as one settled sheet, opacity only — so every
+  // frame shows every visual complete and unmoving relative to everything around it.
+  "route-fade",
+  // The detail sheet (PD9, plan 11.4): the @modal overlay fades in opacity-only, on IDENTICAL terms
+  // and for the identical reason — see globals.css `.sheet-fade` and the "detail sheet" block below.
+  // A slide-up would be a veto (a translateY over a price moves the price); the sheet arrives by
+  // fading or it does not arrive.
+  "sheet-fade",
+]);
 
 /** Tailwind utilities that would move, morph, or fade a subtree. */
 const MOTION_CLASS =
@@ -61,7 +77,7 @@ function movingAncestorsOf(node: Element): string[] {
 
   while (current !== null) {
     const classes = Array.from(current.classList);
-    if (!classes.includes(SANCTIONED_ANIMATION)) {
+    if (!classes.some((c) => SANCTIONED_ANIMATIONS.has(c))) {
       const moving = classes.filter((c) => MOTION_CLASS.test(c));
       if (moving.length > 0) {
         offenders.push(`<${current.tagName.toLowerCase()} class="${moving.join(" ")}">`);
@@ -338,5 +354,59 @@ describe("the Mood gauge never moves either (P2, extended in N3)", () => {
     const empty = [] as unknown as [MoodComponent, ...MoodComponent[]];
 
     expect(() => render(<MoodGauge score={42} band="mixed" components={empty} />)).toThrow(/C8/);
+  });
+});
+
+/**
+ * THE DETAIL SHEET JOINS THE WALK (PD9), AND IT IS THE HARDEST CASE THE RULE HAS FACED.
+ *
+ * The @modal overlay opens OVER rooms full of prices, so a data-p2 node genuinely has the sheet as an
+ * animating ancestor — the exact situation E7 was written for, and the reason the plan pre-authorized
+ * `.sheet-fade` as a P2-walk exemption BY NAME before PD9 was built. The sheet is allowed to fade
+ * (opacity), and it is allowed nothing else. These tests render the REAL DetailOverlay around a real
+ * P2 figure and walk up from the figure THROUGH the sheet chrome to the document root — the "extended
+ * scan set" 11.4 asks for. Radix portals the sheet to document.body, so the walk starts there.
+ */
+describe("the detail sheet fades but never moves the figures it carries (PD9)", () => {
+  it("a P2 figure inside the MOUNTED sheet has no moving ancestor but the opacity fade", () => {
+    render(
+      <DetailOverlay title="Test story">
+        <StatFigure
+          label="Last close"
+          value="$212.40"
+          scale="figure"
+          delta={{ value: "+0.29%", direction: "up", window: "1D" }}
+        />
+      </DetailOverlay>,
+    );
+    // The sheet portals to document.body — the figure lives there, not in render's container.
+    const figure = document.body.querySelector("[data-p2]");
+    expect(figure, "the sheet must actually contain the P2 figure it is being tested with").not.toBeNull();
+    expect(movingAncestorsOf(figure!)).toEqual([]);
+  });
+
+  it("permits the opacity-only sheet fade by name", () => {
+    const { container } = render(
+      <div className="sheet-fade">
+        <BaseRate data={BASE_RATE} />
+      </div>,
+    );
+    expectNothingMoves(container);
+  });
+
+  it("NEGATIVE CONTROL — a slide-up (translateY) ANCESTOR over the sheet's figures FAILS the walk", () => {
+    // The one thing the sheet may never do. A slide-up puts a translate above a price, and a price
+    // that moves is a price that looks like it is happening. The translate sits on a wrapper ABOVE
+    // the fade element (a same-element transform escapes the by-name exemption — which is exactly why
+    // globals.css `.sheet-fade` is opacity-only keyframes and the sheet adds no transform utility).
+    const { container } = render(
+      <div className="translate-y-4">
+        <div className="sheet-fade">
+          <span data-p2="true">55%</span>
+        </div>
+      </div>,
+    );
+    const offenders = movingAncestorsOf(container.querySelector("[data-p2]")!);
+    expect(offenders.length, "a translate ancestor over a price must be caught").toBeGreaterThan(0);
   });
 });
