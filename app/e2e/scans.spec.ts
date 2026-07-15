@@ -156,11 +156,11 @@ test.describe("Scans", () => {
     await page.getByRole("row").filter({ hasText: "SMCI" }).first().click();
     const rail = page.getByRole("dialog");
     await expect(rail).toBeVisible();
-    await expect(rail.getByRole("link", { name: /Open full view/ })).toBeVisible();
+    await expect(rail.getByRole("link", { name: /Full view/ })).toBeVisible();
 
     // The drill ladder stays a ladder: glance → rail → route, and the exit is a real 44px target
     // sitting clear of the iPhone home-indicator band (the sheet's inset fix).
-    const box = await rail.getByRole("link", { name: /Open full view/ }).boundingBox();
+    const box = await rail.getByRole("link", { name: /Full view/ }).boundingBox();
     expect(box!.height).toBeGreaterThanOrEqual(44);
   });
 });

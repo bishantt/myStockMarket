@@ -575,6 +575,8 @@ export const copy = {
     /** The provenance footer (block 8) — composed from what actually rendered (ruling C6). */
     provenanceBars: "Bars through {date}",
     provenanceLedger: "signals from the append-only ledger",
+    /** The Rail's exit to the full page (10.2, logged non-change) — clearer for naming its symbol. */
+    railFullView: "Full view: {sym} →",
   },
 
   /**

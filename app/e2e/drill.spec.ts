@@ -42,7 +42,7 @@ test.describe("Drill & return", () => {
     await page.getByRole("button", { name: "Open AAPL details" }).first().click();
     const rail = page.getByRole("dialog");
     await expect(rail).toBeVisible();
-    const openFull = rail.getByRole("link", { name: /Open full view/ });
+    const openFull = rail.getByRole("link", { name: /Full view/ });
     await expect(openFull).toBeVisible();
     // force: the link is on top and visible, but Radix's full-screen modal overlay technically
     // overlaps the click point on the phone bottom sheet — a known Radix+Playwright actionability

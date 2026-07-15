@@ -3,6 +3,7 @@
 import * as Dialog from "@radix-ui/react-dialog";
 import Link from "next/link";
 
+import { copy, fill } from "@/lib/copy";
 import { cx } from "@/lib/cx";
 import type { Direction } from "@/components/StatFigure";
 import type { RailPayload } from "./Rail";
@@ -94,7 +95,7 @@ function RailBody({ payload }: { payload: RailPayload }) {
         // the sheet actually lives.
         className="mt-auto flex min-h-11 w-fit items-center font-ui text-xs uppercase tracking-[0.06em] text-ink underline underline-offset-4 hover:text-accent"
       >
-        Open full view →
+        {fill(copy.ticker.railFullView, { sym: payload.symbol })}
       </Link>
     </>
   );
