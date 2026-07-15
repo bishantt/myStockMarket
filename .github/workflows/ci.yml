@@ -37,7 +37,8 @@
 # or it starts a run whose green proved nothing because the oracle sat it out. This is no longer an
 # honour system: `pipeline/tests/test_ci_tag_families.py` reads this file and fails when they drift.
 # The families: phase-* (the build phases) · redesign-* (the UI redesign) · feel-* (app-feel) ·
-# nc-* (news & control) · gate-* (this efficiency reform) · pd-* (polish & depth, wired ahead of PD0).
+# nc-* (news & control) · gate-* (this efficiency reform) · pd-* (polish & depth, wired ahead of PD0) ·
+# cc-* (clarity & cadence) · lc-* (lean codebase).
 #
 # Red CI blocks a phase exit — no exceptions (plan §6.4).
 
@@ -65,7 +66,7 @@ concurrency:
 on:
   push:
     branches: ["**"]
-    tags: ["phase-*", "redesign-*", "feel-*", "nc-*", "gate-*", "pd-*", "cc-*"]
+    tags: ["phase-*", "redesign-*", "feel-*", "nc-*", "gate-*", "pd-*", "cc-*", "lc-*"]
     # DOCUMENTATION IS FREE (G2). A commit that changes nothing but prose starts no run at all.
     #
     # This repo writes a lot of prose on purpose — evidence chapters, five intelligence files, the
@@ -272,7 +273,7 @@ jobs:
     # GitHub validates dispatch inputs against the workflow file ON THE TARGET REF, so `job=e2e` is
     # only an accepted value once this line is on the ref you are dispatching. Push first, then
     # dispatch; a 422 here means the ref does not know about the input yet.
-    if: startsWith(github.ref, 'refs/tags/phase-') || startsWith(github.ref, 'refs/tags/redesign-') || startsWith(github.ref, 'refs/tags/feel-') || startsWith(github.ref, 'refs/tags/nc-') || startsWith(github.ref, 'refs/tags/gate-') || startsWith(github.ref, 'refs/tags/pd-') || startsWith(github.ref, 'refs/tags/cc-') || (github.event_name == 'workflow_dispatch' && inputs.job == 'e2e')
+    if: startsWith(github.ref, 'refs/tags/phase-') || startsWith(github.ref, 'refs/tags/redesign-') || startsWith(github.ref, 'refs/tags/feel-') || startsWith(github.ref, 'refs/tags/nc-') || startsWith(github.ref, 'refs/tags/gate-') || startsWith(github.ref, 'refs/tags/pd-') || startsWith(github.ref, 'refs/tags/cc-') || startsWith(github.ref, 'refs/tags/lc-') || (github.event_name == 'workflow_dispatch' && inputs.job == 'e2e')
     runs-on: ubuntu-latest
 
     # FOUR LEGS, ONE PER PLAYWRIGHT PROJECT (G1; `mbp16` added at PD3). The suite used to run every

@@ -102,9 +102,12 @@ const median = (xs: number[]) => {
   return s.length % 2 ? s[mid] : Math.round((s[mid - 1] + s[mid]) / 2);
 };
 
-/** Append one destination's samples to the running evidence file. Whole milliseconds: sub-millisecond
- *  precision on a navigation timing is noise dressed up as rigour. */
+/** Append one destination's samples to the running evidence file — in CI only. A laptop times
+ *  production three time zones away (see the skip note below), so its rows are noise, not evidence;
+ *  local runs still measure and assert but write nothing (LC1, Part 0.4). Whole milliseconds:
+ *  sub-millisecond precision on a navigation timing is noise dressed up as rigour. */
 function report(tab: string, samples: number[], shift: number) {
+  if (!process.env.CI) return;
   const dir = join(process.cwd(), "..", "docs", "feel-evidence");
   mkdirSync(dir, { recursive: true });
   const stamp = new Date().toISOString().slice(0, 16).replace("T", " ");

@@ -62,9 +62,13 @@ Optimize everything for a human reader, never for machine brevity.
    decision-log line, checklists — stay compact by design; all prose around them must be plain.)
 2. **Code favors clarity over cleverness.** If a clever version and a clear version both work,
    ship the clear one. No dense one-liners or obscure idioms where a simpler form does the job.
-3. **Function-level docs, developer-style.** Every non-trivial function or method gets a
-   plain-English comment or docstring saying what it does and why — purpose and intent, not a
-   line-by-line restatement. Target: a new developer could read this codebase without help.
+3. **Comments are one line of why.** (Amended 2026-07-15 — supersedes the "every non-trivial
+   function gets a docstring" rule; the codebase it built taught us the failure mode.) Comment only
+   where a reader would genuinely be lost without it. One line; two only when truly necessary. Never
+   restate what the code says. The why always earns its place: an honesty-rule rationale, a hard-won
+   bug, a platform quirk — keep those, tightly. Machine-read pragmas, the clocks rule's derived-date
+   comments, and file-header laws cited by guards are load-bearing and are never stripped. When you
+   edit a file, bring its comments to this standard in the same commit.
 4. **The terminal talks in plain English.** Progress reports, decisions, and summaries are
    written for a leader reading along — human terms, never walls of technical shorthand.
 
@@ -244,11 +248,12 @@ e2e:      npx playwright test  ·  LOCAL: npm run e2e:local (--ignore-snapshots;
           and the Law-2 test photographs a STALE FULL-NIGHT render — 318px where it wants ≤120. It reads
           exactly like a layout regression and is not. Let Playwright start its own: webServer.env has
           the secret. Cost me a stash, a rebuild and a bisect against pd-3 to find.
-          ALSO: running the browser suite locally DIRTIES docs/feel-evidence/nav-timing.md —
-          nav-timing.spec.ts appends its samples. Those rows are this Mac under contention, not
-          evidence. `git checkout -- docs/feel-evidence/nav-timing.md` before you commit.
-rehearse: gh workflow run ci.yml -f job=e2e — LIVE since G1. Runs the FULL browser oracle (all three
-          shards) on any ref, with no tag involved. Run it on main's HEAD — the exact SHA you are
+          ALSO (retired at LC1): nav-timing.spec.ts now appends its samples to
+          docs/feel-evidence/nav-timing.md in CI ONLY — the append gates on `process.env.CI`, because
+          a laptop times production three zones away and those rows are noise. Local runs no longer
+          dirty the file, so the old `git checkout -- docs/feel-evidence/nav-timing.md` ritual is gone.
+rehearse: gh workflow run ci.yml -f job=e2e — LIVE since G1. Runs the FULL browser oracle (all four
+          legs) on any ref, with no tag involved. Run it on main's HEAD — the exact SHA you are
           about to tag — and the tag run becomes a confirmation instead of a discovery. `gate-1` went
           green on the first try because of this. Add `--ref <branch>` to rehearse a scratch branch.
           THE TRAP: GitHub validates dispatch inputs against the workflow file ON THE TARGET REF, so
@@ -394,7 +399,7 @@ be the first real test — is what made 52% of tag runs fail and endgames run 60
    (local only — CI structurally cannot answer it).
 2. **Push to main.** Confirm the branch run green.
 3. **REHEARSE — this is the reform.** `gh workflow run ci.yml -f job=e2e` runs the FULL browser
-   oracle (all three shards) on any ref, with no tag involved. It is **the same job the tag runs**,
+   oracle (all four legs) on any ref, with no tag involved. It is **the same job the tag runs**,
    so a green rehearsal is not evidence *about* the tag run — it is the same evidence, collected
    before the tag exists. Rehearse on the exact SHA you are about to tag. In parallel (they
    overlap; push and rehearsal deliberately share a ref): wait for the Vercel deploy, then

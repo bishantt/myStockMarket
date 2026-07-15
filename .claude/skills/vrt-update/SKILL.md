@@ -2,8 +2,8 @@
 
 **Status:** minted 2026-07-12 during the UI redesign (R1), when the visual-regression suite
 became real. **Rewritten 2026-07-13 (GATE-EFFICIENCY-PLAN G1)**: the oracle now runs on demand
-before any tag exists, it runs as three sharded legs, and a run that reds on pixels mints its own
-candidate baselines. The one rule below did not change and never will.
+before any tag exists, it runs as sharded legs (four since PD3 added `mbp16`), and a run that reds
+on pixels mints its own candidate baselines. The one rule below did not change and never will.
 
 **When to use:** whenever a change moves pixels — and, more importantly, whenever CI tells you a
 change moved pixels that you did not expect it to.
@@ -52,8 +52,9 @@ gh workflow run ci.yml -f job=e2e          # main's HEAD, or --ref <branch> for 
 gh run watch <run-id>
 ```
 
-It runs as **three legs** — `desktop`, `phone`, `wide` — each its own job, its own database, its
-own artifacts. `fail-fast` is off, so one red leg does not hide the others.
+It runs as **four legs** — `desktop`, `phone`, `wide`, `mbp16` (the fourth added at PD3) — each its
+own job, its own database, its own artifacts. `fail-fast` is off, so one red leg does not hide the
+others.
 
 **If a leg reds on pixels**, that run has already done the work for you. It uploads two things per
 leg:
@@ -89,6 +90,18 @@ change that hides inside the tolerance gets caught). But it means the candidate 
 Copy the whole thing and you commit four files you cannot explain — which breaks the one rule at the
 top of this page. **The triptych is the list of what moved. The candidate is where you fetch it
 from.**
+
+**`scripts/vrt-diff.mjs` mechanises "diff every candidate".** Run from `app/`, it decodes every PNG
+in a downloaded candidate directory against its committed twin and prints the differing-pixel count
+(perceptual, threshold 0.1) — resizes and new shots first, then changed, then unchanged. That is the
+CLAUDE.md VRT law ("decode both, count differing pixels") as a committed command instead of a
+hand-roll, and it surfaces the shot that MOVED but passed inside the 600-pixel tolerance — the
+byte-different-but-not-failed rows above, which the failures-only triptych never shows you.
+
+```bash
+cd app
+node scripts/vrt-diff.mjs /tmp/vrt-candidates/vrt-baselines-candidate-desktop
+```
 
 ### Getting them, and the flag that will trip you up
 
