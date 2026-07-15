@@ -1,52 +1,43 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
-import { TickerChart } from "@/components/ticker/TickerChart";
 import { RangeBands } from "@/components/ticker/RangeBands";
+import { RangeStrip } from "@/components/ticker/RangeStrip";
+import { TickerCalendar, TickerMention, TickerPaper } from "@/components/ticker/TickerBlocks";
+import { TickerChart } from "@/components/ticker/TickerChart";
+import { SymbolRecord } from "@/components/SymbolRecord";
 import { StatFigure } from "@/components/StatFigure";
 import { Surface } from "@/components/Surface";
+import { copy, fill } from "@/lib/copy";
 import { getLatestVolBands, getTicker } from "@/lib/ticker";
-import { copy } from "@/lib/copy";
+import { getTickerCalendar, getTickerMention, getTickerPaper } from "@/lib/ticker-depth";
+import { getSymbolRecord, hasRecord } from "@/lib/record";
 import { formatUtcDate, formatUtcWeekday } from "@/lib/time";
 
 /**
- * /ticker/[symbol] — drill level 3, the full page (§5.5).
+ * /ticker/[symbol] — the instrument room, v2 (POLISH-AND-DEPTH-PLAN Part 10.1).
  *
- * THE HERO OF THIS PAGE IS NOT A NUMBER. It is the Range Ladder.
+ * THE HERO OF THIS PAGE IS STILL THE RANGE LADDER. PD8 gives the room depth from what the schema
+ * ALREADY serves — no new providers, no invented fields — and nothing it adds may exceed the ladder's
+ * weight: the 52-week strip is one thin band, and the record/mention/calendar/paper blocks are prose
+ * and small figures. **Market cap appears nowhere** (the schema has no size data, and the page does
+ * not fake it — the known bound of "identity" until a provider phase ever adds it).
  *
- * The price renders at num-lg rather than the 64px hero scale, and that is deliberate: the
- * hero-figure law (one per view) is satisfied by NOT spending it here, which leaves the stage to the
- * ladder — the chart that says, honestly, how uncertain the next twenty days are. A page about a
- * single stock that opens with a giant price is a page teaching the reader to watch the price. This
- * one teaches them to watch the range.
+ * A SYMBOL THE APP CAN NAME IS WORTH OPENING. A served name (indices, sector ETFs, the watchlist)
+ * shows the price blocks; a name with no served bars — a mover the reader drilled into — honestly
+ * omits them and still shows its identity, tonight's mention, our record, its calendar and any paper
+ * position. Every block names its own absence (P9): an absent block is silence, never an apology.
  *
- * A server component reads the symbol's bars and hands them to the client chart. The always-visible
- * "Back to Desk" rail is the return path the drill promises (level 3 is a real route, so the browser
- * Back button restores the Desk — journey 2). A symbol that is known but has no served bars (a mover
- * the reader drilled into) shows an honest note, never a blank chart.
+ * The loader grew from two queries to six, still ONE request, still ISR-cached 600s and revalidated
+ * nightly by the existing call. Before touching this route, `app/AGENTS.md` was re-read: the tree
+ * runs a customized Next 16 whose docs live in node_modules.
  */
 
-/**
- * Cached per symbol, rendered on demand the first time each one is asked for (§5.3 P-1).
- *
- * This was the slowest page in the app: 1237ms, because it awaited FOUR database queries one after
- * another and each one crossed the country. Now the loader is a single parallel stage (P-2), and the
- * result is cached, so the reader pays it once per symbol per publish rather than once per tap.
- */
 export const revalidate = 600;
 
 /**
- * The empty array is not a placeholder — it is what turns runtime ISR ON for this route.
- *
- * The pinned framework's own documentation is explicit, and it is the kind of detail that silently
- * costs you the entire benefit: "You must always return an array from generateStaticParams, even if
- * it's empty. Otherwise, the route will be dynamically rendered." An earlier draft of the plan
- * omitted this and would have shipped a `revalidate` that never cached a thing, with the flagship
- * budget failing forever and no obvious reason why.
- *
- * Empty, specifically, because there is no useful set to prerender: the universe is ~6,000 symbols
- * and the reader visits a handful. Each one renders once, on first request, and is cached from then
- * on. Unknown symbols still 404 through the existing notFound().
+ * The empty array is what turns runtime ISR ON for this route (see the framework note the story page
+ * carries too). Ship `revalidate` without it and the route caches nothing.
  */
 export async function generateStaticParams(): Promise<{ symbol: string }[]> {
   return [];
@@ -56,9 +47,16 @@ export default async function TickerPage({ params }: { params: Promise<{ symbol:
   const { symbol } = await params;
   const decoded = decodeURIComponent(symbol);
 
-  // One parallel stage instead of four sequential round trips. The bands do not depend on the
-  // ticker, and never did — they were simply awaited after it.
-  const [ticker, bandRows] = await Promise.all([getTicker(decoded), getLatestVolBands(decoded)]);
+  // Six reads, one parallel stage (block 4–7 are one Prisma round each). The record is REUSE of the
+  // honesty components; the mention/calendar/paper are user- and pipeline-state the schema holds.
+  const [ticker, bandRows, record, mention, calendar, paper] = await Promise.all([
+    getTicker(decoded),
+    getLatestVolBands(decoded),
+    getSymbolRecord(decoded),
+    getTickerMention(decoded),
+    getTickerCalendar(decoded),
+    getTickerPaper(decoded),
+  ]);
   if (!ticker) notFound();
 
   // A band with no sample size cannot be shown: the ladder prints N on every row, and a range
@@ -67,33 +65,25 @@ export default async function TickerPage({ params }: { params: Promise<{ symbol:
     .filter((b) => b.n !== null && b.windowDays !== null)
     .map((b) => ({ ...b, n: b.n as number, windowDays: b.windowDays as number }));
 
-  /*
-   * The last session the chart actually shows — read from the last bar, never from "today".
-   *
-   * A caption that says "through Fri Jul 11" because the SERVER thinks it is Friday, while the bars
-   * stop on Wednesday, is a provenance line that disagrees with its own picture. That is ruling C6
-   * (a provenance line is computed from what is rendered) applied to a chart: the only honest source
-   * for "through when" is the data.
-   *
-   * `candle.time` is already a bare trading date ("2026-07-10"), so it formats from its UTC
-   * components — reading it in Eastern time would print the day before.
-   */
+  // The last session the chart shows — read from the last bar, never from "today" (ruling C6). The
+  // bare trading date formats from its UTC components; reading it in ET would print the day before.
   const lastBar = ticker.candles.at(-1);
   const chartThrough = lastBar
-    ? formatUtcWeekday(new Date(`${lastBar.time}T00:00:00Z`)) +
-      " " +
-      formatUtcDate(new Date(`${lastBar.time}T00:00:00Z`))
+    ? `${formatUtcWeekday(new Date(`${lastBar.time}T00:00:00Z`))} ${formatUtcDate(new Date(`${lastBar.time}T00:00:00Z`))}`
     : "—";
+
+  const identity = [ticker.exchange, ticker.sector, ticker.industry]
+    .filter((field): field is string => Boolean(field))
+    .join(copy.ticker.identitySeparator);
+
+  const hasPaper = paper.open.length > 0 || paper.realized.count > 0;
 
   return (
     <div className="flex flex-col gap-6 py-6">
       {/*
-       * The return rail — always visible, so the drill never traps the reader (plan §9.1).
-       *
-       * min-h-11 because it was 20px tall, and this is the ONE control that promises the reader they
-       * can get back. It went unnoticed for six phases because /ticker was never in the touch sweep's
-       * route list; F3 added it, and the sweep found this on its first run. A sweep is only as honest
-       * as its route list — which is exactly what its own comment says.
+       * The return rail — always visible, so the drill never traps the reader (plan §9.1). min-h-11
+       * because it was 20px tall, and this is the ONE control that promises the reader they can get
+       * back. A sweep is only as honest as its route list — which is exactly what its own comment says.
        */}
       <Link
         href="/"
@@ -102,14 +92,17 @@ export default async function TickerPage({ params }: { params: Promise<{ symbol:
         ← Back to Desk
       </Link>
 
+      {/* Block 1 — the header and identity line. Last close is num-lg, not the hero scale: the hero
+          is the ladder, satisfied by NOT spending the hero figure here. */}
       <header className="flex flex-wrap items-end justify-between gap-4">
-        <div>
+        <div className="flex flex-col gap-1">
           <p className="font-mono text-sm uppercase tracking-[0.08em] text-muted">{ticker.symbol}</p>
           <h1 className="font-display text-display font-bold text-ink">{ticker.name}</h1>
+          {identity ? (
+            <p className="font-ui text-sm text-muted">{identity}</p>
+          ) : null}
         </div>
         {ticker.lastClose ? (
-          // The delta says what it is a delta FROM (C2). "Last close −0.42%" leaves a beginner to
-          // guess the comparison; naming it costs four words and removes the guess.
           <StatFigure
             label="Last close"
             value={ticker.lastClose}
@@ -127,26 +120,20 @@ export default async function TickerPage({ params }: { params: Promise<{ symbol:
         ) : null}
       </header>
 
-      {/*
-       * The chart, its range control, and its caption — one client component, because they are one
-       * thing (Part 5.4). The whole history is already in this page's cached payload, so switching
-       * range is a slice, not a fetch.
-       *
-       * What the caption is FOR (C2): a price chart with no caption is three unstated choices —
-       * daily or intraday, adjusted or raw, and through when — and every one of them changes what
-       * the picture means. The reader should not have to assume any of them.
-       */}
+      {/* Block 2 — the 52-week strip (served names). One thin band, position not angle, data-p2. */}
+      {ticker.rangeStrip ? (
+        <Surface as="section" aria-label="Price range" className="p-4 desk:p-5">
+          <RangeStrip strip={ticker.rangeStrip} />
+        </Surface>
+      ) : null}
+
+      {/* Block 3 — the chart and the Range Ladder (the hero). Both unchanged from before PD8. */}
       {ticker.candles.length > 0 ? (
         <Surface as="section" aria-label="Price and volume" className="p-5">
           <TickerChart candles={ticker.candles} volumes={ticker.volumes} through={chartThrough} />
         </Surface>
       ) : null}
 
-      {/*
-       * The Range Ladder — this page's visual centrepiece, and the app's most careful drawing.
-       * Nested 50/80 bands per horizon on a signed-return axis, with the honesty furniture as the
-       * texture rather than a footnote. No median mark. Nothing joining the rows into a cone.
-       */}
       {bands.length > 0 ? (
         <Surface as="section" className="p-5 desk:p-6">
           <RangeBands bands={bands} />
@@ -160,6 +147,48 @@ export default async function TickerPage({ params }: { params: Promise<{ symbol:
           its bars.
         </p>
       ) : null}
+
+      {/* Block 4 — tonight's mention. Absent silently when the name is in no cluster. */}
+      {mention ? (
+        <section className="flex flex-col gap-2">
+          <h2 className="font-display text-lg text-ink">{copy.ticker.mentionHeading}</h2>
+          <TickerMention mention={mention} />
+        </section>
+      ) : null}
+
+      {/* Block 5 — the record here. Active signals, the setup card's base rate (N-gated), resolved
+          hits and misses at equal weight. Absent when the ledger is silent — zero new probability UI. */}
+      {hasRecord(record) ? (
+        <section className="flex flex-col gap-3">
+          <h2 className="font-display text-lg text-ink">{copy.ticker.recordHeading}</h2>
+          <SymbolRecord record={record} />
+        </section>
+      ) : null}
+
+      {/* Block 6 — on the calendar. This name's dated events, next 30 days. Absent when it has none. */}
+      {calendar.length > 0 ? (
+        <section className="flex flex-col gap-2">
+          <h2 className="font-display text-lg text-ink">{copy.ticker.calendarHeading}</h2>
+          <TickerCalendar rows={calendar} />
+        </section>
+      ) : null}
+
+      {/* Block 7 — the paper position. Open rows marked live, plus realized history. Absent when
+          the reader holds nothing on this name. */}
+      {hasPaper ? (
+        <section className="flex flex-col gap-2">
+          <h2 className="font-display text-lg text-ink">{copy.ticker.paperHeading}</h2>
+          <TickerPaper paper={paper} lastCloseValue={ticker.lastCloseValue} />
+        </section>
+      ) : null}
+
+      {/* Block 8 — the provenance footer, composed from what actually rendered (C6). */}
+      <footer className="border-t border-hairline pt-3">
+        <p className="font-ui text-2xs text-muted">
+          {lastBar ? `${fill(copy.ticker.provenanceBars, { date: chartThrough })} · ` : ""}
+          {copy.ticker.provenanceLedger}
+        </p>
+      </footer>
     </div>
   );
 }

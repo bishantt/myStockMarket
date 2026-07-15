@@ -39,6 +39,20 @@ export function realizedPnl(trade: PaperTradeRow): number | null {
   return perShare * trade.quantity;
 }
 
+/**
+ * Unrealized P&L for an OPEN trade marked against a price (PD8, the ticker page's paper block).
+ *
+ * The directional mirror of `realizedPnl`: a long gains when the mark is above its fill, a short
+ * when it is below. Null while the trade is closed (its P&L is realized, not marked) or when there
+ * is no mark to measure against — a position with no last close is shown without a number, never
+ * with a fabricated one.
+ */
+export function unrealizedPnl(trade: PaperTradeRow, mark: number | null): number | null {
+  if (trade.status !== "open" || mark === null) return null;
+  const perShare = trade.side === "sell" ? trade.fillPrice - mark : mark - trade.fillPrice;
+  return perShare * trade.quantity;
+}
+
 /** True when a fired signal on this symbol was viewed less than the cooling-off window ago. */
 export function needsCoolingOff(signalViewedAt: Date | null, now: Date): boolean {
   if (signalViewedAt === null) return false;

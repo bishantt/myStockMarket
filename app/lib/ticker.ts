@@ -1,5 +1,6 @@
 import { db } from "@/lib/db";
 import { directionOf, price, signedPercent } from "@/lib/format";
+import { computeRangeStrip, type RangeStripData } from "@/lib/ticker-depth";
 import type { Direction } from "@/components/StatFigure";
 
 /**
@@ -28,12 +29,21 @@ type BarRow = { date: Date; open: number; high: number; low: number; close: numb
 export type TickerData = {
   symbol: string;
   name: string;
+  /** Identity fields (PD8 block 1): the exchange, sector and industry the schema holds. Each is
+   *  absent (null) rather than a faked "N/A". Market cap is NOT here — the schema has no size data. */
+  exchange: string | null;
+  sector: string | null;
+  industry: string | null;
   candles: Candle[];
   volumes: VolumeBar[];
   /** The most recent close, already formatted, or null when there are no bars. */
   lastClose: string | null;
+  /** The raw last close, for marking open paper positions live (block 7). Null when there are no bars. */
+  lastCloseValue: number | null;
   /** The latest day change, already formatted and signed, or null when there are fewer than two bars. */
   dayChange: { value: string; direction: Direction } | null;
+  /** The 52-week strip (PD8 block 2), computed from the served closes. Null when there are too few. */
+  rangeStrip: RangeStripData | null;
 };
 
 /** A US business day string (YYYY-MM-DD). price_bar dates are stored at UTC midnight, so the ISO
@@ -71,7 +81,7 @@ export async function getTicker(symbol: string): Promise<TickerData | null> {
     const [instrument, bars] = await Promise.all([
       db.instrument.findUnique({
         where: { symbol: normalized },
-        select: { symbol: true, name: true },
+        select: { symbol: true, name: true, exchange: true, sector: true, industry: true },
       }),
       db.priceBar.findMany({
         where: { symbol: normalized },
@@ -82,14 +92,24 @@ export async function getTicker(symbol: string): Promise<TickerData | null> {
     if (!instrument) return null;
 
     const { candles, volumes } = barsToSeries(bars);
+    const lastBar = bars.length > 0 ? bars[bars.length - 1] : null;
 
     return {
       symbol: instrument.symbol,
       name: instrument.name,
+      exchange: instrument.exchange,
+      sector: instrument.sector,
+      industry: instrument.industry,
       candles,
       volumes,
-      lastClose: bars.length > 0 ? price(bars[bars.length - 1].close) : null,
+      lastClose: lastBar ? price(lastBar.close) : null,
+      lastCloseValue: lastBar ? lastBar.close : null,
       dayChange: dayChangeOf(bars),
+      // The strip runs through the last bar's own trading day, not "today" — the same C6 rule the
+      // chart caption keeps: the only honest source for "through when" is the data.
+      rangeStrip: lastBar
+        ? computeRangeStrip(bars.map((bar) => bar.close), businessDay(lastBar.date))
+        : null,
     };
   } catch (error) {
     console.error(`getTicker: could not load ${normalized}`, error);

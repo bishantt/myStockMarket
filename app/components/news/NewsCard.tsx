@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { ExternalLink } from "@/components/ExternalLink";
 import { NewsImage } from "@/components/news/NewsImage";
 import { Tag } from "@/components/Tag";
 import { TickerChip } from "@/components/TickerChip";
@@ -42,6 +43,16 @@ import { formatEtClock, formatEtDate } from "@/lib/time";
  *    and both times the string was well-formed and simply false. The article's timestamp is
  *    absolute, in ET, and cannot rot. The room states its press time at the top; between the two,
  *    the reader knows exactly how old everything is, which is more than "3h ago" ever told them.
+ *
+ * ── THE BYLINE IS A DOOR OUT NOW (PD8, plan 9.4/9.7) ─────────────────────────────────────────────
+ *
+ * The outlet name is a REAL external anchor to the first source (E8). It cannot live inside the card
+ * because the card is one big `<Link>` to the story, and an anchor inside an anchor is invalid HTML —
+ * the browser closes the outer one and the reader gets a card whose bottom half silently stops
+ * working (the exact TickerChip / drift-rule-26 hazard). So the card is a `<div>` now, holding TWO
+ * siblings: the story `<Link>` (the main surface — image, headline, chips) and a FOOTER row with the
+ * byline anchor in its own padding box, visually separated by a hairline. One door in, one door out.
+ * The anchor is ≥44px on touch (the phone sweep measures it), rel/target set by ExternalLink.
  */
 
 type NewsCardProps = {
@@ -54,71 +65,70 @@ const TICKER_CAP = 3;
 
 export function NewsCard({ card, tier }: NewsCardProps) {
   const isLead = tier === "lead";
+  const primarySource = card.articles[0];
 
   return (
-    <Link
-      href={`/news/${card.id}`}
+    <div
       data-testid={isLead ? "news-lead" : "news-row"}
       data-cluster={card.id}
       className={cx(
-        "surface group block rounded-card border border-hairline p-4 desk:p-5",
-        // Instant background feedback. No transition class: the P2 ancestor walk forbids one over
-        // a subtree that contains a price, and it is right to.
-        "hover:bg-surface-raised focus-visible:outline-2 focus-visible:outline-accent",
-        isLead
-          ? // THE LEAD TURNS SIDEWAYS ON A DESKTOP, and it is the fold that decides it. Stacked, a
-            // 1.91:1 photograph across a 1366px column is ~715px tall, and with the masthead and the
-            // two filter rows above it the lead story's OWN HEADLINE lands below the fold. A front
-            // page whose lead headline you have to scroll to find is not a front page.
-            //
-            // So above `lg` the lead sets the way a broadsheet sets one: the picture on the left, the
-            // headline beside it. The photo keeps its ratio, the headline is the first thing read,
-            // and the card costs ~420px instead of ~1000. On a phone it stacks, which is right there:
-            // at 390px the same ratio is a comfortable 204px and there is no fold to lose.
-            "flex flex-col gap-3 lg:flex-row lg:items-start lg:gap-5"
-          : "flex flex-row-reverse items-start gap-3",
+        "surface group flex flex-col rounded-card border border-hairline",
+        // Instant background feedback on the whole card. No transition class: the P2 ancestor walk
+        // forbids one over a subtree that contains a price, and it is right to.
+        "hover:bg-surface-raised",
       )}
     >
-      <div className={isLead ? "lg:w-[55%] lg:shrink-0" : "contents"}>
-        <NewsImage
-          image={card.image}
-          eventType={card.eventType}
-          tickers={card.tickers.map((t) => t.symbol)}
-          slot={isLead ? "lead" : "thumb"}
-          eager={isLead}
-        />
-      </div>
-
-      <div className="flex min-w-0 flex-1 flex-col gap-2">
-        <div className="flex flex-wrap items-center gap-1.5">
-          <Tag variant="catalyst">{catalystLabel(card.eventType)}</Tag>
-          {card.sectors.slice(0, 1).map((sector) => (
-            <Tag key={sector} variant="catalyst">
-              {sector}
-            </Tag>
-          ))}
+      <Link
+        href={`/news/${card.id}`}
+        className={cx(
+          "block p-4 focus-visible:outline-2 focus-visible:outline-accent desk:p-5",
+          isLead
+            ? // THE LEAD TURNS SIDEWAYS ON A DESKTOP, and it is the fold that decides it. Stacked, a
+              // 1.91:1 photograph across a 1366px column is ~715px tall, and with the masthead and the
+              // two filter rows above it the lead story's OWN HEADLINE lands below the fold. A front
+              // page whose lead headline you have to scroll to find is not a front page.
+              //
+              // So above `lg` the lead sets the way a broadsheet sets one: the picture on the left, the
+              // headline beside it. The photo keeps its ratio, the headline is the first thing read,
+              // and the card costs ~420px instead of ~1000. On a phone it stacks, which is right there:
+              // at 390px the same ratio is a comfortable 204px and there is no fold to lose.
+              "flex flex-col gap-3 lg:flex-row lg:items-start lg:gap-5"
+            : "flex flex-row-reverse items-start gap-3",
+        )}
+      >
+        <div className={isLead ? "lg:w-[55%] lg:shrink-0" : "contents"}>
+          <NewsImage
+            image={card.image}
+            eventType={card.eventType}
+            tickers={card.tickers.map((t) => t.symbol)}
+            slot={isLead ? "lead" : "thumb"}
+            eager={isLead}
+          />
         </div>
 
-        <h3
-          title={card.headline}
-          className={cx(
-            "line-clamp-2 font-display text-ink",
-            isLead ? "text-xl desk:text-2xl" : "text-base",
-          )}
-        >
-          {/* The N5 headline renderer, now the app's ONE emphasis path (PD5). A figure is set in
-           * mono if and only if the gate cleared it — the typeface is the receipt. It used to be an
-           * inline `.map` right here, which meant "emphasis is earned" was enforced in this one
-           * component and re-implementable by hand in every other. */}
-          <VerifiedProse text={card.headline} allowed={card.keyNumbers.map((n) => n.value)} />
-        </h3>
+        <div className="flex min-w-0 flex-1 flex-col gap-2">
+          <div className="flex flex-wrap items-center gap-1.5">
+            <Tag variant="catalyst">{catalystLabel(card.eventType)}</Tag>
+            {card.sectors.slice(0, 1).map((sector) => (
+              <Tag key={sector} variant="catalyst">
+                {sector}
+              </Tag>
+            ))}
+          </div>
 
-        <p className="font-ui text-2xs text-muted">
-          {card.articles[0]?.source ? `${card.articles[0].source} · ` : ""}
-          {formatEtDate(card.firstSeen)} · {formatEtClock(card.firstSeen)} ET
-        </p>
+          <h3
+            title={card.headline}
+            className={cx(
+              "line-clamp-2 font-display text-ink",
+              isLead ? "text-xl desk:text-2xl" : "text-base",
+            )}
+          >
+            {/* The N5 headline renderer, now the app's ONE emphasis path (PD5). A figure is set in
+             * mono if and only if the gate cleared it — the typeface is the receipt. */}
+            <VerifiedProse text={card.headline} allowed={card.keyNumbers.map((n) => n.value)} />
+          </h3>
 
-        {card.tickers.length > 0 ? (
+          {card.tickers.length > 0 ? (
           // The testid names the SYMBOLS specifically. The browser suite needs to find a card that
           // NAMES a ticker (to prove the chip is a door on the story behind it), and "has a data-p2
           // node" is not that question: a headline carrying a gate-verified figure is also data-p2,
@@ -171,10 +181,32 @@ export function NewsCard({ card, tier }: NewsCardProps) {
           </p>
         ) : null}
 
-        <p className="font-mono text-2xs uppercase tracking-[0.04em] text-muted">
-          {sourcesLine(card.sources)}
-        </p>
+          <p className="font-mono text-2xs uppercase tracking-[0.04em] text-muted">
+            {sourcesLine(card.sources)}
+          </p>
+        </div>
+      </Link>
+
+      {/*
+       * THE BYLINE FOOTER — one door OUT (E8, plan 9.4). A SIBLING of the story link, never nested
+       * inside it, in its own hairline-separated box. The outlet name is the external anchor; the
+       * timestamp rides beside it. `min-h-11` on touch makes it a real 44px target (the phone sweep
+       * measures it), given back above `md` where a mouse needs no floor. A card with no kept
+       * articles (a pre-N5 row) shows only its timestamp — no dead anchor.
+       */}
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 border-t border-hairline px-4 py-1.5 desk:px-5">
+        {primarySource ? (
+          <ExternalLink
+            href={primarySource.url}
+            className="flex min-h-11 items-center font-ui text-2xs text-muted md:min-h-0 md:py-2"
+          >
+            {primarySource.source}
+          </ExternalLink>
+        ) : null}
+        <span className="font-mono text-2xs text-muted">
+          {formatEtDate(card.firstSeen)} · {formatEtClock(card.firstSeen)} ET
+        </span>
       </div>
-    </Link>
+    </div>
   );
 }

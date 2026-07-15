@@ -110,6 +110,7 @@ const P2_FILES = [
   "components/desk/Movers.tsx",
   "components/desk/Watchlist.tsx",
   "components/ticker/RangeBands.tsx",
+  "components/ticker/RangeStrip.tsx",
 ];
 
 const SEARCH_DIRS = ["app", "components", "lib"];

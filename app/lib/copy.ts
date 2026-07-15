@@ -337,6 +337,30 @@ export const copy = {
       "No context line for this story: the one written failed the number check, so it was dropped rather than published unverified.",
     /** The narrator honestly had nothing to add. Different from the line above, and it says so. */
     noteAbsent: "No context line for this story.",
+
+    // ── PD8: the story page v2 (plan 9.6) ───────────────────────────────────────────────────────
+    /** Block 5 heading — the v2 context prose (mechanism + where the name sits tonight). */
+    contextTonight: "Context tonight",
+    /**
+     * Block 5's absence, and WHICH absence. A context the gate DELETED is the system working loudly;
+     * a narrator with nothing to add is the system working quietly (silent) and prints nothing at
+     * all. Only the dropped case speaks, because a deleted sentence is the more interesting event.
+     */
+    contextDropped:
+      "No context for this story: the added context cited a figure that traced back to no source, so the gate dropped it rather than publish it unverified.",
+    /** Block 7 heading — our own ledger's evidence on the affected names. */
+    theRecord: "What our record says",
+    /** Block 8 heading — the dated road ahead. Facts with dates, never levels to watch (E4). */
+    onTheCalendar: "On the calendar",
+    /** A watch row: "{title} · {date} · {scope}". A market-wide event names no ticker. */
+    watchMarketWide: "market-wide",
+    /**
+     * The provenance footer's `{model}` slot, composed from model_meta (9.5) — never hardcoded.
+     * The footer template already says "extracted by {model}", so these fill only the slot.
+     */
+    provenanceModels: "{extract}, narrated by {synth}",
+    /** A pre-PD7 row ran an extraction but did not record which model — we say so, not a guess. */
+    provenanceEarlier: "an earlier run",
   },
 
   /**
@@ -519,6 +543,57 @@ export const copy = {
     rangeCoverage: "Showing full history: {years}",
     rangeUnavailable: "Less than {min} of history for this symbol",
     lastCloseWindow: "1D vs prior close",
+
+    // ── PD8: the page v2 (Part 10) ──────────────────────────────────────────────────────────────
+    /** The 52-week strip's low/current/high labels — position, never angle (P13). */
+    rangeLow: "Low",
+    rangeHigh: "High",
+    rangeCurrent: "Last close",
+    /**
+     * The strip's window line, and it states the window HONESTLY at any history length. "52-week"
+     * is a claim about a year; over fewer sessions the seed and any thin symbol get the plain
+     * "Trading range" wording and the true session count. Both name the window out loud — the rule
+     * that every number states its scope (§5.2), applied to the range itself.
+     */
+    range52wWindow: "52-week range · {n} sessions · through {date}",
+    rangeShortWindow: "Trading range · {n} sessions · through {date}",
+    /** The identity line under the header: "NASDAQ · Technology" — each absent field simply omitted. */
+    identitySeparator: " · ",
+    /** The section headings for the new blocks (each names its absence state in the page). */
+    mentionHeading: "Tonight's mention",
+    recordHeading: "The record here",
+    calendarHeading: "On the calendar",
+    paperHeading: "Your paper position",
+    /** Tonight's mention: the snapshot move's relative-volume clause, beside the story link. */
+    mentionRvol: "on {rvol} relative volume",
+    /** The calendar row: "MSFT earnings · Mon Jul 13" — a fact with a date, never a level to watch. */
+    calendarConsensus: "cons. {consensus} · prior {prior}",
+    /** The open position's mark: its window (C2), on the OutcomeChip beside the signed figure. */
+    paperVsLastClose: "vs last close",
+    paperRealizedHistory: "Realized here: {value} over {n} closed",
+    paperNoLastClose: "No last close to mark against yet.",
+    /** The provenance footer (block 8) — composed from what actually rendered (ruling C6). */
+    provenanceBars: "Bars through {date}",
+    provenanceLedger: "signals from the append-only ledger",
+  },
+
+  /**
+   * PD8 — "what our record says" for a name (plan 9.6 block 7 / 10.1 block 5). Shared by the story
+   * page and the ticker page, because the record is one thing and two definitions of it would drift.
+   */
+  record: {
+    /** An open (fired, unresolved) signal — a claim the ledger is still holding. */
+    openSignal: "Open signal",
+    firedResolves: "Fired {fired} · resolves {resolves}",
+    horizon: "{n}-session horizon",
+    /** Resolved history — hits and misses at EQUAL weight, the insert-only truth (§1.5). */
+    resolvedHere: "Resolved here",
+    hitCount: "{n} hit",
+    hitCountPlural: "{n} hits",
+    missCount: "{n} miss",
+    missCountPlural: "{n} misses",
+    /** The setup card's pattern, shown read-only here — the interactive card stays on the Desk. */
+    setupIntro: "The latest setup on this name",
   },
 
   scans: {

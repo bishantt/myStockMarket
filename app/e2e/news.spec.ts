@@ -248,6 +248,50 @@ test.describe("A story page", () => {
     await page.getByRole("link", { name: "← Back to the front page" }).click();
     await expect(page).toHaveURL("/news");
   });
+
+  test("the full v2 anatomy — and the context reads as ENGLISH, not a hash (PD7's scar)", async ({
+    page,
+  }) => {
+    // nc-fda-nonopioid is the one seeded story with the full v2 insight AND an affected table with
+    // rows. PD7 published a sha1 hash into a sentence a human was meant to read, and every guard in
+    // the repo passed it — so this one READS the prose the surface renders.
+    await page.goto("/news/nc-fda-nonopioid");
+
+    const context = page.getByTestId("news-context");
+    await expect(context).toBeVisible();
+    // Real narrated prose, with a verified figure the gate cleared set in mono.
+    await expect(context).toContainText("2.3x");
+    await expect(context).toContainText("52-week range");
+    // THE GUARD: no stat_id, no cluster id, no sha1 hash may ever reach the reader's eye.
+    await expect(context).not.toContainText("tkr:");
+    await expect(context).not.toContainText("cls:");
+    await expect(context).not.toContainText("cal:");
+
+    // The watch section — dated calendar facts, each a door to the Desk calendar's day.
+    await expect(page.getByRole("heading", { name: "On the calendar" })).toBeVisible();
+    const cpi = page.getByRole("link", { name: /Consumer Price Index/ });
+    await expect(cpi).toBeVisible();
+    await expect(cpi).toHaveAttribute("href", /#cal-/);
+  });
+
+  test("a gate-DROPPED context says so, on the story that also has a record", async ({ page }) => {
+    // SMCI's context was deleted by the gate (it invented "94.2%"); the why-line beside it lived.
+    // And SMCI has a setup card and a resolved miss, so the record block renders here.
+    await page.goto("/news/nc-smci-earnings");
+
+    await expect(page.getByRole("heading", { name: "Context tonight" })).toBeVisible();
+    await expect(page.getByTestId("news-context-dropped")).toContainText("traced back to no source");
+    await expect(page.getByRole("heading", { name: "What our record says" })).toBeVisible();
+  });
+
+  test("the byline outlet on the FEED is a real door out, ≥44px and separated", async ({ page }) => {
+    // 9.4: the card's main surface is one internal link to the story; the byline is one external
+    // door in its own footer box. An anchor inside the card's story link would be invalid HTML.
+    await page.goto("/news");
+    const byline = page.getByTestId("news-lead").getByRole("link", { name: "Reuters", exact: true });
+    await expect(byline).toHaveAttribute("target", "_blank");
+    await expect(byline).toHaveAttribute("rel", /noopener/);
+  });
 });
 
 test.describe("The Desk's front-page module", () => {

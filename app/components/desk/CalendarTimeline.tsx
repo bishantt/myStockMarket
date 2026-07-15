@@ -18,6 +18,12 @@ import { cx } from "@/lib/cx";
 export type CalendarRow = {
   /** The event date, formatted, e.g. "Jul 15". */
   dateLabel: string;
+  /**
+   * The per-day anchor id (`cal-2026-07-15`) a story's watch rows link to (PD8). Optional: rows
+   * built outside `buildCalendar` (older tests) omit it, and a row with none simply carries no
+   * anchor — a hash link that matches nothing lands on the module without scrolling, never a 404.
+   */
+  anchorId?: string;
   /** earnings | macro | fed — the data model's classification. Not what the reader sees. */
   kind: string;
   /**
@@ -133,8 +139,17 @@ export function CalendarTimeline({
           {visible.map((e, i) => (
             <li
               key={`${e.dateLabel}-${e.symbol ?? e.title}-${i}`}
+              // The per-day anchor a story's watch rows link to (PD8) — stamped on the FIRST visible
+              // row of each day only, so the id is unique. `scroll-mt` clears the sticky top bar so
+              // the anchored day is not hidden under it. Folded rows carry no anchor: they are behind
+              // a disclosure, and a hash link cannot scroll to something that is not on screen.
+              id={
+                e.anchorId && visible.findIndex((v) => v.anchorId === e.anchorId) === i
+                  ? e.anchorId
+                  : undefined
+              }
               className={cx(
-                "border-b border-hairline py-2.5 last:border-b-0",
+                "scroll-mt-24 border-b border-hairline py-2.5 last:border-b-0",
                 compact ? "flex flex-col gap-1" : "flex items-baseline gap-4",
               )}
             >

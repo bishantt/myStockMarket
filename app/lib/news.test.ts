@@ -21,6 +21,7 @@ import {
   catalystLabel,
   countLine,
   filterCards,
+  formatModel,
   inRange,
   leadAndRest,
   noStoryMovers,
@@ -41,12 +42,16 @@ function card(over: Partial<NewsCard> = {}): NewsCard {
     firstSeen: new Date("2026-07-09T18:00:00.000Z"),
     whyItMatters: null,
     affectedNote: null,
-    noteDropped: false,
+    sections: { whyItMatters: null, affectedNote: null, context: null, watch: null },
+    context: null,
+    contextCleared: [],
+    watch: [],
     tickers: [],
     keyNumbers: [],
     summary: "",
     image: null,
     articles: [],
+    modelMeta: null,
     ...over,
   };
 }
@@ -228,6 +233,9 @@ describe("the database boundary", () => {
     extract: {},
     verification: {},
     articles: [],
+    context: null,
+    watch: [],
+    modelMeta: null,
     image: null,
     links: [],
   };
@@ -240,7 +248,16 @@ describe("the database boundary", () => {
 
     expect(card.keyNumbers).toEqual([]);
     expect(card.summary).toBe("");
-    expect(card.noteDropped).toBe(false);
+    // A pre-PD7 row has no sections map and no depth fields — every one absent, and honestly so.
+    expect(card.sections).toEqual({
+      whyItMatters: null,
+      affectedNote: null,
+      context: null,
+      watch: null,
+    });
+    expect(card.context).toBeNull();
+    expect(card.watch).toEqual([]);
+    expect(card.modelMeta).toBeNull();
   });
 
   it("reads the key numbers the gate cleared", () => {
@@ -261,8 +278,59 @@ describe("the database boundary", () => {
   it("knows the difference between a note the gate DELETED and one never written", () => {
     // On the card both are silence. On the story page they are different sentences, because a
     // reader who opened one story to find out why it matters is owed the reason there is no answer.
-    expect(toCard({ ...row, verification: { dropped: true } }).noteDropped).toBe(true);
-    expect(toCard({ ...row, verification: { narrated: false } }).noteDropped).toBe(false);
+    // The v2 sections map answers per field; the v1 `dropped` flag is honoured as a fallback for
+    // why_it_matters, because a pre-PD7 production row carries only that.
+    expect(toCard({ ...row, verification: { dropped: true } }).sections.whyItMatters).toBe("dropped");
+    expect(toCard({ ...row, verification: { narrated: false } }).sections.whyItMatters).toBeNull();
+
+    // A v2 row: each field carries its own verdict, and the gate-dropped CONTEXT is distinguished
+    // from the narrator's honest silence — the whole reason the sections map exists.
+    const v2 = toCard({
+      ...row,
+      context: null,
+      verification: {
+        sections: {
+          why_it_matters: { status: "narrated" },
+          affected_note: { status: "silent" },
+          context: { status: "dropped", cleared: [] },
+          watch: { status: "silent" },
+        },
+      },
+    });
+    expect(v2.sections).toEqual({
+      whyItMatters: "narrated",
+      affectedNote: "silent",
+      context: "dropped",
+      watch: "silent",
+    });
+  });
+
+  it("reads the context prose, its cleared allow-list, and the snapshotted watch rows", () => {
+    const card = toCard({
+      ...row,
+      context: "The move is 2.3x its normal range and 71.4% up the year.",
+      watch: [
+        { stat_id: "cal:CPI:next", key: "CPI", code: "CPI", kind: "macro", title: "CPI", date: "2026-07-12" },
+        // A malformed row (no date) is dropped, never rendered as a dead calendar link.
+        { stat_id: "cal:X:next", key: "X", code: "X", kind: "macro", title: "No date" },
+      ],
+      verification: {
+        sections: { context: { status: "narrated", cleared: ["2.3x", "71.4%"] } },
+      },
+      modelMeta: { model_extract: "claude-haiku-4-5", model_synth: "claude-sonnet-5", note_version: 2 },
+    });
+
+    expect(card.context).toBe("The move is 2.3x its normal range and 71.4% up the year.");
+    expect(card.contextCleared).toEqual(["2.3x", "71.4%"]);
+    expect(card.watch).toEqual([
+      { statId: "cal:CPI:next", key: "CPI", code: "CPI", kind: "macro", title: "CPI", date: "2026-07-12" },
+    ]);
+    expect(card.modelMeta).toEqual({
+      modelExtract: "claude-haiku-4-5",
+      modelSynth: "claude-sonnet-5",
+      extractCount: null,
+      noteVersion: 2,
+    });
   });
 
   it("sorts the articles oldest first, whatever order the pipeline wrote them in", () => {
@@ -283,5 +351,19 @@ describe("the database boundary", () => {
       articles: [{ source: "Reuters", url: "u", headline: "h", published: "not a date" }],
     });
     expect(card.articles).toEqual([]);
+  });
+});
+
+describe("formatModel — the provenance footer's model name (PD8, 9.5)", () => {
+  it("turns a model id into a reader-facing name, version digits joined by dots", () => {
+    expect(formatModel("claude-haiku-4-5")).toBe("Claude Haiku 4.5");
+    expect(formatModel("claude-sonnet-5")).toBe("Claude Sonnet 5");
+    expect(formatModel("claude-opus-4-8")).toBe("Claude Opus 4.8");
+  });
+
+  it("is structural, not a lookup table — an id it does not know is title-cased, never mangled", () => {
+    // The whole point: no per-model table to rot the day a new model ships.
+    expect(formatModel("some-new-model-9")).toBe("Some New Model 9");
+    expect(formatModel("")).toBe("");
   });
 });

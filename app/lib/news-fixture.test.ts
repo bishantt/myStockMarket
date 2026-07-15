@@ -70,13 +70,46 @@ describe("the seeded night, read through the app's own boundary", () => {
   });
 
   it("the gate-DROPPED note is legible as dropped, not as an absent one", () => {
-    // The seed plants exactly one: JPMorgan. A note the gate deleted and a note nobody wrote are
-    // different events, and the story page says which. It can only do that if the seed records the
-    // decision the way the pipeline actually records it.
-    const dropped = cards.filter((card) => card.noteDropped);
+    // The seed plants exactly one: JPMorgan (a pre-PD7 v1 shape — `dropped: true`, no sections map).
+    // A note the gate deleted and a note nobody wrote are different events, and the story page says
+    // which. It can only do that if the seed records the decision the way the pipeline records it —
+    // and the v1 `dropped` flag still resolves to a "dropped" why-it-matters verdict.
+    const dropped = cards.filter((card) => card.sections.whyItMatters === "dropped");
 
     expect(dropped.map((card) => card.id)).toEqual(["nc-jpm-earnings"]);
     expect(dropped[0].whyItMatters).toBeNull();
+  });
+
+  it("carries all four PD7 insight shapes, and each absence answers for itself", () => {
+    const byId = new Map(cards.map((card) => [card.id, card]));
+
+    // Shape 1 — the full v2 insight: context prose, a cleared allow-list, two watch rows, model_meta.
+    const full = byId.get("nc-fda-nonopioid")!;
+    expect(full.sections.context).toBe("narrated");
+    expect(full.context).not.toBeNull();
+    expect(full.contextCleared.length).toBeGreaterThan(0);
+    expect(full.watch.map((w) => w.code)).toEqual(["CPI", "FOMC"]);
+    expect(full.modelMeta?.noteVersion).toBe(2);
+
+    // Shape 2 — the gate DROPPED the context, and ONLY the context: the why-line beside it lived.
+    const droppedContext = byId.get("nc-smci-earnings")!;
+    expect(droppedContext.sections.context).toBe("dropped");
+    expect(droppedContext.context).toBeNull();
+    expect(droppedContext.sections.whyItMatters).toBe("narrated");
+    expect(droppedContext.whyItMatters).not.toBeNull();
+
+    // Shape 3 — an honest silence: a deep cluster whose narrator had nothing to add. Prints the
+    // SAME nothing as shape 2; only the verdict tells them apart.
+    const silent = byId.get("nc-amd-acquisition")!;
+    expect(silent.sections.context).toBe("silent");
+    expect(silent.context).toBeNull();
+
+    // Shape 4 — a pre-PD7 row: no depth fields, no sections map. Every new absence is `null`.
+    const preDepth = byId.get("nc-uber-expansion")!;
+    expect(preDepth.sections.context).toBeNull();
+    expect(preDepth.context).toBeNull();
+    expect(preDepth.watch).toEqual([]);
+    expect(preDepth.modelMeta).toBeNull();
   });
 
   it("the corroboration count equals the number of articles behind it, on every cluster", () => {

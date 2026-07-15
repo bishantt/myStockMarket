@@ -91,4 +91,35 @@ test.describe("the ticker's range control", () => {
     const cards = page.getByRole("region", { name: "Setup cards" });
     await expect(cards.getByRole("radiogroup")).toHaveCount(0);
   });
+
+  test("the page v2 — a served name shows its depth blocks (PD8, Part 10)", async ({ page }) => {
+    await page.goto("/ticker/AAPL");
+
+    // A page about Apple says "Apple", and its identity line names the exchange and sector.
+    await expect(page.getByRole("heading", { name: /Apple/, level: 1 })).toBeVisible();
+    await expect(page.getByText(/NASDAQ · Technology/)).toBeVisible();
+
+    // The 52-week strip states its window HONESTLY — the seed has 22 sessions, so it does NOT claim a
+    // year. It says the true count, which is the whole reason the label is conditional.
+    await expect(page.getByText(/sessions · through/)).toBeVisible();
+
+    // Tonight's mention (AAPL is in nc-aapl-note), the calendar (AAPL earnings), the paper position
+    // (AAPL has an open buy). Each block renders because its data exists.
+    await expect(page.getByRole("heading", { name: "Tonight's mention" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "On the calendar" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Your paper position" })).toBeVisible();
+  });
+
+  test("a non-served name shows the honest subset, not a blank chart", async ({ page }) => {
+    // SMCI is a mover the reader can name but has no served bars. It is WORTH OPENING anyway: no
+    // chart, but its record renders — a setup card and a resolved miss on the append-only ledger.
+    await page.goto("/ticker/SMCI");
+
+    await expect(page.getByText(/No chart data/)).toBeVisible();
+    // No price-derived blocks — but the record block is here (SMCI has a setup card).
+    await expect(page.getByRole("heading", { name: "The record here" })).toBeVisible();
+    await expect(page.getByText(/Resolved here/i)).toBeVisible();
+    // And the strip is absent (no bars), not a fabricated one.
+    await expect(page.getByText(/sessions · through/)).toHaveCount(0);
+  });
 });

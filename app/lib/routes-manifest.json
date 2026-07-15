@@ -97,14 +97,14 @@
       "note": "The Front Page (N5). The room this whole manifest exists because of: it shipped unmeasured and stayed unmeasured for two tagged phases. It is also the densest room in the app for the touch rule — two horizontally scrolling chip rows, a pagination control and a card grid of links."
     },
     {
-      "path": "/news/nc-fed-hold",
+      "path": "/news/nc-fda-nonopioid",
       "family": "/news/[cluster]",
       "seeded": true,
       "sweeps": ["touch", "scroll", "axe"],
       "navBudget": "gated",
       "vrtRoom": "news-story",
       "mbp16": false,
-      "note": "One story. SEEDED: ask for a cluster id the database does not have and the route calls notFound(), which answers HTTP 200 with the 404 page in the body — so an unseeded sweep measures an error page and reports the story page clean. Verified: this happened."
+      "note": "One story — the FULL v2 anatomy (PD8). REPOINTED from nc-fed-hold (Q-PD6-2): the sweep used to visit the Fed story, which has ZERO catalyst links, so its affected table rendered no rows and the TickerChip doors (a 44px touch target) were never measured — a bug lived there for a whole phase kept alive by the shape of a fixture. nc-fda-nonopioid is the one seeded story with THREE catalyst links AND the full v2 insight (context + watch), so the sweep measures real controls and the VRT shot locks the full anatomy. SEEDED: ask for a cluster id the database does not have and the route calls notFound(), which answers HTTP 200 with the 404 page in the body — so an unseeded sweep measures an error page and reports the story page clean. Verified: this happened."
     },
     {
       "path": "/scans",

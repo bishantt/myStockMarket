@@ -10,10 +10,9 @@ import {
   type MacroBoard as MacroBoardData,
   type MacroStatRow,
 } from "@/lib/macro-board";
-import { patternCause, patternLabel, patternLessonSlug } from "@/lib/patterns";
-import { weakenersFor } from "@/lib/weakeners";
+import { calendarAnchorIdFromDate } from "@/lib/calendar-anchor";
+import { buildSetupCardView } from "@/lib/setup-card-view";
 import type { SetupCardView } from "@/components/desk/SetupCards";
-import type { Tier } from "@/lib/constants";
 import type { Direction } from "@/components/StatFigure";
 import type { Catalyst, Mover } from "@/components/desk/Movers";
 import type { CalendarRow } from "@/components/desk/CalendarTimeline";
@@ -439,6 +438,9 @@ export type CalendarSource = {
 export function buildCalendar(sources: CalendarSource[]): CalendarRow[] {
   return sources.map((s) => ({
     dateLabel: formatUtcDate(s.date),
+    // The per-day anchor a story's watch rows link to (PD8). Derived from the SAME date the row
+    // shows, so a watch date and its calendar day can never spell their anchor differently.
+    anchorId: calendarAnchorIdFromDate(s.date),
     kind: s.kind,
     code: s.code ?? s.kind,
     title: s.title,
@@ -711,53 +713,12 @@ async function loadSetupCards(): Promise<SetupCardView[] | null> {
       orderBy: [{ tier: "asc" }, { symbol: "asc" }],
       select: { id: true, symbol: true, patternKey: true, tier: true, state: true, weakeners: true },
     });
-    return rows.map((row) => {
-      const state = (row.state ?? {}) as Record<string, unknown>;
-      const n = Number(state.n ?? 0);
-      const winRate = Number(state.winRate ?? 0);
-      return {
-        id: row.id,
-        symbol: row.symbol,
-        patternKey: row.patternKey,
-        patternLabel: patternLabel(row.patternKey),
-        tier: row.tier as Tier,
-        cause: patternCause(row.patternKey),
-        baseRate: {
-          n,
-          wins: Math.round(winRate * n),
-          winRate,
-          ciLow: Number(state.ciLow ?? 0),
-          ciHigh: Number(state.ciHigh ?? 0),
-          baseline: state.baseline == null ? null : Number(state.baseline),
-          horizonDays: Number(state.horizonDays ?? 10),
-          refClass: refClassLabel(String(state.universe ?? "")),
-          publicationYear: state.publicationYear == null ? null : Number(state.publicationYear),
-          evidenceGrade: (state.evidenceGrade as SetupCardView["baseRate"]["evidenceGrade"]) ?? null,
-          decayNote: (state.decayNote as string | null) ?? null,
-        },
-        weakeners: weakenersFor(row.patternKey),
-        weakenerState: (row.weakeners ?? {}) as Record<string, boolean>,
-        // The card links to its pattern's lesson — but only once that lesson is authored (the
-        // doorway gates on the slug existing), so cards for not-yet-written lessons carry none.
-        learnSlug: knownLessonOrNull(patternLessonSlug(row.patternKey)),
-      };
-    });
+    // The row → view mapping is shared with PD8's per-symbol "record" blocks (lib/setup-card-view.ts).
+    return rows.map(buildSetupCardView);
   } catch (error) {
     console.error("getMorning: could not load setup cards", error);
     return null;
   }
-}
-
-/** A lesson slug only if the Academy manifest knows it — else null (no doorway yet). */
-function knownLessonOrNull(slug: string | null): string | null {
-  return slug && isKnownLesson(slug) ? slug : null;
-}
-
-/** The reference-class label the base-rate sentence reads ("US large/mid", "US small"). */
-function refClassLabel(universe: string): string {
-  if (universe === "large_mid") return "US large/mid names";
-  if (universe === "small") return "US small-cap names";
-  return "US names";
 }
 
 /**

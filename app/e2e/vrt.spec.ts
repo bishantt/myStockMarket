@@ -464,6 +464,45 @@ test.describe("visual regression — the design system", () => {
     await shoot(page, "/ticker/AAPL", "ticker-dark");
   });
 
+  /*
+   * PD8 VRT — the story page v2 and the ticker page v2 (Appendix D).
+   *
+   * The FULL story anatomy (nc-fda-nonopioid) and the served ticker (AAPL, now with its depth blocks)
+   * are shot by the main room loop and the bespoke ticker tests above — both themes. The shots below
+   * are the CONTENT variants: a gate-dropped context, a pre-PD7 sparse row, and a non-served name.
+   * They are new pictures nobody has looked at, so every one gets eyes before its baseline is
+   * committed (the law that has bitten this repo four times: an EXACT baseline can still be wrong).
+   *
+   * 9.8 asks the gate-dropped variant in both themes; the sparse and thin variants are light-only
+   * extra-coverage shots, following the room's established convention (the palette is already locked
+   * in both themes by the main shots; these lock the content states).
+   */
+  for (const theme of ["light", "dark"] as const) {
+    test(`story — a gate-dropped context and a record block — ${theme === "light" ? "Morning" : "Midnight"}`, async ({
+      page,
+    }, testInfo) => {
+      test.skip(!process.env.MSM_SEEDED, "needs the seeded database");
+      test.skip(locksLayoutOnly(testInfo), "this project locks room layouts only");
+      test.skip(theme === "dark" && locksLayoutOnly(testInfo), "layout-only project");
+      await useTheme(page, theme);
+      await shoot(page, "/news/nc-smci-earnings", `news-story-dropped-${theme}`);
+    });
+  }
+
+  test("story — a pre-PD7 sparse row renders every absence", async ({ page }, testInfo) => {
+    test.skip(!process.env.MSM_SEEDED, "needs the seeded database");
+    test.skip(locksLayoutOnly(testInfo), "this project locks room layouts only");
+    await useTheme(page, "light");
+    await shoot(page, "/news/nc-uber-expansion", "news-story-sparse");
+  });
+
+  test("ticker — a non-served name, the honest subset (no chart, but a record)", async ({ page }, testInfo) => {
+    test.skip(!process.env.MSM_SEEDED, "needs the seeded database");
+    test.skip(locksLayoutOnly(testInfo), "this project locks room layouts only");
+    await useTheme(page, "light");
+    await shoot(page, "/ticker/SMCI", "ticker-thin");
+  });
+
 
   // ── login: the first thing anyone sees ───────────────────────────────────────────────────
 

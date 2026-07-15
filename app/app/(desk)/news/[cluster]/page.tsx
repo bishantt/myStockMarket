@@ -3,31 +3,41 @@ import { notFound } from "next/navigation";
 
 import { AffectedTable, type AffectedRow } from "@/components/news/AffectedTable";
 import { NewsImage } from "@/components/news/NewsImage";
+import { StoryContext } from "@/components/news/StoryContext";
+import { SymbolRecord } from "@/components/SymbolRecord";
+import { TickerChip } from "@/components/TickerChip";
+import { VerifiedProse } from "@/components/KeyFigure";
 import { ExternalLink } from "@/components/ExternalLink";
 import { Surface } from "@/components/Surface";
 import { Tag } from "@/components/Tag";
 import { isKnownLesson, getLessonMeta } from "@/lib/academy";
+import { calendarDayHref } from "@/lib/calendar-anchor";
 import { copy, fill } from "@/lib/copy";
 import { db } from "@/lib/db";
-import { ACADEMY_DOORWAY, catalystLabel, sourcesLine, toCard } from "@/lib/news";
-import { formatEtClock, formatEtDate } from "@/lib/time";
+import { ACADEMY_DOORWAY, catalystLabel, formatModel, sourcesLine, toCard } from "@/lib/news";
+import { getSymbolRecord, hasRecord, type SymbolRecord as SymbolRecordData } from "@/lib/record";
+import { formatEtClock, formatEtDate, formatUtcDate, formatUtcWeekday } from "@/lib/time";
 
 /**
- * /news/[cluster] — one story, in full (NEWS-AND-CONTROL-PLAN Part 7.8).
+ * /news/[cluster] — one story, in full (POLISH-AND-DEPTH-PLAN Part 9.6, the v2 anatomy).
  *
- * THE PAGE THE CORROBORATION COUNT POINTS AT. The feed card whispers "5 sources"; this is where
- * those five are named, timed, and linked out to. Until N5 the count existed and the articles did
- * not, so the second-heaviest term in the whole ranking formula was a number the reader simply had
- * to believe. A claim that cannot be opened is the exact species of claim this product argues
- * against — so the sources are the first thing on the page, above the picture and the prose.
+ * PD8 is the second move of "depth arrives in two moves": PD7 computed the depth (a wider stats
+ * registry, a gated context section, a snapshotted watch list, per-section verdicts), and this page
+ * SPEAKS it. The reader's contract (9.1) is answered top to bottom — what happened, why it matters,
+ * the context tonight, who is exposed, what OUR record says, what is on the calendar, the sources,
+ * the provenance — and EVERY block names what it shows when it has nothing. Nothing renders a
+ * placeholder (P9); an absence is either honest silence or a stated reason, never a shrug.
  *
- * WHAT HAPPENS WHEN THERE IS NO "WHY IT MATTERS". On a card, a missing context line prints nothing
- * at all — silence there is restraint (P9). Here it cannot be, because a reader who opened THIS
- * page did so to find out why the story matters, and a blank space where the answer goes reads as a
- * bug. So the absence speaks, and it distinguishes its two causes: a line the verification gate
- * DELETED (a number in it traced back to no source) is a different event from a line the narrator
- * never wrote, and conflating them would hide the more interesting one. The gate deleting a
- * sentence is the system working loudly, and the page says so.
+ * THE NAMED SOURCE LIST MOVED DOWN (block 9). N5 put it first, when the page had little else, to make
+ * "3 sources" openable. It is still openable — and the COUNT still sits in the header — but the page
+ * is now rich enough that the reader's contract flows to the sources near the end, which is the order
+ * 9.6 sets. (Logged in DECISIONS.)
+ *
+ * WHY A SECTION IS ABSENT IS NOW READ FROM THE GATE'S VERDICT, not guessed. `verification.sections`
+ * carries a per-field status — narrated / dropped / silent / out_of_budget — so "the gate held this
+ * line" and "the narrator had nothing to say" are told apart, per section. This SUPERSEDES the old
+ * `verification.dropped` boolean (PD7 kept it alongside; PD8 retires it into one reader — see
+ * lib/news.ts `readSectionStatus`, which still honours the v1 flag for a pre-PD7 row).
  */
 
 export const revalidate = 600;
@@ -40,11 +50,6 @@ export const revalidate = 600;
  * be dynamically rendered." Ship the `revalidate` above without this and the route caches NOTHING —
  * every story page re-renders on every request, the B1 budget fails, and the reason is invisible in
  * the code because the `revalidate` line is right there looking correct.
- *
- * Empty, specifically, because there is no useful set to prerender: a night publishes ~190 stories,
- * the reader opens a handful, and the set turns over completely every evening. Each story renders
- * once, on first request, and is served from the cache after. The nightly publish revalidates the
- * whole family (`/news/[cluster]`), so a re-published night cannot leave a stale story behind.
  */
 export async function generateStaticParams(): Promise<{ cluster: string }[]> {
   return [];
@@ -83,7 +88,15 @@ export default async function StoryPage({ params }: StoryPageProps) {
     })),
   });
 
-  const names = await instrumentNames(card.tickers.map((ticker) => ticker.symbol));
+  const symbols = card.tickers.map((ticker) => ticker.symbol);
+
+  // The instrument names and each affected name's ledger record, in one parallel stage. The record
+  // is REUSE of the honesty components (BaseRate / OutcomeChip) — zero new probability UI (9.6).
+  const [names, records] = await Promise.all([
+    instrumentNames(symbols),
+    Promise.all(symbols.map(async (symbol) => ({ symbol, record: await getSymbolRecord(symbol) }))),
+  ]);
+
   const affected: AffectedRow[] = card.tickers.map((ticker) => ({
     symbol: ticker.symbol,
     name: names[ticker.symbol] ?? ticker.symbol,
@@ -92,23 +105,28 @@ export default async function StoryPage({ params }: StoryPageProps) {
     hasSetupCard: ticker.hasSetupCard,
   }));
 
+  // Only the affected names our ledger actually holds evidence on — the block is absent when silent.
+  const recordsWithData = records.filter((entry) => hasRecord(entry.record));
+
   // The doorway renders only for a lesson somebody actually wrote — the same manifest gate the
   // evening brief uses. An unauthored slug simply closes the door rather than promising a 404.
   const doorwaySlug = ACADEMY_DOORWAY[card.eventType];
   const lesson = doorwaySlug && isKnownLesson(doorwaySlug) ? getLessonMeta(doorwaySlug) : null;
 
+  const keyNumberValues = card.keyNumbers.map((number) => number.value);
+
   return (
     // A MEASURE, not the window. Left to fill a 1366px room, the photograph ran the full width while
     // the prose beneath it sat in a 480px column — a picture and a caption pretending to be an
-    // article. This is the same disease F5 named on the Desk: a card stretched to the window is a
-    // stretched receipt. A story page is a thing to READ, so it is bounded to a reading width and the
-    // picture is bounded with it.
+    // article. A story page is a thing to READ, so it is bounded to a reading width, picture and all.
     <article className="mx-auto flex w-full max-w-[900px] flex-col gap-6 pb-8">
-      {/* The return rail. A room you can get into and not out of is a trap (the doorways rule). */}
+      {/* Block 1 — the return rail. A room you can get into and not out of is a trap. */}
       <Link href="/news" className="min-h-11 font-ui text-sm text-accent-deep">
         {copy.news.backToFeed}
       </Link>
 
+      {/* Block 2 — the header. Tags, the serif headline (verified figures in mono), the press time
+          and the corroboration COUNT (the named list is block 9, but the count stays up top). */}
       <header className="flex flex-col gap-3">
         <div className="flex flex-wrap items-center gap-1.5">
           <Tag variant="catalyst">{catalystLabel(card.eventType)}</Tag>
@@ -124,64 +142,21 @@ export default async function StoryPage({ params }: StoryPageProps) {
           ))}
         </div>
 
-        <h1 className="max-w-prose font-display text-2xl text-ink desk:text-3xl">{card.headline}</h1>
+        <h1 className="max-w-prose font-display text-2xl text-ink desk:text-3xl">
+          <VerifiedProse text={card.headline} allowed={keyNumberValues} />
+        </h1>
 
         <p className="font-mono text-2xs uppercase tracking-[0.04em] text-muted">
           {sourcesLine(card.sources)}
         </p>
       </header>
 
-      {/* The sources, named. This is what the corroboration count counts. */}
-      <section className="flex flex-col gap-2">
-        <h2 className="font-mono text-2xs font-medium uppercase tracking-[0.08em] text-muted">
-          {copy.news.sourceList}
-        </h2>
-        {card.articles.length > 0 ? (
-          <ul className="flex flex-col gap-1.5">
-            {card.articles.map((article) => (
-              <li key={article.url} className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
-                {/*
-                 * THE OUTLET NAME IS A TAP TARGET, NOT A WORD IN A SENTENCE (N7).
-                 *
-                 * These links are the room's whole honesty argument — they are how a reader checks
-                 * the story against the source that reported it — and on a phone they were TWENTY
-                 * PIXELS tall. Measured: "CNBC" 39×20, "Reuters" 48×20, "Associated Press" 110×20.
-                 * Five of them, stacked, each under half the 44px floor the constitution sets.
-                 *
-                 * WCAG's inline exception does not rescue them and should not: it exempts a target
-                 * sitting "in a sentence or block of text", and this is a LIST of discrete controls —
-                 * outlet, timestamp, headline. (The <li> is a flex container, so the anchor is
-                 * blockified and is not in a line box at all, which is why the sweep measured it.)
-                 *
-                 * The padding is touch-only: `md:py-0` leaves every desktop pixel exactly where it
-                 * was. It went unmeasured from N5 until now because the sweep had never been given
-                 * this route — and when it finally was, it was reading the 404 page instead.
-                 */}
-                <ExternalLink href={article.url} className="font-ui text-sm py-3 md:py-0">
-                  {article.source}
-                </ExternalLink>
-                <span className="font-mono text-2xs text-muted">
-                  {formatEtDate(article.published)} · {formatEtClock(article.published)} ET
-                </span>
-                <span className="w-full font-serif text-sm text-ink-2">{article.headline}</span>
-              </li>
-            ))}
-          </ul>
-        ) : (
-          // A story published before the app kept its article list. The count is real and it cannot
-          // be checked, and the page says exactly that rather than printing an empty list under a
-          // heading — which would tell the reader the story had no sources, which is false.
-          <p data-testid="news-sources-not-kept" className="max-w-prose font-ui text-sm text-muted">
-            {copy.news.sourcesNotKept}
-          </p>
-        )}
-      </section>
-
+      {/* The picture — editorial furniture, kept high where a broadsheet sets it. */}
       <figure className="flex flex-col gap-1.5">
         <NewsImage
           image={card.image}
           eventType={card.eventType}
-          tickers={card.tickers.map((ticker) => ticker.symbol)}
+          tickers={symbols}
           slot="story"
           eager
         />
@@ -198,6 +173,7 @@ export default async function StoryPage({ params }: StoryPageProps) {
         ) : null}
       </figure>
 
+      {/* Block 3 — what happened. The neutral factual summary; absent when there is no extract. */}
       {card.summary ? (
         <section className="flex flex-col gap-2">
           <h2 className="font-display text-lg text-ink">{copy.news.whatHappened}</h2>
@@ -205,25 +181,42 @@ export default async function StoryPage({ params }: StoryPageProps) {
         </section>
       ) : null}
 
+      {/* Block 4 — why it matters. The mechanism, one breath; its absence names WHICH absence. */}
       <section className="flex flex-col gap-2">
         <h2 className="font-display text-lg text-ink">{copy.news.whyItMatters}</h2>
         {card.whyItMatters ? (
-          <>
-            <p className="max-w-prose font-serif text-base text-ink-2">{card.whyItMatters}</p>
-            {card.affectedNote ? (
-              <p className="max-w-prose font-serif text-sm italic text-muted">{card.affectedNote}</p>
-            ) : null}
-          </>
+          <p className="max-w-prose font-serif text-base text-ink-2">
+            <VerifiedProse text={card.whyItMatters} allowed={keyNumberValues} />
+          </p>
         ) : (
-          // The absence, and WHICH absence. A gate that deleted a sentence is the system working
-          // loudly; a narrator with nothing to add is the system working quietly. Both are honest,
-          // and they are not the same thing.
+          // A gate that deleted a sentence is the system working loudly; a narrator with nothing to
+          // add is the system working quietly. Both are honest, and they are not the same thing.
           <p data-testid="news-note-absent" className="max-w-prose font-ui text-sm text-muted">
-            {card.noteDropped ? copy.news.noteDropped : copy.news.noteAbsent}
+            {card.sections.whyItMatters === "dropped" ? copy.news.noteDropped : copy.news.noteAbsent}
           </p>
         )}
       </section>
 
+      {/* Block 5 — context tonight. The v2 insight: mechanism + where the name sits, its numbers in
+          mono (E5) and its terms opened (≤2). Absent = SILENT/out-of-budget (nothing) or the gate
+          line (DROPPED). A pre-PD7 row has no context and no verdict: it prints nothing at all. */}
+      {card.context ? (
+        <section className="flex flex-col gap-2">
+          <h2 className="font-display text-lg text-ink">{copy.news.contextTonight}</h2>
+          <p data-testid="news-context" className="max-w-prose font-serif text-base text-ink-2">
+            <StoryContext text={card.context} cleared={card.contextCleared} />
+          </p>
+        </section>
+      ) : card.sections.context === "dropped" ? (
+        <section className="flex flex-col gap-2">
+          <h2 className="font-display text-lg text-ink">{copy.news.contextTonight}</h2>
+          <p data-testid="news-context-dropped" className="max-w-prose font-ui text-sm text-muted">
+            {copy.news.contextDropped}
+          </p>
+        </section>
+      ) : null}
+
+      {/* By the numbers — the extractor's cleared figures (kept from N5). */}
       {card.keyNumbers.length > 0 ? (
         <section className="flex flex-col gap-2">
           <h2 className="font-display text-lg text-ink">{copy.news.byTheNumbers}</h2>
@@ -242,18 +235,98 @@ export default async function StoryPage({ params }: StoryPageProps) {
         </section>
       ) : null}
 
-      {/* C9, and it keeps its HEADING. An orphaned "No direct listing in our universe." floating
-          between two sections reads like a stray note; under the heading it answers the question the
-          reader was about to ask, which is what it is for. The absence of a listing is an answer. */}
+      {/* Block 6 — exposure. The affected names and their snapshot numbers, plus the narrated note;
+          symbols are TickerChip doors. C9's "no listing" keeps its heading — the absence is an answer. */}
       <section className="flex flex-col gap-2">
         <h2 className="font-display text-lg text-ink">{copy.news.affected}</h2>
         {affected.length > 0 ? (
-          <AffectedTable rows={affected} />
+          <>
+            <AffectedTable rows={affected} />
+            {card.affectedNote ? (
+              <p className="max-w-prose font-serif text-sm italic text-muted">{card.affectedNote}</p>
+            ) : null}
+          </>
         ) : (
           <p className="font-ui text-sm text-muted">{copy.news.noListing}</p>
         )}
       </section>
 
+      {/* Block 7 — what OUR record says. Per affected name the ledger holds evidence on: the setup
+          card's base rate (N-gated) and the resolved hits and misses. Absent when the ledger is
+          silent — REUSE of the honesty components, zero new probability UI. */}
+      {recordsWithData.length > 0 ? (
+        <section className="flex flex-col gap-3">
+          <h2 className="font-display text-lg text-ink">{copy.news.theRecord}</h2>
+          {recordsWithData.map((entry) => (
+            <RecordForName key={entry.symbol} symbol={entry.symbol} record={entry.record} />
+          ))}
+        </section>
+      ) : null}
+
+      {/* Block 8 — on the calendar. The narrator's snapshotted watch rows, as dated facts, each a
+          door to the Desk calendar's day. Absent silently when there are no dated events. */}
+      {card.watch.length > 0 ? (
+        <section className="flex flex-col gap-2">
+          <h2 className="font-display text-lg text-ink">{copy.news.onTheCalendar}</h2>
+          <ul className="flex flex-col gap-1.5">
+            {card.watch.map((watch) => {
+              const marketWide = watch.kind === "macro" || watch.kind === "fed";
+              const scope = marketWide ? copy.news.watchMarketWide : watch.key;
+              return (
+                <li key={watch.statId || `${watch.code}-${watch.date}`}>
+                  <Link
+                    href={calendarDayHref(watch.date)}
+                    className="flex min-h-11 flex-wrap items-center gap-2 font-ui text-sm text-ink-2"
+                  >
+                    <Tag variant="catalyst">{watch.code}</Tag>
+                    <span>{watch.title}</span>
+                    <span className="font-mono text-2xs text-muted">
+                      {formatUtcWeekday(new Date(`${watch.date}T00:00:00Z`))}{" "}
+                      {formatUtcDate(new Date(`${watch.date}T00:00:00Z`))}
+                      {scope ? ` · ${scope}` : ""}
+                    </span>
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+        </section>
+      ) : null}
+
+      {/* Block 9 — the sources, named. This is what the corroboration count counts. */}
+      <section className="flex flex-col gap-2">
+        <h2 className="font-mono text-2xs font-medium uppercase tracking-[0.08em] text-muted">
+          {copy.news.sourceList}
+        </h2>
+        {card.articles.length > 0 ? (
+          <ul className="flex flex-col gap-1.5">
+            {card.articles.map((article) => (
+              <li key={article.url} className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+                {/*
+                 * THE OUTLET NAME IS A TAP TARGET, NOT A WORD IN A SENTENCE (N7). These links are the
+                 * room's whole honesty argument, and on a phone they were TWENTY PIXELS tall. The
+                 * padding is touch-only: `md:py-0` leaves every desktop pixel where it was.
+                 */}
+                <ExternalLink href={article.url} className="font-ui text-sm py-3 md:py-0">
+                  {article.source}
+                </ExternalLink>
+                <span className="font-mono text-2xs text-muted">
+                  {formatEtDate(article.published)} · {formatEtClock(article.published)} ET
+                </span>
+                <span className="w-full font-serif text-sm text-ink-2">{article.headline}</span>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          // A story published before the app kept its article list. The count is real and it cannot
+          // be checked, and the page says exactly that rather than printing an empty list.
+          <p data-testid="news-sources-not-kept" className="max-w-prose font-ui text-sm text-muted">
+            {copy.news.sourcesNotKept}
+          </p>
+        )}
+      </section>
+
+      {/* Block 10a — the Academy doorway (manifest-gated). */}
       {lesson ? (
         <section className="flex flex-col gap-2">
           <h2 className="font-display text-lg text-ink">{copy.news.learn}</h2>
@@ -263,16 +336,47 @@ export default async function StoryPage({ params }: StoryPageProps) {
         </section>
       ) : null}
 
+      {/* Block 10b — the provenance footer, its models printed from model_meta (9.5), not hardcoded. */}
       <footer className="border-t border-hairline pt-3">
         <p className="font-ui text-2xs text-muted">
           {fill(copy.news.provenance, {
             time: `${formatEtDate(card.firstSeen)} ${formatEtClock(card.firstSeen)} ET`,
-            model: card.summary ? "Claude Haiku" : "no extract",
+            model: provenanceModel(card.modelMeta, card.summary.length > 0),
           })}
         </p>
       </footer>
     </article>
   );
+}
+
+/** One affected name's record — its symbol as a door, then the shared record body. */
+function RecordForName({ symbol, record }: { symbol: string; record: SymbolRecordData }) {
+  return (
+    <div className="flex flex-col gap-2">
+      <TickerChip symbol={symbol} door />
+      <SymbolRecord record={record} />
+    </div>
+  );
+}
+
+/**
+ * The provenance footer's model phrase, composed from model_meta (9.5). Never a hardcoded model
+ * name: a pre-PD7 row ran SOME extraction but did not record which model, so it says "an earlier
+ * run" rather than guessing, and a row with no extract at all keeps the honest "no extract".
+ */
+function provenanceModel(
+  modelMeta: ReturnType<typeof toCard>["modelMeta"],
+  hasExtract: boolean,
+): string {
+  if (modelMeta?.modelExtract && modelMeta.modelSynth) {
+    return fill(copy.news.provenanceModels, {
+      extract: formatModel(modelMeta.modelExtract),
+      synth: formatModel(modelMeta.modelSynth),
+    });
+  }
+  if (modelMeta?.modelExtract) return formatModel(modelMeta.modelExtract);
+  if (hasExtract) return copy.news.provenanceEarlier;
+  return "no extract";
 }
 
 /** The instrument names for the affected table. A symbol we hold no name for is its own name. */
