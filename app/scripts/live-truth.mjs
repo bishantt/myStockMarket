@@ -325,17 +325,18 @@ export function nextTradingDay(day) {
 }
 
 /**
- * 6. STRIP FUTURE-TRUTH — the "next:" promise. The strip ends "next: Tue 18:37 ET", a promise about when the
- * following edition lands. A promise naming a past day is worse than none, and it is the surface most likely
+ * 6. STRIP FUTURE-TRUTH — the "next edition" promise. The strip ends "next edition Tue ~6:37 PM ET" (CC3
+ * slimmed it to provenance voice; the phrase was "next: Tue …" before), a promise about when the following
+ * edition lands. A promise naming a past day is worse than none, and it is the surface most likely
  * to go quietly wrong because it derives from the edition date — the thing that was broken. (On the Saturday
- * it read "next: Mon" and was accidentally right, which is why a check that looked only here would see
+ * it read "Mon" and was accidentally right, which is why a check that looked only here would see
  * nothing.) IT IS MEASURED AGAINST THE EDITION AND TAKES NO CLOCK: it used to walk from `now`, and PD1 caught
  * it the night check:live joined the gate — at 00:07 ET Tuesday it demanded "Wed" while the Desk, correctly
  * serving Monday's edition, said "Tue". The promise is a fact ABOUT THE EDITION, so the edition is what it is
  * measured against (the calendar-floor lesson again). A STALE masthead is assertion 1's loud job.
  */
 export function checkNextEdition(deskText) {
-  const m = deskText.match(/next: (Sun|Mon|Tue|Wed|Thu|Fri|Sat)\b/);
+  const m = deskText.match(/next edition (Sun|Mon|Tue|Wed|Thu|Fri|Sat)\b/);
   if (!m) return fail("strip · next-edition promise", "a named next session", "the strip promises nothing");
 
   const edition = parseLongDate(deskText);

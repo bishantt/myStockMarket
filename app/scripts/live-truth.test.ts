@@ -244,7 +244,7 @@ describe("5 — press-time truth", () => {
 
 describe("6 — the next-edition promise", () => {
   it("passes a strip promising the next real session", () => {
-    // Recorded Monday evening; the masthead says Monday, the strip says "next: Tue".
+    // Recorded Monday evening; the masthead says Monday, the strip says "next edition Tue".
     const result = checkNextEdition(desk(HEALTHY_DESK));
     expect(result.verdict).toBe("PASS");
     expect(result.found).toBe("Tue");
@@ -267,7 +267,7 @@ describe("6 — the next-edition promise", () => {
   });
 
   it("catches a promise that names the wrong day", () => {
-    const wrong = desk(HEALTHY_DESK).replace("next: Tue", "next: Thu");
+    const wrong = desk(HEALTHY_DESK).replace("next edition Tue", "next edition Thu");
     const result = checkNextEdition(wrong);
     expect(result.verdict).toBe("FAIL");
     expect(result.expected).toContain("Tue");
@@ -276,7 +276,7 @@ describe("6 — the next-edition promise", () => {
   it("walks over a weekend — a Friday edition promises Monday", () => {
     const friday = desk(HEALTHY_DESK)
       .replace("Monday, July 13, 2026", "Friday, July 10, 2026")
-      .replace("next: Tue", "next: Mon");
+      .replace("next edition Tue", "next edition Mon");
     expect(checkNextEdition(friday).verdict).toBe("PASS");
   });
 
