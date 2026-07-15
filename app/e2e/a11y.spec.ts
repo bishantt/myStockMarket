@@ -216,4 +216,105 @@ test.describe("accessibility", () => {
       });
     }
   }
+
+  /**
+   * The detail sheet, OPEN (PD10, Part 12 · PD10 item 2).
+   *
+   * The room sweep above never opens the overlay — the sheet is not a room (routes-manifest skips
+   * @-slot pages, PD9). A Radix Dialog is the house pattern and SHOULD be clean, but "should" is not
+   * "is". A dialog owes an accessible name, and the sr-only <Dialog.Title> is the only thing that
+   * gives it one; `aria-describedby={undefined}` is deliberate — no description, which is valid, the
+   * same choice RailDialog makes. So we OPEN the sheet and axe-scan it, scoped to the dialog, for a
+   * story body and a ticker body, in both themes.
+   *
+   * Phone project only, and that is a decision with a reason: the sheet is one component
+   * (DetailOverlay) whose accessibility — its name, roles and contrast tokens — does not change
+   * between the bottom sheet (<md) and the centred overlay (≥md). Only CSS position differs, and axe
+   * does not read position; the centred overlay's LOOK is pinned by its two VRT shots. Seeded,
+   * because a story and a ticker only exist in a seeded database.
+   */
+  async function scanOpenSheet(
+    page: Page,
+    context: BrowserContext,
+    theme: string,
+    open: (page: Page) => Promise<void>,
+    where: string,
+  ) {
+    await signIn(page);
+    await context.addCookies([{ name: THEME_COOKIE, value: theme, url: "http://127.0.0.1:3210" }]);
+    await open(page);
+
+    const dialog = page.getByRole("dialog");
+    await expect(dialog).toBeVisible();
+
+    // Never measure a fade (see the header). The sheet arrives via `.sheet-fade` (opacity 0→1), and
+    // axe composites the foreground through any ancestor opacity — a sheet caught mid-fade reports
+    // colours no reader sees. Wait for it to land, the same discipline `settle()` gives the rooms.
+    await page.waitForFunction(() => {
+      const el = document.querySelector('[role="dialog"]');
+      return !!el && getComputedStyle(el).opacity === "1";
+    });
+
+    const results = await new AxeBuilder({ page })
+      .include('[role="dialog"]')
+      .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"])
+      .analyze();
+
+    const serious = results.violations.filter(
+      (v) => v.impact === "serious" || v.impact === "critical",
+    );
+    expect(
+      serious.map(
+        (v) =>
+          `${v.id} (${v.nodes.length} nodes): ${v.help}\n${v.nodes
+            .map((n) => `      at ${n.target.join(" ")}\n      ${n.html}\n      ${(n.failureSummary ?? "").replace(/\s+/g, " ").trim()}`)
+            .join("\n")}`,
+      ),
+      `serious/critical accessibility violations on the ${where} sheet (${theme})`,
+    ).toEqual([]);
+  }
+
+  /** Open the SMCI story sheet from the feed — the same launcher the overlay suite uses. */
+  async function openStorySheet(page: Page) {
+    await page.goto("/news");
+    const link = page
+      .getByTestId("news-row")
+      .filter({ hasText: "Super Micro" })
+      .first()
+      .getByRole("link")
+      .first();
+    await link.scrollIntoViewIfNeeded();
+    await link.click();
+  }
+
+  /**
+   * Open a ticker sheet from a story page that carries a real TickerChip DOOR (its affected-names
+   * table). The tap is a soft nav the @modal slot intercepts into a sheet over the story.
+   */
+  async function openTickerSheet(page: Page) {
+    await page.goto("/news/nc-fda-nonopioid");
+    const chip = page.locator('a[href^="/ticker/"]').first();
+    await chip.scrollIntoViewIfNeeded();
+    await chip.click();
+  }
+
+  for (const theme of THEMES) {
+    test(`the story detail sheet has no serious or critical violations — ${label(theme)} (seeded)`, async ({
+      page,
+      context,
+    }, testInfo) => {
+      test.skip(testInfo.project.name !== "phone", "the sheet's a11y is one component; scanned on phone");
+      test.skip(process.env.MSM_SEEDED !== "1", "needs a seeded test database (MSM_SEEDED=1)");
+      await scanOpenSheet(page, context, theme, openStorySheet, "story");
+    });
+
+    test(`the ticker detail sheet has no serious or critical violations — ${label(theme)} (seeded)`, async ({
+      page,
+      context,
+    }, testInfo) => {
+      test.skip(testInfo.project.name !== "phone", "the sheet's a11y is one component; scanned on phone");
+      test.skip(process.env.MSM_SEEDED !== "1", "needs a seeded test database (MSM_SEEDED=1)");
+      await scanOpenSheet(page, context, theme, openTickerSheet, "ticker");
+    });
+  }
 });

@@ -148,9 +148,15 @@ export function DetailOverlay({ title, children }: DetailOverlayProps) {
                 <X size={18} strokeWidth={1.75} aria-hidden="true" />
               </Dialog.Close>
 
-              {/* The grabber — a ≥44px touch zone with a small pill, mobile only. Decorative to a
-                  screen reader (the ✕ is the announced control); it signals the sheet can be pulled. */}
-              <div aria-hidden="true" className="flex h-6 w-full items-center justify-center pt-2 md:hidden">
+              {/* The grabber — a small pill, mobile only. Decorative to a screen reader (the ✕ is the
+                  announced control); it signals the sheet can be pulled. The touch sweep measures it by
+                  this testid — see e2e/overlay.spec.ts, which records why the operative pull target is
+                  the scroll container, not this pill. */}
+              <div
+                aria-hidden="true"
+                data-testid="sheet-grabber"
+                className="flex h-6 w-full items-center justify-center pt-2 md:hidden"
+              >
                 <span className="h-1.5 w-10 rounded-pill bg-hairline-strong" />
               </div>
             </div>

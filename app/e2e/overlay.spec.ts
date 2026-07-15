@@ -217,6 +217,54 @@ test.describe("The detail sheet — @modal restoration (PD9)", () => {
     await expect(page.getByRole("heading", { name: "Why it matters" })).toBeVisible();
   });
 
+  /**
+   * The sheet's OWN touch targets (PD10, Part 12 · PD10 item 1).
+   *
+   * The sheet is not a room, so hardening.spec's manifest sweep never puts a ruler on its controls.
+   * So we open it and measure them here — the one place that OPENS the overlay. The chrome (✕,
+   * grabber, scroll container) is one component (DetailOverlay), identical for a story and a ticker,
+   * so measuring one sheet measures both; the axe pass in a11y.spec opens both bodies for the
+   * content-accessibility question, which is where the two differ.
+   *
+   * WHAT THE 44px RULE ACTUALLY BINDS, and the grabber decision it forces. The rule (WCAG 2.5.8, and
+   * this app's own 44px sweep) is about ANNOUNCED interactive targets. The sheet has exactly one: the
+   * ✕ (`Dialog.Close`, `size-11`). The grabber is `aria-hidden` and carries no role, no handler and
+   * no announced name — it is a visual hint that the sheet can be pulled, not a target. The pull
+   * gesture itself rides the SCROLL CONTAINER (`overlay-scroll`), whose hit area is the whole sheet
+   * body — the operative pull target, and it dwarfs 44px. So this asserts the ✕ ≥44px, proves the
+   * grabber is decorative rather than a mis-sized target, and measures the pull surface. Padding the
+   * decorative pill to 44px to satisfy a rule it does not owe would be a green light wired to nothing
+   * (DECISIONS 2026-07-15). The measured numbers are recorded in docs/pd-evidence/pd10-hardening.md.
+   */
+  test("the open sheet's own touch targets pass — the ✕ and the pull surface (PD10)", async ({
+    page,
+  }) => {
+    await page.goto("/news");
+    await openStory(page);
+
+    const dialog = page.getByRole("dialog");
+
+    // The ✕ — the sheet's one announced interactive control. Both axes ≥44px (measured 44×44).
+    const close = dialog.getByRole("button", { name: "Close" });
+    const closeBox = (await close.boundingBox())!;
+    expect(closeBox.width, "the ✕ close control width").toBeGreaterThanOrEqual(44 - 0.5);
+    expect(closeBox.height, "the ✕ close control height").toBeGreaterThanOrEqual(44 - 0.5);
+
+    // The grabber is a decorative hint, NOT a target — proven aria-hidden, so the 44px target-size
+    // rule (which binds announced interactive controls) does not reach it. Measured 410×24: full
+    // width, a short pill. It is not padded to 44px because doing so would gate a rule it does not
+    // owe and shift the phone sheet by 20px for no functional gain (DECISIONS 2026-07-15).
+    const grabber = page.getByTestId("sheet-grabber");
+    await expect(grabber).toHaveAttribute("aria-hidden", "true");
+
+    // The pull-dismiss surface — the scroll container the touch handlers ride. THIS is the target a
+    // reader actually pulls, and it is the whole sheet body (measured 410×746), far past 44px.
+    const scroller = page.getByTestId("overlay-scroll");
+    const scrollBox = (await scroller.boundingBox())!;
+    expect(scrollBox.height, "the pull-dismiss surface height").toBeGreaterThanOrEqual(44);
+    expect(scrollBox.width, "the pull-dismiss surface width").toBeGreaterThanOrEqual(44);
+  });
+
   test("a ticker chip opens the instrument sheet over its room, and dismissing restores it", async ({
     page,
   }) => {
