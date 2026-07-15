@@ -8,6 +8,31 @@ Format: newest first. I mark each as [FYI], [VETO?], or [NEED] so you can scan.
 
 ---
 
+## 2026-07-15 — LC3 (hot-file comment compression — the LAST LEAN phase)
+
+LC3 compressed the comments in the 25 hottest files to the "one line of why" standard, proving each
+batch comment-only with a new `pipeline/scripts/comment_prover.py`. Every WHY survived; the sacred list
+(pragmas, clock derived-dates, check-drift's argued skip-lists, brand-assets' BRAND_FIELD) was left
+verbatim. 5800 → 4034 comment lines across the 25 files (−1766, 30%). Nothing renders differently.
+Tagged `lc-3`. **LEAN-CODEBASE is now complete (lc-1, lc-2, lc-3 all tagged); the order returns to
+Plan A at CC2.** Two heads-ups, neither blocking.
+
+### [FYI] The plan predicted "half"; the honest result is 30% — because the sacred list did its job
+LEAN-CODEBASE said LC3 would roughly halve the comment mass (≈4–6k lines). It removed 1766 (30%), not
+half, and the reason is that the sacred content is a large share of the hottest files:
+check-drift.mjs's argued skip-lists (Part 3.3 forbids touching them — only −55 of 331), news.mjs's
+per-cluster significance ARITHMETIC (a why a reader checks by hand), brand-assets' BRAND_FIELD
+provenance, and the fixture test-name strings (code, not comments). I kept all of them and compressed
+everything else. The prize — the recurring token cost of the files every session reads — is paid: the
+prose-heavy files (copy.ts, morning.ts, the desk page, vrt.spec) each shed ~100–140 lines. Nothing to
+decide; noted so the number is not a surprise.
+
+### [VETO?] Q-LC1-1 is STILL open (carried through LC2 and LC3, unanswered)
+The vrt-diff.mjs devDependency question (LC1 section below) had no veto in DECISIONS.md, so per the
+handoff I left it as-is again: vrt-diff reuses Playwright's pngjs/pixelmatch. It is a two-line change
+if you ever want the explicit form; it is no longer a LEAN phase's to fold in (LEAN is done), so it now
+travels with the CC phases or waits for your word.
+
 ## 2026-07-15 — LC2 (consolidation — second phase of LEAN-CODEBASE)
 
 LC2 built one e2e session helper (all 24 login-bearing specs import it), made `waitForLayout`

@@ -1203,3 +1203,27 @@ before it reads a bounding box (import `waitForLayout`). Do NOT re-inline the fi
 for `serviceWorker.ready`; auth's inline logins land on `/styleguide` or test failure) keeps its own
 steps but still imports `USER`/`PASSWORD` — a different login is preserved, not forced through the
 shared one.
+
+## Prove a "comment-only" edit is actually comment-only (LC3)
+
+Comments do not render, so a comment edit "cannot" change behavior — but a slip (a merged `a/**/b`,
+a moved string, a deleted `# noqa`) does, and nothing renders the difference. Before compressing a
+file's comments, and after, run the prover:
+
+```bash
+cd pipeline && uv run python -m scripts.comment_prover <path>...   # base HEAD; must print PROVED
+```
+
+It proves, per file kind: TS/JS/MJS — the TypeScript **parser**'s leaf-token streams (kind+text) are
+identical (the parser, never the raw scanner: only it handles regex-vs-divide and template `${}`
+without swallowing comments; JSDoc `/** */` nodes are skipped since the compiler parses them). Python
+— `ast.dump` identical after zeroing docstrings, plus no non-docstring string changed. prisma/css/yaml
+— whole-line-deletion-only. And the sacred-pattern counts (`# noqa`, `@vitest-environment`, `eslint-
+disable`, and clock derived-dates in the fixtures/seed/e2e trees) are identical per file.
+
+Use when: any comment-compression or boy-scout tidy of an existing file. A REJECT is a real finding —
+you changed a token — not a baseline to wave through. A dropped sacred count means you deleted a
+pragma or a derived-date the rule needs. Rule of thumb the prover encodes: **deleting a comment LINE
+is always safe; rewording one is not automatically** — prefer deletion, and in `app/**` run
+`check:drift` on any reworded line before commit (drift rules 3/4/5/9/10/11/13/14/18/19/20 match
+banned tokens with no comment exemption).
