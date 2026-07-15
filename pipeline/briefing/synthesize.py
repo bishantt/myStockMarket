@@ -61,7 +61,8 @@ def synthesize(
     messages: list[dict] = [{"role": "user", "content": user}]
 
     for attempt in range(2):
-        text = _message_text(_create(client, model, system, messages))
+        message = _create(client, model, system, messages)
+        text = _message_text(message)
         draft, reason = _parse_draft(text)
         if draft is not None:
             return draft
@@ -69,8 +70,14 @@ def synthesize(
         # swallowed by a bare `except`, so "synthesis failed validation" reached the record with no
         # trace of what the model actually got wrong — a >5-item list, an empty required slot, a
         # non-JSON response. That blind spot is exactly the PD7 lesson one level down: a held night
-        # must be auditable. The reason now prints into the job log.
+        # must be auditable. The reason (and the message shape behind it) now print into the job log.
+        blocks = [getattr(b, "type", "?") for b in (getattr(message, "content", []) or [])]
         print(f"synthesize: attempt {attempt + 1} produced no usable draft — {reason}")
+        print(
+            f"synthesize: attempt {attempt + 1} message — "
+            f"stop_reason={getattr(message, 'stop_reason', '?')} blocks={blocks} "
+            f"text_head={text[:400]!r}"
+        )
         # Append the failed attempt and a correction turn, then retry once (Appendix G).
         messages.append({"role": "assistant", "content": text})
         messages.append(
