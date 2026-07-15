@@ -1141,3 +1141,21 @@ TRUE session count and calls itself "52-week" only when the window really is one
 (every number states its window) turned into a degradation strategy: a surface that names its own scope
 can shrink that scope honestly instead of overclaiming a fixed label. Absence beats invention; so does
 an honest smaller window beat a fabricated full one.
+
+## One component tree, two presentations — the overlay is a WRAPPER, never a fork (PD9)
+
+The detail sheet renders the SAME server component the standalone page renders. The page body lives in
+`components/news/StoryPageBody` / `components/ticker/TickerPageBody`; the standalone route renders it, and
+the intercepting `@modal` route renders `<DetailOverlay>` AROUND it. Nothing in the body knows whether it
+is inside a sheet or filling a page. That identity is the whole reliability argument (E9): the sheet's
+DOM and the deep-link page's DOM are content-identical, so "reload while open → standalone page,
+unchanged" is true by construction, not by two surfaces being kept in sync by hand. The moment you write
+a bespoke sheet body "just for the overlay", the two drift, and the drift is silent until a reader
+reloads. The presentation difference — the scrim, the grabber, the material, the positioning — is
+ENTIRELY in the wrapper, and the wrapper is the only thing the two routes do differently.
+
+Two corollaries the phase paid for. The wrapper's motion is opacity-only over P2 content, and the desktop
+overlay is centred with a FLEX wrapper, never a translate — because a centering transform is still an
+ancestor transform over the figures inside (E7 does not care that it is "just the container"). And the
+wrapper's weight code-splits behind the first open (`next/dynamic`), because it drags in a dialog library
+that must not land in the shared chunk the tightest route in the app carries.
