@@ -23,8 +23,15 @@ from typing import Any, Iterable
 from briefing.schema import BriefDraft, ExtractResult, synthesis_json_schema
 from briefing.verify import Stat
 
-# Synthesis writes the whole briefing in one turn; give it room but stay well under any timeout.
-_MAX_TOKENS = 4096
+# Synthesis writes the whole briefing in one turn. The ceiling has to cover the model's EXTENDED
+# THINKING as well as the output: claude-sonnet-5 thinks before it writes, and that reasoning is
+# spent against `max_tokens` too. At 4096 the thinking alone routinely consumed the whole budget and
+# the call stopped with `stop_reason=max_tokens` and a `thinking` block but NO text — a 0-char
+# "response" that held the whole briefing, intermittently, roughly every other night (CC1 found this
+# by dumping the message shape on failure). The output itself is small and bounded (≤5 items), so the
+# headroom is almost entirely for thinking; 32000 clears it with margin. It is a CEILING, not a
+# target — the model spends only what it needs — so the raise costs nothing on a night it thinks less.
+_MAX_TOKENS = 32000
 
 # The Stage B system prompt, from Appendix G — with the 47a713f rule (below) applied to this second
 # narrator. That commit caught the Front Page's narrator publishing "carried by 1 outlet tonight
@@ -68,15 +75,14 @@ def synthesize(
             return draft
         # SAY WHY it failed. A synthesis failure holds the WHOLE briefing, and the reason used to be
         # swallowed by a bare `except`, so "synthesis failed validation" reached the record with no
-        # trace of what the model actually got wrong — a >5-item list, an empty required slot, a
-        # non-JSON response. That blind spot is exactly the PD7 lesson one level down: a held night
-        # must be auditable. The reason (and the message shape behind it) now print into the job log.
+        # trace of what went wrong. The message SHAPE is what named the real cause here —
+        # `stop_reason=max_tokens` with only a `thinking` block is the token-budget starvation this
+        # module now sizes `_MAX_TOKENS` against — so the reason and that shape both print. The PD7
+        # lesson one level down: a held night must be auditable.
         blocks = [getattr(b, "type", "?") for b in (getattr(message, "content", []) or [])]
-        print(f"synthesize: attempt {attempt + 1} produced no usable draft — {reason}")
         print(
-            f"synthesize: attempt {attempt + 1} message — "
-            f"stop_reason={getattr(message, 'stop_reason', '?')} blocks={blocks} "
-            f"text_head={text[:400]!r}"
+            f"synthesize: attempt {attempt + 1} produced no usable draft — {reason} "
+            f"(stop_reason={getattr(message, 'stop_reason', '?')}, blocks={blocks})"
         )
         # Append the failed attempt and a correction turn, then retry once (Appendix G).
         messages.append({"role": "assistant", "content": text})
