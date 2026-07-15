@@ -138,7 +138,12 @@ export default async function LessonPage({ params }: { params: Promise<{ slug: s
   });
 
   return (
-    <article className="flex flex-col">
+    // The lesson's reading column CENTERS on a wide screen (CC4, D4). Its blocks are already capped at
+    // a ~65ch measure, but the article ran full-width and left-anchored them — a vast right void on a
+    // 16" desk. `mx-auto` with a measure a touch wider than the content pins the column to the middle.
+    // The Academy keeps its own reading-room grammar (serif kickers, solid cards); only the measure
+    // moves here.
+    <article className="mx-auto flex w-full max-w-[72ch] flex-col">
       {/*
        * The 44px touch box was missing here, and PD3 is when anything finally looked (Q-G3-2).
        *

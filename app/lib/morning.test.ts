@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
-import { buildCalendar, buildMacro, buildMovers, buildSourceStatus, buildWatchlist, calendarFloor } from "@/lib/morning";
+import { buildCalendar, buildMacro, buildMovers, buildScanBreakdown, buildSourceStatus, buildWatchlist, calendarFloor } from "@/lib/morning";
+import { SCAN_PRESETS } from "@/lib/scan-presets";
 
 /**
  * Tests for the pure builders in lib/morning — the row-shape → view-model transforms the Desk
@@ -394,5 +395,29 @@ describe("buildSourceStatus", () => {
 
   it("returns an empty list when there is no run", () => {
     expect(buildSourceStatus(null)).toEqual([]);
+  });
+});
+
+describe("buildScanBreakdown — the Desk's Sectors & Scans module (CC4, D4)", () => {
+  it("returns one row per preset in the FIXED SCAN_PRESETS order, never by count", () => {
+    // rsi-extreme is last in SCAN_PRESETS; a big count must NOT float it to the front. Ordering the
+    // index by how many each filter caught is the cross-preset leaderboard ruling M1 forbids.
+    const rows = buildScanBreakdown({ "rsi-extreme": 99, "unusual-volume": 3 });
+    expect(rows.map((r) => r.key)).toEqual(SCAN_PRESETS.map((p) => p.key));
+  });
+
+  it("shows 0 for a preset that matched nothing — a scan that found nothing still RAN", () => {
+    const rows = buildScanBreakdown({});
+    expect(rows).toHaveLength(SCAN_PRESETS.length);
+    expect(rows.every((r) => r.count === 0)).toBe(true);
+  });
+
+  it("carries each preset's label, grade, and folklore flag", () => {
+    const rows = buildScanBreakdown({ "gap-3plus": 5 });
+    const gap = rows.find((r) => r.key === "gap-3plus");
+    expect(gap?.count).toBe(5);
+    expect(gap?.folklore).toBe(true);
+    expect(gap?.label).toBe("Gap of 3% or more");
+    expect(gap?.grade).toBe("folklore");
   });
 });

@@ -1,4 +1,4 @@
-import { formatAsOf } from "@/lib/time";
+import { formatAsOf, formatEtClock } from "@/lib/time";
 
 /**
  * SectionMasthead — "01 — MACRO PULSE", a hairline rule, and the module's data timestamp.
@@ -37,6 +37,14 @@ type SectionMastheadProps = {
    * from the timestamp on hover or tap. Optional: a module with no external source has no chain.
    */
   provenance?: string;
+  /**
+   * The edition's own "updated" stamp (the masthead's), for the as-of matches/differs treatment (CC4,
+   * D4). When this module was written at the same time as the edition — every module, every night,
+   * today — its stamp is redundant with the masthead and RECEDES. When it differs (the CC9 morning
+   * edition refreshes news & macro at dawn while the close stays last night's), the stamp is the one
+   * moment it is information and comes forward. Omit it and the stamp recedes (the safe default).
+   */
+  editionAsOf?: Date;
   /** An optional right-hand affordance, e.g. a "view all" link. Sits left of the timestamp. */
   action?: React.ReactNode;
 };
@@ -46,8 +54,18 @@ export function SectionMasthead({
   title,
   asOf,
   provenance,
+  editionAsOf,
   action,
 }: SectionMastheadProps) {
+  // Compare on the RENDERED minute, not the instant: two stamps a few seconds apart in the same run
+  // read as the same clock and must both recede. The plan asked for `faint` on a match, but faint is
+  // a 2.2:1 grey drift rule 18 and axe both forbid on a timestamp — so a match RECEDES to muted and a
+  // difference COMES FORWARD to ink-2. The hierarchy the plan wants is kept; the a11y floor is not
+  // traded for it.
+  const asOfDiffers = Boolean(
+    asOf && editionAsOf && formatEtClock(asOf) !== formatEtClock(editionAsOf),
+  );
+  const asOfColor = asOfDiffers ? "text-ink-2" : "text-muted";
   return (
     <header className="pt-3">
       <div className="flex items-baseline justify-between gap-4 pb-2">
@@ -61,8 +79,13 @@ export function SectionMasthead({
          * and the title as one run-on word. Left visible, the dash is silent in every major
          * screen reader while the spaces around it survive.
          */}
-        <h2 className="font-mono text-xs font-medium uppercase tracking-[0.08em] text-muted">
-          <span className="tabular-nums text-muted">{String(index).padStart(2, "0")}</span>
+        {/*
+         * The section header, in the CC4 grammar: mono 600, ink-2 (up from muted/medium). The
+         * numbered ordinal stays MUTED — it names the module's place in the ritual, and a quieter
+         * ordinal lets the title outrank it inside the header (D4: the middle of the scale, used).
+         */}
+        <h2 className="font-mono text-xs font-semibold uppercase tracking-[0.08em] text-ink-2">
+          <span className="tabular-nums font-medium text-muted">{String(index).padStart(2, "0")}</span>
           <span> — </span>
           {title}
         </h2>
@@ -87,7 +110,7 @@ export function SectionMasthead({
               <time
                 dateTime={asOf.toISOString()}
                 tabIndex={provenance ? 0 : undefined}
-                className="rounded-chip font-mono text-2xs text-muted transition-colors duration-(--duration-quick) hover:text-ink-2 focus-visible:text-ink-2"
+                className={`rounded-chip font-mono text-2xs ${asOfColor} transition-colors duration-(--duration-quick) hover:text-ink-2 focus-visible:text-ink-2`}
               >
                 {formatAsOf(asOf)}
               </time>

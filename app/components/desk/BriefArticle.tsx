@@ -39,10 +39,19 @@ const SLOTS: ReadonlyArray<{ key: SlotKey; label: string }> = [
   { key: "yesBut", label: "Yes, but" },
 ];
 
-export function BriefArticle({ asOf, brief }: { asOf: Date; brief: BriefView }) {
+export function BriefArticle({
+  asOf,
+  editionAsOf,
+  brief,
+}: {
+  asOf: Date;
+  /** The edition's own stamp, for the as-of matches/differs treatment (CC4). */
+  editionAsOf?: Date;
+  brief: BriefView;
+}) {
   return (
     <section aria-label="Daily brief">
-      <SectionMasthead index={2} title="Daily brief" asOf={asOf} />
+      <SectionMasthead index={2} title="Daily brief" asOf={asOf} editionAsOf={editionAsOf} />
 
       {brief.status === "held" ? (
         <HeldState />

@@ -141,10 +141,14 @@ export function StatFigure({
       data-p2
       className={cx(
         // In a row the label and the number sit on one baseline and the number is pushed to the far
-        // side. `flex-wrap` is the safety net rather than the plan: if a long label and a long figure
-        // genuinely cannot share a line, the figure takes the next one — it never spills.
+        // side. The row itself does NOT wrap (CC4, D10): the tape's three echoes must read as ONE
+        // grammar, and the old outer `flex-wrap` dropped the WHOLE figure below the label on the
+        // widest row (Nasdaq) while the shorter two stayed inline — one grammar, two renderings. The
+        // safety net still exists, it just lives where it belongs: inside the value block below, whose
+        // own `flex-wrap` drops the CHIP under the value if the two truly cannot share the line. That
+        // is consistent per row and honest (the chip wraps, nothing spills).
         isRow
-          ? "flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5"
+          ? "flex items-baseline justify-between gap-x-3"
           : "flex flex-col gap-1",
       )}
     >

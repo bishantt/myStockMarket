@@ -59,6 +59,7 @@ export function EmptyModule({
   title,
   note,
   asOf,
+  editionAsOf,
   className,
 }: {
   /** The module's position in the ritual order — the same index its filled state carries. */
@@ -69,11 +70,13 @@ export function EmptyModule({
   note: string;
   /** When the run that found nothing was computed. Omit when nothing has ever run (see above). */
   asOf?: Date;
+  /** The edition's own stamp, for the as-of matches/differs treatment (CC4). */
+  editionAsOf?: Date;
   className?: string;
 }) {
   return (
     <Surface className={cx("p-5", className)}>
-      <SectionMasthead index={index} title={title} asOf={asOf} />
+      <SectionMasthead index={index} title={title} asOf={asOf} editionAsOf={editionAsOf} />
       <p className="max-w-[62ch] pt-3 font-ui text-sm text-muted">{note}</p>
     </Surface>
   );

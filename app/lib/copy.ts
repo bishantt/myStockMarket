@@ -200,6 +200,10 @@ export const copy = {
   mover: {
     /** The honest alternative to inventing a reason. A mover renders this or a real catalyst. */
     noNews: "No news found — most moves this size have no identifiable cause; likely noise.",
+    /** The card-level line when NO mover has a catalyst (D10): the identical per-row noise line
+     * printed three times in one viewport is noise about noise, so it is said ONCE for the card. The
+     * per-row lines return the moment one mover DOES carry a catalyst (the mixed case). */
+    allNoise: "No news found on any of these — most moves this size are noise.",
     /** The empty Desk: no mover cleared the bar. Information, not an apology. */
     quiet: "No moves cleared the catalyst-or-noise bar today.",
     relvolNote:

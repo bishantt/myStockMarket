@@ -51,13 +51,28 @@ const RVOL_EMPHASIS_THRESHOLD = 2;
 /** How many movers stay in view on a phone before the rest fold away (§4.1). */
 const VISIBLE_ON_PHONE = 3;
 
-export function Movers({ asOf, movers }: { asOf: Date; movers: Mover[] }) {
+export function Movers({
+  asOf,
+  editionAsOf,
+  movers,
+}: {
+  asOf: Date;
+  /** The edition's own stamp, for the as-of matches/differs treatment (CC4). */
+  editionAsOf?: Date;
+  movers: Mover[];
+}) {
   const head = movers.slice(0, VISIBLE_ON_PHONE);
   const tail = movers.slice(VISIBLE_ON_PHONE);
 
+  // When NOTHING has a catalyst, the identical noise line printed on every row is noise about noise
+  // (D10 — three times in one phone viewport). Say it ONCE for the card, and drop it from the rows.
+  // The moment one mover DOES carry a catalyst, the per-row lines return (the mixed case), because
+  // then the absence on a given row is information about THAT row.
+  const allNoise = movers.length > 0 && movers.every((m) => !m.catalyst);
+
   return (
     <section aria-label="Movers">
-      <SectionMasthead index={4} title="Movers" asOf={asOf} />
+      <SectionMasthead index={4} title="Movers" asOf={asOf} editionAsOf={editionAsOf} />
 
       {movers.length === 0 ? (
         // A day where nothing cleared the bar is information, not an empty shelf.
@@ -81,7 +96,7 @@ export function Movers({ asOf, movers }: { asOf: Date; movers: Mover[] }) {
           <ul className="pt-2">
             {head.map((m) => (
               <li key={m.symbol} className="border-b border-hairline last:border-b-0">
-                <MoverRow mover={m} />
+                <MoverRow mover={m} suppressNoise={allNoise} />
               </li>
             ))}
           </ul>
@@ -92,7 +107,7 @@ export function Movers({ asOf, movers }: { asOf: Date; movers: Mover[] }) {
                 <ul>
                   {tail.map((m) => (
                     <li key={m.symbol} className="border-b border-hairline last:border-b-0">
-                      <MoverRow mover={m} />
+                      <MoverRow mover={m} suppressNoise={allNoise} />
                     </li>
                   ))}
                 </ul>
@@ -105,7 +120,7 @@ export function Movers({ asOf, movers }: { asOf: Date; movers: Mover[] }) {
             <ul className="hidden md:block">
               {tail.map((m) => (
                 <li key={m.symbol} className="border-b border-hairline last:border-b-0">
-                  <MoverRow mover={m} />
+                  <MoverRow mover={m} suppressNoise={allNoise} />
                 </li>
               ))}
             </ul>
@@ -113,8 +128,16 @@ export function Movers({ asOf, movers }: { asOf: Date; movers: Mover[] }) {
         </>
       )}
 
+      {allNoise ? (
+        // The ONE noise line for a card where nothing has a catalyst — italic prose, the same voice a
+        // per-row line used to carry, said once (D10).
+        <p className="max-w-[70ch] pt-4 font-prose text-2xs italic text-muted">{copy.mover.allNoise}</p>
+      ) : null}
+
       {movers.length > 0 ? (
-        <p className="max-w-[70ch] pt-4 font-ui text-2xs text-muted">{copy.mover.relvolNote}</p>
+        <p className={cx("max-w-[70ch] font-ui text-2xs text-muted", allNoise ? "pt-2" : "pt-4")}>
+          {copy.mover.relvolNote}
+        </p>
       ) : null}
     </section>
   );
@@ -125,7 +148,7 @@ export function Movers({ asOf, movers }: { asOf: Date; movers: Mover[] }) {
  * RVOL, and then either the catalyst — chip, headline, source link — or the honest noise line. A
  * mover with no explanation says so; it never gets a manufactured one.
  */
-function MoverRow({ mover: m }: { mover: Mover }) {
+function MoverRow({ mover: m, suppressNoise = false }: { mover: Mover; suppressNoise?: boolean }) {
   return (
 <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1">
 <RailTrigger
@@ -184,25 +207,29 @@ function MoverRow({ mover: m }: { mover: Mover }) {
                   <span className="pl-1 font-normal text-2xs text-muted">· {copy.window.avg20d}</span>
                 </span>
               </RailTrigger>
-                {/* The catalyst — chip, headline, source link — or the noise line. Full-width on a
-                 * phone (wraps to its own line so the row never overflows); a fixed column on desktop. */}
-                <span className="flex w-full min-w-0 shrink-0 items-baseline gap-2 sm:w-72">
-                  {m.catalyst ? (
-                    <>
-                      <Tag variant="catalyst">{m.catalyst.type}</Tag>
-                      <span className="min-w-0 flex-1 font-ui text-2xs text-ink-2 sm:truncate" title={m.catalyst.headline}>
-                        {m.catalyst.headline}
+                {/* The catalyst — chip, headline, source link — or the per-row noise line. Full-width
+                 * on a phone (wraps to its own line so the row never overflows); a fixed column on
+                 * desktop. When the WHOLE card is noise (D10), the per-row line is suppressed and the
+                 * card says it once below — so a noise row then renders no catalyst slot at all. */}
+                {m.catalyst || !suppressNoise ? (
+                  <span className="flex w-full min-w-0 shrink-0 items-baseline gap-2 sm:w-72">
+                    {m.catalyst ? (
+                      <>
+                        <Tag variant="catalyst">{m.catalyst.type}</Tag>
+                        <span className="min-w-0 flex-1 font-ui text-2xs text-ink-2 sm:truncate" title={m.catalyst.headline}>
+                          {m.catalyst.headline}
+                        </span>
+                        <ExternalLink href={m.catalyst.url} className="flex min-h-11 shrink-0 items-center font-ui text-2xs text-accent-deep md:min-h-0">
+                          {m.catalyst.source}
+                        </ExternalLink>
+                      </>
+                    ) : (
+                      <span className="min-w-0 flex-1 font-prose text-2xs italic text-muted sm:truncate" title={copy.mover.noNews}>
+                        {copy.mover.noNews}
                       </span>
-                      <ExternalLink href={m.catalyst.url} className="flex min-h-11 shrink-0 items-center font-ui text-2xs text-accent-deep md:min-h-0">
-                        {m.catalyst.source}
-                      </ExternalLink>
-                    </>
-                  ) : (
-                    <span className="min-w-0 flex-1 font-prose text-2xs italic text-muted sm:truncate" title={copy.mover.noNews}>
-                      {copy.mover.noNews}
-                    </span>
-                  )}
-                </span>
+                    )}
+                  </span>
+                ) : null}
               </div>
   );
 }

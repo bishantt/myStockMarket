@@ -1,4 +1,4 @@
-import { getTrackRecord } from "@/lib/track-record";
+import { getPendingSignals, getTrackRecord } from "@/lib/track-record";
 import { getForecastRecord } from "@/lib/forecasts";
 import { formatUtcDate } from "@/lib/time";
 import { decimal } from "@/lib/format";
@@ -30,7 +30,11 @@ export const revalidate = 600;
 export default async function TrackRecordPage() {
   // One parallel stage rather than two sequential awaits: these two reads have nothing to say to
   // each other, and at revalidation time each one pays the full cross-region round trip.
-  const [{ rows, summary }, forecasts] = await Promise.all([getTrackRecord(), getForecastRecord()]);
+  const [{ rows, summary }, forecasts, pending] = await Promise.all([
+    getTrackRecord(),
+    getForecastRecord(),
+    getPendingSignals(),
+  ]);
 
   return (
     <div className="flex flex-col gap-6">
@@ -47,10 +51,24 @@ export default async function TrackRecordPage() {
       </header>
 
       {summary.total === 0 ? (
-        <p className="font-ui text-sm text-muted">
-          — &nbsp; Nothing has resolved yet. Signals resolve ten trading days after they fire; the log
-          fills as horizons pass.
-        </p>
+        // The empty state TEACHES the mechanism (CC4, D4): the plain sentence, then the real numbers
+        // — how many signals are logged and when the first resolves — so an empty page says what is
+        // coming and when, not just that nothing is here. The numbers are omitted when the signal log
+        // is empty (a brand-new install) or unreadable, and the sentence stands alone.
+        <div className="flex flex-col gap-1.5">
+          <p className="font-ui text-sm text-muted">
+            — &nbsp; Nothing has resolved yet. Signals resolve ten trading days after they fire; the log
+            fills as horizons pass.
+          </p>
+          {pending.logged > 0 ? (
+            <p className="font-mono text-xs text-ink-2">
+              {pending.logged} signal{pending.logged === 1 ? "" : "s"} logged
+              {pending.firstResolutionDue
+                ? ` · first resolutions due ${formatUtcDate(pending.firstResolutionDue)}`
+                : ""}
+            </p>
+          ) : null}
+        </div>
       ) : (
         /*
          * The summary as an explicit 5-up row (NEWS-AND-CONTROL-PLAN Part 4.3), not a wrapping flex.
@@ -106,7 +124,7 @@ export default async function TrackRecordPage() {
         aria-label="Your forecasts"
         className={summary.total > 0 ? "pt-2 desk:col-span-5" : "pt-2 desk:col-span-12"}
       >
-        <h2 className="font-ui text-sm font-bold uppercase tracking-[0.06em] text-ink">Your forecasts</h2>
+        <h2 className="font-mono text-xs font-semibold uppercase tracking-[0.08em] text-ink-2">Your forecasts</h2>
         <div className="mt-2 h-px bg-hairline" />
         {/* An explicit Term, not TermProse: this sentence interpolates copy, so it is not one plain
          * string and the matcher has nothing to walk. The app's own copy names the concept, so the

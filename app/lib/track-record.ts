@@ -43,6 +43,36 @@ export async function getTrackRecord(limit = 200): Promise<TrackRecord> {
   }
 }
 
+/** The teaching numbers for the track record's EMPTY state (CC4). */
+export type PendingSignals = { logged: number; firstResolutionDue: Date | null };
+
+/**
+ * How many signals have been logged, and when the first one resolves (CC4, D4).
+ *
+ * The empty track record is PRODUCTION's early state — the pipeline fires signals every night, but
+ * none has reached its ten-day horizon yet, so `signal_resolution` is empty while `signal_log` is
+ * not. Rather than a bare "nothing yet", the page can teach the mechanism from real rows: how many
+ * are logged, and the date the first resolution is due (`resolvesOn` is stored, so no trading-day
+ * arithmetic is needed here). Degrades to {0, null} when the database is unreachable — the empty
+ * state then shows its plain line alone.
+ */
+export async function getPendingSignals(): Promise<PendingSignals> {
+  try {
+    const [logged, next] = await Promise.all([
+      db.signalLog.count(),
+      db.signalLog.findFirst({
+        where: { resolution: null },
+        orderBy: { resolvesOn: "asc" },
+        select: { resolvesOn: true },
+      }),
+    ]);
+    return { logged, firstResolutionDue: next?.resolvesOn ?? null };
+  } catch (error) {
+    console.error("getPendingSignals: could not read the signal log", error);
+    return { logged: 0, firstResolutionDue: null };
+  }
+}
+
 async function loadTrackRecord(limit: number): Promise<TrackRecord> {
   const [resolutions, counts] = await Promise.all([
     db.signalResolution.findMany({

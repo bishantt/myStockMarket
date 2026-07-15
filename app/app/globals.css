@@ -338,6 +338,20 @@ body { font-family: var(--font-ui); font-size: var(--text-sm); line-height: var(
 .no-scrollbar::-webkit-scrollbar { display: none; }
 
 /*
+ * .chip-scroll-frame — the right-edge fade on a horizontally-scrolling chip row, BELOW md only (D10).
+ * At md+ the chips flex-wrap and there is nothing to scroll, so the mask is scoped to the phone band.
+ * Same lesson as .shelf-frame: the mask rides a NON-scrolling wrapper, never the scrolling box, because
+ * WebKit mis-composites a mask on a scroller. A right-only fade — a chip row starts flush-left and only
+ * ever hides content off its RIGHT — and it hints "there is more this way" where the scrollbar used to.
+ */
+@media (max-width: 767px) {
+  .chip-scroll-frame {
+    -webkit-mask-image: linear-gradient(90deg, black calc(100% - 20px), transparent 100%);
+    mask-image: linear-gradient(90deg, black calc(100% - 20px), transparent 100%);
+  }
+}
+
+/*
  * THE KIT (APP-FEEL Part 3). Two class bodies live here (not Tailwind utilities) because one is a gradient,
  * and gradients live only in this sheet (drift rule 2).
  *

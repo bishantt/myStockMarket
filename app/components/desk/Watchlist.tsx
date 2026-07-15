@@ -123,12 +123,21 @@ function splitWatchlist(rows: WatchRow[]): { visible: WatchRow[]; folded: WatchR
   return { visible, folded };
 }
 
-export function Watchlist({ asOf, rows }: { asOf: Date; rows: WatchRow[] }) {
+export function Watchlist({
+  asOf,
+  editionAsOf,
+  rows,
+}: {
+  asOf: Date;
+  /** The edition's own stamp, for the as-of matches/differs treatment (CC4). */
+  editionAsOf?: Date;
+  rows: WatchRow[];
+}) {
   const { visible, folded } = splitWatchlist(rows);
 
   return (
     <section aria-label="Watchlist">
-      <SectionMasthead index={5} title="Focus watchlist" asOf={asOf} />
+      <SectionMasthead index={5} title="Focus watchlist" asOf={asOf} editionAsOf={editionAsOf} />
 
       {rows.length === 0 ? (
         <p className="pt-4 font-ui text-sm text-muted">

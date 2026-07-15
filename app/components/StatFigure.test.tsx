@@ -113,8 +113,8 @@ describe("StatFigure — the wrap contract (§7.2)", () => {
   });
 });
 
-describe("StatFigure — the row layout (PD4)", () => {
-  it("puts the label and the number on one baseline, and still wraps rather than spills", () => {
+describe("StatFigure — the row layout (PD4, unified at CC4)", () => {
+  it("puts the label and the number on one baseline, and never drops the figure below the label", () => {
     render(
       <StatFigure
         label="Nasdaq Composite"
@@ -131,9 +131,17 @@ describe("StatFigure — the row layout (PD4)", () => {
     const root = screen.getByText("Nasdaq Composite").parentElement!;
     expect(root.className).toContain("justify-between");
 
-    // And it keeps the safety net: a long label beside a long figure wraps to a second line, it never
-    // pushes past the edge of the card.
-    expect(root.className).toContain("flex-wrap");
+    // THE ROW ITSELF NO LONGER WRAPS (CC4, D10). The old outer `flex-wrap` dropped the whole figure
+    // below the label on the widest tape row (Nasdaq) while the shorter two stayed inline — one
+    // grammar, two renderings. The tape's three echoes must read identically, so the figure never
+    // drops below the label.
+    expect(root.className).not.toContain("flex-wrap");
+
+    // The safety net did not disappear — it moved INTO the value block: if the value and its chip
+    // truly cannot share a line, the CHIP wraps below the value (consistent per row, and honest — the
+    // chip wraps, nothing spills past the card).
+    const figureBlock = screen.getByText("22,345.67").parentElement!;
+    expect(figureBlock.className).toContain("flex-wrap");
   });
 
   it("keeps `data-p2` on the root at every layout — a money visual is a money visual", () => {

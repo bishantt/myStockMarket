@@ -91,7 +91,10 @@ function WatchlistManagerRow({ item }: { item: ManagedItem }) {
           <span className="font-ui text-2xs text-muted">{item.name}</span>
         </div>
 
-        <span className="min-w-0 flex-1 truncate font-ui text-sm text-ink-2">{item.reason}</span>
+        {/* Clamped to one line, with the full reason in `title` (D10 / Q-PD6-3): on a narrow phone the
+            row cannot give the reason its full width, so it truncates — but the whole reason is now
+            recoverable on hover/long-press instead of being silently lost. */}
+        <span className="min-w-0 flex-1 truncate font-ui text-sm text-ink-2" title={item.reason}>{item.reason}</span>
 
         <form action={focusAction}>
           <input type="hidden" name="id" value={item.id} />

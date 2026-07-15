@@ -3,6 +3,7 @@ import Link from "next/link";
 import { EmptyModule } from "@/components/EmptyModule";
 import { SectionMasthead } from "@/components/SectionMasthead";
 import { Surface } from "@/components/Surface";
+import { Tag } from "@/components/Tag";
 import { MacroPulse } from "@/components/desk/MacroPulse";
 import { BriefArticle } from "@/components/desk/BriefArticle";
 import { FrontPagePreview } from "@/components/desk/FrontPagePreview";
@@ -68,6 +69,12 @@ export default async function DeskPage() {
   const asOf = morning.asOf ? new Date(morning.asOf) : null;
   const lastRunFinishedAt = latest?.finishedAt ? new Date(latest.finishedAt) : null;
   const runDate = latest ? new Date(latest.runDate) : null;
+
+  // The edition's own "updated" stamp — what the masthead prints (CC3) and what every module's as-of
+  // is measured against (CC4, D4). Today it equals morning.asOf (one run), so every module matches and
+  // its stamp recedes; the CC9 morning edition refreshes some modules at dawn, and THOSE stamps differ
+  // and come forward. Threaded to every module so the treatment is wired, not dormant.
+  const editionAsOf = lastRunFinishedAt ?? undefined;
 
   /*
    * The spread engages at `lg:` (1024px), not only `desk:` (1366px). Gutters stay 16px until desk:, so at
@@ -140,7 +147,7 @@ export default async function DeskPage() {
          */}
         {asOf && morning.macro ? (
           <Surface className="p-5 lg:col-span-2 desk:p-6">
-            <MacroPulse asOf={asOf} {...morning.macro} board={morning.macroBoard} />
+            <MacroPulse asOf={asOf} editionAsOf={editionAsOf} {...morning.macro} board={morning.macroBoard} />
           </Surface>
         ) : (
           <EmptyModule
@@ -159,7 +166,7 @@ export default async function DeskPage() {
           {/* 02 — the evening briefing: the editorial centrepiece. */}
           {asOf && morning.brief ? (
             <Surface className={cx("p-5 desk:p-6", BRIEF)}>
-              <BriefArticle asOf={asOf} brief={morning.brief} />
+              <BriefArticle asOf={asOf} editionAsOf={editionAsOf} brief={morning.brief} />
             </Surface>
           ) : (
             <EmptyModule
@@ -173,7 +180,7 @@ export default async function DeskPage() {
           {/* 04 — Movers: the volume-confirmed moves, each with a catalyst or the noise line. */}
           {asOf && morning.movers ? (
             <Surface className={cx("p-5 desk:p-6", MOVERS)}>
-              <Movers asOf={asOf} movers={morning.movers} />
+              <Movers asOf={asOf} editionAsOf={editionAsOf} movers={morning.movers} />
             </Surface>
           ) : (
             <EmptyModule
@@ -193,7 +200,7 @@ export default async function DeskPage() {
            */}
           {asOf && morning.setupCards && morning.setupCards.length > 0 ? (
             <Surface className={cx("p-5 desk:p-6", SETUPS)}>
-              <SetupCards asOf={asOf} cards={morning.setupCards} />
+              <SetupCards asOf={asOf} editionAsOf={editionAsOf} cards={morning.setupCards} />
             </Surface>
           ) : (
             <EmptyModule
@@ -207,6 +214,7 @@ export default async function DeskPage() {
                */
               note={asOf ? "No setups fired tonight." : "Setup cards arrive with the nightly base rates."}
               asOf={asOf ?? undefined}
+              editionAsOf={editionAsOf}
               className={SETUPS}
             />
           )}
@@ -222,21 +230,47 @@ export default async function DeskPage() {
          */}
         <div className={cx("grid grid-cols-1 items-start gap-6 desk:grid-cols-2", CLOSING)}>
         {/*
-         * 07 — scans. A GLANCE station, so it reads like one: a count and a doorway, not the paragraph
-         * pointing elsewhere it used to be. The number comes from one grouped count in the morning loader,
-         * amortised by the route cache.
+         * 07 — scans. A REAL MODULE NOW, not a paragraph pointing elsewhere (CC4, D4). It was spending
+         * ~470px to say one count; it says one row per preset instead — the name, its evidence grade,
+         * and tonight's match count — so its height is EARNED. Ordered by the fixed SCAN_PRESETS order,
+         * never by count (a busy scan is not a better scan — ruling M1). The whole row is the door to
+         * that preset's page; "All scans →" is the door to the index. There is still no hero here (P14):
+         * the counts are read in passing, the S&P keeps the Desk's one big figure.
          */}
         <Surface className="flex h-full flex-col p-5 desk:p-6">
           <SectionMasthead index={7} title="Sectors & scans" />
-          <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-2 pt-4">
-            {/*
-             * A GLANCE, not a second hero. `num-lg` rendered "52 matches across 4 scans" as a three-line
-             * block of 32px numerals competing with the S&P — and the Desk gets exactly ONE hero figure
-             * (P14), spent on the index level. This is a sentence with a number, read in passing.
-             */}
-            <p className="font-mono text-base tabular-nums text-ink">
-              {fill(copy.desk.scanCount, { n: morning.scans.matches, k: morning.scans.presets })}
-            </p>
+          <ul className="pt-3">
+            {morning.scans.breakdown.map((preset) => (
+              <li key={preset.key}>
+                <Link
+                  href={`/scans/${preset.key}`}
+                  className="flex min-h-11 items-center justify-between gap-3 border-b border-hairline transition-colors duration-(--duration-quick) ease-(--ease-quiet) last:border-b-0 hover:text-accent-deep"
+                >
+                  <span className="flex min-w-0 items-baseline gap-2">
+                    {/* Newsreader italic — a serif's hairlines collapse below 19px, so a title at this
+                        size is set in the prose face, not the display one (new-surface §4). */}
+                    <span className="truncate font-prose text-base italic text-ink">{preset.label}</span>
+                    {preset.folklore ? (
+                      <Tag variant="folklore" />
+                    ) : (
+                      <Tag variant="grade" grade={preset.grade}>
+                        {preset.grade}
+                      </Tag>
+                    )}
+                  </span>
+                  <span className="shrink-0 font-mono text-sm tabular-nums text-ink-2">
+                    {preset.count}
+                    <span className="pl-1 text-2xs text-muted">{preset.count === 1 ? "match" : "matches"}</span>
+                  </span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+          <p className="pt-3 font-ui text-2xs text-muted">
+            {fill(copy.desk.scanCount, { n: morning.scans.matches, k: morning.scans.presets })} — each
+            shows its criteria and its evidence grade. A match is a filter hit, not a forecast.
+          </p>
+          <div className="flex grow items-end pt-3">
             <Link
               href="/scans"
               className="flex min-h-11 items-center font-ui text-sm text-accent-deep underline-offset-2 hover:underline"
@@ -244,10 +278,6 @@ export default async function DeskPage() {
               All scans →
             </Link>
           </div>
-          <p className="pt-2 font-ui text-2xs text-muted">
-            Each preset shows its criteria and its evidence grade. A match is a filter hit, not a
-            forecast.
-          </p>
         </Surface>
 
         {/* 08 — the Front Page, previewed. A glance and a doorway; the room does the rest. */}
@@ -256,6 +286,7 @@ export default async function DeskPage() {
             top={morning.frontPage.top}
             total={morning.frontPage.total}
             asOf={asOf ?? undefined}
+            editionAsOf={editionAsOf}
           />
         </Surface>
 
@@ -265,6 +296,7 @@ export default async function DeskPage() {
         <Surface className="flex h-full flex-col p-5 desk:p-6">
           <ScorecardPM
             asOf={asOf ?? undefined}
+            editionAsOf={editionAsOf}
             resolved={trackRecord.summary}
             savedTonight={morning.journalSavedToday}
           />
@@ -284,7 +316,7 @@ export default async function DeskPage() {
            */}
           {asOf && morning.calendar ? (
             <Surface className={cx("p-5", CALENDAR)}>
-              <CalendarTimeline asOf={asOf} events={morning.calendar} compact />
+              <CalendarTimeline asOf={asOf} editionAsOf={editionAsOf} events={morning.calendar} compact />
             </Surface>
           ) : (
             <EmptyModule
@@ -298,7 +330,7 @@ export default async function DeskPage() {
           {/* 05 — Focus watchlist: standing matter, so it lives in the rail. */}
           {asOf && morning.watch ? (
             <Surface className={cx("p-5", WATCHLIST)}>
-              <Watchlist asOf={asOf} rows={morning.watch} />
+              <Watchlist asOf={asOf} editionAsOf={editionAsOf} rows={morning.watch} />
             </Surface>
           ) : (
             <EmptyModule

@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-import { formatAsOf } from "@/lib/time";
+import { formatAsOf, formatEtClock } from "@/lib/time";
 import { Disclosure } from "@/components/Disclosure";
 import { JournalPrompt } from "@/components/desk/JournalPrompt";
 import { copy } from "@/lib/copy";
@@ -22,23 +22,31 @@ export type ScorecardSummary = { total: number; hits: number; misses: number; hi
  */
 export function ScorecardPM({
   asOf,
+  editionAsOf,
   resolved,
   savedTonight = 0,
 }: {
   asOf?: Date;
+  /** The edition's own stamp, for the as-of matches/differs treatment (CC4). See SectionMasthead. */
+  editionAsOf?: Date;
   resolved?: ScorecardSummary;
   /** How many journal entries exist for tonight (0 or 1). The disclosure reports it (M2). */
   savedTonight?: number;
 }) {
+  // The same treatment SectionMasthead carries: a stamp that matches the edition recedes to muted, a
+  // stamp that differs comes forward to ink-2 (CC4, D4). ScorecardPM writes its own header rather than
+  // a numbered masthead — the AM ritual owns the numbers (§3.10) — so the rule is repeated here.
+  const asOfColor =
+    asOf && editionAsOf && formatEtClock(asOf) !== formatEtClock(editionAsOf) ? "text-ink-2" : "text-muted";
   return (
     <section aria-label="Evening scorecard">
       <header className="pt-3">
         <div className="flex items-baseline justify-between gap-4 pb-2">
-          <h2 className="font-mono text-xs font-medium uppercase tracking-[0.08em] text-muted">
+          <h2 className="font-mono text-xs font-semibold uppercase tracking-[0.08em] text-ink-2">
             Evening — scorecard &amp; journal
           </h2>
           {asOf ? (
-            <time dateTime={asOf.toISOString()} className="shrink-0 font-mono text-2xs text-muted">
+            <time dateTime={asOf.toISOString()} className={`shrink-0 font-mono text-2xs ${asOfColor}`}>
               {formatAsOf(asOf)}
             </time>
           ) : null}

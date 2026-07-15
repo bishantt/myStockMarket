@@ -161,8 +161,9 @@ export function RangeControl({
                 className="absolute inset-0 m-0 cursor-inherit appearance-none opacity-0"
               />
               {/* 16px at every width: below `md` a smaller focused control makes iOS zoom in — and
-                  it does not zoom back out. */}
-              <span className="font-mono text-base md:text-sm">{option.label}</span>
+                  it does not zoom back out. `whitespace-nowrap` so a two-word label like "This week"
+                  stays on one line inside its pill rather than breaking to two (D10). */}
+              <span className="whitespace-nowrap font-mono text-base md:text-sm">{option.label}</span>
             </label>
           );
         })}

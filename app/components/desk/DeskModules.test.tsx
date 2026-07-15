@@ -35,6 +35,22 @@ describe("Movers", () => {
     expect(screen.getByText(copy.mover.noNews)).toBeInTheDocument();
   });
 
+  it("prints ONE card-level noise line and NO per-row lines when nothing has a catalyst (D10)", () => {
+    const allNoise = [
+      { symbol: "AAA", name: "A Co", changePct: "+5.0%", direction: "up" as const, rvol: "1.2×" },
+      { symbol: "BBB", name: "B Co", changePct: "−4.0%", direction: "down" as const, rvol: "0.9×" },
+    ];
+    render(<Movers asOf={ASOF} movers={allNoise} />);
+    expect(screen.getByText(copy.mover.allNoise)).toBeInTheDocument();
+    expect(screen.queryByText(copy.mover.noNews)).not.toBeInTheDocument();
+  });
+
+  it("keeps the per-row noise line, not the card line, when SOME movers have a catalyst (the mixed case)", () => {
+    render(<Movers asOf={ASOF} movers={movers} />); // SMCI has a catalyst, XYZ does not
+    expect(screen.getByText(copy.mover.noNews)).toBeInTheDocument();
+    expect(screen.queryByText(copy.mover.allNoise)).not.toBeInTheDocument();
+  });
+
   it("handles an empty movers list — a quiet day is information, not an empty shelf", () => {
     render(<Movers asOf={ASOF} movers={[]} />);
     expect(screen.getByText(copy.mover.quiet)).toBeInTheDocument();

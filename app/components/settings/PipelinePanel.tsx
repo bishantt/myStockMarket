@@ -133,7 +133,7 @@ export function PipelinePanel({
 
   return (
     <div>
-      <h2 className="font-mono text-xs font-medium uppercase tracking-[0.08em] text-muted">
+      <h2 className="font-mono text-xs font-semibold uppercase tracking-[0.08em] text-ink-2">
         {copy.control.title}
       </h2>
       <div className="mt-1 h-px bg-hairline-strong" />

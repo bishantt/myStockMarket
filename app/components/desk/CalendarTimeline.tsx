@@ -95,10 +95,13 @@ function cutCalendar(events: CalendarRow[]): { visible: CalendarRow[]; folded: C
 
 export function CalendarTimeline({
   asOf,
+  editionAsOf,
   events,
   compact = false,
 }: {
   asOf: Date;
+  /** The edition's own stamp, for the as-of matches/differs treatment (CC4). */
+  editionAsOf?: Date;
   events: CalendarRow[];
   /**
    * The rail variant (§5.1). In the 340px sidebar a row wraps to two lines and the consensus/prior
@@ -115,6 +118,7 @@ export function CalendarTimeline({
         index={3}
         title="Session calendar"
         asOf={asOf}
+        editionAsOf={editionAsOf}
         provenance="FRED release calendar · FMP earnings"
       />
 

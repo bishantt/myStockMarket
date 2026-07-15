@@ -70,10 +70,12 @@ export default async function PaperPage() {
   return (
     <div className="flex flex-col gap-8">
       <header className="pt-3">
-        <h1 className="font-ui text-xl font-bold uppercase tracking-[0.06em] text-ink">
-          Paper desk
-        </h1>
-        <div className="mt-2 h-0.5 bg-ink" />
+        {/* Room title in the one grammar (CC4): Playfair 700, Title case, display scale — where it
+            used to be all-caps sans (D4's second header grammar). */}
+        <div className="pb-2">
+          <h1 className="font-display text-display font-bold text-ink">Paper desk</h1>
+        </div>
+        <div className="h-px bg-hairline-strong" />
         {/*
          * THE ONLY DOORWAYS IN THIS ROOM ARE UP HERE, IN THE STANDING PROSE (PD6).
          *
@@ -105,21 +107,24 @@ export default async function PaperPage() {
       ) : null}
 
       {/*
-       * THE DESK SPREAD FOR /paper (NEWS-AND-CONTROL-PLAN Part 4.3): the ticket in a 5/12 column,
-       * and the cost mirror above the ledger in a 7/12 column beside it.
+       * THE PAPER SPREAD, REBALANCED (CC4, D4): the LEDGER takes the main column and the ticket + cost
+       * mirror stack in a compact right column. The old map put the ticket in a loose 5/12 column and
+       * the ledger at the bottom of the 7/12 beside it, which left the right column empty below a short
+       * ledger. A ledger is a LIST and a list wants width (the settings-watchlist argument); the ticket
+       * is a form and a form wants a lid on its measure, so it becomes a ~420px card.
        *
-       * The split is not "two things fit". It is that the ticket is where you ACT and the right-hand
-       * column is what should be true in your head while you do it: the certain cost of trading at
-       * your current pace, and the record of the trades you have already made. Stacked down one
-       * column, the cost mirror is something you scroll PAST on the way to the ledger. Beside the
-       * ticket, it is in your eye while you fill the form — which is the entire argument for the
-       * cost mirror existing.
+       * The cost mirror stays directly under the ticket, in the eye while you fill the form — which is
+       * the whole argument for the cost mirror, preserved.
        *
-       * Below `lg:` this is one column and the order is ticket → mirror → ledger, unchanged.
+       * DOM ORDER IS TICKET → MIRROR → LEDGER, which is the phone's reading order (act, then review),
+       * so there is NO tab-vs-visual divergence: the two-column map at `lg` is done with explicit grid
+       * placement (`col-start`), not `order`, so the DOM the keyboard walks and the screen a reader
+       * sees agree at every width.
        */}
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-12 lg:items-start">
-      <section aria-label="Place a paper trade" className="lg:col-span-5">
-        <h2 className="font-mono text-xs font-medium uppercase tracking-[0.08em] text-muted">New paper trade</h2>
+      <div className="flex flex-col gap-8 lg:col-span-5 lg:col-start-8">
+      <section aria-label="Place a paper trade" className="w-full max-w-[420px]">
+        <h2 className="font-mono text-xs font-semibold uppercase tracking-[0.08em] text-ink-2">New paper trade</h2>
         <div className="mt-2 h-px bg-hairline" />
         {/*
          * useSearchParams() suspends during prerendering, so the ticket sits behind a boundary and
@@ -132,7 +137,6 @@ export default async function PaperPage() {
         </Suspense>
       </section>
 
-      <div className="flex flex-col gap-8 lg:col-span-7">
       {/*
        * COST MIRROR — the app's most honest artifact, and it is styled like what it is: a receipt.
        *
@@ -142,14 +146,13 @@ export default async function PaperPage() {
        *
        * The punchline lands with the weight of a bill because it IS one. This is the number nobody
        * shows a beginner: the cost of trading at this pace, paid whether the trades win or lose,
-       * certain in a way that no edge on this Desk is certain. It is deliberately the largest thing
-       * on this page.
+       * certain in a way that no edge on this Desk is certain.
        *
        * (The P&L-is-never-the-hero rule is intact: this is a COST, on /paper, at num-lg rather than
        * the 64px hero scale.)
        */}
       <Surface level="tinted" as="section" aria-label="Cost mirror" className="max-w-[62ch] p-6">
-        <h2 className="font-mono text-xs font-medium uppercase tracking-[0.08em] text-muted">
+        <h2 className="font-mono text-xs font-semibold uppercase tracking-[0.08em] text-ink-2">
           Cost mirror
         </h2>
 
@@ -191,11 +194,14 @@ export default async function PaperPage() {
           </p>
         ) : null}
       </Surface>
+      </div>
 
-      <section aria-label="Ledger">
-        <h2 className="flex items-baseline gap-3 font-ui text-xs font-bold uppercase tracking-[0.07em] text-ink">
+      {/* The ledger — the main column, and LEFT at `lg` via explicit placement (it is second in the
+          DOM, which keeps the phone order act → review). A list wants width. */}
+      <section aria-label="Ledger" className="lg:col-span-7 lg:col-start-1 lg:row-start-1">
+        <h2 className="flex items-baseline gap-3 font-mono text-xs font-semibold uppercase tracking-[0.08em] text-ink-2">
           <span>Ledger</span>
-          <span className="font-mono font-medium text-muted">
+          <span className="font-medium text-muted">
             realized {ledger.totalRealizedPnl >= 0 ? "+" : "−"}
             {price(Math.abs(ledger.totalRealizedPnl))}
           </span>
@@ -203,7 +209,6 @@ export default async function PaperPage() {
         <div className="mt-2 h-px bg-hairline" />
         <PaperLedger open={ledger.openTrades} closed={ledger.closedTrades} />
       </section>
-      </div>
       </div>
     </div>
   );

@@ -1,5 +1,6 @@
 import { db } from "@/lib/db";
 import { SCAN_PRESETS } from "@/lib/scan-presets";
+import type { EvidenceGrade } from "@/components/Tag";
 import { copy } from "@/lib/copy";
 import { directionOf, multiple, percent, price, signedPercent } from "@/lib/format";
 import { formatUtcDate, formatUtcWeekday } from "@/lib/time";
@@ -486,7 +487,7 @@ export type Morning = {
    * GLANCE station, not a paragraph pointing elsewhere; one count query, amortised by the route cache,
    * makes it a figure the reader can read in passing.
    */
-  scans: { matches: number; presets: number };
+  scans: { matches: number; presets: number; breakdown: ScanBreakdownRow[] };
   /**
    * The top of tonight's Front Page and how many catalysts it is the top OF (§4.1 module 08). A bounded
    * preview that states its own cut ("First 3 of 14 by significance") — an unlabelled slice of a ranked
@@ -505,30 +506,60 @@ export type FrontPagePreviewRow = {
   sources: number;
 };
 
+/** One preset's line in the Desk's Sectors & Scans module (CC4): its name, its evidence grade, and
+ * how many names it caught tonight. */
+export type ScanBreakdownRow = {
+  key: string;
+  label: string;
+  grade: EvidenceGrade;
+  folklore: boolean;
+  count: number;
+};
+
 /**
- * How many scan matches the latest run produced, across how many presets. A count query, not a fetch:
- * module 07 needs the number, not the rows. Degrades to zeros if the database is unreachable — "0
- * matches across 0 scans" is honest about what it knows.
+ * The per-preset breakdown, in the FIXED SCAN_PRESETS order, ALWAYS — never sorted by count. Ordering
+ * the index by how many names each filter caught would be a cross-preset leaderboard, which ruling M1
+ * forbids: a busy scan is not a better scan. A preset with no matches prints its "0", because a scan
+ * that found nothing still RAN.
  */
-async function loadScanCount(): Promise<{ matches: number; presets: number }> {
+export function buildScanBreakdown(counts: Record<string, number>): ScanBreakdownRow[] {
+  return SCAN_PRESETS.map((preset) => ({
+    key: preset.key,
+    label: preset.label,
+    grade: preset.grade,
+    folklore: Boolean(preset.folklore),
+    count: counts[preset.key] ?? 0,
+  }));
+}
+
+/**
+ * The latest run's scan matches: the total, the preset count, and the per-preset breakdown module 07
+ * renders as one row each (CC4). A count/group query, not a fetch — the module needs the numbers, not
+ * the rows. Degrades to zeros if the database is unreachable — "0 matches across 0 scans" is honest
+ * about what it knows.
+ */
+async function loadScanCount(): Promise<{ matches: number; presets: number; breakdown: ScanBreakdownRow[] }> {
   try {
     const latest = await db.scanResult.findFirst({ orderBy: { runDate: "desc" }, select: { runDate: true } });
-    if (!latest) return { matches: 0, presets: SCAN_PRESETS.length };
+    if (!latest) return { matches: 0, presets: SCAN_PRESETS.length, breakdown: buildScanBreakdown({}) };
 
     const grouped = await db.scanResult.groupBy({
       by: ["presetKey"],
       where: { runDate: latest.runDate },
       _count: { _all: true },
     });
+    const counts: Record<string, number> = {};
+    for (const g of grouped) counts[g.presetKey] = g._count._all;
     return {
       matches: grouped.reduce((sum, g) => sum + g._count._all, 0),
       // Every preset RAN. Reporting only the ones that matched would undercount the work and imply a
       // scan that found nothing did not happen — a result this product states everywhere else.
       presets: SCAN_PRESETS.length,
+      breakdown: buildScanBreakdown(counts),
     };
   } catch (error) {
     console.error("getMorning: could not count the scan matches", error);
-    return { matches: 0, presets: SCAN_PRESETS.length };
+    return { matches: 0, presets: SCAN_PRESETS.length, breakdown: buildScanBreakdown({}) };
   }
 }
 

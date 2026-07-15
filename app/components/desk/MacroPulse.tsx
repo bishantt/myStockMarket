@@ -27,6 +27,8 @@ import type { IndexQuote } from "@/lib/morning";
 
 type MacroPulseProps = {
   asOf: Date;
+  /** The edition's own stamp, for the as-of matches/differs treatment (CC4). See SectionMasthead. */
+  editionAsOf?: Date;
   /** The S&P 500 — the hero. */
   spx: IndexQuote;
   /** The other index slots (Nasdaq, Dow, and small caps — the last of which is always an ETF). */
@@ -99,6 +101,7 @@ function IndexSlot({
 
 export function MacroPulse({
   asOf,
+  editionAsOf,
   spx,
   indices,
   breadth,
@@ -109,7 +112,7 @@ export function MacroPulse({
 }: MacroPulseProps) {
   return (
     <section aria-label="Macro pulse">
-      <SectionMasthead index={1} title="Macro pulse" asOf={asOf} />
+      <SectionMasthead index={1} title="Macro pulse" asOf={asOf} editionAsOf={editionAsOf} />
 
       <div className="flex flex-col gap-6 pt-4">
         {/* The hero: the S&P 500 level, 64px ink, direction beside it in small type. */}

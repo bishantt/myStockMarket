@@ -75,10 +75,19 @@ export type SetupCardView = {
  * The shared one comes to ~104px, and it carries the run's timestamp — because "no setups fired
  * tonight" is a FINDING as of a moment, not an absence of information.
  */
-export function SetupCards({ asOf, cards }: { asOf: Date; cards: SetupCardView[] }) {
+export function SetupCards({
+  asOf,
+  editionAsOf,
+  cards,
+}: {
+  asOf: Date;
+  /** The edition's own stamp, for the as-of matches/differs treatment (CC4). */
+  editionAsOf?: Date;
+  cards: SetupCardView[];
+}) {
   return (
     <section aria-label="Setup cards">
-      <SectionMasthead index={6} title="Setup cards" asOf={asOf} />
+      <SectionMasthead index={6} title="Setup cards" asOf={asOf} editionAsOf={editionAsOf} />
       {
         /*
          * Two-up on the widest desks (NEWS-AND-CONTROL-PLAN Part 4.3). Setup cards are independent

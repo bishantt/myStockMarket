@@ -27,14 +27,17 @@ export function FrontPagePreview({
   top,
   total,
   asOf,
+  editionAsOf,
 }: {
   top: FrontPagePreviewRow[];
   total: number;
   asOf?: Date;
+  /** The edition's own stamp, for the as-of matches/differs treatment (CC4). */
+  editionAsOf?: Date;
 }) {
   return (
     <>
-      <SectionMasthead index={8} title="Front page" asOf={asOf} />
+      <SectionMasthead index={8} title="Front page" asOf={asOf} editionAsOf={editionAsOf} />
 
       {top.length === 0 ? (
         <p className="pt-4 font-ui text-sm text-muted">

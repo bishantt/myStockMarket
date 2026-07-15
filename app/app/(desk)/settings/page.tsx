@@ -124,12 +124,17 @@ export default async function SettingsPage() {
 
   return (
     <div className="flex flex-col gap-8 py-6">
-      <header>
-        <h1 className="font-ui text-sm font-bold uppercase tracking-[0.08em] text-ink">Watchlist</h1>
-        <div className="mt-1 h-px bg-hairline-strong" />
-        <p className="pt-3 font-ui text-sm text-muted">
-          Add a name and the reason you are watching it. Mark up to {FOCUS_CAP} as focus — the list
-          the Desk keeps in front of you.
+      <header className="pt-3">
+        {/* Room title in the one grammar (CC4): "Settings" in Playfair 700 at display scale — where
+            it used to mislabel the whole room as its first section ("Watchlist", all-caps sans). The
+            sections below (Watchlist, Theme, Pipeline) carry the room's name in their own headers. */}
+        <div className="pb-2">
+          <h1 className="font-display text-display font-bold text-ink">Settings</h1>
+        </div>
+        <div className="h-px bg-hairline-strong" />
+        <p className="max-w-[62ch] pt-3 font-prose text-base text-ink-2">
+          Curate the focus watchlist the Desk keeps in front of you, choose a look, and run the
+          pipeline by hand.
         </p>
       </header>
 
@@ -148,20 +153,30 @@ export default async function SettingsPage() {
        */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 lg:items-start">
         <Surface as="section" aria-label="Add a name" className="p-5 desk:p-6">
+          <h2 className="font-mono text-xs font-semibold uppercase tracking-[0.08em] text-ink-2">Add a name</h2>
+          <div className="mt-1 h-px bg-hairline-strong" />
+          <p className="max-w-[62ch] pb-4 pt-3 font-prose text-base text-ink-2">
+            Add a name and the reason you are watching it. Mark up to {FOCUS_CAP} as focus — the list
+            the Desk keeps in front of you.
+          </p>
           <AddWatchlistForm />
         </Surface>
 
         <Surface as="section" aria-label="Theme" className="p-5 desk:p-6">
-          <h2 className="font-mono text-xs font-medium uppercase tracking-[0.08em] text-muted">Theme</h2>
+          <h2 className="font-mono text-xs font-semibold uppercase tracking-[0.08em] text-ink-2">Theme</h2>
           <div className="mt-1 h-px bg-hairline-strong" />
-          <p className="pt-3 font-ui text-sm text-muted">
+          <p className="max-w-[62ch] pt-3 font-prose text-base text-ink-2">
             Applies everywhere — Morning or Midnight, one look at a time. System follows your device.
           </p>
           <ThemeToggle />
         </Surface>
 
         <Surface as="section" aria-label="Your watchlist" className="p-5 desk:col-span-2 desk:p-6 lg:col-span-2">
-          <WatchlistManager items={items} focusCount={focusCount} />
+          <h2 className="font-mono text-xs font-semibold uppercase tracking-[0.08em] text-ink-2">Watchlist</h2>
+          <div className="mt-1 h-px bg-hairline-strong" />
+          <div className="pt-3">
+            <WatchlistManager items={items} focusCount={focusCount} />
+          </div>
         </Surface>
 
         {/*

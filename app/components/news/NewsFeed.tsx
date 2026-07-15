@@ -227,10 +227,14 @@ function ChipRow({
   return (
     <div className="flex flex-col gap-1">
       <p className="font-mono text-2xs font-medium uppercase tracking-[0.08em] text-muted">{label}</p>
+      {/* The fade rides this non-scrolling wrapper, not the scrolling <ul> below it (the .shelf-frame
+          lesson: WebKit mis-composites a mask on a scroller). Below md the row scrolls with its track
+          hidden and a right-edge fade; at md+ the chips wrap and neither applies (D10). */}
+      <div className="chip-scroll-frame md:contents">
       <ul
         aria-label={`${label} filters`}
         className={cx(
-          "flex snap-x snap-proximity gap-2 overflow-x-auto pb-1",
+          "no-scrollbar flex snap-x snap-proximity gap-2 overflow-x-auto pb-1",
           "md:flex-wrap md:overflow-visible",
         )}
       >
@@ -255,6 +259,7 @@ function ChipRow({
           );
         })}
       </ul>
+      </div>
       <p className="sr-only">{selected.length > 0 ? `${selected.length} selected` : "none selected"}</p>
     </div>
   );
