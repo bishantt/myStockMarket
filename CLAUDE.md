@@ -70,7 +70,9 @@ Optimize everything for a human reader, never for machine brevity.
 
 ## Commands
 app:      npm run dev | test | typecheck | lint | build
-guards:   npm run check:drift (23 anti-drift rules) · check:fonts (budget) · check:lighthouse
+guards:   npm run check:drift (28 anti-drift rules) · check:fonts (budget) · check:lighthouse ·
+          check:live (PD1 — production truth; needs root `.env` sourced) · brand (PD2 — the ONE
+          generator; full line below)
 brand:    (PD2) `npm run brand` is THE ONE GENERATOR — `npm run icons` is an alias of it, and
           scripts/icons.mjs is gone. One master in (assets/brand/logo-source.png, repo root, OUTSIDE
           app/public/ so the 1.2MB original never ships), ten artifacts out, each with a named size,
@@ -434,7 +436,7 @@ one hero figure. One theme at a time — light
 light rule was repealed by the user, 2026-07-12); rooms differ by structure and pace, never
 by palette. Color is scarce and always means something. If it could be a template — austere
 OR glossy — it is wrong. Spec: UI-REDESIGN-PLAN.md Part 3 · checklist: **`app/scripts/check-drift.mjs`
-is the checklist** (21 rules, `npm run check:drift`). §3.10 v2 is its prose ancestor and is now a
+is the checklist** (28 rules, `npm run check:drift`). §3.10 v2 is its prose ancestor and is now a
 pointer, not a register — the script is the truth, and it is the thing that actually runs.
 
 ## Timing (user lives on market time)

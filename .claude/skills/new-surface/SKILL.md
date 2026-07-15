@@ -151,6 +151,31 @@ it that way. Its default order is the pipeline's own and the header SAYS so, in 
 order", never "top", "best" or "hottest". A sortable table of market data is one small step from a
 leaderboard, and the step gets taken by accident. (Ruling M1.)
 
+**Does it OPEN OVER a room as a SHEET / OVERLAY?** *(Added PD10; the pattern is PD9's detail sheet.)*
+→ Do NOT build a bespoke overlay body. The rule is E9: **the overlay and the standalone page render
+the SAME body**, so extract the page's body to a shared server component (as `StoryPageBody` /
+`TickerPageBody` were), and let both the standalone `page.tsx` and the overlay render it. The page
+becomes a thin route contract; the sheet cannot drift from the page because they are one component.
+- **Wrap the body in `components/DetailOverlay`** (the Radix Dialog: a bottom sheet `<md`, a centred
+  overlay `≥md`, both in the L4 `.surface-overlay` glass). It gives you the five dismissals,
+  focus-return-on-unmount, scroll-lock and the inert room for free.
+- **The presentation is a `@modal` parallel slot + an intercepting route.** Add
+  `app/(desk)/@modal/(.)<segment>/…/page.tsx` — the matcher is `(.)`, because a route group is
+  transparent and Next places `@modal` at the ROOT level beside your segment. **Verify it with
+  `next build`, never memory** — the build rejects `(..)` at the root outright, and that is the only
+  reliable oracle for a routing detail (LESSONS 2026-07-15).
+- **Code-split the overlay chrome** behind the first open (`OverlayMount` → `next/dynamic`), so the
+  Radix + overlay weight lands in the intercept route's own chunk and NOT the shared `(desk)` chunk
+  the room carries. `/news` sits at the 200 KB ceiling; this is what keeps it there.
+- **Motion is OPACITY ONLY (E7), and it is admitted to the P2 walk BY NAME.** The sheet opens over
+  probability and money figures, so a `[data-p2]` node has it as an animating ancestor. Use
+  `.sheet-fade` (opacity 0→1, no transform), add that class to `p2-motion.test.tsx`'s allowlist, and
+  centre the desktop overlay with a flex wrapper — NEVER `-translate-1/2`, which is a transform over
+  the figures inside. A slide-up is a veto.
+- **The overlay is NOT a room.** Do not add it to `routes-manifest.json`; `routes-manifest.test.ts`
+  skips `@`-slot pages. Its coverage is `e2e/overlay.spec.ts` (restoration + E9), its VRT shots, and
+  the sheet's own touch/axe sweeps — which reach it by OPENING it, not by the room census (PD10).
+
 **Does it LOAD?**
 → Figure slots render a still em-dash, never a shimmering bar. A pulsing rectangle exactly where a
 price is about to appear reads as "a number is coming, look here" — which is the anticipation the
@@ -195,5 +220,5 @@ argument into the register beside the entry.
 - Numbers are mono. Titles are Playfair, at 19px and up (below that, Newsreader italic — a
   display serif's hairlines collapse at text sizes).
 
-Run `npm run check:drift` before you commit. Eleven rules, and three of them are honesty rules
+Run `npm run check:drift` before you commit. 28 rules now, and several of them are honesty rules
 wearing a style rule's clothes.

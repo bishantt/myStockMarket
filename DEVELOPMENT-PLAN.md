@@ -370,6 +370,18 @@ Node 24 LTS · Next.js 16 (App Router; `proxy.ts`) · TypeScript strict · Tailw
 | `/api/morning` | GET (cookie-authed) → the serialized `lib/morning.ts` payload; exists solely for the SW’s offline-morning cache (§5.2). Unauthed → 401 JSON, never a redirect. |
 | `/api/pipeline/status` | **Added 2026-07-13 (NEWS-AND-CONTROL-PLAN N6).** GET (cookie-authed) → the control room’s poll: the live run (if any), today’s ledger, the caps and the cooldowns. Polled every 15s while `/settings` is visible and **paused on `visibilitychange: hidden`**, so a backgrounded PWA runs no timers. Unauthed → 401 JSON. **It serves FACTS, never STATES** — the row states are derived in the browser against the reader’s clock, because a panel that grades on the server will tell a reader “markets are open” under a nav bar reading “MARKET CLOSED”. And everything it returns crosses `JSON.parse`, where a `Date` becomes a string: convert at the boundary, because an `as` cast there is a promise rather than a check, and that exact cast crashed the panel on its first poll while 572 tests stayed green. |
 
+**Two presentations, one body (PD9 — POLISH-AND-DEPTH-PLAN Part 11).** `/news/[cluster]` and
+`/ticker/[symbol]` each render through a single server body component (`components/news/StoryPageBody`,
+`components/ticker/TickerPageBody`). A hard load, a refresh, or a shared link renders that body as the
+**standalone page** in the table above — the deep-link truth (E9). An **in-app tap** opens the **same
+body** as a sheet over the still-mounted room: the `app/(desk)/@modal` parallel slot holds two
+intercepting routes — `(.)news/[cluster]` and `(.)ticker/[symbol]` (the matcher is `(.)` because a
+route group is transparent, so `@modal` sits at the root level; the build proves it) — each wrapping
+the body in `components/DetailOverlay` (a bottom sheet `<md`, a centred overlay `≥md`, opacity-only
+fade). The URL is always the canonical one; the presentation is chosen by how the reader arrived. The
+sheet is **not a room** — it carries no `routes-manifest.json` entry, and its coverage is
+`e2e/overlay.spec.ts`, its six VRT shots, and the sheet's own touch/axe sweeps, not the room census.
+
 ### 4.3 Data flow rules
 
 - **Server components read; server actions write user-state only** (watchlist_item, journal_entry, concept_state, paper_trade, weakener checks). No client fetching libraries; no global state manager. Client components receive serialized props.
