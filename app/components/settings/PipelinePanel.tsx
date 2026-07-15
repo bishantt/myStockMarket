@@ -12,28 +12,13 @@ import { formatEtClock, formatEtDate } from "@/lib/time";
 /**
  * PipelinePanel — the control room (N6, plan 8.5).
  *
- * ────────────────────────────────────────────────────────────────────────────────────────────────
- * MOST OF THE TIME THIS IS NOT A ROW OF BUTTONS. IT IS A PIECE OF WRITING.
- * ────────────────────────────────────────────────────────────────────────────────────────────────
- *
- * The commission asked for user-triggered pipeline runs. Plan 8.1 did the honest evaluation first
- * and narrowed it hard: this is an end-of-day product, and on a normal weeknight the pipeline HAS
- * ALREADY RUN — a manual re-run would recompute byte-identical data. **For that case the honest
- * control is the EXPLANATION, not the button.**
- *
- * So a row here renders in exactly ONE state, and several of those states have no button at all.
- * The sentence IS the row (ruling C5: an empty state is information, not an apology). A button that
- * is present but pointless invites a press that changes nothing — and a product that lets you do a
- * pointless thing and says nothing about it has lied to you about what you just did.
- *
- * THE TWO HONESTY RULES THIS SURFACE LEANS ON:
- *
- * · **The word goes in the chip.** A run's outcome — succeeded, failed — is spelled out. Colour is
- *   the redundant channel and never the primary one, so a colourblind reader loses nothing.
- *
- * · **The cost is money, so it never moves** (`data-p2`). "~$0.15 of API budget" carries the P2
- *   attribute and no ancestor of it animates, transitions or transforms. It is the only figure on
- *   this panel, and it is the reader's money.
+ * MOST OF THE TIME THIS IS NOT A ROW OF BUTTONS, IT IS A PIECE OF WRITING. Plan 8.1's honest evaluation:
+ * this is an end-of-day product, and on a normal weeknight the pipeline HAS ALREADY RUN — a manual re-run
+ * recomputes byte-identical data, so the honest control is the EXPLANATION, not the button. A row renders
+ * in exactly ONE state, several with no button (ruling C5: an empty state is information). Two honesty
+ * rules this surface leans on: the WORD goes in the chip (colour is the redundant channel), and the cost
+ * is money so it never moves (`data-p2` — "~$0.15 of API budget" is the only figure here, the reader's
+ * money).
  */
 
 type Props = {
@@ -58,35 +43,15 @@ const POLL_MS = 15_000;
 const LIVE: ReadonlySet<RunState["kind"]> = new Set(["requested", "queued", "running"]);
 
 /**
- * ────────────────────────────────────────────────────────────────────────────────────────────────
- * JSON HAS NO DATE TYPE, AND THIS CRASHED THE PANEL ON ITS VERY FIRST POLL.
- * ────────────────────────────────────────────────────────────────────────────────────────────────
- *
- * The server hands the FIRST render real `Date` objects — React serializes them properly across the
- * server-component boundary, so the panel mounts perfectly. Then the poll fetches the same shape as
- * JSON, and `JSON.parse` gives back **strings**. `formatEtClock("2026-07-13T19:04:00.000Z")` is a
- * `RangeError: Invalid time value`, the panel threw on re-render, React kept the old DOM — and the
- * button appeared to do nothing at all.
- *
- * A REAL RUN HAD FIRED. GitHub accepted it, ran it, completed it. The ledger row was written. And
- * the screen showed a Run button and "2 of 2 left today", exactly as if nothing had happened. **A
- * run that fired and a run that never fired looked identical from the couch** — the precise failure
- * this phase was warned about, reached by a completely different route than the one I had guarded.
- *
- * TYPESCRIPT COULD NOT SEE IT, BECAUSE I TOLD IT NOT TO. The old line was
- *
- *     const next = (await response.json()) as { rows: ActionRow[]; history: ManualRunRow[] };
- *
- * and an `as` cast on a parsed payload is not a type check — it is an ASSERTION, and this one was
- * false. `response.json()` returns `any`, the cast said "trust me", and the compiler did.
- *
- * This is N5's `_json_safe` lesson wearing the mirror image of its clothes. There the question was
- * "does the payload actually SERIALIZE?" (a dict that looked perfect killed a production run four
- * minutes in). Here it is "does the payload actually DESERIALIZE into what the type claims?" — and
- * the answer, for every Date on it, was no.
- *
- * So the boundary converts instead of asserting. `new Date(x)` accepts a Date or an ISO string, so
- * this is idempotent and safe against both shapes.
+ * JSON HAS NO DATE TYPE, AND THIS CRASHED THE PANEL ON ITS FIRST POLL. The server hands the first render
+ * real `Date` objects (React serializes them across the boundary), so it mounts perfectly; then the poll
+ * fetches the same shape as JSON and `JSON.parse` gives back STRINGS, and `formatEtClock("…Z")` throws
+ * `Invalid time value` on re-render — React keeps the old DOM and the button appears to do nothing. A REAL
+ * RUN HAD FIRED: the failure this phase was warned about, reached by a new route. TypeScript could not see
+ * it because the old `as { … ActionRow[] }` cast on a parsed payload is an ASSERTION, not a check
+ * (`response.json()` is `any`). It is N5's `_json_safe` lesson mirrored: not "does it serialize?" but
+ * "does it deserialize into what the type claims?" — no, for every Date. So the boundary CONVERTS:
+ * `new Date(x)` accepts a Date or an ISO string, idempotent on both.
  */
 export function revive(payload: unknown): { runs: ManualRunRow[]; lastRun: CompletedRun | null } {
   const raw = payload as { runs: ManualRunRow[]; lastRun: CompletedRun | null };
@@ -110,28 +75,14 @@ export function PipelinePanel({
   const [runs, setRuns] = useState(initialRuns);
 
   /*
-   * ────────────────────────────────────────────────────────────────────────────────────────────
-   * THE STATES ARE DECIDED HERE, IN THE BROWSER, AGAINST THE READER'S OWN CLOCK.
-   * ────────────────────────────────────────────────────────────────────────────────────────────
-   *
-   * They used to be decided on the server, and the PIXEL ORACLE caught it. The first VRT baseline
-   * photographed this panel saying **"Markets are open — today's closing data doesn't exist until
-   * 4:00pm ET"** directly underneath a nav bar reading **"MARKET CLOSED"**. One page, two clocks,
-   * two answers. The nav grades in the browser; the panel was grading on the server; CI happened to
-   * run at 3pm ET.
-   *
-   * That is N4's bug in a new surface — a Desk built at 3:55pm told readers "markets open" long past
-   * the close — and here it had a second head: **the baseline would have rotted on its own.** Every
-   * state on this panel turns on what time it is, so the picture would change with the hour CI
-   * happened to run, and start failing with nobody having touched a line of code.
-   *
-   * The Desk's freshness strip already settled this and says so in its own comment: it reads the
-   * browser's clock, deliberately. There is one clock in this app that matters, and it is the
-   * reader's. `controlPanel` is a pure function, so running it here costs nothing.
-   *
-   * The clock is read ONCE, on mount, exactly as the strip does it: reading it during render would
-   * produce client HTML that disagrees with the server's and blow up hydration, and caching it in a
-   * module variable would freeze a tab left open overnight against yesterday's clock.
+   * THE STATES ARE DECIDED HERE, IN THE BROWSER, AGAINST THE READER'S OWN CLOCK. They used to be decided
+   * on the server, and the PIXEL ORACLE caught it: the first baseline photographed this panel saying
+   * "Markets are open — today's closing data doesn't exist until 4:00pm ET" under a nav reading "MARKET
+   * CLOSED" — one page, two clocks (CI ran at 3pm ET). That is N4's bug with a second head: the baseline
+   * would rot on its own, because every state turns on the time CI happened to run. The Desk's freshness
+   * strip already reads the browser's clock deliberately — the one clock that matters is the reader's, and
+   * `controlPanel` is pure so running it here costs nothing. The clock is read ONCE, on mount (reading it
+   * during render would break hydration; a module var would freeze a tab left open overnight).
    */
   const [now, setNow] = useState<string | null>(null);
   useEffect(() => {
@@ -144,9 +95,8 @@ export function PipelinePanel({
       controlPanel({
         runs,
         lastRun: lastRunSession,
-        // Before the clock lands (the very first paint), grade against the newest thing we know —
-        // the last completed run. It is one frame, and it never renders a state we would not stand
-        // behind: the alternative is a flash of an empty panel.
+        // Before the clock lands (first paint), grade against the newest thing we know — the last
+        // completed run. One frame, never a state we would not stand behind (vs a flash of empty panel).
         now: now ? new Date(now) : (lastRunSession?.finishedAt ?? new Date(0)),
         tokenConfigured: configured,
       }),
@@ -164,19 +114,16 @@ export function PipelinePanel({
       }
       setRuns(revive(await response.json()).runs);
     } catch (error) {
-      // Offline, or the route is down. The panel keeps showing what it last knew, which is true — it
-      // simply stops being current. Logged, never swallowed in silence: a poll that has quietly
-      // stopped working looks exactly like a pipeline with nothing to report.
+      // Offline, or the route is down. The panel keeps showing what it last knew — still true, just no
+      // longer current. Logged, never swallowed: a poll that quietly stopped looks like nothing to report.
       console.error("PipelinePanel: could not read the pipeline's status", error);
     }
   }, []);
 
   /*
-   * The poll runs ONLY while a run is live. An idle panel makes no requests at all.
-   *
-   * A run that is live has to be watched from here rather than waited out, because the app cannot
-   * be told when it finishes: GitHub does not call us back, and the run's own revalidate busts the
-   * page caches but cannot reach a panel that is already open in front of the reader.
+   * The poll runs ONLY while a run is live; an idle panel makes no requests. A live run must be watched
+   * from here: GitHub does not call us back, and the run's revalidate busts the page caches but cannot
+   * reach a panel already open in front of the reader.
    */
   useEffect(() => {
     if (!anyLive) return;
@@ -194,16 +141,11 @@ export function PipelinePanel({
       <LastRun lastRun={lastRun} />
 
       {/*
-       * P-2 IS SAID ONCE, HERE — NOT ONCE PER ROW.
-       *
-       * The first version put `copy.control.notConfigured` on every row, which is what the state
-       * machine honestly reports: all five rows ARE not_configured. Every test passed. Then I
-       * photographed the page and found the same 63-character sentence printed **five times in a
-       * column**, and a reader has to read it five times to learn one fact.
-       *
-       * The state is per-row; the REASON is per-panel. Printing a shared reason once per row is not
-       * more honest, it is just louder — and a wall of repetition is how a reader learns to skip a
-       * surface, which is the last thing this one can afford.
+       * P-2 IS SAID ONCE, HERE — NOT ONCE PER ROW. The first version put `notConfigured` on every row
+       * (which is what the state machine reports — all five ARE not_configured) and every test passed; the
+       * photograph showed the same 63-char sentence five times in a column. The state is per-row, the
+       * REASON is per-panel: repeating a shared reason is not more honest, just louder, and a wall of
+       * repetition is how a reader learns to skip a surface.
        */}
       {!configured ? (
         <p className="mt-4 rounded-panel border border-hairline bg-band-outer px-3 py-2 font-ui text-sm text-ink-2">
@@ -225,12 +167,10 @@ export function PipelinePanel({
 }
 
 /**
- * What the pipeline last did, verbatim from `pipeline_run` (plan 8.5, 8.6).
- *
- * The per-provider health is here in full and CANNOT be folded away (ruling M2). It is also the
- * reason `compute` mode has its own publish function: a recompute that went through the ordinary
- * publish would have overwritten this map, and a night on which a provider was degraded would start
- * reporting every source healthy the moment the reader pressed "Recompute scans".
+ * What the pipeline last did, verbatim from `pipeline_run` (plan 8.5, 8.6). The per-provider health is
+ * here in full and CANNOT be folded away (ruling M2) — and it is why `compute` mode has its own publish
+ * function: an ordinary publish would overwrite this map, so a degraded night would start reporting every
+ * source healthy the moment the reader pressed "Recompute scans".
  */
 function LastRun({ lastRun }: { lastRun: Props["lastRun"] }) {
   if (!lastRun) {
@@ -251,13 +191,10 @@ function LastRun({ lastRun }: { lastRun: Props["lastRun"] }) {
       </p>
 
       {/*
-       * Each source's verdict, through the app's one outcome chip (PD6 — this markup was a verbatim
-       * copy of Tag.tsx's shell, hand-rolled a third time).
-       *
-       * "ok" IS NEUTRAL, NOT POSITIVE, and that is a colour decision, not an oversight. A source
-       * behaving is the normal case, and painting the normal case green would spend a hue on
-       * "nothing happened" — leaving the reader to scan a wall of green for the one chip that is not.
-       * Colour is scarce here and always means something (E6). Only the degradation gets a hue.
+       * Each source's verdict through the app's one outcome chip (PD6 — this markup was a verbatim third
+       * copy of Tag.tsx's shell). "ok" IS NEUTRAL, NOT POSITIVE, deliberately: a source behaving is the
+       * normal case, and green on the normal case spends a hue on "nothing happened" and leaves the reader
+       * scanning a wall of green for the one chip that is not. Only degradation gets a hue (E6).
        */}
       <div className="flex flex-wrap gap-1.5 pt-2">
         {Object.entries(lastRun.sources).map(([source, status]) => (
@@ -284,22 +221,13 @@ function ActionRowView({ row, onDispatched }: { row: ActionRow; onDispatched: ()
   const [result, formAction, pending] = useActionState<RunResult, FormData>(runPipeline, { ok: true });
 
   /*
-   * THE MOMENT THE ACTION FINISHES, ASK THE SERVER WHAT ACTUALLY HAPPENED.
-   *
-   * THE BUG THIS REPLACES SHIPPED, AND ONLY THE LIVE DRILL FOUND IT. The first version hung this
-   * off the form's `onSubmit`, setting a ref to mark "a dispatch is in flight". **React does not
-   * fire onSubmit when a form has an action function** — so the ref stayed false, the refresh never
-   * ran, and the panel went straight back to showing a Run button.
-   *
-   * The run was REAL. GitHub accepted it, executed it, and completed it successfully. And the panel
-   * showed no sign that anything had happened at all — which is precisely the failure this whole
-   * phase was warned about: **a run that fired and a run that never fired looked identical from the
-   * couch.** 572 unit tests passed. The e2e passed. The button "worked". Nothing was observably
-   * wrong until a real run was fired at a real GitHub and the screen was watched.
-   *
-   * `pending` going true -> false is the signal that cannot lie: it is React's own record that the
-   * action ran and came back. We refresh on ANY completion, success or failure, because a failed
-   * dispatch changes what the panel should say too.
+   * THE MOMENT THE ACTION FINISHES, ASK THE SERVER WHAT ACTUALLY HAPPENED. The bug this replaces shipped,
+   * and only the live drill found it: the first version hung off the form's `onSubmit`, but React does not
+   * fire onSubmit when a form has an action function — the refresh never ran and the panel went back to a
+   * Run button. The run was REAL (GitHub accepted, executed, completed it) and the panel showed no sign —
+   * the "fired and never-fired look identical" failure, past 572 unit tests and a green e2e. `pending`
+   * true→false is the signal that cannot lie (React's own record that the action ran and came back). We
+   * refresh on ANY completion, since a failed dispatch changes what the panel should say too.
    */
   const wasPending = useRef(false);
   useEffect(() => {
@@ -339,10 +267,10 @@ function ActionRowView({ row, onDispatched }: { row: ActionRow; onDispatched: ()
       </div>
 
       {/*
-       * The description carries the only money on this panel ("~$0.15 of API budget"), so the row
-       * is marked `data-p2`: it renders complete on first paint, it never animates, and no ancestor
-       * of it may animate or transform either. The jsdom walker in p2-motion.test.tsx enforces that
-       * from above, which is the only place it CAN be enforced — the motion would be in the parent.
+       * The description carries the only money on this panel ("~$0.15 of API budget"), so the row is
+       * `data-p2`: complete on first paint, never animating, no ancestor animating or transforming. The
+       * jsdom walker in p2-motion.test.tsx enforces it from above, the only place it can be (the motion
+       * would be in the parent).
        */}
       <p data-p2 className="max-w-[60ch] font-ui text-sm text-muted">
         {row.description}
@@ -358,10 +286,8 @@ function ActionRowView({ row, onDispatched }: { row: ActionRow; onDispatched: ()
 }
 
 /**
- * The state, as a chip with THE WORD IN IT.
- *
- * Never a bare colour, never a bare dot. A failed run and a succeeded run render at the same size
- * and the same weight; only the hue differs, and the hue is the redundant channel.
+ * The state, as a chip with THE WORD IN IT. Never a bare colour or dot: a failed and a succeeded run
+ * render at the same size and weight, only the hue differs, and the hue is the redundant channel.
  */
 function StateChip({ state }: { state: RunState }) {
   if (state.kind === "running" || state.kind === "queued" || state.kind === "requested") {
@@ -373,8 +299,8 @@ function StateChip({ state }: { state: RunState }) {
   if (state.kind === "lost") {
     return <OutcomeChip tone="negative" label="not found" />;
   }
-  // capped, cooldown, blocked, not_applicable, not_configured — the SENTENCE below says it, and a
-  // chip repeating the same thing in shorthand would be noise sitting on top of the explanation.
+  // capped, cooldown, blocked, not_applicable, not_configured — the SENTENCE below says it; a chip
+  // repeating it in shorthand would be noise on top of the explanation.
   return null;
 }
 
@@ -399,8 +325,7 @@ function StateLine({ state, capLine }: { state: RunState; capLine: string | null
     case "not_applicable":
       return <span className="font-ui text-sm text-ink-2">{state.reason}</span>;
 
-    // Nothing. The panel states the reason ONCE, above the rows — see the note there. Repeating it
-    // on each row is not five times as honest, it is just five times as long.
+    // Nothing. The panel states the reason ONCE, above the rows. Repeating it per row is not more honest.
     case "not_configured":
       return null;
 
@@ -427,12 +352,10 @@ function StateLine({ state, capLine }: { state: RunState; capLine: string | null
       );
 
     /*
-     * THE STATE THAT STOPS A SILENT FAILURE.
-     *
-     * The dispatch API answers 204 with an empty body, so the app never receives the run id — it has
-     * to hunt for it by matching the request id in the run's name. When that hunt never resolves,
-     * this is what the reader sees. Without it the panel would show "requested…" forever, and a run
-     * that fired and a run that never fired would look exactly the same from the couch.
+     * THE STATE THAT STOPS A SILENT FAILURE. The dispatch API answers 204 with an empty body, so the app
+     * hunts for the run id by matching the request id in the run's name; when the hunt never resolves, this
+     * is what the reader sees. Without it the panel shows "requested…" forever, and a fired run and a
+     * never-fired run look identical from the couch.
      */
     case "lost":
       return <span className="font-ui text-sm text-ink-2">{copy.control.lost}</span>;
@@ -461,12 +384,9 @@ function RunLink({ href }: { href: string }) {
 }
 
 /**
- * "running — 2m 40s".
- *
- * Computed at RENDER, from the poll's own tick, so it advances in 15-second steps rather than
- * ticking every second. That is deliberate on both counts: a second-by-second stopwatch is
- * manufactured urgency, and this app does not do that. It is information about how long something
- * has been going, not a countdown pressing the reader to act.
+ * "running — 2m 40s". Computed at RENDER from the poll's tick, so it advances in 15-second steps, not
+ * every second — a second-by-second stopwatch is manufactured urgency, and this is information about how
+ * long something has run, not a countdown pressing the reader to act.
  */
 function elapsedSince(since: Date): string {
   const seconds = Math.max(0, Math.floor((Date.now() - new Date(since).getTime()) / 1000));
@@ -476,22 +396,17 @@ function elapsedSince(since: Date): string {
 }
 
 /**
- * The last ten manual runs, and IT SAYS SO (ruling M8).
- *
- * A list that shows ten of an unknown number, silently, is a cut nobody stated — and this app's
- * whole argument is that a cut you cannot audit is a cut that can hide anything. The heading names
- * its own rule.
+ * The last ten manual runs, and IT SAYS SO (ruling M8). A list showing ten of an unknown number,
+ * silently, is a cut nobody stated — and a cut you cannot audit can hide anything. The heading names its
+ * own rule.
  */
 function History({ history }: { history: ManualRunRow[] }) {
   return (
     <div className="pt-6">
       {/*
-       * "· last 10" is MUTED, not faint, and drift rule 18 is what corrected me.
-       *
-       * I reached for `faint` because the phrase looked like chrome. It is not chrome: it is the
-       * list STATING ITS OWN CUT (ruling M8), which is the single thing that keeps a truncated list
-       * honest. Information never renders in a colour that fails the contrast floor — and a stated
-       * cut, printed too pale to read, is a cut that has not really been stated.
+       * "· last 10" is MUTED, not faint, and drift rule 18 corrected me: it looks like chrome but it is the
+       * list STATING ITS OWN CUT (M8), the thing that keeps a truncated list honest — and a stated cut
+       * printed too pale to read is a cut not really stated. Information never renders below the contrast floor.
        */}
       <h3 className="font-mono text-xs font-medium uppercase tracking-[0.08em] text-muted">
         {copy.control.history} · last 10
@@ -499,8 +414,8 @@ function History({ history }: { history: ManualRunRow[] }) {
       <div className="mt-1 h-px bg-hairline" />
 
       {history.length === 0 ? (
-        // An empty history is the HEALTHY state: the scheduled runs are doing their job and nobody
-        // has had to intervene. It is information, not an apology.
+        // An empty history is the HEALTHY state: the scheduled runs are doing their job and nobody has had
+        // to intervene. Information, not an apology.
         <p className="pt-3 font-ui text-sm text-muted">{copy.control.historyEmpty}</p>
       ) : (
         <ul className="flex flex-col pt-1">
@@ -523,11 +438,9 @@ function History({ history }: { history: ManualRunRow[] }) {
 }
 
 /**
- * The word, always. Colour is redundant.
- *
- * This comment used to read "see the OutcomeChip on the track record, same rule" — which named the
- * duplication instead of removing it, and the two copies had already drifted. It IS that chip now
- * (components/OutcomeChip.tsx, PD6).
+ * The word, always; colour is redundant. This comment once read "see the OutcomeChip on the track record,
+ * same rule" — which named the duplication instead of removing it, and the two copies had drifted. It IS
+ * that chip now (components/OutcomeChip.tsx, PD6).
  */
 function RunOutcomeChip({ status }: { status: ManualRunRow["status"] }) {
   const TONE: Record<string, OutcomeTone> = {

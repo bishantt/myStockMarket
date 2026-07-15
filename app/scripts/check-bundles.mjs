@@ -1,29 +1,19 @@
 #!/usr/bin/env node
 /**
- * check-bundles.mjs — budget B4: per-route first-load JavaScript (APP-FEEL-PLAN §5.4, §5.5).
+ * check-bundles.mjs — budget B4: per-route first-load JavaScript (APP-FEEL §5.4, §5.5).
  *
- * What this measures, and what it does NOT:
+ * For a prerendered route we read its HTML and take the exact <script src> set the browser fetches —
+ * the real first-load JS. For an on-demand family (`/ticker/[symbol]`) no HTML exists at build time, so
+ * we union the client-reference-manifest chunks with build-manifest.rootMainFiles: an UPPER BOUND,
+ * labelled as one on every line. Sizes are gzip (zlib); Vercel serves brotli (~15% smaller), so these
+ * numbers compare THIS instrument to ITSELF across commits and are NOT the same unit as Lighthouse's
+ * first-load budget (stating the instrument's limits in the instrument is the point — a previous draft
+ * cited a build artifact that does not exist).
  *
- *   - For a route that the build prerendered, we read the route's own HTML and take exactly the
- *     <script src> set the browser will fetch. That is the first-load JS, not an estimate.
- *   - For an on-demand family (`/ticker/[symbol]`), no HTML exists at build time — the page is
- *     rendered on first request. There we union the route's client-reference-manifest chunks with
- *     build-manifest.rootMainFiles. That is an UPPER BOUND and is labelled as one on every line;
- *     the manifest can name a chunk the rendered page turns out not to need.
+ * Baselines: docs/feel-evidence/bundles.md (F0). Targets (F1): every route ≤ its F0 + 10KB slack;
+ * /ticker additionally drops the chart chunk once CandleChart is code-split (§5.3 P-6).
  *
- * Sizes are gzip (zlib), because that is a number this machine can produce honestly. Vercel serves
- * brotli, which lands roughly 15% smaller. So these numbers are for comparing THIS instrument to
- * ITSELF across commits — they are not the same unit as the Lighthouse first-load budget (which
- * measures real brotli transfer over the wire), and the two must never be compared to each other.
- * Saying so here is the point: the previous plan draft cited a build artifact that does not exist,
- * and the fix for that class of error is to state the instrument's limits in the instrument.
- *
- * Baselines live in docs/feel-evidence/bundles.md, captured at F0 before anything changed.
- * Targets (armed in F1): every route ≤ its F0 value + 10KB slack; /ticker additionally must drop
- * the chart chunk once CandleChart is code-split (§5.3 P-6).
- *
- * Run: npm run check:bundles   (after npm run build)
- *      npm run check:bundles -- --report    appends the table to docs/feel-evidence/bundles.md
+ * Run: npm run check:bundles (after npm run build) · add `-- --report` to append the table.
  */
 
 import { existsSync, readFileSync, appendFileSync, mkdirSync } from "node:fs";
@@ -40,62 +30,34 @@ const EVIDENCE = join(ROOT, "..", "docs", "feel-evidence");
 const SLACK_KB = 10;
 
 /**
- * THE HARD CEILING — the budget the plan actually set, finally armed (N2).
- *
- * B4's real budget was always "first-load JS ≤ 200KB". Until now this script enforced only DRIFT
- * (baseline + 10KB slack) — which catches a surprise, but has a quiet failure mode: re-baseline a
- * route each time it legitimately grows a little, and after six phases of small honest growth it is
- * at 260KB and nothing ever failed. Every individual step passed. The budget was never checked.
- *
- * So the ceiling is now a separate, absolute gate that no re-baselining can move. Drift catches the
- * unexplained; the ceiling catches the accumulation of the explained.
+ * THE HARD CEILING — the budget the plan actually set, finally armed (N2). B4's real budget was always
+ * "first-load JS ≤ 200KB", but this script enforced only DRIFT (baseline + 10KB slack) — which catches a
+ * surprise but has a quiet failure mode: re-baseline a route each time it legitimately grows a little, and
+ * six phases later it is at 260KB with nothing ever failing. The ceiling is a separate absolute gate no
+ * re-baselining can move: drift catches the unexplained, the ceiling the accumulation of the explained.
  */
 const CEILING_KB = 200;
 
 /**
  * The baselines, in gzipped KB. A route may not grow more than SLACK_KB past its number.
  *
- * READ THIS BEFORE COMPARING THESE TO THE F0 TABLE — the numbers moved for a reason that is not a
- * regression. At F0 the eight force-dynamic routes had no prerendered HTML, so they could only be
- * measured as UPPER BOUNDS from their client-reference manifests (~142KB each). Since F1 they
- * prerender, so they are measured EXACTLY, from the script tags their own HTML actually asks for
- * (~180KB each). The bundles did not grow by 38KB; the instrument stopped guessing. Baselining the
- * exact figures against the old bounds would have every cured route failing its budget forever, for
- * having become measurable.
- *
- * So the baselines below are the first honest measurement of each route, taken at F1, and the two
- * routes where the method did NOT change are the control that proves the rest of the story:
- *
- *   · `/`                  exact → exact:  179.6 → 179.7 KB   (unchanged, as expected)
- *   · `/ticker/[symbol]`   bound → bound:  193.0 → 143.1 KB   (−49.9 KB — the chart, code-split)
- *
- * That second line is P-6 doing exactly what it was supposed to do: `lightweight-charts` no longer
- * loads for a reader who opens a ticker page, only for one who looks at the chart.
+ * READ THIS BEFORE COMPARING TO THE F0 TABLE — the numbers moved for a reason that is not a regression. At
+ * F0 the eight force-dynamic routes had no prerendered HTML, so they were measured as UPPER BOUNDS (~142KB
+ * each); since F1 they prerender and are measured EXACTLY (~180KB each). The bundles did not grow 38KB; the
+ * instrument stopped guessing. The two routes where the method did NOT change are the control: `/` exact→
+ * exact 179.6→179.7 (unchanged), `/ticker/[symbol]` bound→bound 193.0→143.1 (−49.9, the chart code-split,
+ * P-6 working — lightweight-charts no longer loads for a reader who opens a ticker page).
  *
  * @type {Record<string, number>}
  */
 /*
- * REBASELINED AT N2, AND THE GUARD GOT STRONGER IN THE SAME BREATH — read this before trusting it.
- *
- * Every (desk) route grew by ~5.4KB gzipped, and it is one cause: `PipelineStrip` is a CLIENT
- * component (it has to be — it regrades the pipeline's freshness against the reader's clock, not the
- * cache's; see the component) and it is imported by two entry points, the Desk and the styleguide.
- * Two entry points is what makes the bundler hoist it — with lib/freshness and the NYSE holiday
- * calendar behind it — into a chunk that every route then carries. The copy deck also gained a whole
- * window vocabulary and four new sections, and copy.ts is imported by nearly every client component
- * in the app.
- *
- * So the growth is real, understood, and shared. It is not a leak.
- *
- * BUT RE-BASELINING IS EXACTLY HOW A BUDGET DIES, and that is worth being blunt about. Every step of
- * "it only grew a little, and here is why" is individually true, and six phases of them puts the app
- * at 260KB with a green gate the whole way. The drift check cannot catch that, because drift is
- * measured against the last thing that was accepted.
- *
- * That is why this rebaseline lands together with the HARD CEILING above (200KB, the budget the plan
- * actually set and nothing had ever enforced). Drift catches the unexplained; the ceiling catches
- * the accumulation of the explained. The worst route today is /paper at 194.7KB — five KB of head
- * room, which is a fact worth knowing rather than a comfort.
+ * REBASELINED AT N2, AND THE GUARD GOT STRONGER IN THE SAME BREATH. Every (desk) route grew ~5.4KB from one
+ * cause: `PipelineStrip` is a CLIENT component (it regrades freshness against the reader's clock) imported by
+ * two entry points (Desk + styleguide), which the bundler hoists — with lib/freshness and the holiday
+ * calendar — into a chunk every route carries; and copy.ts gained a window vocabulary and four sections and
+ * is imported nearly everywhere. Real, understood, shared — not a leak. BUT RE-BASELINING IS HOW A BUDGET
+ * DIES: six honest "it only grew a little" steps end at 260KB with a green gate, which drift cannot catch. So
+ * this rebaseline lands with the HARD CEILING above (200KB). Worst route today: /paper at 194.7KB.
  */
 const BASELINE_KB = {
   "/": 185.1,
@@ -104,108 +66,61 @@ const BASELINE_KB = {
   "/academy/glossary": 169.0,
   "/academy/review": 170.2,
   "/login": 164.1,
-  // The Front Page (N5). The room carries a client feed (filters, the window control, pagination),
-  // and the story page carries the app's one table — which is why the story is the LIGHTER of the
-  // two: the table was already in the shared chunks, and the feed's interactivity is not.
-  //
-  // CORRECTED FROM 184.2, AND THE CORRECTION IS THE INTERESTING PART. 184.2 was never a real
-  // measurement of this route: it was read out of a `.next` that predated the final build, so it
-  // described a page that no longer existed. The guard then fired on the next honest build and
-  // reported the room "growing 11KB" — for changes that were 51 lines of comments and CSS classes.
-  //
-  // Rebuilding the baseline COMMIT and measuring it settled it: /news was 194.9KB there too. So the
-  // route did not grow; the first number was wrong. A baseline is a measurement, and a measurement
-  // taken from a stale artifact is a guess wearing a number's clothes — which is exactly the species
-  // of error the bundles guard exists to catch, and it caught mine.
+  // The Front Page (N5): the room carries a client feed (filters, window control, pagination); the story
+  // page carries the app's one table (already in shared chunks, so the story is the LIGHTER of the two).
+  // CORRECTED FROM 184.2: that was never a real measurement — read from a `.next` that predated the final
+  // build — so the guard fired on the next honest build, reporting "growing 11KB" for 51 lines of comments
+  // and CSS. Rebuilding the baseline COMMIT measured /news at 194.9KB there too: a measurement from a stale
+  // artifact is a guess wearing a number's clothes, exactly the error this guard exists to catch.
   "/news": 195.1,
   "/news/[cluster]": 161.6,
   "/offline": 163.0,
   "/paper": 194.7,
   "/scans": 186.2,
   /*
-   * THE MATCH TABLE, BASELINED AT LAST (G3) — and the way it was found is the reason this number is
-   * worth reading twice.
-   *
-   * /scans/[preset] shipped in F3. It is the app's one DataTable: sortable headers, pagination, the
-   * recipe card, the lottery chip. It has never had a baseline. Not because anyone decided it did not
-   * need one — because `BASELINE_KB["/scans/[preset]"]` came back `undefined`, the verdict column
-   * printed an empty string, and the route was reported without ever being judged. Every run, since
-   * F3, this guard walked past the room it should most want to watch.
-   *
-   * That is not a failure. It is a SILENCE, and a silence in a gate is indistinguishable from a pass
-   * — which is the whole disease this phase exists to cure. The routes manifest is what surfaced it:
-   * the moment there was one list of rooms to reconcile against, the hole had nowhere to hide.
-   *
-   * 153.6 KB, measured as an upper bound (like every on-demand family — no prerendered HTML exists
-   * for a bracket route, so the chunk set comes from the client-reference manifest, which may name a
-   * chunk the rendered page turns out not to need). Comfortably under the 200KB ceiling.
+   * THE MATCH TABLE, BASELINED AT LAST (G3). /scans/[preset] shipped in F3 — the app's one DataTable — and
+   * never had a baseline: not by decision, but because `BASELINE_KB["/scans/[preset]"]` was `undefined`, the
+   * verdict column printed empty, and the route was reported without being judged, every run since F3. A
+   * SILENCE in a gate is indistinguishable from a pass — the disease this phase cures — and the routes
+   * manifest surfaced it the moment there was one list to reconcile against. 153.6 KB, an upper bound (no
+   * prerendered HTML for a bracket route). Comfortably under the 200KB ceiling.
    */
   "/scans/[preset]": 153.6,
   /*
-   * REBASELINED DOWN AT PD6: 181.7 → 154.7, AND A BASELINE THAT IS TOO HIGH IS A HOLE IN THE GUARD.
-   *
-   * This one was found by accident. PD6 touched /settings, saw it report 154.7 KB against a baseline
-   * of 181.7, and went looking for the 27 KB it thought it had saved. It had not saved anything: a
-   * rebuild of the tagged `pd-5` tree measures /settings at 153.5 KB. The route has been ~28 KB
-   * lighter than its baseline for some time, and nobody noticed, because a guard that only fires on
-   * GROWTH is silent about a number that is too generous.
-   *
-   * The consequence is worth stating plainly, because it is the mirror image of the failure mode this
-   * file was already written to fear. The comment above worries that re-baselining upward after every
-   * honest growth ends at 260 KB with nothing ever failing. The same hole opens from the other side:
-   * a stale HIGH baseline means /settings could have grown 28 KB — the whole richness kit, twice —
-   * and the drift check would have reported a cheerful ✓. **A guard with 28 KB of invisible slack in
-   * it is not measuring the room; it is measuring a room that used to exist.**
-   *
-   * So it comes down to what the room actually weighs. The ceiling (200 KB) is unaffected and remains
-   * the real budget; this restores the DRIFT half of the gate, which had quietly stopped working.
+   * REBASELINED DOWN AT PD6: 181.7 → 154.7, AND A BASELINE THAT IS TOO HIGH IS A HOLE IN THE GUARD. Found by
+   * accident: PD6 saw /settings report 154.7 against a 181.7 baseline and went looking for 27KB it had not
+   * saved (a rebuild of `pd-5` measures 153.5). The route had been ~28KB lighter than its baseline for some
+   * time, unnoticed, because a guard that fires only on GROWTH is silent about a number too generous. It is
+   * the mirror of the fear above: a stale HIGH baseline means /settings could have grown 28KB (the richness
+   * kit twice) to a cheerful ✓. The ceiling (200KB) is unaffected; this restores the DRIFT half of the gate.
    */
   "/settings": 154.7,
-  // Rebaselined at F2: 163.0 → 173.3. The styleguide is the LIVING SPEC — its job is to render one
-  // of everything, so it necessarily grows whenever the design system does, and section 9 added the
-  // whole kit (the table, the disclosure, the form controls) to it. It is not a product room; no
-  // reader ever loads it on a phone. Growth here is the page working, not a regression — but it is
-  // still baselined, so a surprise 40KB would still be caught.
-  // Rebaselined at N5: 180.7 → 187.9 — the four news-image rungs joined the living spec.
+  // Rebaselined at F2 (163.0 → 173.3): the styleguide is the LIVING SPEC — it renders one of everything, so
+  // it grows whenever the design system does (section 9 added the whole kit). Not a product room; no reader
+  // loads it on a phone. Still baselined, so a surprise 40KB is caught.
+  // Rebaselined at N5 (180.7 → 187.9): the four news-image rungs joined the living spec.
   "/styleguide": 187.9,
   "/ticker/[symbol]": 148.5,
   /*
-   * Rebaselined at PD6: 185.1 → 192.7 (+7.2 KB), and the number is worth the paragraph.
-   *
-   * The richness kit landed in this room. `TrackRecordTable` is a client component, so giving its
-   * symbol column a `TickerChip` pulled the chip — and `DeltaChip` behind it — across the client
-   * boundary for the first time; wrapping the room's prose in `TermProse` pulled in the glossary
-   * popover island. Measured A/B against a rebuild of `pd-5`: 185.5 → 192.7 KB, and afterwards
-   * /track-record and /paper request an IDENTICAL chunk set apart from their own page chunk. It
-   * gained three shared chunks the neighbouring rooms were already carrying. That is the whole story;
-   * there is no mystery left in it.
-   *
-   * Rebaselined rather than left to ride the slack, deliberately. At 192.7 against a baseline of
-   * 185.1 the route had 2.4 KB of headroom left, which would have redded the next phase's build for
-   * an innocent edit and taught whoever hit it that the guard cries wolf. A slack allowance is for
-   * absorbing noise, not for hiding a change somebody chose to make. The change is named here
-   * instead, which is what a baseline is FOR — and the 200 KB ceiling, 7.3 KB above this, is still
-   * the budget that actually binds.
+   * Rebaselined at PD6: 185.1 → 192.7 (+7.2 KB). The richness kit landed here: `TrackRecordTable` is a client
+   * component, so a `TickerChip` in its symbol column pulled the chip (and `DeltaChip`) across the client
+   * boundary, and `TermProse` pulled in the glossary popover island. Measured A/B against a `pd-5` rebuild
+   * (185.5 → 192.7), /track-record and /paper then request an identical chunk set apart from their page chunk —
+   * three shared chunks the neighbours already carried, no mystery left. Rebaselined rather than left to ride
+   * the slack: at 2.4KB of headroom the next innocent edit would red the build and teach that the guard cries
+   * wolf. Slack absorbs noise, not a chosen change; the change is named here, and the 200KB ceiling still binds.
    */
   "/track-record": 192.7,
 };
 
 /**
- * THE BASELINE KEYS AND THE ONE LIST OF ROOMS MUST AGREE (G3, recommendation R8).
- *
- * The baseline VALUES stay above — they are measurements, and a measurement belongs next to the
- * instrument that took it. What moves to lib/routes-manifest.json is the question of WHICH ROOMS
- * EXIST, because that question was being answered in five places and they disagreed.
- *
- * This check is the reconciliation, and it found a real hole the moment it was written: the manifest
- * knows about `/scans/[preset]` — the match table, the app's one DataTable — and BASELINE_KB did
- * not. The room shipped in F3 and its first-load JavaScript has never been baselined. The bundle
- * guard walked straight past it every single run: `BASELINE_KB[route]` came back undefined, the
- * verdict column printed an empty string, and the route was reported without ever being judged. Not
- * a failure — a silence. That is the same rot-by-omission that let /news ship unswept, wearing a
- * budget's clothes instead of a sweep's.
- *
- * So the two lists are now held against each other, in both directions, before any measuring starts.
+ * THE BASELINE KEYS AND THE ONE LIST OF ROOMS MUST AGREE (G3, R8). The baseline VALUES stay above (a
+ * measurement belongs next to the instrument that took it); what moves to lib/routes-manifest.json is WHICH
+ * ROOMS EXIST, a question that was answered in five disagreeing places. This reconciliation found a real hole
+ * the moment it was written: the manifest knew `/scans/[preset]` and BASELINE_KB did not, so the room shipped
+ * in F3 with its first-load JS never judged (undefined baseline → empty verdict → reported, never judged) —
+ * the same rot-by-omission that let /news ship unswept. The two lists are now held against each other, both
+ * directions, before any measuring starts.
  */
 const NOT_A_PRODUCT_ROOM = {
   // Not rooms, so not in the manifest — but they are still built, still shipped to a browser, and

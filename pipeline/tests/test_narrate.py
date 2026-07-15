@@ -1,16 +1,10 @@
 """
 test_narrate.py — the Front Page's one line of prose, and the gate that can delete it (plan 7.5).
 
-The rules under test, in plain English:
-
-  - The narrator never sees a rank. Significance is computed from evidence by `rank.py`, and if the
-    number were in the prompt the model could reason about WHY a story is ranked first — which is
-    the app forming an editorial opinion by the back door (ruling C1).
-  - A note that quotes a number nobody computed does not publish. Both fields drop to null, and the
-    reason is recorded on the cluster.
-  - A dropped note is COUNTED. The gate's failure mode is silent — a null prints nothing, and a page
-    with no notes looks exactly like a page the narrator had nothing to say about. The only thing
-    that tells those two apart is a count.
+Three rules under test: the narrator never sees a rank (else it could reason about WHY a story ranks
+first — editorial opinion by the back door, ruling C1); a note quoting a number nobody computed does
+not publish; and a dropped note is COUNTED, because a null prints nothing and a page with no notes
+looks exactly like a page the narrator had nothing to say about.
 """
 
 from __future__ import annotations
@@ -128,9 +122,8 @@ def test_a_null_note_is_valid() -> None:
 # ----- the prompt -----
 
 def test_the_narrator_is_never_shown_a_rank() -> None:
-    """Ruling C1: the page is edited by evidence, and the LLM never sees or sets a rank. If the
-    significance score reached the prompt, the model could write prose that justifies the ordering —
-    an editorial opinion laundered through a narrator that is only supposed to explain mechanisms."""
+    """Ruling C1: the LLM never sees a rank. If the score reached the prompt it could write prose that
+    justifies the ordering — editorial opinion laundered through a narrator meant to explain, not judge."""
     _system, user = build_notes_prompt([_cluster()], _stats())
 
     assert "significance" not in user.lower()
@@ -151,9 +144,8 @@ def test_the_prompt_carries_the_ids_the_note_must_cite() -> None:
 
 
 def test_a_cluster_with_no_extract_still_reaches_the_narrator_with_its_facts() -> None:
-    """Stage A drops a malformed article rather than crashing the night, so a top-20 cluster can
-    arrive with no extract. It still has a headline and a class, and the note may still be written
-    from them — or the model may honestly return null."""
+    """Stage A drops a malformed article rather than crash the night, so a cluster can arrive with no
+    extract. It still has a headline and a class — the note may be written from them, or honestly be null."""
     _system, user = build_notes_prompt([_cluster(extract=None)], [])
 
     assert "cluster_id=c1" in user
@@ -230,9 +222,8 @@ def test_a_note_quoting_a_real_number_survives() -> None:
 
 
 def test_a_fabricated_number_deletes_the_whole_note() -> None:
-    """The mechanism P9 exists for. $99B was computed by nobody, so the sentence does not publish —
-    and the sentence beside it goes too: a model that invented one figure has not earned the benefit
-    of the doubt on the next one."""
+    """The mechanism P9 exists for. $99B was computed by nobody, so it does not publish — and its
+    neighbour goes too: a model that invented one figure has not earned the benefit of the doubt."""
     result = _gate(
         why="The $99B deal is the biggest of the year.",
         affected="Oilfield services broadly.",
@@ -249,14 +240,11 @@ def test_a_fabricated_number_deletes_the_whole_note() -> None:
 
 
 def test_a_note_with_no_numbers_at_all_publishes() -> None:
-    """The best "why it matters" lines carry no figures — they name a mechanism. Nothing to verify
-    is not the same as nothing verified, and the gate must not confuse them.
+    """The best "why it matters" lines carry no figures — they name a mechanism. Nothing to verify is
+    not nothing verified, and the gate must not confuse them.
 
-    AMENDED AT PD7. This test's sentence used to read "Regulatory clearance USUALLY re-prices a whole
-    segment" — and E4's new lexicon check correctly kills it, because an uncited "usually" is a
-    frequency claim with no base rate behind it. The RULE this test names is untouched and still
-    true; its example sentence was quietly making a second claim nobody had noticed. The frequency
-    half is now pinned by the test below.
+    Amended at PD7: the old sentence said "USUALLY re-prices a segment", an uncited frequency claim
+    E4 correctly kills. The rule is unchanged; the frequency half is now pinned by the test below.
     """
     result = _gate(why="Regulatory clearance re-prices a whole segment, not one ticker.")
 
@@ -267,9 +255,9 @@ def test_a_note_with_no_numbers_at_all_publishes() -> None:
 
 
 def test_an_uncited_frequency_claim_deletes_the_note() -> None:
-    """E4, on the v1 note. The lexicon runs on EVERY prose section, not just the new ones — "the gate
-    extends, not relaxes" — so a "usually" with no computed stat behind it costs the note its line,
-    exactly as a fabricated number does. It is the same offence: a claim the pipeline cannot support."""
+    """E4, on the v1 note. The lexicon runs on every prose section, so an uncited "usually" — a
+    frequency claim with no computed stat behind it — costs the note its line, like a fabricated number.
+    Same offence: a claim the pipeline cannot support."""
     result = _gate(why="Regulatory clearance usually re-prices a whole segment, not one ticker.")
 
     decision = result.decisions["c1"]
@@ -279,9 +267,8 @@ def test_an_uncited_frequency_claim_deletes_the_note() -> None:
 
 
 def test_the_numbers_of_ANOTHER_cluster_are_not_a_source_for_this_one() -> None:
-    """The gate is per-cluster on purpose. A figure from a different story is a real number in the
-    world and still a fabrication on THIS card — the exact shape of the VHI bug, where every number
-    was true and the card was a lie."""
+    """The gate is per-cluster on purpose. A figure from a different story is real in the world and
+    still a fabrication on THIS card — the VHI bug's shape, where every number was true and the card lied."""
     other = _extract(doc_id="b2", key_numbers=[KeyNumber(value_str="$42.5B", what="a different deal")])
 
     result = gate_notes(
@@ -297,9 +284,8 @@ def test_the_numbers_of_ANOTHER_cluster_are_not_a_source_for_this_one() -> None:
 
 
 def test_an_honest_null_is_not_a_drop() -> None:
-    """The model returning null means "I have nothing to add beyond the headline". That is the
-    system working, and counting it as a gate drop would make an honest night look like a failing
-    one."""
+    """A null means "I have nothing to add beyond the headline" — the system working. Counting it as
+    a gate drop would make an honest night look like a failing one."""
     result = _gate(why=None, affected=None)
 
     decision = result.decisions["c1"]
@@ -458,13 +444,11 @@ def test_a_cashtag_for_a_ticker_we_do_not_carry_is_flagged() -> None:
 
 # ----- the narrator may never hold the night open (N5, found in production) -----
 #
-# The first live news run sat in Stage A for over twenty minutes. The Anthropic SDK defaults to a
-# 600-SECOND timeout with retries, and Stage A makes up to 60 sequential calls — so one slow provider
-# night could hold the publish open for hours, and the FACTS would be held hostage to the PROSE.
-#
-# That is backwards. The prose is the least important thing in the pipeline: the module runs last
-# precisely so that everything before it can publish without it. So the extraction stage takes a
-# wall-clock budget, and when the budget is gone it stops extracting and lets the page ship.
+# The first live news run sat in Stage A for 20+ minutes: the SDK defaults to a 600-second timeout
+# with retries, and Stage A makes up to 60 sequential calls, so one slow provider night could hold
+# the publish open for hours — the facts hostage to the prose. Backwards: the prose runs last so
+# everything before it can ship without it. So extraction takes a wall-clock budget and, once it is
+# gone, stops and lets the page ship.
 
 def test_extraction_stops_when_the_budget_is_gone_and_the_page_still_ships() -> None:
     clock = iter([0.0, 0.0, 5.0, 99.0, 99.0, 99.0, 99.0, 99.0])
@@ -520,15 +504,12 @@ def test_a_narrator_that_throws_publishes_the_facts_without_prose() -> None:
 
 # ----- one bad note is one dropped note, not a dead page (N5, found in production) -----
 #
-# The third live run extracted 59 of 60 articles and then reported "the narrator failed its schema
-# twice — the page publishes without prose". The whole page lost its notes.
-#
-# TWO MISTAKES, both mine. The 160-character cap is enforced by pydantic on OUR side, and the API
-# does not enforce string lengths — we strip maxLength from the schema before sending it. So the
-# model was never TOLD the limit, wrote past it, and every note it wrote was thrown away for breaking
-# a rule nobody had given it. And because the NoteSet was validated as one object, a single over-long
-# sentence invalidated the other nineteen: the same "one bad item kills the batch" disease that had
-# just been fixed one stage upstream.
+# The third live run extracted 59 of 60 articles, then reported "the narrator failed its schema
+# twice" and the whole page lost its notes. Two mistakes: (1) the 160-char cap is enforced by pydantic
+# on our side, but the API does not enforce string lengths — we strip maxLength before sending — so
+# the model was never TOLD the limit and every note was thrown away for a rule nobody gave it; (2) the
+# NoteSet was validated as one object, so one over-long sentence invalidated the other nineteen — the
+# "one bad item kills the batch" disease just fixed one stage upstream.
 
 _LONG = "x" * (WHY_MAX_CHARS + 40)
 
@@ -564,9 +545,8 @@ def test_a_response_where_NOTHING_parses_is_still_retried() -> None:
 
 
 def test_the_model_is_TOLD_the_limit_it_is_being_held_to() -> None:
-    """It was not, and every note it wrote was rejected for breaking a rule it never saw. The API
-    does not enforce string lengths — the schema's maxLength is stripped before it is sent — so the
-    prompt is the ONLY place the model can learn the cap."""
+    """It was not, and every note was rejected for a rule it never saw. The API does not enforce string
+    lengths (maxLength is stripped before sending), so the prompt is the ONLY place the model learns the cap."""
     system, _user = build_notes_prompt([_cluster()], _stats())
 
     assert str(WHY_MAX_CHARS) in system
@@ -576,10 +556,9 @@ def test_the_model_is_TOLD_the_limit_it_is_being_held_to() -> None:
 # ===== PD7: the v2 insight — sections, not license (plan 9.3, 9.8) =====
 #
 # The gate EXTENDS, it does not relax. The v1 pair (why_it_matters + affected_note) stays COUPLED —
-# decoupling it would let a note that is dropped whole today start publishing half of itself, which
-# is a relaxation by any reading. The NEW sections are gated independently, because there was nothing
-# there before to relax: E3's guard names exactly this — "that section, AND ONLY THAT SECTION, is
-# dropped and counted".
+# decoupling it would let a note dropped whole today publish half of itself, a relaxation by any
+# reading. The NEW sections are gated independently, because nothing there existed before to relax:
+# E3's guard — "that section, AND ONLY THAT SECTION, is dropped and counted".
 
 from briefing.depth import CalendarRef  # noqa: E402
 from briefing.stats import build_calendar_stats, build_depth_stats  # noqa: E402
@@ -636,16 +615,15 @@ def _gate_v2(*, why=None, affected=None, context=None, watch=(), cluster=None):
 # ----- the schema round-trip -----
 
 def test_the_v2_schema_survives_the_api_and_parses_back() -> None:
-    """`api_schema` strips what the structured-output layer forbids (maxLength), and the response
-    must still parse back into the model that DOES enforce it. That gap is where PD-era production
-    threw away every note the narrator wrote, for breaking a rule it had never been given."""
+    """`api_schema` strips what the structured-output layer forbids (maxLength), and the response must
+    still parse back into the model that DOES enforce it. That gap is where PD-era production threw away
+    every note the narrator wrote, for a rule it was never given."""
     schema = notes_json_schema()
     fields = schema["$defs"]["ClusterNote"]["properties"]
 
     assert "context" in fields and "watch" in fields
-    # The cap lives in pydantic, NOT in the wire schema — `api_schema` strips maxLength because the
-    # structured-output layer rejects it. Which is exactly why the cap is also stated in the PROMPT:
-    # it is the only place the model can learn a rule the schema is not allowed to carry.
+    # The cap lives in pydantic, not the wire schema (`api_schema` strips maxLength — the API rejects
+    # it), which is why the cap is also stated in the PROMPT: the only place the model can learn it.
     assert "maxLength" not in str(fields["context"]), "the API rejects maxLength; it must be stripped"
 
     note = ClusterNote.model_validate(
@@ -679,9 +657,9 @@ def test_a_context_quoting_the_depth_registry_publishes() -> None:
 
 
 def test_a_fabricated_number_in_context_drops_THAT_SECTION_AND_ONLY_THAT_SECTION() -> None:
-    """E3's guard, verbatim. The why-line is a DIFFERENT claim, checked separately and true — killing
-    it because a longer, harder section failed would make adding depth a regression for the feed,
-    which renders that why-line on every card."""
+    """E3's guard, verbatim. The why-line is a DIFFERENT claim, checked separately and true — killing it
+    because a harder section failed would make adding depth a regression for the feed, which renders that
+    why-line on every card."""
     result = _gate_v2(
         why="A cleared deal this size re-prices the segment.",
         context="BKR sits 91.7% of the way up its 52-week range.",  # 91.7 is nobody's number
@@ -745,9 +723,9 @@ def test_a_watch_ref_that_resolves_is_snapshotted_as_a_ROW() -> None:
 
 
 def test_a_DANGLING_watch_ref_is_dropped_and_counted() -> None:
-    """THE RULE THAT MAKES E4 STRUCTURAL. The narrator may SELECT a calendar id; it may never author
-    one. An id that resolves to no row this cluster was shown is not a calendar event — it is the
-    model writing a date — and it never reaches the page."""
+    """THE RULE THAT MAKES E4 STRUCTURAL. The narrator may SELECT a calendar id, never author one. An id
+    that resolves to no row this cluster was shown is the model writing a date, not an event, and it
+    never reaches the page."""
     result = _gate_v2(watch=["cal:BKR:next", "cal:INVENTED:next"])
 
     watch = result.decisions["c1"].watch
@@ -814,9 +792,8 @@ def test_the_cleared_list_covers_every_section_that_survived() -> None:
 
 
 def test_a_dropped_section_contributes_NOTHING_to_the_allow_list() -> None:
-    """An allow-list built from prose that never published would license the app to emphasize a
-    figure the reader cannot see — and, worse, would carry the numbers out of a section the gate
-    threw away."""
+    """An allow-list built from prose that never published would license the app to emphasize a figure
+    the reader cannot see — worse, carrying numbers out of a section the gate threw away."""
     result = _gate_v2(
         why="The $13.6B deal clears.",
         context="The move is 2.8x its normal range, and it sits 91.7% up its 52-week range.",
@@ -843,9 +820,8 @@ def test_a_model_with_no_price_costs_a_visible_nothing() -> None:
 
 
 def test_run_narration_meters_BOTH_stages_from_the_api_s_usage_block() -> None:
-    """The metering proxy sees every call either stage makes, and `briefing/extract.py` never learns
-    it is being counted — which is the right outcome: a module that reads articles should not also
-    be a ledger."""
+    """The metering proxy sees every call either stage makes, and `briefing/extract.py` never learns it
+    is being counted — the right outcome: a module that reads articles should not also be a ledger."""
 
     class _Usage:
         def __init__(self, i, o):
@@ -897,25 +873,25 @@ _EXTRACT_JSON = (
 
 # ----- the token cap, and the outage that found it (PD7's real dispatch) -----
 #
-# THE WHOLE SUITE WAS GREEN WHILE PRODUCTION PUBLISHED NOTHING. The fake clients above have no token
-# cap to overflow, so nothing here could see that the v2 schema had outgrown `max_tokens` — the first
-# live `news` run came back with 2 calls, 16,384 output tokens (exactly 2 x 8192, the cap hit dead-on
-# both times) and zero notes. These tests cannot reproduce a real truncation either; what they CAN do
-# is pin the two constants that were wrong, so nobody quietly puts them back.
+# THE WHOLE SUITE WAS GREEN WHILE PRODUCTION PUBLISHED NOTHING. The fake clients have no token cap to
+# overflow, so nothing here saw that the v2 schema had outgrown `max_tokens` — the first live `news`
+# run came back with 2 calls, 16,384 output tokens (exactly 2 x 8192, the cap hit dead-on both times)
+# and zero notes. These tests cannot reproduce a real truncation; what they CAN do is pin the two
+# constants that were wrong, so nobody quietly puts them back.
 
 def test_the_output_cap_has_room_for_the_v2_schema() -> None:
-    """~4,000 tokens of JSON plus a bounded reasoning budget. 8192 was not enough for both, and the
-    way it failed — a truncated JSON document the tolerant parser reports as "malformed" — names no
-    cause anywhere. A cap that fails silently must be a cap nobody has to guess at."""
+    """~4,000 tokens of JSON plus a bounded reasoning budget. 8192 was not enough for both, and it
+    failed silently — a truncated JSON the tolerant parser calls "malformed", naming no cause. A cap
+    that fails silently must be a cap nobody has to guess at."""
     from newsdesk.narrate import _MAX_TOKENS
 
     assert _MAX_TOKENS >= 16000
 
 
 def test_the_narrator_bounds_its_reasoning_budget() -> None:
-    """`max_tokens` caps THINKING PLUS TEXT, and Sonnet 5 thinks by default when `thinking` is
-    omitted — a default that changed with the model, not with our code. Unbounded adaptive thinking
-    is what ate a budget sized for the JSON alone."""
+    """`max_tokens` caps THINKING PLUS TEXT, and Sonnet 5 thinks by default when `thinking` is omitted —
+    a default that changed with the model, not our code. Unbounded adaptive thinking ate a budget sized
+    for the JSON alone."""
     from newsdesk.narrate import _EFFORT
 
     assert _EFFORT in ("low", "medium")
@@ -936,13 +912,10 @@ def test_effort_rides_inside_output_config_where_the_api_expects_it() -> None:
 
 
 def test_a_SILENT_narrator_on_a_cluster_OUTSIDE_the_budget_says_out_of_budget() -> None:
-    """The `sections` map exists to distinguish absences that print identically, so it may not be
-    sloppy about WHICH absence this is.
-
-    A cluster outside the top 8 was never ASKED for a context. "The narrator had nothing to add" is
-    not what happened to it — nobody put the question. The first live run made the bug visible in
-    arithmetic: 13 sections came back `silent` on a page where only 8 clusters are ever deep.
-    """
+    """The `sections` map distinguishes absences that print identically, so it may not be sloppy about
+    WHICH absence this is. A cluster outside the top 8 was never ASKED for a context — nobody put the
+    question, so "nothing to add" is wrong. The first live run showed it: 13 sections came back
+    `silent` on a page where only 8 clusters are ever deep."""
     result = _gate_v2(cluster=_cluster())  # not deep, and the narrator wrote nothing at all
 
     sections = result.decisions["c1"].verification["sections"]

@@ -1,9 +1,10 @@
 """
 publish.py — the single-transaction refresh of the serving tables (plan §7.3, P1 step 5).
 
-Everything the app reads is written here, in ONE transaction, so a reader mid-publish sees the
-whole previous generation or the whole new one, never a mix. The app never sees a half-updated
-Desk.
+Everything the app reads is written here in ONE transaction, so a reader mid-publish sees the whole
+previous generation or the whole new one, never a half-updated Desk. Idempotent by design: a
+workflow_dispatch re-run of a night produces zero duplicates. Inputs are plain Python/Polars
+structures the compute stage builds; this module only persists them.
 
 What gets written each run:
   pipeline_run   the run's stage/source status (upsert by run date)
@@ -14,11 +15,8 @@ What gets written each run:
                  idempotent, so re-running a night adds nothing and rewrites nothing
   market_context the day's macro strip — VIX, 10-year yield, breadth (upsert by run date)
 
-Idempotency is the point: a workflow_dispatch re-run of a night produces zero duplicates. The
-inputs are plain Python/Polars structures the compute stage builds; this module only persists them.
-
-AND, SINCE PD0: NO EDITION MAY CLAIM A SESSION THAT DID NOT HAPPEN (ruling E1). Every entry point
-below that writes a dated edition row checks its run_date against the NYSE calendar first and raises
+Since PD0: NO EDITION MAY CLAIM A SESSION THAT DID NOT HAPPEN (ruling E1). Every entry point that
+writes a dated edition row checks run_date against the NYSE calendar first and raises
 NonSessionRunDate before touching the database. See _require_session.
 """
 
@@ -44,28 +42,22 @@ class NonSessionRunDate(ValueError):
 
 def _require_session(run_date: date, writer: str) -> None:
     """
-    Refuse a run_date that is not a NYSE trading session. THE LOCK, and the lowest of the three.
+    Refuse a run_date that is not a NYSE trading session. THE LOCK, and the lowest of three layers.
 
-    An edition date, a "data through" label, a breadth close, a press-time: each of them is a CLAIM
-    THAT THE MARKET TRADED THAT DAY. On 2026-07-11 — a Saturday — this product made all four, for
-    two days, in production, because a manually dispatched run asked the wall clock what day it was
-    and believed the answer. Four honest formatters then rendered a lie faithfully. Nothing failed.
-    Every gate stayed green. That is the disease: not a wrong number, but a wrong PREMISE that every
-    number downstream then reports correctly.
+    An edition date, a "data through" label, a breadth close, a press-time each CLAIM THE MARKET
+    TRADED THAT DAY. On 2026-07-11 (a Saturday) a manually dispatched run asked the wall clock the
+    date and made all four claims, for two days, in production; four honest formatters rendered the
+    lie faithfully and nothing failed. The disease is not a wrong number but a wrong PREMISE that
+    every number downstream then reports correctly.
 
-    Job A's mode gates and the full night's bar-derived edition both close the paths we KNOW about.
-    This closes the ones we do not — and it is deliberately below them, because modes are policy and
-    publish is law. A future mode, a backfill script, a refactor that reorders two lines: none of
-    them can get a non-session date into this database without deleting this function first, which
-    is a thing a reviewer can see.
-
-    It raises BEFORE the connection is touched. A rejected write that reached the wire and rolled
-    back is a different promise from one that never happened, and only the second one is worth
-    making.
+    Deliberately below Job A's mode gates: modes are policy, publish is law. A future mode, backfill
+    script or refactor cannot get a non-session date into this database without deleting this
+    function first — which a reviewer can see. It raises BEFORE the connection is touched: a write
+    that reached the wire and rolled back is a different promise from one that never happened.
 
     Not applied to publish_macro_stats: those rows are keyed by the SOURCE's own observation date (a
-    mortgage rate published on a Thursday, a rupee reference published on a Sunday), which is a fact
-    about a publication and not a claim about a session. E1 governs dates that claim a session.
+    mortgage rate on a Thursday, a rupee reference on a Sunday) — a fact about a publication, not a
+    claim about a session. E1 governs dates that claim a session.
     """
     if is_trading_session(run_date):
         return
@@ -84,21 +76,17 @@ def _json_safe(value: Any) -> Any:
     """
     Make a value safe for Postgres jsonb — all the way down.
 
-    Two things jsonb will not take. Postgres rejects the non-finite floats NaN and ±Infinity
-    outright (an indicator that could not be computed — say RVOL for a name with too little volume
-    history — surfaces as a float NaN out of Polars), and `json.dumps` cannot serialize a datetime
-    at all.
+    jsonb rejects two things: the non-finite floats NaN and ±Infinity (an uncomputable indicator like
+    RVOL for a name with too little volume history surfaces as a float NaN out of Polars), and
+    `json.dumps` cannot serialize a datetime at all.
 
     IT DID NOT RECURSE, AND THAT COST A WHOLE NIGHT'S RUN. It only ever inspected a scalar float, so
-    anything one level down was invisible to it. N5 put each article's publication time — a datetime
-    — inside a list of dicts on `news_cluster.articles`, and the entire publish transaction died with
-    "Object of type datetime is not JSON serializable" AFTER the run had spent four and a half
-    minutes making every model call. The facts, the ranking and the prose were all computed
-    correctly, and not one row was written.
-
-    **A function named `_json_safe` that is not safe for JSON is worse than no function**, because
-    every caller believes the boundary is guarded. It walks the whole structure now, and a test
-    asserts the output actually serializes rather than merely looking right.
+    anything one level down was invisible. N5 put an article's publication datetime inside a list of
+    dicts on `news_cluster.articles`, and the whole publish transaction died with "Object of type
+    datetime is not JSON serializable" AFTER four and a half minutes of model calls — the facts,
+    ranking and prose all computed correctly, not one row written. A `_json_safe` that is not safe
+    is worse than no function, because every caller trusts the boundary. It walks the whole structure
+    now, and a test asserts the output actually serializes.
     """
     if isinstance(value, float) and not math.isfinite(value):
         return None
@@ -130,12 +118,12 @@ def publish(
     """
     Persist a run's serving data atomically. Commits on success; rolls back on any error.
 
-    The caller passes a psycopg connection so a test can run this against a throwaway database.
-    Everything happens inside one transaction — psycopg opens one implicitly and this commits it at
-    the end, so nothing is visible to other connections until it all succeeds.
+    The caller passes the psycopg connection so a test can run this against a throwaway database.
+    Everything happens inside one implicit transaction, so nothing is visible to other connections
+    until it all succeeds.
 
-    `batch_id` is the Anthropic extraction-batch id Job A submitted; it is recorded on the
-    pipeline_run row so Job B can collect the batch the next evening (plan P3 step 1).
+    `batch_id` is the Anthropic extraction-batch id Job A submitted, recorded on pipeline_run so Job
+    B can collect the batch the next evening (plan P3 step 1).
     """
     _require_session(run_date, "publish")
     try:
@@ -164,24 +152,17 @@ def publish_compute(
     """
     Publish a `compute` recompute: the derived layer only (N6, plan 8.1d).
 
-    WHY THIS IS NOT `publish()` WITH MOST ARGUMENTS OMITTED — which is what I tried first, and it is
-    a data-destroying bug.
+    NOT `publish()` with most arguments omitted — that is what I tried first, and it is a
+    data-destroying bug. `_upsert_pipeline_run` REPLACES `source_status` wholesale on conflict, so a
+    recompute with a bare status dict would OVERWRITE the night's record of how each provider
+    behaved: a night on which Marketaux was degraded would report every source healthy the moment the
+    reader pressed "Recompute scans", the degradation erased with nothing saying so. That is ruling
+    M2 ("a degraded source cannot be folded away") broken by the back door.
 
-    `_upsert_pipeline_run` sets `source_status = EXCLUDED.source_status` on conflict: a WHOLESALE
-    REPLACE. So a recompute calling publish() with a bare status dict would OVERWRITE the night's
-    record of how each provider behaved. A night on which Marketaux was degraded would, the moment
-    the reader pressed "Recompute scans", start reporting every source healthy — the degradation
-    erased, with nothing anywhere saying so.
-
-    That is ruling M2 ("a degraded source cannot be folded away") broken by the back door, and it is
-    the exact species of quiet lie this pipeline is built to refuse. A run that called no provider
-    KNOWS NOTHING ABOUT ANY PROVIDER'S HEALTH, and the honest thing for it to say about them is
-    nothing at all. So this function never touches `source_status`, and it MERGES `stage_status`
-    (`||`) rather than replacing it, so the night's own record of what it ran survives the
-    recompute that came after it.
-
-    (The same trap is already documented one function up, where `batch_id` is COALESCE'd for
-    precisely this reason. The status columns were simply never given the same care.)
+    A run that called no provider KNOWS NOTHING about any provider's health, so the honest thing is
+    to say nothing: this never touches `source_status`, and it MERGES `stage_status` (`||`) rather
+    than replacing it, so the night's own record survives the later recompute. (Same trap as
+    `batch_id` one function up, which is COALESCE'd for the same reason.)
     """
     _require_session(run_date, "publish_compute")
     try:
@@ -217,19 +198,16 @@ def publish_macro(
     """
     Update ONLY the FRED cells of an existing market_context row. Returns True if a row was updated.
 
-    This is what the 6:00am macro run publishes, and the reason it is a separate function rather than
-    a call to publish() with most arguments omitted: a macro-only run has no snapshot, so it has no
-    breadth — and breadth is NOT NULL on that table, because a night that ingested the market always
-    knows how many names advanced. The dawn run is not ingesting the market; it is going back to fix
-    three numbers that FRED had not published yet when the night ran.
+    What the 6:00am macro run publishes, and separate from publish() because a macro-only run has no
+    snapshot and so no breadth — which is NOT NULL on that table (a night that ingested the market
+    always knows how many names advanced). The dawn run is not ingesting; it is fixing three numbers
+    FRED had not published yet when the night ran.
 
     So it updates in place and touches nothing else. If the row does not exist — a dawn run before
-    any nightly has ever written that session — there is nothing to fix and it says so by returning
-    False. It will NOT create a breadth-less row: a market_context with no breadth would be a macro
-    module with a hole in it, and the honest thing is to have no row at all until the night runs.
-
-    The index levels go through the same carry-forward as the nightly (macro_levels), so a dawn run
-    whose FRED call fails cannot undo a level the night before had already stored.
+    any nightly wrote that session — there is nothing to fix and it returns False rather than create
+    a breadth-less row (a macro module with a hole; better no row until the night runs). The index
+    levels use the same carry-forward as the nightly (macro_levels), so a dawn run whose FRED call
+    fails cannot undo a level the night before stored.
     """
     _require_session(run_date, "publish_macro")
     with conn.cursor() as cur:
@@ -269,18 +247,16 @@ def publish_macro_stats(conn: psycopg.Connection, *, rows: Iterable[Any]) -> lis
     """
     Write the macro board's new observations — and only the NEW ones. Returns what was written.
 
-    This is where the cadence rule meets the database (macro_stats.is_new_observation). Every source
-    is checked nightly, but a source that has published nothing new since last night writes nothing:
-    re-writing an unchanged row would move its `fetched_at` to tonight, which is a claim that a
-    weekly mortgage rate was refreshed tonight. It was not, and the whole board is built on never
-    making that claim.
+    Where the cadence rule meets the database (macro_stats.is_new_observation). Every source is
+    checked nightly, but one that has published nothing new writes nothing: rewriting an unchanged
+    row would move its `fetched_at` to tonight, claiming a weekly mortgage rate was refreshed tonight
+    when it was not.
 
-    THE PRIOR, WHEN THE SOURCE DOES NOT GIVE US ONE. FRED hands over the previous observation with
-    the current one, and GoldAPI sends a previous close — for those cells the prior is the source's
-    own. The rupee and the Mood gauge have no such thing, so their prior is filled from the row we
-    already hold. That is honest as a record of "the observation before this one", and it is safe
-    because NEITHER of those two cells renders a delta from it: a delta whose two ends might be days
-    apart, wearing a "1D" label, is exactly the sort of quiet lie this plan exists to prevent.
+    THE PRIOR, WHEN THE SOURCE DOES NOT GIVE US ONE. FRED and GoldAPI supply the previous observation
+    themselves; the rupee and the Mood gauge do not, so their prior is filled from the row we already
+    hold. That is honest as "the observation before this one", and safe because NEITHER cell renders
+    a delta from it — a delta whose two ends might be days apart under a "1D" label is exactly the
+    quiet lie this plan exists to prevent.
     """
     written: list[Any] = []
     try:
@@ -340,12 +316,10 @@ def publish_analytics(
     setup_cards: Iterable[Mapping[str, Any]] = (),
     vol_bands: Iterable[Mapping[str, Any]] = (),
 ) -> None:
-    """Persist the P4 honesty engine atomically: base rates (upserted by their unique key), setup
-    cards and vol bands (replaced per run date). Each card is linked to the base_rate_stat it was
-    scored against, so the exact N and interval it shows are auditable.
-
-    Commits on success, rolls back on any error — a mid-publish reader sees the prior run's cards,
-    never a half-written set.
+    """Persist the P4 honesty engine atomically: base rates (upserted by unique key), setup cards and
+    vol bands (replaced per run date). Each card links to the base_rate_stat it was scored against,
+    so the exact N and interval it shows are auditable. Commits on success, rolls back on any error,
+    so a mid-publish reader sees the prior run's cards, never a half-written set.
     """
     _require_session(run_date, "publish_analytics")
     try:
@@ -465,13 +439,11 @@ def publish_briefing(
     """
     Persist the evening briefing atomically (plan P3 step 2 — the single-transaction publish).
 
-    Keyed by run date, so a rerun of a night replaces that day's briefing rather than duplicating
-    it. `am_json` is the briefing draft in the Appendix G shape; `verification_json` records every
-    gate decision (so a held night is auditable); `status` is "published" or "held". A mid-publish
-    reader sees the prior briefing until this commits, never a half-written one.
-
-    `pm_json` is written only when a PM edition is supplied; otherwise a re-publish preserves the
-    edition already stored (COALESCE), so writing the AM edition never blanks a later PM one.
+    Keyed by run date, so a rerun replaces that day's briefing rather than duplicating it. `am_json`
+    is the draft in the Appendix G shape; `verification_json` records every gate decision (so a held
+    night is auditable); `status` is "published" or "held". `pm_json` is written only when a PM
+    edition is supplied, else a re-publish preserves the stored edition (COALESCE) so writing the AM
+    never blanks a later PM.
     """
     _require_session(run_date, "publish_briefing")
     try:
@@ -593,9 +565,8 @@ def _insert_signal_logs(cur, signal_logs) -> None:
     ]
     if not rows:
         return
-    # Insert-only and idempotent: the unique key is (fired_date, pattern_key, symbol, horizon_days),
-    # so a rerun of the night inserts nothing new. The table also has a trigger blocking UPDATE and
-    # DELETE (schema migration), so history can never be rewritten.
+    # Insert-only and idempotent: the unique key (fired_date, pattern_key, symbol, horizon_days) means
+    # a rerun inserts nothing new, and a trigger blocking UPDATE/DELETE means history can't be rewritten.
     cur.executemany(
         """
         INSERT INTO signal_log (id, fired_date, symbol, pattern_key, horizon_days, resolves_on)
@@ -607,12 +578,11 @@ def _insert_signal_logs(cur, signal_logs) -> None:
 
 
 def _upsert_news_items(cur, news_items) -> None:
-    # News accumulates (it is historical context), so it is upserted by its natural key
-    # (provider, url): a rerun refreshes the classification/sentiment of an article it already has,
-    # and never duplicates it. tickers is a text[] — psycopg adapts a Python list to a Postgres array.
-    # The id is the deterministic (provider, url) id the pipeline stamps (nightly._news_id), so it is
-    # stable across runs and matches the extraction batch's custom_id. On conflict the id converges
-    # to EXCLUDED.id, so the briefing citation ↔ article ↔ URL chain always lines up.
+    # News accumulates (historical context), so it is upserted by its natural key (provider, url): a
+    # rerun refreshes an article's classification/sentiment and never duplicates it. tickers is a
+    # text[] — psycopg adapts a Python list to a Postgres array. The id is the deterministic
+    # (provider, url) id (nightly._news_id), stable across runs and matching the batch's custom_id; on
+    # conflict it converges to EXCLUDED.id, so the briefing citation ↔ article ↔ URL chain lines up.
     rows = [
         (n["id"], n["published_at"], n["provider"], n["url"], n["headline"], n.get("snippet", ""),
          list(n.get("tickers", [])), n.get("event_type"), n.get("sentiment"))
@@ -634,21 +604,17 @@ def _upsert_news_items(cur, news_items) -> None:
 
 
 def _replace_calendar(cur, calendar_events) -> None:
-    # The calendar is a forward view, so each run replaces THE WHOLE TABLE — the fresh schedule wins,
+    # The calendar is a forward view, so each run replaces THE WHOLE TABLE — the fresh schedule wins
     # and a cancelled or rescheduled event does not linger. `None` means "the catalyst ingest did not
-    # run tonight", so the existing calendar is left untouched (a degraded source must not blank the
-    # calendar); an empty list means "it ran and found nothing", which does replace.
+    # run tonight", so the calendar is left untouched (a degraded source must not blank it); an empty
+    # list means "it ran and found nothing", which does replace.
     #
-    # THE DELETE USED TO SAY `WHERE date >= run_date` — only the forward window (PD1). That looked
-    # right and was not: a row whose date had slipped into the PAST was no longer in the window, so
-    # the refresh never reached it and it rotted in place. Four such rows — "Coinbase
-    # Cryptocurrencies" and a raw "FOMC Press Release" from the pre-allowlist ingest, dated on a
-    # Saturday and a Sunday — sat on the live Desk for weeks after the write path that made them was
-    # fixed. FIXING A WRITE PATH DOES NOT CLEAN A TABLE.
-    #
-    # Deleting all of it costs nothing: the table IS the forward window, and no reader wants a past
-    # calendar row (app/lib/morning.ts's loadCalendar now refuses to render one). There is no history
-    # here to protect — the one ledger that may never be rewritten is signal_log, and it is elsewhere.
+    # It deletes ALL of it, not just `WHERE date >= run_date` (the old forward-window delete, PD1): a
+    # row whose date had slipped into the PAST left that window, so the refresh never reached it and it
+    # rotted — four such rows sat on the live Desk for weeks after the write path was fixed, because
+    # FIXING A WRITE PATH DOES NOT CLEAN A TABLE. Deleting all costs nothing: the table IS the forward
+    # window and no reader wants a past row; the one ledger that may never be rewritten is signal_log,
+    # elsewhere.
     if calendar_events is None:
         return
     cur.execute("DELETE FROM calendar_event")
@@ -705,22 +671,17 @@ def _read_stored_levels(cur, run_date) -> StoredLevels | None:
 
 def _upsert_market_context(cur, run_date, market_context: Mapping[str, Any] | None) -> None:
     # The macro strip's one row per run — upsert by run date so a re-run updates in place. Every FRED
-    # column is nullable because every FRED series can fail on its own: the VIX, the 10-year yield,
-    # and each index level with the level before it (redesign §6.1). Breadth always comes from the
-    # ingested universe, so it is always present.
+    # column is nullable because each FRED series can fail on its own (redesign §6.1); breadth always
+    # comes from the ingested universe, so it is always present. The priors are persisted alongside
+    # the levels because the app computes the day's change by subtracting them and has no access to the
+    # pipeline's observations — no prior in the row, and the Desk prints "—" instead of inventing one.
     #
-    # The priors are persisted alongside the levels because the app computes the day's change by
-    # subtracting them. It has no access to the pipeline's observations — if the prior is not in the
-    # row, the change is not knowable, and the Desk prints "—" instead of inventing one.
-    #
-    # THE INDEX LEVELS ARE NOT WRITTEN BLINDLY. This used to say `sp500 = EXCLUDED.sp500`, which
-    # wrote whatever the night fetched — including None. So one flaky FRED call did not merely fail
-    # to update the level; it OVERWROTE the good one already stored, and the Desk silently collapsed
-    # to an ETF price. A successful run destroyed data.
-    #
-    # macro_levels.resolve_index_levels() decides instead: tonight's read wins if it produced
+    # THE INDEX LEVELS ARE NOT WRITTEN BLINDLY. This used to say `sp500 = EXCLUDED.sp500`, which wrote
+    # whatever the night fetched — including None, so one flaky FRED call OVERWROTE the good stored
+    # level and the Desk silently collapsed to an ETF price: a successful run destroyed data.
+    # macro_levels.resolve_index_levels() decides instead — tonight's read wins if it produced
     # anything, an empty read keeps what is stored (up to five sessions), and the row records the
-    # session those levels are actually for so the app can age them honestly (ruling C7).
+    # session those levels are for so the app can age them honestly (ruling C7).
     if market_context is None:
         return
 
@@ -777,18 +738,15 @@ def publish_news(
     """
     Write tonight's front page — images, clusters, and the ticker links — in ONE transaction.
 
-    ATOMIC BY NECESSITY, NOT BY TIDINESS. A cluster row whose image row did not land renders a card
-    with a hole in it; a cluster whose catalyst_link rows did not land renders a story that affects
-    nobody. Half a front page is not a degraded front page, it is a wrong one, so the night either
-    publishes a coherent page or publishes nothing and says so.
+    ATOMIC BY NECESSITY, NOT TIDINESS. A cluster whose image row did not land renders a card with a
+    hole; one whose catalyst_link rows did not land renders a story that affects nobody. Half a front
+    page is not degraded, it is wrong, so the night publishes a coherent page or nothing and says so.
 
-    The catalyst links carry SNAPSHOTTED numbers (ret1, rvol20) rather than joins, and that is
-    deliberate: if the story page recomputed a move from live tables, the feed's number and the
-    story's number could drift apart within a single night — the same fact, two values, which is the
-    species of lie this whole app is built against.
-
-    Insert-only in spirit: a cluster that already exists is UPDATED in place (it keeps its id as more
-    articles join it over the following evenings), and nothing is ever deleted.
+    The catalyst links carry SNAPSHOTTED numbers (ret1, rvol20) rather than joins: recomputing a move
+    from live tables could drift the feed's number and the story's number apart within one night — the
+    same fact, two values, the species of lie this app is built against. Insert-only in spirit: an
+    existing cluster is UPDATED in place (it keeps its id as more articles join over the evenings),
+    and nothing is ever deleted.
     """
     _require_session(run_date, "publish_news")
     written = 0
@@ -850,12 +808,11 @@ def publish_news(
                      "extract": Json(_json_safe(cluster.get("extract") or {})),
                      "verification": Json(_json_safe(cluster.get("verification") or {})),
                      "articles": Json(_json_safe(cluster.get("articles") or [])),
-                     # PD7 (9.3, 9.5). `.get` with a default on every one of them, because a caller
-                     # written before these columns existed must keep working: a missing context is
-                     # NULL, a missing watch is the empty list its DEFAULT already promises, and a
-                     # missing model_meta is NULL. The night that publishes without a narrator — no
-                     # API key, a failed call, a schema violation twice over — takes exactly that
-                     # path, and it is the path this table has always been built to survive.
+                     # PD7 (9.3, 9.5). `.get` with a default on each, so a caller written before these
+                     # columns keeps working: a missing context is NULL, a missing watch is the empty
+                     # list its DEFAULT promises, a missing model_meta is NULL. The narrator-less night
+                     # — no API key, a failed call — takes exactly this path, which the table is built
+                     # to survive.
                      "context": cluster.get("context"),
                      "watch": Json(_json_safe(cluster.get("watch") or [])),
                      "model_meta": (

@@ -9,14 +9,10 @@ import { simulateFill } from "@/lib/paper";
 import { realizedPnl } from "@/lib/ledger";
 
 /**
- * The seed makes promises that tests all over the suite quietly depend on. This file is where those
- * promises are written down and checked.
- *
- * The reason to check a FIXTURE at all: a seed is data, and data has no compiler. If someone
- * "tidies" the unusual-volume rows and nudges SMCI's return, the Desk's e2e assertions break in a
- * way that looks like a UI bug, and the seeded briefing — whose prose quotes those very numbers —
- * quietly starts lying about the movers it is describing. That failure would be nowhere near its
- * cause. So it is caught here instead, at the source, with the reason attached.
+ * The seed makes promises that tests all over the suite quietly depend on; this file writes them down and
+ * checks them. The reason to check a FIXTURE: a seed is data, and data has no compiler. Nudge SMCI's return
+ * and the Desk's e2e breaks like a UI bug while the seeded briefing — whose prose quotes those numbers —
+ * starts lying, nowhere near its cause. So it is caught here, at the source, with the reason attached.
  */
 
 type ScanRow = { presetKey: string; rank: number; symbol: string; metrics: Record<string, number | boolean | null> };
@@ -50,9 +46,9 @@ describe("the seeded scan matches", () => {
   });
 
   it("freezes the Desk's top three movers, because the seeded briefing quotes their numbers", () => {
-    // lib/morning.ts feeds the movers module from this preset (take: 8, by rank). desk.spec.ts
-    // asserts these exact formatted values, and BRIEFING's prose says "rose 18.40%" and "fell 9.20%".
-    // Change a number here and the briefing starts describing a market that did not happen.
+    // lib/morning.ts feeds the movers module from this preset (take: 8, by rank). desk.spec.ts asserts
+    // these exact values, and BRIEFING's prose says "rose 18.40%"/"fell 9.20%" — change a number here and
+    // the briefing describes a market that did not happen.
     expect(uv[0]).toMatchObject({ rank: 1, symbol: "SMCI" });
     expect(uv[0].metrics).toMatchObject({ ret_1: 0.184, rvol20: 4.7 });
     expect(uv[1]).toMatchObject({ rank: 2, symbol: "GME" });
@@ -70,9 +66,8 @@ describe("the seeded scan matches", () => {
   });
 
   it("carries real nulls, so null-last sorting has something to sort", () => {
-    // The pipeline coerces a NaN to null rather than to zero (DECISIONS 2026-07-11): an unknown is
-    // not a zero, and the table must sort it last in BOTH directions rather than to the bottom of
-    // an ascending sort and the top of a descending one.
+    // The pipeline coerces a NaN to null, not zero (DECISIONS 2026-07-11): an unknown is not a zero, and
+    // the table must sort it last in BOTH directions, not to the bottom ascending and the top descending.
     const nulls = uv.filter((r) => r.metrics.dollar_volume === null);
     expect(nulls).toHaveLength(2);
   });
@@ -181,12 +176,10 @@ type Cluster = {
   whyItMatters: string | null;
   imageId: string | null;
   /**
-   * The gate's record, in the shape `newsdesk/narrate.py` ACTUALLY writes it.
-   *
-   * It was declared here as `{ status: string; flags: string[] }` — a shape the pipeline has never
-   * emitted. The type was invented alongside the fixture it describes, so it certified the fiction
-   * instead of catching it. A hand-written type over a hand-written fixture checks nothing but the
-   * author's consistency with themselves.
+   * The gate's record, in the shape `newsdesk/narrate.py` ACTUALLY writes it. It was declared here as
+   * `{ status; flags[] }` — a shape the pipeline never emitted, invented alongside the fixture it describes,
+   * so it certified the fiction instead of catching it. A hand-written type over a hand-written fixture
+   * checks nothing but the author's consistency with themselves.
    */
   verification: {
     narrated: boolean;
@@ -206,13 +199,10 @@ const stats = MACRO_STATS as Stat[];
 
 describe("the seeded news night", () => {
   /**
-   * THE ONE THAT MATTERS. The Front Page's entire editorial claim is that it is edited by evidence
-   * and not by attention — so the day's biggest price move must not be able to buy the top slot.
-   *
-   * SMCI rose 18.4%, the largest move on the seeded tape. It ranks THIRD. The lead is a Fed
-   * statement that moved no single stock at all. If a future change ever lets magnitude float to
-   * the top, this test is the thing that says so, and it says so at the fixture rather than three
-   * layers up in a rendered feed.
+   * THE ONE THAT MATTERS. The Front Page's claim is that it is edited by evidence, not attention — so the
+   * day's biggest price move must not buy the top slot. SMCI rose 18.4% (the largest move) and ranks THIRD;
+   * the lead is a Fed statement that moved no single stock. If magnitude ever floats to the top, this says
+   * so at the fixture, not three layers up in a rendered feed.
    */
   it("does not let the biggest mover lead the front page (C1)", () => {
     const byRank = [...clusters].sort((a, b) => b.significance - a.significance);
@@ -231,11 +221,10 @@ describe("the seeded news night", () => {
   });
 
   /**
-   * Every significance score is RECOMPUTED here from Appendix E's formula, using the same inputs
-   * the fixture's own comments state. This is the oracle the pipeline's rank.py (N4) gets checked
-   * against: if the formula and the seeded numbers ever drift apart, one of them is wrong, and a
-   * feed whose stated ordering rule does not produce its actual order is exactly the dishonesty
-   * ruling C1 exists to prevent.
+   * Every significance score is RECOMPUTED here from Appendix E's formula, using the inputs the fixture's
+   * own comments state — the oracle rank.py (N4) is checked against. If the formula and the seeded numbers
+   * drift apart, one is wrong, and a feed whose stated ordering rule does not produce its order is the
+   * dishonesty ruling C1 exists to prevent.
    */
   it("scores every cluster by the stated formula, not by taste (Appendix E)", () => {
     const CLASS_PRIOR: Record<string, number> = {
@@ -293,28 +282,20 @@ describe("the seeded news night", () => {
   });
 
   /**
-   * The gate-dropped narrative. When the verification gate cannot trace a sentence's numbers to a
-   * source, the sentence is DROPPED — the facts still publish. There is no placeholder and no
-   * softened rewrite, because an unverified number may not reach the page (P9). The seed carries
-   * exactly one of these so the UI has to handle it.
+   * The gate-dropped narrative. When the gate cannot trace a sentence's numbers to a source, the sentence
+   * is DROPPED — the facts still publish, no placeholder, no softened rewrite, because an unverified number
+   * may not reach the page (P9). The seed carries exactly one so the UI has to handle it.
    */
   it("carries one cluster whose prose the gate dropped, with its facts intact", () => {
     /*
-     * THIS TEST USED TO ASSERT A SHAPE THAT DOES NOT EXIST, and it passed for a whole phase.
-     *
-     * It checked `verification.status === "dropped"` — because the fixture wrote that, because both
-     * were hand-authored in N4 before the narrator existed. `newsdesk/narrate.py` has never emitted
-     * it; the real record is `{ narrated: false, dropped: true, reason, checked, citations, flags }`.
-     *
-     * So the fixture agreed with the test, the test agreed with the fixture, and NEITHER agreed with
-     * the pipeline. The app — which reads the real shape — quietly found nothing and told the reader
-     * the narrator had simply had nothing to add, when in truth the gate had deleted a line. Green
-     * the whole way. This is N3's fabricated-fixture lesson wearing different clothes: an invented
-     * fixture does not fail to check the producer, it certifies that the code agrees with an
-     * imagination.
-     *
-     * The shape below was copied from a real production row. lib/news-fixture.test.ts now runs the
-     * whole seed through the app's own boundary reader, which is what would have caught this.
+     * THIS TEST USED TO ASSERT A SHAPE THAT DOES NOT EXIST, and it passed for a whole phase. It checked
+     * `verification.status === "dropped"` because the fixture wrote that — both hand-authored in N4 before
+     * the narrator existed. narrate.py never emitted it; the real record is `{ narrated: false, dropped:
+     * true, reason, checked, citations, flags }`. So fixture and test agreed with each other and NEITHER
+     * with the pipeline — the app read the real shape, found nothing, and told the reader the narrator had
+     * nothing to add when the gate had deleted a line. Green the whole way: N3's fabricated-fixture lesson
+     * again. The shape below was copied from a real production row; lib/news-fixture.test.ts now runs the
+     * seed through the app's own boundary reader, which would have caught this.
      */
     const dropped = clusters.filter((c) => c.verification.dropped === true);
     expect(dropped).toHaveLength(1);
@@ -330,17 +311,11 @@ describe("the seeded news night", () => {
   });
 
   /**
-   * Every Date in the seed is a REAL date.
-   *
-   * This test exists because of a bug it would have caught. The image rows were built with a helper
-   * `t("22")` — meant to be 22:00 — which produced the string "2026-07-09T22:00.000Z": no seconds
-   * field, and therefore an Invalid Date. Prisma rejected it and the seed died, but only in CI, on
-   * the tag, minutes after everything local had gone green. The other fixture tests all passed,
-   * because they asserted the INTERESTING fields — the significance scores, the ordering, the blur
-   * placeholders — and never looked at a timestamp.
-   *
-   * A fixture's boring fields are still fields. `new Date("nonsense")` does not throw; it returns an
-   * object that looks like a Date and fails only when something finally tries to use it.
+   * Every Date in the seed is a REAL date. This exists because of a bug it would have caught: the image
+   * rows used `t("22")` (meant to be 22:00), which produced "2026-07-09T22:00.000Z" — no seconds, an Invalid
+   * Date. Prisma rejected it and the seed died, but only in CI on the tag, after everything local went green.
+   * The other fixture tests passed because they asserted the INTERESTING fields and never looked at a
+   * timestamp — `new Date("nonsense")` does not throw, it fails only when something uses it.
    */
   it("has no Invalid Dates hiding in it — every timestamp is a real one", () => {
     const check = (value: unknown, where: string) => {
@@ -421,9 +396,8 @@ describe("the seeded macro board", () => {
   });
 
   /**
-   * One cell is deliberately stale. A board that only ever renders its happy path has no test for
-   * the day a source goes quiet — and this happens to be gold's honest state until the GoldAPI key
-   * is provisioned (P-5).
+   * One cell is deliberately stale. A board that only renders its happy path has no test for the day a
+   * source goes quiet — and this is gold's honest state until the GoldAPI key is provisioned (P-5).
    */
   it("seeds gold stale, so the amber degraded cell has a source (C7 rung 5)", () => {
     const gold = stats.find((s) => s.seriesKey === "gold_usd")!;
@@ -454,19 +428,13 @@ describe("the seeded macro board", () => {
   });
 
   /**
-   * THE GUARD THAT WOULD HAVE CAUGHT N0's DRIFT ON THE DAY IT WAS WRITTEN.
-   *
-   * Each component shows an arrow: which way it is pulling the score. Neutral is a component sitting
-   * at its OWN median, so above the 50th percentile it pulls toward greed and below it toward fear.
-   *
-   * This fixture shipped in N0 with momentum at the 48th percentile — below its own median — carrying
-   * the arrow "greedy". Nothing broke. Nothing was checking. It is exactly the shape of failure this
-   * build keeps finding: a label that is free to disagree with the data beneath it, and eventually
-   * does.
-   *
-   * Both the pipeline and the app now DERIVE the arrow from the percentile, so the two can never
-   * disagree at runtime. This test holds the seed to the same rule, so the stored data cannot quietly
-   * carry a contradiction that the renderers are silently correcting.
+   * THE GUARD THAT WOULD HAVE CAUGHT N0's DRIFT ON THE DAY IT WAS WRITTEN. Each component shows an arrow —
+   * which way it pulls the score; neutral is a component at its OWN median, so above the 50th percentile it
+   * pulls toward greed, below it toward fear. This fixture shipped in N0 with momentum at the 48th (below its
+   * median) carrying "greedy", and nothing was checking — the shape of failure this build keeps finding: a
+   * label free to disagree with the data beneath it. Both pipeline and app now DERIVE the arrow from the
+   * percentile; this holds the seed to the same rule, so the stored data cannot carry a contradiction the
+   * renderers silently correct.
    */
   it("every component's arrow agrees with its own percentile (the N0 drift, now guarded)", () => {
     const mood = stats.find((s) => s.seriesKey === "mood")!;

@@ -3,27 +3,17 @@
  *
  *     npm run brand        (npm run icons is an alias — there is one generator now)
  *
- * One file goes in: assets/brand/logo-source.png, the circular mark. Every icon, every favicon,
- * every in-app lockup and the link-preview card come out. Run it whenever the mark changes, and
- * nothing can drift from anything else, because nothing is drawn twice.
+ * One file in — assets/brand/logo-source.png, the circular mark — and every icon, favicon, in-app lockup
+ * and the link-preview card come out, so nothing drifts because nothing is drawn twice. It replaces
+ * scripts/icons.mjs (the old gradient-"M" tile, public/mark.svg, now retired). Its glyph-only sibling
+ * public/mark-glyph.svg is NOT retired: Android's monochrome icon must be a single flat colour on
+ * transparency, which a rendered logo cannot be, so row 6 still comes from the glyph (plan 5.1).
  *
- * It replaces scripts/icons.mjs, which generated six icons from the old gradient-"M" tile
- * (public/mark.svg). That tile is retired. Its glyph-only sibling, public/mark-glyph.svg, is NOT:
- * Android's monochrome themed icon must be a single flat colour on transparency, which a rendered
- * logo cannot be, so row 6 still comes from the glyph. That is the one place the old letterform
- * survives, and it survives on purpose (plan 5.1).
- *
- * THE MASTER IS NOT WHAT THE PLAN EXPECTED, and the difference is handled rather than hidden.
- * Plan PP-1 describes "the circular mark on transparency". The file that arrived has NO alpha
- * channel at all — the image tool that produced it painted the transparency CHECKERBOARD into the
- * pixels. Left alone, every icon in this app would ship with a grey-and-white chequered box around
- * the mark. scripts/brand-geometry.mjs keys that background out and fits the mark's true circle;
- * see keyBackground() and fitDisc() there for how, and why it is safe. Logged in DECISIONS.md.
- *
- * DETERMINISM. Same master in, same bytes out, on any machine. Nothing here resolves a system font
- * or reaches the network: the OG card's type is converted to vector outlines from the two TTFs
- * vendored in assets/brand/fonts/ (see brand-type.mjs, which explains why the obvious approach —
- * handing sharp a fontfile — silently does not work).
+ * THE MASTER IS NOT WHAT THE PLAN EXPECTED, and the difference is handled: PP-1 describes "the circular
+ * mark on transparency", but the delivered file has NO alpha channel — the transparency CHECKERBOARD is
+ * painted into the pixels. brand-geometry.mjs keys it out and fits the mark's true circle (keyBackground,
+ * fitDisc; logged in DECISIONS.md). DETERMINISM: same master in, same bytes out, no system font or network
+ * — the OG card's type is vector outlines from the two TTFs in assets/brand/fonts/ (brand-type.mjs).
  */
 import sharp from "sharp";
 import pngToIco from "png-to-ico";
@@ -66,26 +56,14 @@ const FIELD_TOLERANCE = 12;
 const WHITE = "#ffffff";
 
 /**
- * THE PNG ENCODER SETTINGS, AND THEY ARE LOAD-BEARING.
- *
- * The mark this app replaced was flat vector art: the old 512px icon was 19KB. This one is a
- * rendered illustration with gradients and a soft shadow, and encoded straight it is 300KB — a
- * single icon, two and a half times the whole icon set's 120KB budget (plan 5.2). The budget check
- * at the bottom of this file caught that on the first run, which is the entire reason it exists.
- *
- * Palette quantisation is what closes the gap, and it is safe HERE for a reason worth stating: the
- * artwork has a small true palette — a navy field, a violet ring, near-white glyphs — so an indexed
- * palette reproduces it almost exactly.
- *
- * If the artwork is ever replaced with something photographic, this is the first thing that breaks,
- * and the budget check is what will tell you.
- *
- * Two settings, because the two jobs are different. ICON_PNG caps the palette at 128 entries, which
- * is what finally brings the icon set inside its budget (the 512px icon: 300KB straight, 84KB at
- * 256 colours, 31KB at 128 — and at 128 the only difference a person can find is a faint dither in
- * the field, at a size no one inspects). CARD_PNG keeps the full 256, because the OG card carries
- * TYPE, and quantising letterforms is where banding actually becomes visible. The card has a 300KB
- * budget of its own and spends a fifth of it, so there is nothing to buy by squeezing it.
+ * THE PNG ENCODER SETTINGS, AND THEY ARE LOAD-BEARING. The old flat-vector 512px icon was 19KB; this
+ * rendered illustration encodes straight to 300KB — one icon at 2.5× the whole set's 120KB budget (the
+ * budget check at the bottom caught it on the first run, which is why it exists). Palette quantisation
+ * closes the gap, safe HERE because the artwork has a small true palette (navy field, violet ring,
+ * near-white glyphs); replace it with something photographic and this is the first thing that breaks.
+ * ICON_PNG caps the palette at 128 (the 512px icon: 300KB → 31KB, only a faint field dither at a size no
+ * one inspects). CARD_PNG keeps 256 because the OG card carries TYPE, where quantising letterforms bands —
+ * and its own 300KB budget is a fifth spent, so there is nothing to buy by squeezing it.
  */
 const ICON_PNG = { palette: true, colours: 128, effort: 10, compressionLevel: 9 };
 const CARD_PNG = { palette: true, quality: 90, effort: 10, compressionLevel: 9 };
@@ -98,11 +76,9 @@ const FONTS = {
 // ── the master ────────────────────────────────────────────────────────────────────────────────
 
 /**
- * Read the master, check it is the logo we think it is, and cut it out of its painted background.
- *
- * Returns the mark as a square RGBA buffer, trimmed to its own circle: the disc touches all four
- * edges. Everything downstream can then say "the mark at 77% of the canvas" and mean it, because
- * "the mark" now has exactly one meaning.
+ * Read the master, check it is the logo we think it is, and cut it out of its painted background. Returns
+ * the mark as a square RGBA buffer trimmed to its own circle (the disc touches all four edges), so
+ * everything downstream can say "the mark at 77% of the canvas" and mean it.
  */
 async function loadMark() {
   const { data, info } = await sharp(MASTER).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
@@ -114,10 +90,9 @@ async function loadMark() {
   const background = keyBackground(data, width, height, channels);
   const disc = fitDisc(background, width, height);
 
-  // A sanity check on the keying itself. The mark is a disc: it should occupy roughly pi/4 (79%)
-  // of its own bounding square, and the master frames it with a margin, so it lands near 55-65% of
-  // the whole image. Far outside that and the keying has eaten the mark or kept the background,
-  // and generating twenty icons from it would be worse than stopping.
+  // A sanity check on the keying: the mark is a disc (~79% of its bounding square), framed with a margin,
+  // so it lands near 55-65% of the whole image. Far outside that and the keying ate the mark or kept the
+  // background — better to stop than generate twenty icons from it.
   const coverage = disc.kept / (width * height);
   if (coverage < 0.35 || coverage > 0.85) {
     throw new Error(
@@ -189,10 +164,8 @@ async function fullBleed(mark, size) {
 }
 
 /**
- * The mark inset on an opaque brand field, for the masks an OS may carve.
- *
- * `coverage` is the mark's diameter as a share of the canvas. See maskableGeometry() for the
- * arithmetic and for what the 40% safe zone actually promises.
+ * The mark inset on an opaque brand field, for the masks an OS may carve. `coverage` is the mark's diameter
+ * as a share of the canvas; see maskableGeometry() for the arithmetic and the 40% safe zone.
  */
 async function onField(mark, size, coverage) {
   const geometry = maskableGeometry(size, { coverage });
@@ -212,9 +185,9 @@ async function onField(mark, size, coverage) {
 }
 
 /**
- * iOS applies its own corner mask to an opaque square and renders transparency as BLACK, so the
- * apple-touch icon must carry its own field. It is not a maskable icon — iOS only rounds the
- * corners — so the mark can sit much larger than the 77% the Android safe zone demands.
+ * iOS applies its own corner mask to an opaque square and renders transparency as BLACK, so the apple-touch
+ * icon carries its own field. It is not maskable (iOS only rounds corners), so the mark can sit much larger
+ * than the Android safe zone's 77%.
  */
 async function appleTouch(mark, size) {
   const inner = Math.round(size * 0.88);
@@ -237,8 +210,8 @@ async function monochrome(size) {
 }
 
 /**
- * The in-app lockup, at the size it is actually displayed. A 64px file for a 28px mark is not
- * waste — it is the 2x screen the user is almost certainly reading this on.
+ * The in-app lockup at the size it is displayed. A 64px file for a 28px mark is not waste — it is the 2x
+ * screen the user is almost certainly reading this on.
  */
 async function brandmark(mark, size, format) {
   const pipe = sharp(mark).resize(size, size, { fit: "fill", kernel: "lanczos3" });
@@ -250,14 +223,10 @@ async function brandmark(mark, size, format) {
 // ── the OG card (plan 5.6) ────────────────────────────────────────────────────────────────────
 
 /**
- * The link-preview card: 1200x630, the size every unfurler wants.
- *
- * This is the ONLY public face the product has — every page is behind the login wall — so it says
- * what the app is and nothing else. No data, no numbers, no screenshot of the UI. A screenshot goes
- * stale the day the interface moves, and it would be advertising a page nobody can open.
- *
- * The composition echoes the login panel deliberately: the mark, the wordmark in mono, one line of
- * Inter. Someone who sees the card in Slack and then signs in should recognise where they landed.
+ * The link-preview card: 1200x630, the size every unfurler wants. The ONLY public face the product has
+ * (every page is behind the login wall), so it says what the app is and nothing else — no data, no numbers,
+ * no UI screenshot (which would go stale the day the interface moves). The composition echoes the login
+ * panel: mark, wordmark in mono, one line of Inter, so a reader who sees it in Slack recognises where they land.
  */
 async function ogCard(mark) {
   const W = 1200, H = 630;
@@ -304,12 +273,9 @@ async function ogCard(mark) {
 // ── the artifact table (plan 5.2) ─────────────────────────────────────────────────────────────
 
 /**
- * Every file this phase ships, with the budget it must come in under and the consumer that reads
- * it. This IS the artifact table from the plan; the printed output below is the phase's evidence.
- *
- * The budgets are not decoration. An icon set has no failing test — it just quietly gets heavier
- * until someone notices the app is slow — so the weights are asserted here, and the script exits
- * non-zero if one is missed.
+ * Every file this phase ships, with its budget and its consumer — the plan's artifact table, and the
+ * printed output below is the phase's evidence. An icon set has no failing test (it just quietly gets
+ * heavier), so the weights are asserted here and the script exits non-zero if one is missed.
  */
 async function artifacts(mark) {
   const rows = [
@@ -321,12 +287,10 @@ async function artifacts(mark) {
     { file: "icons/icon-maskable-192.png", budget: 12_000, consumer: "manifest (maskable)", make: () => onField(mark, 192, 0.77) },
     { file: "icons/icon-monochrome-96.png", budget: 4_000, consumer: "manifest (monochrome)", make: () => monochrome(96) },
     { file: "apple-touch-icon.png", budget: 20_000, consumer: "iOS home screen", make: () => appleTouch(mark, 180) },
-    // WEBP ONLY, AND THE PLAN'S PNG FALLBACK IS DELIBERATELY NOT HERE (logged in DECISIONS.md).
-    // Plan 5.2 rows 8-9 pair each brandmark with a PNG "fallback". It would be dead weight: WebP has
-    // been supported by every browser since Safari 14 (2020), and this app cannot render at all in a
-    // browser older than that — it is built on Tailwind v4 (@property, oklch) and dvh units, which
-    // arrived years later. The fallback would serve a browser that could never display the page,
-    // and it costs 20KB of a 120KB budget the icon set does not have to spare.
+    // WEBP ONLY, AND THE PLAN'S PNG FALLBACK IS DELIBERATELY NOT HERE (logged in DECISIONS.md). Plan 5.2's
+    // PNG "fallback" would be dead weight: WebP is supported since Safari 14 (2020), and this app cannot
+    // render older than that (Tailwind v4 @property/oklch, dvh units) — the fallback would serve a browser
+    // that could never display the page, at 20KB of a 120KB budget the icon set does not have to spare.
     { file: "icons/brandmark-64.webp", budget: 4_000, consumer: "BrandMark — top bar (28px)", make: () => brandmark(mark, 64, "webp") },
     { file: "icons/brandmark-192.webp", budget: 12_000, consumer: "BrandMark — login (96px)", make: () => brandmark(mark, 192, "webp") },
     { file: "icons/og-card.png", budget: 300_000, group: "og", consumer: "openGraph + twitter", make: () => ogCard(mark) },

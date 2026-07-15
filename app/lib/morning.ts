@@ -22,46 +22,28 @@ import type { WatchRow } from "@/components/desk/Watchlist";
 /**
  * morning.ts — the Desk's data loader (plan §9.2, P1 step 6).
  *
- * getMorning() assembles everything the ritual column renders from the serving database the nightly
- * cloud pipeline fills: the macro strip, the movers, and the focus watchlist. The rich briefing,
- * setup cards, and scans arrive in later phases and mount as they land.
- *
- * Two ideas hold this file together:
- *
- *  1. Graceful degradation. Each module reads independently and each read is wrapped, so a single
- *     unreachable table degrades one module to a quiet placeholder rather than crashing the Desk.
- *     A market command center that goes dark because one query failed is worse than one that shows
- *     three modules and a placeholder.
- *
- *  2. Pure builders. All the arithmetic that turns raw closes and volumes into a formatted day
- *     change, a relative volume, and a direction lives in exported pure functions (buildMacro,
- *     buildMovers, buildWatchlist). They take plain row shapes and return view-models, so they are
- *     unit-tested without a database; getMorning is only the input/output shell around them.
- *
- * Every number is formatted through lib/format — nothing here calls toFixed or toLocaleString.
+ * getMorning() assembles the ritual column from the serving database the nightly pipeline fills. Two
+ * ideas hold it together: (1) graceful degradation — each module reads independently and each read is
+ * wrapped, so one unreachable table degrades one module to a placeholder rather than crashing the Desk;
+ * (2) pure builders — all the arithmetic (buildMacro/buildMovers/buildWatchlist) lives in exported pure
+ * functions over plain row shapes, unit-tested without a database, and getMorning is only the I/O shell
+ * around them. Every number goes through lib/format — nothing here calls toFixed or toLocaleString.
  */
 
 // ── Macro ─────────────────────────────────────────────────────────────────────────────────────
 
 /**
- * The macro strip's four slots, and the honesty rule that shapes this whole section.
- *
- * An ETF is not its index. SPY tracks the S&P 500's percentage move, but it trades near 755 while
- * the index sits near 6,800 — so printing SPY's price under the words "S&P 500" tells a beginner
- * something false, in the largest numeral on the Desk. That is what this code exists to prevent.
- *
- * Each slot therefore has two ways to render, and the label follows whichever one happened:
- *
- *   source: "index"      the true level, from the FRED series stored on market_context
- *   source: "etf-proxy"  the ETF's own price, under the ETF's own honest label
- *
- * There is deliberately no third path where an ETF price wears an index's name. The Russell 2000
- * has no free FRED series at all, so its slot is *always* the proxy — and always says so
- * (UI-REDESIGN-PLAN §6.1, Appendix E-1).
+ * The macro strip's four slots, and the honesty rule that shapes this section: an ETF is not its index.
+ * SPY tracks the S&P 500's percentage move but trades near 755 while the index sits near 6,800, so
+ * printing SPY's price under "S&P 500" tells a beginner something false in the Desk's largest numeral.
+ * Each slot renders one of two ways and the label follows: source "index" (the true FRED level) or
+ * "etf-proxy" (the ETF's own price under the ETF's own label). There is no third path where an ETF price
+ * wears an index's name. The Russell 2000 has no free FRED series, so its slot is always the proxy — and
+ * always says so (UI-REDESIGN §6.1, Appendix E-1).
  */
 type IndexSlot = {
-  /** The label this slot wears. For an index slot it is the index's name; for the by-design proxy
-   *  slot it names the GROUP ("Small caps") and never an index we cannot actually quote. */
+  /** The label this slot wears — an index's name, or for the by-design proxy the GROUP ("Small caps"),
+   *  never an index we cannot quote. */
   label: string;
   /** The ETF that stands in when the index level is missing — or, for small caps, always. */
   proxySymbol: string;
@@ -83,9 +65,7 @@ const SPX_SLOT: IndexSlot = {
 const INDEX_SLOTS: readonly IndexSlot[] = [
   {
     label: "Nasdaq Composite",
-    // QQQ tracks the Nasdaq-100, NOT the Composite. The chip must not blur that — it is a different
-    // index with different members, and letting "Composite" sit silently over QQQ's price would be
-    // a lie of exactly the kind this module was rewritten to stop.
+    // QQQ tracks the Nasdaq-100, NOT the Composite — a different index; the chip must not blur that.
     proxySymbol: "QQQ",
     proxyChip: copy.macro.proxyChipNasdaq,
     level: (ctx) => ({ value: ctx.nasdaqComposite, prior: ctx.nasdaqCompositePrior }),
@@ -97,14 +77,9 @@ const INDEX_SLOTS: readonly IndexSlot[] = [
     level: (ctx) => ({ value: ctx.djia, prior: ctx.djiaPrior }),
   },
   {
-    // No free FRED daily series exists for the Russell 2000 (FRED deleted all 36 FTSE Russell series
-    // in 2019; every licensable alternative was checked and rejected — the search is recorded in the
-    // plan's Appendix A.2). So this slot NEVER has an index level.
-    //
-    // Which is why it is not called "Russell 2000". We cannot quote that index, so we do not put its
-    // name on the row at all — we name the GROUP the number describes ("Small caps") and let the
-    // chip say what the number is. A label that claims an index we are structurally unable to
-    // measure is a promise the row can never keep.
+    // No free FRED daily series for the Russell 2000 (FRED deleted all 36 FTSE Russell series in 2019;
+    // alternatives checked and rejected, plan Appendix A.2), so this slot NEVER has an index level —
+    // which is why it is "Small caps", the GROUP, not an index name the row could never honour.
     label: "Small caps",
     proxySymbol: "IWM",
     proxyChip: copy.macro.proxyChip,
@@ -131,11 +106,9 @@ export type MacroContext = {
   decliners: number;
   pctAbove50dma: number;
   /**
-   * The session the index levels above are actually FOR — which is not always the run's own date.
-   *
-   * FRED posts the index closes after both nightly jobs run, and a flaky night now keeps the levels
-   * it already had rather than overwriting them with null. Both mean a level can be real and not
-   * tonight's, and this is how the Desk knows to say so (ruling C7).
+   * The session the index levels are actually FOR — not always the run's date. FRED posts closes after
+   * both jobs run, and a flaky night keeps the levels it had rather than nulling them; both mean a level
+   * can be real and not tonight's, which is how the Desk knows to say so (ruling C7).
    */
   indexLevelsAsOf?: Date | string | null;
 };
@@ -159,19 +132,15 @@ export type IndexQuote = {
   /** Set only on a proxy slot: the ETF actually being shown. */
   proxySymbol?: string;
   /**
-   * The slot's SINGLE proxy mark, already filled in — e.g. "IWM · ETF price".
-   *
-   * Present on exactly the proxy slots, and it is the only place the word "ETF" now appears. The old
-   * grammar said it twice — a label suffix "(ETF proxy)" AND a freestanding chip reading "ETF proxy"
-   * — which on screen read as noise, and noise is where a beginner stops reading.
+   * The slot's SINGLE proxy mark, filled in — e.g. "IWM · ETF price". On exactly the proxy slots, the
+   * only place "ETF" now appears; the old grammar said it twice (a label suffix and a chip), which read
+   * as noise.
    */
   proxyChip?: string;
   /**
-   * Set when this slot's number is a REAL index level that is not tonight's: "as of Jul 9".
-   *
-   * Only staleness earns a per-slot date. The masthead's as-of already covers the normal case, so a
-   * date on every row every night would be chrome; a date on the ONE row that is behind is
-   * information (ruling C7).
+   * Set when a slot's number is a REAL index level that is not tonight's ("as of Jul 9"). Only staleness
+   * earns a per-slot date — the masthead's as-of covers the normal case, so a date on the one row that is
+   * behind is information, not chrome (ruling C7).
    */
   staleAsOf?: string;
 };
@@ -184,22 +153,18 @@ export type MacroView = {
   vix: string;
   tenYear: string;
   /**
-   * The provenance line, COMPOSED from the rows actually rendered (ruling C6).
-   *
-   * It used to be a static string — "Index levels · FRED · prior close" — printed under whatever the
-   * rows happened to show. On the night FRED's index series failed, it sat under four ETF prices and
-   * declared them FRED index levels. A provenance line that can disagree with its own surface is
-   * worse than no provenance line at all, because it converts a visible gap into an invisible lie.
+   * The provenance line, COMPOSED from the rows actually rendered (ruling C6). It used to be a static
+   * "Index levels · FRED · prior close"; the night FRED failed it sat under four ETF prices and declared
+   * them FRED levels — a provenance that can disagree with its surface converts a visible gap into an
+   * invisible lie.
    */
   provenance: string;
 };
 
 /**
- * A quote from a true index level and the level before it.
- *
- * If the prior level is missing, the level still renders and the change renders "—". It is never
- * borrowed from the ETF: the ETF's percentage move is close to the index's, but "close" is not
- * "the same", and a number the database cannot justify does not get printed.
+ * A quote from a true index level and the level before it. If the prior is missing the level still
+ * renders and the change is "—" — never borrowed from the ETF, because "close" is not "the same" and a
+ * number the database cannot justify is not printed.
  */
 function quoteFromLevel(slot: IndexSlot, ctx: MacroContext, staleAsOf?: string): IndexQuote | null {
   const { value, prior } = slot.level(ctx);
@@ -215,10 +180,8 @@ function quoteFromLevel(slot: IndexSlot, ctx: MacroContext, staleAsOf?: string):
 }
 
 /**
- * The one-day change from a run of closes: the latest close against the one before it.
- *
- * Returns null when there is not enough history to state a change honestly — it needs two bars, and
- * a single bar is not a change. Shared by the macro strip's ETF fallback and the watchlist.
+ * The one-day change from a run of closes: latest against the one before. Null when there are fewer than
+ * two bars — a single bar is not a change. Shared by the macro strip's ETF fallback and the watchlist.
  */
 function dayChange(
   closes: number[] | undefined,
@@ -230,11 +193,8 @@ function dayChange(
   return { latest, deltaPct: signedPercent(delta), direction: directionOf(delta) };
 }
 
-/**
- * A quote from an ETF's recent closes — the fallback path, and the Russell's only path.
- *
- * The label is the slot's *proxy* label, so the ETF is named as an ETF wherever this is used.
- */
+/** A quote from an ETF's recent closes — the fallback path, and the Russell's only path. The label is
+ * the slot's PROXY label, so the ETF is named as an ETF wherever this is used. */
 function quoteFromCloses(slot: IndexSlot, closes: number[] | undefined): IndexQuote | null {
   const change = dayChange(closes);
   if (change === null) return null;
@@ -245,10 +205,8 @@ function quoteFromCloses(slot: IndexSlot, closes: number[] | undefined): IndexQu
     direction: change.direction,
     source: "etf-proxy",
     proxySymbol: slot.proxySymbol,
-    // THE ONE PROXY MARK. On the small-caps slot it simply names what the number is ("IWM · ETF
-    // price"). On a DEGRADED index slot — where an index's name and an ETF's price share a row, the
-    // one case this module has always guarded hardest — it negates the misreading outright:
-    // "SPY · ETF price — not the index level".
+    // THE ONE PROXY MARK: on small caps it names what the number is ("IWM · ETF price"); on a DEGRADED
+    // index slot (an index's name over an ETF price) it negates the misreading — "… not the index level".
     proxyChip: slot.proxyChip.replace("{symbol}", slot.proxySymbol),
   };
 }
@@ -266,15 +224,10 @@ function quoteForSlot(
 }
 
 /**
- * Compose the provenance line from the rows that ACTUALLY rendered (ruling C6).
- *
- * This is the fix for the defect in the user's screenshot: a static footer reading "Index levels ·
- * FRED · prior close" printed under four ETF prices. The sentence was written for the happy path and
- * rendered regardless — so on the one night it mattered, it was a confident lie.
- *
- * Now the line is assembled from each slot's real source. If the indexes are live it says so; if
- * some fell back it names which; if they ALL fell back it opens by saying that outright, because an
- * absence the reader has to infer from four small chips is an absence most readers will not notice.
+ * Compose the provenance line from the rows that ACTUALLY rendered (ruling C6) — the fix for a static
+ * "Index levels · FRED · prior close" printed under four ETF prices. Assembled from each slot's real
+ * source: live indexes say so, fallbacks name which, and an all-fallback night opens by saying so
+ * outright, because an absence inferred from four small chips is one most readers miss.
  */
 export function buildMacroProvenance(
   spx: IndexQuote,
@@ -283,8 +236,7 @@ export function buildMacroProvenance(
 ): string {
   const parts: string[] = [];
 
-  // The index slots — everything except the by-design proxy (small caps), which is never a
-  // degradation and so never belongs in a story about index levels being missing.
+  // The index slots — not the by-design proxy (small caps), which is never a degradation.
   const indexSlots = [spx, ...indices].filter((q) => q.label !== "Small caps");
   const live = indexSlots.filter((q) => q.source === "index");
   const fellBack = indexSlots.filter((q) => q.source === "etf-proxy");
@@ -295,8 +247,8 @@ export function buildMacroProvenance(
     if (live.length > 0) {
       const stale = live.filter((q) => q.staleAsOf);
       const names = live.map((q) => q.label).join(", ");
-      // A carried-forward level is still a FRED level — but it is not tonight's, and the line says so
-      // rather than letting the masthead's as-of quietly speak for it.
+      // A carried-forward level is still a FRED level, but not tonight's — the line says so rather than
+      // letting the masthead's as-of speak for it.
       parts.push(
         stale.length === live.length && stale[0].staleAsOf
           ? `${names}: FRED, ${stale[0].staleAsOf}`
@@ -318,13 +270,11 @@ export function buildMacroProvenance(
 }
 
 /**
- * Build the macro strip from the day's context row, its index levels, and the ETF closes that stand
- * in when a level is missing.
- *
- * Returns null — so the Desk shows the placeholder instead — when the hero (the S&P) cannot be
- * formed by either path, or when there is no macro context row at all: a macro module without its
- * hero numeral or its breadth is not the macro module. A slot with neither a level nor two bars is
- * dropped from the row. A FRED context cell that is null renders as a quiet "—", never a fake zero.
+ * Build the macro strip from the day's context row, its index levels, and the ETF closes that stand in
+ * when a level is missing. Returns null (Desk shows the placeholder) when the hero S&P cannot be formed
+ * either way or there is no context row — a macro module without its hero or its breadth is not the
+ * module. A slot with neither a level nor two bars is dropped; a null FRED cell renders "—", never a
+ * fake zero.
  */
 export function buildMacro(
   ctx: MacroContext | null,
@@ -333,14 +283,10 @@ export function buildMacro(
 ): MacroView | null {
   if (ctx === null) return null;
 
-  // Are the stored index levels tonight's, or an earlier session's carried forward?
-  //
-  // The pipeline no longer lets a flaky FRED night overwrite a good level with null — it keeps what
-  // it has and records the session those levels are really for. So a level can now be REAL and OLD
-  // at the same time, which is a state the Desk has never had to render before. When it happens the
-  // slot says "as of Jul 9" and the number stands; the alternative — collapsing a perfectly good
-  // index level to an ETF price because it is one day behind — would be throwing away the better
-  // number to avoid printing a date.
+  // Are the stored index levels tonight's, or an earlier session's carried forward? The pipeline keeps
+  // a good level rather than nulling it on a flaky FRED night, so a level can be REAL and OLD at once —
+  // the slot then says "as of Jul 9" and the number stands, rather than collapsing a good level to an
+  // ETF price just to avoid printing a date.
   const levelsAsOf = ctx.indexLevelsAsOf ? new Date(ctx.indexLevelsAsOf) : null;
   const levelsAreStale =
     levelsAsOf !== null && runDate != null && levelsAsOf.getTime() < startOfUtcDay(runDate);
@@ -368,12 +314,10 @@ export function buildMacro(
       advancers: ctx.advancers,
       decliners: ctx.decliners,
       pctAbove50dma: percent(ctx.pctAbove50dma),
-      // Breadth is a claim about the WHOLE market, and until now it was the only figure on the
-      // module carrying no window at all (C2). It is as of the close, and it says so.
-      // formatUtcWeekday, not a local Intl formatter (ruling E2 — one door for weekday words). The
-      // duplicate that used to live here was byte-for-byte the same call and would have drifted the
-      // day anyone changed one of them; a second copy of a formatter is a second answer waiting to
-      // happen. check-drift.mjs rule 22 now fails the build for a weekday formatter outside lib/time.
+      // Breadth is a claim about the WHOLE market and was the only figure here carrying no window (C2):
+      // it is as of the close and says so. formatUtcWeekday, never a local Intl formatter — one door for
+      // weekday words (ruling E2); a second copy would drift, and check-drift rule 22 now fails the build
+      // for a weekday formatter outside lib/time.
       asOf: runDate ? copy.macro.breadthClose.replace("{day}", formatUtcWeekday(runDate)) : "at the close",
     },
     vix,
@@ -395,9 +339,9 @@ export type MoverSource = {
 };
 
 /**
- * Format the movers, preserving the order given (the pipeline ranks them). Each mover carries its
- * matched catalyst, or none — the Movers component renders the catalyst chip when present and the
- * honest "no news found — likely noise" line when it is absent (§1.5 rule 9).
+ * Format the movers, preserving the pipeline's order. Each carries its matched catalyst or none — the
+ * component renders the catalyst chip when present and the honest "likely noise" line when absent
+ * (§1.5 rule 9).
  */
 export function buildMovers(sources: MoverSource[]): Mover[] {
   return sources.map((s) => ({
@@ -427,13 +371,10 @@ export type CalendarSource = {
 };
 
 /**
- * Format the session calendar for display: the event date (a bare calendar date, by its UTC
- * calendar date, not shifted to ET) and the consensus/prior figures through lib/format. No forecasting.
- *
- * The chip the reader sees is the allowlist's `code`, not the raw `kind`. That is the point of the
- * allowlist: the calendar speaks one small vocabulary it chose, rather than whatever FRED happened
- * to call a release that night. A row written before the allowlist existed has no code, so it falls
- * back to its kind rather than rendering an empty chip.
+ * Format the session calendar: the event date (bare UTC calendar date, not shifted to ET) and
+ * consensus/prior through lib/format, no forecasting. The chip is the allowlist's `code`, not the raw
+ * `kind` — the calendar speaks one small vocabulary it chose; a pre-allowlist row has no code and falls
+ * back to its kind rather than an empty chip.
  */
 export function buildCalendar(sources: CalendarSource[]): CalendarRow[] {
   return sources.map((s) => ({
@@ -488,10 +429,9 @@ export type WatchSource = {
 };
 
 /**
- * Build the focus watchlist rows: the day change from the last two closes, a relative volume from
- * the latest volume against its trailing average, and the closes as the sparkline. RVOL renders as
- * a quiet "—" for a freshly-added name with no prior volume to compare against, rather than a
- * meaningless 1.0×.
+ * Build the focus watchlist rows: the day change from the last two closes, RVOL from the latest volume
+ * against its trailing average, and the closes as the sparkline. RVOL is a quiet "—" for a fresh name
+ * with no prior volume, not a meaningless 1.0×.
  */
 export function buildWatchlist(sources: WatchSource[]): WatchRow[] {
   return sources.map((s) => {
@@ -505,8 +445,8 @@ export function buildWatchlist(sources: WatchSource[]): WatchRow[] {
       symbol: s.symbol,
       name: s.name,
       reason: s.reason,
-      // The last close, formatted. The row shows a price beside its delta (§5.1) — a percentage
-      // with nothing to be a percentage OF is a number the reader cannot check.
+      // The last close, formatted — the row shows a price beside its delta (§5.1); a percentage with
+      // nothing to be a percentage OF is a number the reader cannot check.
       price: lastClose === undefined ? "—" : price(lastClose),
       changePct: quote.deltaPct,
       direction: quote.direction,
@@ -519,17 +459,15 @@ export function buildWatchlist(sources: WatchSource[]): WatchRow[] {
 
 // ── The loader ──────────────────────────────────────────────────────────────────────────────────
 
-/** Everything the Desk renders. A null field means "show the placeholder"; an empty array means
- * "the module is wired but had nothing today" (its own empty state renders). `asOf` is an ISO
- * string (not a Date) because this whole object is cached, and the cache serialises to JSON — the
- * page reconstructs the Date. */
+/** Everything the Desk renders. A null field means "show the placeholder"; an empty array means "wired
+ * but nothing today" (its own empty state renders). `asOf` is an ISO string, not a Date, because this
+ * object is cached and the cache serialises to JSON. */
 export type Morning = {
   asOf: string | null;
   macro: MacroView | null;
   /**
-   * The macro board — the five household stats (N3). Null when no stat has ever been stored, which
-   * is a brand-new database rather than a broken one. Once ANY stat exists the board renders, and
-   * every cell without a row of its own says "not yet reported" in its own words.
+   * The macro board — the five household stats (N3). Null only for a brand-new database (no stat ever
+   * stored); once any exists the board renders and every empty cell says "not yet reported".
    */
   macroBoard: MacroBoardData | null;
   /** The evening briefing view-model, or null when no briefing is recorded yet (the Desk shows the
@@ -544,19 +482,15 @@ export type Morning = {
   /** Per-source health for the run's footer; an empty array when no run is recorded. */
   sources: SourceStatus[];
   /**
-   * How many matches the night's scans found, across how many presets (§4.1 module 07).
-   *
-   * Module 07 used to be a paragraph of prose pointing at another page. It is a GLANCE station, and
-   * a glance station that cannot be glanced at is a paragraph. One count query, amortised by the
-   * route's cache, turns it into a figure the reader can actually read in passing.
+   * How many matches the night's scans found, across how many presets (§4.1 module 07). Module 07 is a
+   * GLANCE station, not a paragraph pointing elsewhere; one count query, amortised by the route cache,
+   * makes it a figure the reader can read in passing.
    */
   scans: { matches: number; presets: number };
   /**
-   * The top of tonight's Front Page, and how many catalysts it is the top OF (§4.1 module 08).
-   *
-   * A bounded preview, and it states its own cut — "First 3 of 14 by significance" — because an
-   * unlabelled slice of a ranked list is the same lie ruling M8 exists to forbid: the reader cannot
-   * tell three-of-three from three-of-forty, and those are very different nights.
+   * The top of tonight's Front Page and how many catalysts it is the top OF (§4.1 module 08). A bounded
+   * preview that states its own cut ("First 3 of 14 by significance") — an unlabelled slice of a ranked
+   * list is the lie ruling M8 forbids: three-of-three and three-of-forty are very different nights.
    */
   frontPage: { top: FrontPagePreviewRow[]; total: number };
   /** How many journal entries exist for today (0 or 1). The scorecard's disclosure reports it (M2). */
@@ -572,11 +506,9 @@ export type FrontPagePreviewRow = {
 };
 
 /**
- * How many scan matches the latest run produced, and across how many presets.
- *
- * A count query, not a fetch: module 07 needs the number, not the rows. Degrades to zeros if the
- * database cannot be reached — the module then reads "0 matches across 0 scans", which is honest
- * about what it knows rather than pretending the scans found nothing.
+ * How many scan matches the latest run produced, across how many presets. A count query, not a fetch:
+ * module 07 needs the number, not the rows. Degrades to zeros if the database is unreachable — "0
+ * matches across 0 scans" is honest about what it knows.
  */
 async function loadScanCount(): Promise<{ matches: number; presets: number }> {
   try {
@@ -590,9 +522,8 @@ async function loadScanCount(): Promise<{ matches: number; presets: number }> {
     });
     return {
       matches: grouped.reduce((sum, g) => sum + g._count._all, 0),
-      // Every preset RAN. Reporting only the ones that matched would quietly undercount the work and
-      // imply that a scan which found nothing did not happen — and "the filter ran and found nothing"
-      // is a result this product goes out of its way to state everywhere else.
+      // Every preset RAN. Reporting only the ones that matched would undercount the work and imply a
+      // scan that found nothing did not happen — a result this product states everywhere else.
       presets: SCAN_PRESETS.length,
     };
   } catch (error) {
@@ -602,11 +533,9 @@ async function loadScanCount(): Promise<{ matches: number; presets: number }> {
 }
 
 /**
- * How many journal entries exist for today.
- *
- * The collapsed journal row reports its own state — "1 saved tonight" or "none saved tonight" — and
- * a zero is a STATE, not an offer of more (ruling M2). Without this count the disclosure would be
- * hiding an unstated number of things, which is exactly what the rule forbids.
+ * How many journal entries exist for today. The collapsed row reports its own state ("1 saved
+ * tonight"/"none"), and a zero is a STATE, not an offer of more (ruling M2) — without this count the
+ * disclosure would hide an unstated number of things.
  */
 async function loadJournalCount(): Promise<number> {
   try {
@@ -626,9 +555,9 @@ function closesBy(rows: Array<{ symbol: string; close: number }>): Record<string
 }
 
 /**
- * Load the whole morning. Reads the latest run for the timestamp, then each module independently.
- * Any single read that throws is logged on the server and degrades that one module — the Desk never
- * crashes because one table was slow or empty.
+ * Load the whole morning. Reads the latest run for the timestamp, then each module independently; any
+ * read that throws is logged and degrades that one module — the Desk never crashes because one table
+ * was slow or empty.
  */
 export async function getMorning(): Promise<Morning> {
   const asOf = await latestAsOf();
@@ -666,12 +595,9 @@ export async function getMorning(): Promise<Morning> {
 const FRONT_PAGE_PREVIEW = 3;
 
 /**
- * The top of tonight's front page, with the total it was cut from.
- *
- * The order is the pipeline's `significance` and nothing else — the Desk does not get a second
- * opinion about which story leads. Reading it here rather than re-deriving it is the point: two
- * places that decide what the day's biggest story was will eventually disagree, and then the Desk
- * and the Front Page would print two different front pages.
+ * The top of tonight's front page, with the total it was cut from. The order is the pipeline's
+ * `significance` and nothing else — re-deriving it here would eventually disagree with the Front Page,
+ * and then the Desk and the room would print two different front pages.
  */
 async function loadFrontPage(): Promise<{ top: FrontPagePreviewRow[]; total: number }> {
   try {
@@ -699,10 +625,9 @@ async function loadFrontPage(): Promise<{ top: FrontPagePreviewRow[]; total: num
 }
 
 /**
- * Load the latest run's setup cards into view-models for module 06. Each card's stored state carries
- * the base-rate figures the pipeline computed; this maps them onto the shared BaseRate data shape
- * (the app renders, never derives) and attaches the per-pattern weakener items with their saved
- * checkbox state. A read failure degrades the module to a placeholder, never the Desk.
+ * Load the latest run's setup cards into view-models for module 06. Maps each card's stored base-rate
+ * figures onto the shared BaseRate shape (the app renders, never derives) with its saved weakener
+ * state. A read failure degrades the module to a placeholder, never the Desk.
  */
 async function loadSetupCards(): Promise<SetupCardView[] | null> {
   try {
@@ -722,12 +647,10 @@ async function loadSetupCards(): Promise<SetupCardView[] | null> {
 }
 
 /**
- * Load the latest evening briefing and turn it into the BriefArticle view-model.
- *
- * The stored JSON is validated at the boundary and its citation ids are resolved to the news
- * articles behind them (so the superscripts link out); a held briefing yields a held view (the
- * "unavailable" line), and an unreadable one degrades to null (the placeholder). learning_link_slug
- * is gated against the Academy manifest, empty until P5, so early briefs carry no Learn doorway.
+ * Load the latest evening briefing into the BriefArticle view-model. The stored JSON is validated at
+ * the boundary and its citation ids resolved to the news behind them (superscripts link out); a held
+ * briefing yields a held view, an unreadable one degrades to null. learning_link_slug is gated against
+ * the Academy manifest (empty until P5), so early briefs carry no Learn doorway.
  */
 async function loadBrief(): Promise<BriefView | null> {
   try {
@@ -751,9 +674,9 @@ async function loadBrief(): Promise<BriefView | null> {
 }
 
 /**
- * Resolve a briefing's citation ids to their news articles. Parses the draft to collect the ids it
- * cites, then looks those up in news_item — a citation that is a computed stat (no matching news
- * row) is simply absent, and buildBrief treats it as an unlinked, non-footnoted reference.
+ * Resolve a briefing's citation ids to their news articles. Collects the ids the draft cites and looks
+ * them up in news_item — a citation that is a computed stat (no news row) is simply absent, treated as
+ * an unlinked, non-footnoted reference.
  */
 async function citationResolver(amJson: unknown): Promise<Record<string, { url: string; source: string }>> {
   const draft = parseBriefDraft(amJson);
@@ -771,24 +694,17 @@ async function citationResolver(amJson: unknown): Promise<Record<string, { url: 
 }
 
 /**
- * How many calendar rows the Desk shows. Named because the cap is load-bearing: the rows are sorted
- * by date ascending, so anything stranded in the PAST sorts first and spends these slots. That is
- * not a cosmetic problem — it is an eviction. See calendarFloor below.
+ * How many calendar rows the Desk shows. Load-bearing: rows sort by date ascending, so anything
+ * stranded in the PAST sorts first and spends these slots — an eviction, not just clutter. See
+ * calendarFloor below.
  */
 const CALENDAR_ROWS = 15;
 
 /**
- * The earliest date the session calendar may show: the edition's own session.
- *
- * The calendar is a FORWARD view — it says what is coming — so it must never render a day that has
- * already been. The floor is the EDITION's session date, not the wall clock, and that choice is
- * PD0's lesson restated: the Desk serves a dated edition, and every module on it speaks from that
- * same day. A clock-based floor would quietly disagree with the masthead in the hours between
- * midnight and the next night's run, which is exactly the kind of two-clocks bug this codebase has
- * already paid for once.
- *
- * With no run at all (an empty database) there is no edition to speak from, so fall back to today:
- * showing nothing is better than showing history.
+ * The earliest date the session calendar may show: the edition's own session. The calendar is a FORWARD
+ * view, so it must never render a past day. The floor is the EDITION's session date, not the wall clock
+ * (PD0's two-clocks lesson — a clock-based floor would disagree with the masthead between midnight and
+ * the next run). With no run at all, fall back to today: showing nothing beats showing history.
  */
 export function calendarFloor(editionDate: Date | null, now: Date): Date {
   if (editionDate !== null) return editionDate;
@@ -798,17 +714,11 @@ export function calendarFloor(editionDate: Date | null, now: Date): Date {
 /**
  * The session calendar: the next few things the market is waiting for.
  *
- * THE BUG THIS GUARDS (PD1). This read used to have no lower bound at all — it simply took the 15
- * earliest rows in the table. So four rows written by the pre-allowlist ingest ("Coinbase
- * Cryptocurrencies", a raw "FOMC Press Release") and dated on a Saturday and a Sunday sorted to the
- * TOP of the list and sat on the live Desk for weeks. They were not merely ugly: they were spending
- * 4 of the 15 slots, so the Desk showed 11 of its 23 real forward events and silently dropped the
- * rest.
- *
- * The pipeline's refresh now sweeps the whole table (publish._replace_calendar), so the litter
- * cannot accumulate. This is the other half of the fence, and it is the half that holds when the
- * pipeline has not run for a few days: a floor at the read means a stale row can never be rendered,
- * whatever is sitting in the table.
+ * THE BUG THIS GUARDS (PD1): this read once had no lower bound, so four pre-allowlist rows dated on a
+ * weekend sorted to the TOP and sat on the Desk for weeks — spending 4 of 15 slots, so the Desk showed
+ * 11 of 23 real forward events and dropped the rest. The pipeline now sweeps the whole table on refresh
+ * (publish._replace_calendar); the floor here is the other half of the fence, and the half that holds
+ * when the pipeline has not run for days.
  */
 async function loadCalendar(): Promise<CalendarRow[] | null> {
   try {
@@ -859,15 +769,10 @@ async function latestAsOf(): Promise<Date | null> {
 }
 
 /**
- * Load the macro board: the five household stats, plus the run's own source health (N3, Part 6).
- *
- * The source status is read alongside the rows because the two answer different questions and the
- * board needs both. The ROWS say what the newest observation is and when it is for. The STATUS says
- * whether the source could be reached tonight at all. A cell can be perfectly current and still have
- * failed to refresh, and it can have refreshed cleanly and still be far too old to trust — so a cell
- * that only knew one of these two facts would be guessing about the other.
- *
- * A read failure degrades the whole board to null (the module simply omits it) rather than the Desk.
+ * Load the macro board: the five household stats plus the run's source health (N3, Part 6). Both are
+ * read because they answer different questions: the ROWS say what the newest observation is and when;
+ * the STATUS says whether the source could be reached tonight. A cell can be current but failed to
+ * refresh, or refreshed cleanly but far too old to trust. A read failure degrades the board to null.
  */
 async function loadMacroBoard(): Promise<MacroBoardData | null> {
   try {
@@ -890,10 +795,9 @@ async function loadMacroBoard(): Promise<MacroBoardData | null> {
 
     if (rows.length === 0) return null;
 
-    // Age is judged against the RUN's date, not against the reader's clock. The board is part of a
-    // cached render, and a cell that graded itself against "now" would drift from the rest of the
-    // page it is printed on. (The pipeline strip is the deliberate exception, and for the opposite
-    // reason: catching a pipeline that died since the render is its entire job.)
+    // Age is judged against the RUN's date, not the reader's clock — the board is part of a cached
+    // render and would drift from its own page otherwise. (The pipeline strip is the deliberate
+    // exception: catching a pipeline that died since the render is its whole job.)
     const runDate = latest?.runDate ?? new Date();
 
     return buildMacroBoard(
@@ -910,16 +814,15 @@ async function loadMacroBoard(): Promise<MacroBoardData | null> {
 async function loadMacro(): Promise<MacroView | null> {
   try {
     const ctx = await db.marketContext.findFirst({ orderBy: { runDate: "desc" } });
-    // The ETF bars are still read: they are the fallback path for any slot whose index level is
-    // missing, and the only path the Russell 2000 has (§6.1).
+    // The ETF bars are still read: the fallback path for any slot whose index level is missing, and the
+    // Russell 2000's only path (§6.1).
     const bars = await db.priceBar.findMany({
       where: { symbol: { in: PROXY_SYMBOLS } },
       orderBy: [{ symbol: "asc" }, { date: "asc" }],
       select: { symbol: true, close: true },
     });
-    // The run date goes in too, so the builder can tell a level that is tonight's from one that was
-    // carried forward — and say "as of Jul 9" on the latter rather than letting the masthead's
-    // as-of quietly speak for a number it does not describe.
+    // The run date goes in too, so the builder can tell tonight's level from a carried-forward one and
+    // say "as of Jul 9" on the latter.
     return buildMacro(ctx, closesBy(bars), ctx?.runDate ?? null);
   } catch (error) {
     console.error("getMorning: could not load the macro strip", error);
@@ -933,8 +836,7 @@ const CATALYST_WINDOW_DAYS = 3;
 
 async function loadMovers(): Promise<Mover[] | null> {
   try {
-    // The movers are the volume-confirmed moves — the "unusual-volume" scan's matches, ranked.
-    // Top eight of the latest run.
+    // The movers are the volume-confirmed moves — the "unusual-volume" scan's top eight, ranked.
     const rows = await db.scanResult.findMany({
       where: { presetKey: "unusual-volume" },
       orderBy: [{ runDate: "desc" }, { rank: "asc" }],
@@ -966,10 +868,9 @@ async function loadMovers(): Promise<Mover[] | null> {
 }
 
 /**
- * For a set of mover symbols, find each one's most recent in-window news and return it as a
- * Catalyst (symbol → Catalyst). A symbol with no matching news is simply absent, and the Movers
- * row renders the honest noise line for it. The classification (event type) is done by the pipeline
- * and stored on the row; the source label is the article's domain.
+ * For a set of mover symbols, find each one's most recent in-window news as a Catalyst. A symbol with no
+ * match is absent, and the Movers row renders the honest noise line. Event type is the pipeline's stored
+ * classification; the source label is the article's domain.
  */
 async function loadCatalysts(symbols: string[], runDate: Date): Promise<Record<string, Catalyst>> {
   const windowStart = new Date(runDate);

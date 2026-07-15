@@ -7,41 +7,24 @@ import { SEEDED_EVENING } from "./seeded-clock";
 import { applyThinNight } from "./thin-night";
 
 /**
- * vrt.spec.ts — visual regression. The styling counterpart of TDD (UI-REDESIGN-PLAN Part 9).
+ * vrt.spec.ts — visual regression. The styling counterpart of TDD (UI-REDESIGN Part 9).
  *
- * Unit tests prove the numbers are right. Nothing, until now, proved the *look* stayed right — and
- * a design system this large, restyled across five phases, would drift within a week without pixel
- * locks. So every surface gets a baseline, and an unexplained diff is a build failure.
+ * Unit tests prove the numbers; nothing else proves the *look* stayed right, and a design system this
+ * large would drift within a week without pixel locks. So every surface gets a baseline and an
+ * unexplained diff is a build failure (§9.3): an intentional restyle updates its baselines in the same
+ * commit with a one-line note; a reflexive update to make CI green turns the oracle into a chore.
  *
- * The discipline that makes this work (§9.3): an intentional restyle updates its baselines in the
- * same commit, with a one-line note in the commit body — "VRT: N baselines updated — <reason>". An
- * UNEXPLAINED diff is never waved through. The moment baselines get updated reflexively to make CI
- * green, the suite stops being an oracle and becomes a chore.
- *
- * Determinism, in the order the flakiness would otherwise bite:
- *   · reduced motion, forced — kills route fades and entrance transitions
- *   · fonts awaited INSIDE the page — `document.fonts.ready` returns a FontFaceSet, which
- *     serialises to junk if you return it from evaluate(); the await has to happen in the page
- *   · timestamps masked — they encode wall-clock time and would differ on every run
- *   · seeded data — the numbers are fixed by prisma/seed.mjs
- *
- * The pixel oracle is CI (Linux). Local macOS runs render fonts differently; use
- * `npx playwright test --ignore-snapshots` locally, or regenerate a local set knowingly.
+ * Determinism, in the order flakiness would bite: reduced motion forced (kills route fades); fonts
+ * awaited INSIDE the page (`document.fonts.ready` serialises to junk out of evaluate()); timestamps
+ * masked; seeded data. The pixel oracle is CI (Linux) — locally use `--ignore-snapshots`.
  */
 
 /**
- * THE LAYOUT-ONLY PROJECTS — `wide` (1536) and `mbp16` (1512), the two viewports that exist to lock
- * a GRID rather than a palette.
- *
- * Both shoot rooms, in the light theme, and nothing else. The colours are already pinned at 1366 and
- * 390 in BOTH themes, so a third and fourth set of dark baselines up here would be pure cost — twice
- * the pictures to regenerate on every restyle, to answer a question that is already answered. And
- * neither of them re-shoots the styleguide, the login wall, or the table's interactive states: those
- * are pinned at 1366 and a copy of them at another width is a second picture of the same answer.
- *
- * This used to be eleven copies of `testInfo.project.name === "wide"` scattered down the file. Adding
- * `mbp16` would have meant finding all eleven and getting all eleven right — and the one that got
- * missed would not have failed. It would have quietly taken a screenshot nobody asked for.
+ * THE LAYOUT-ONLY PROJECTS — `wide` (1536) and `mbp16` (1512), the two viewports that lock a GRID, not a
+ * palette. Both shoot rooms in the light theme only: the colours are already pinned at 1366 and 390 in
+ * both themes, so dark baselines here would be pure cost; and neither re-shoots the styleguide, login, or
+ * the table's interactive states. This used to be eleven scattered `project.name === "wide"` checks —
+ * adding `mbp16` would have meant finding all eleven, and the one missed would have shot silently.
  */
 const LAYOUT_ONLY = new Set(["wide", "mbp16"]);
 const locksLayoutOnly = (testInfo: { project: { name: string } }) =>
@@ -49,21 +32,13 @@ const locksLayoutOnly = (testInfo: { project: { name: string } }) =>
 
 test.use({ contextOptions: { reducedMotion: "reduce" } });
 
-/** Sign in. Every surface in this app is behind the login wall, including the styleguide. */
 /**
- * Wait until the page's real fonts are on screen — not merely until the browser says it is idle.
- *
- * `await document.fonts.ready` is NOT sufficient on its own, and this cost us a baseline. That
- * promise settles against the font loads that are PENDING at the moment it is awaited, so if it runs
- * before the browser has begun fetching the faces, it resolves immediately against an empty set. The
- * screenshot then catches the page mid-swap, in its fallback sans, and the resulting baseline is a
- * picture of a bug. (Caught at F0: a regenerated track-record baseline came back with its body prose
- * in a fallback font — visibly re-wrapped from two lines to three — while its own dark-theme twin,
- * shot in the same run, was correct. Committing it would have made the pixel oracle lie.)
- *
- * So we force the issue: ask for each family the page actually uses, wait for those loads to finish,
- * and only then wait for the set to settle. `document.fonts.load()` resolves when the face is
- * genuinely usable, which is the thing we actually care about.
+ * Wait until the page's real fonts are on screen — not merely until the browser says idle. `await
+ * document.fonts.ready` is NOT sufficient: it settles against the loads PENDING when awaited, so run
+ * before the fetch begins it resolves against an empty set and the shot catches the fallback sans (a
+ * baseline of a bug — caught at F0, a track-record shot in fallback font, re-wrapped two lines to three).
+ * So we force it: ask for each family the page uses, wait for those loads (`document.fonts.load()`
+ * resolves when the face is usable), then wait for the set to settle.
  */
 async function waitForFonts(page: Page) {
   await page.evaluate(async () => {
@@ -80,29 +55,19 @@ async function waitForFonts(page: Page) {
 }
 
 /**
- * Take one baseline shot.
- *
- * Timestamps and as-of stamps are masked: they are honest, load-bearing content — this product puts
- * a stamp on everything — but they encode wall-clock time, so they would differ on every run and
- * make every baseline a false positive. Masking the clock is what lets the pixels mean something.
+ * Take one baseline shot. Timestamps and as-of stamps are masked: honest, load-bearing content, but they
+ * encode wall-clock time and would make every baseline a false positive. Masking the clock is what lets
+ * the pixels mean something.
  */
 async function shoot(page: Page, path: string, name: string, options: { allowSkeletons?: boolean } = {}) {
   await page.goto(path);
 
   /*
-   * NEVER PHOTOGRAPH A LOADING STATE.
-   *
-   * This is not hypothetical: it happened. The scan-table baselines failed on the tag run with
-   * "expected an image 1366px by 1876px, received 1366px by 768px" — a page exactly one viewport
-   * tall, because the shot had caught the room's `loading.tsx` skeleton instead of the room. It only
-   * bit the newest route, and it would have bitten a different one each time the suite got slower.
-   *
-   * Skeletons exist everywhere now (F1), so every room can render one, and a screenshot that races a
-   * page is a baseline that photographs a bug. Waiting for the bones to be GONE is the honest signal
-   * that the content has actually arrived.
-   *
-   * The styleguide is the exception, and the only one: section 9 renders the skeleton specimens
-   * deliberately, because that is where they are pixel-locked. It passes allowSkeletons.
+   * NEVER PHOTOGRAPH A LOADING STATE. It happened: the scan-table baselines failed on a tag run with
+   * "expected 1876px, received 768px" — one viewport tall, because the shot caught `loading.tsx`'s
+   * skeleton, and it would bite a different route each time the suite got slower. Waiting for the bones to
+   * be GONE is the honest signal that content arrived. The styleguide is the one exception (section 9
+   * pixel-locks the skeleton specimens): it passes allowSkeletons.
    */
   if (!options.allowSkeletons) {
     await expect(page.locator(".skeleton-bone"), `${name}: the page was still loading when it was photographed`).toHaveCount(0);
@@ -111,26 +76,13 @@ async function shoot(page: Page, path: string, name: string, options: { allowSke
   await waitForFonts(page);
 
   /*
-   * PARK THE MOUSE BEFORE SHOOTING (PD4) — and this is not a nicety, it is a bug fix.
-   *
-   * `signIn()` CLICKS the Sign-in button, and Chromium leaves the pointer resting wherever that click
-   * landed. Playwright never moves it again. So on `/ticker/AAPL`, the candle chart lands underneath
-   * that stationary cursor, lightweight-charts decides it is being hovered, and draws a CROSSHAIR —
-   * two dashed lines and a black price pill — into the baseline.
-   *
-   * WHICH MEANS THE TICKER'S BASELINE HAS BEEN A PHOTOGRAPH OF WHERE THE LOGIN BUTTON HAPPENED TO BE.
-   * PD4 moved the Sign-in button down (the phone login gained its mark), the resting pointer moved
-   * with it, the crosshair slid down the price axis, and the pill it prints went from 214.54 to
-   * 213.02 — on a page PD4 never touched. The chart itself was pixel-identical; only the crosshair
-   * moved. It reproduced exactly on a re-run, so it was not flake: it was a baseline quietly coupled
-   * to an unrelated page's layout.
-   *
-   * This is PD3's law again, and it keeps being the same law: **a baseline proves the page did not
-   * change; it never proved the page was right.** An exact, green, reproducible baseline was locking
-   * in a hover state that no reader will ever see on arrival.
-   *
-   * (0, 0) is outside every chart in the app, so the crosshair is dismissed and the page is
-   * photographed in the state a reader actually lands on.
+   * PARK THE MOUSE BEFORE SHOOTING (PD4) — a bug fix, not a nicety. `signIn()` CLICKS the button and
+   * Chromium leaves the pointer where it landed. On `/ticker/AAPL` the candle chart sits under that
+   * cursor, lightweight-charts thinks it is hovered, and draws a CROSSHAIR into the baseline — so the
+   * ticker's picture encoded WHERE THE LOGIN BUTTON WAS. PD4 moved the button (the phone login gained its
+   * mark), the crosshair slid down the price axis, and its pill went 214.54 → 213.02 on a page PD4 never
+   * touched — byte-identical on a re-run, so never flake. PD3's law again: a baseline proves the page did
+   * not change, never that it was right. (0, 0) is outside every chart, so the page shows the arrival state.
    */
   await page.mouse.move(0, 0);
 
@@ -146,23 +98,13 @@ async function useTheme(page: Page, theme: "light" | "dark") {
 }
 
 /**
- * A pixel baseline must photograph a KNOWN state — never whatever the previous test left behind.
- *
- * THE BUG THIS FIXES. `academy.spec.ts` opens the lesson "Reading a base-rate sentence", and opening
- * a lesson marks it read — a row in `lesson_progress`, which is user state the Academy page renders
- * as a checkmark. Specs run alphabetically on CI's single worker, so `academy` runs before `vrt`,
- * and the Academy VRT shot was photographing that checkmark.
- *
- * The baselines, meanwhile, are generated by a job that runs ONLY `vrt.spec.ts` — a world where that
- * lesson was never opened, and the checkmark is not there. So the baselines were born in a different
- * world than the one they are verified in, and the Academy shot could never legitimately match. It
- * "passed" for months purely because ~1,960 pixels of checkmark fitted inside the old 1%-of-pixels
- * tolerance; tightening that tolerance is what finally surfaced it.
- *
- * The fix is not to make the baseline job run more tests — that would make every baseline depend on
- * the side effects and ordering of the whole suite. It is to make the VRT suite establish the state
- * it intends to photograph. It clears the progress rows first, so the Academy renders its seeded
- * state whether or not anything else has touched it, and the two worlds are the same world.
+ * A pixel baseline must photograph a KNOWN state — never whatever the previous test left behind. THE BUG:
+ * `academy.spec.ts` opens a lesson, which marks it read (a `lesson_progress` row the page renders as a
+ * checkmark); specs run alphabetically on one worker, so `academy` runs before `vrt` and the Academy shot
+ * caught that checkmark. But the baselines are born from a job running ONLY vrt.spec.ts, where the lesson
+ * was never opened — two different worlds, and it "passed" for months only because ~1,960 pixels fit the
+ * old 1% tolerance. The fix is not to run more tests (that couples every baseline to suite ordering) but
+ * to establish the state: clear the progress rows so the Academy renders its seeded state.
  */
 async function resetMutableStateThePixelsWouldOtherwiseCatch(request: APIRequestContext) {
   if (!process.env.MSM_SEEDED) return; // unseeded runs have no database to reset
@@ -175,26 +117,18 @@ async function resetMutableStateThePixelsWouldOtherwiseCatch(request: APIRequest
     await db.$disconnect();
   }
 
-  // DELETING THE ROW IS NOT ENOUGH, and this is the part that took a second attempt to see.
-  //
-  // /academy is an ISR route. When the earlier spec opened the lesson, the server action that marked
-  // it read ALSO revalidated /academy — so the cache now holds a rendering of the page WITH the
-  // checkmark. Emptying the table changes what the next render would produce; it does not touch the
-  // render that is already cached. The page kept its checkmark and the shot kept failing.
-  //
-  // So the reset finishes the job: clear the state, then bust the cache that is still showing it.
+  // DELETING THE ROW IS NOT ENOUGH: /academy is ISR, and the earlier spec's mark-read revalidated it, so
+  // the cache holds a render WITH the checkmark. Emptying the table changes the next render, not the
+  // cached one. So the reset finishes the job — clear the state, then bust the cache still showing it.
   await request.post(`/api/revalidate?secret=${VRT_RESET_SECRET}`);
 }
 
 /*
- * THE CLOCK IS PINNED, AND THE FIRST BASELINE RUN IS WHY — see e2e/seeded-clock.ts, which now owns
- * SEEDED_EVENING and is the only file in the browser suite allowed to write a date (drift rule 21).
- *
- * The short version: the pipeline strip grades freshness in the BROWSER, against the reader's clock,
- * so the Desk renders something that depends on WHEN IT IS. Pinning the clock to the seeded session's
- * evening keeps the strip permanently FRESH. The desk shots assert that state before photographing
- * it, so if the seed's date ever moves, this fails loudly instead of quietly photographing the wrong
- * rung of the ladder.
+ * THE CLOCK IS PINNED, AND THE FIRST BASELINE RUN IS WHY — see e2e/seeded-clock.ts, which owns
+ * SEEDED_EVENING and is the only browser-suite file allowed to write a date (drift rule 21). The pipeline
+ * strip grades freshness in the BROWSER against the reader's clock, so the Desk depends on WHEN IT IS;
+ * pinning to the seeded evening keeps the strip FRESH, and the desk shots assert that before shooting, so
+ * a drifted seed fails loudly instead of photographing the wrong rung.
  */
 
 test.describe("visual regression — the design system", () => {
@@ -206,9 +140,8 @@ test.describe("visual regression — the design system", () => {
   });
 
   // ── the styleguide: the anchor ───────────────────────────────────────────────────────────
-  //
-  // Every token and primitive renders here, so this one page is the highest-value baseline in the
-  // suite: a token that silently changes value shows up here before it shows up anywhere else.
+  // Every token and primitive renders here, so this is the highest-value baseline: a silently changed
+  // token shows up here before anywhere else.
 
   test("styleguide — Morning", async ({ page }, testInfo) => {
     // The layout-only projects lock ROOM GRIDS (Appendix F). This shot is not a room grid — it is
@@ -227,49 +160,24 @@ test.describe("visual regression — the design system", () => {
   });
 
   // ── the rooms ────────────────────────────────────────────────────────────────────────────
-  //
-  // Seeded data only (MSM_SEEDED), so the numbers are fixed by prisma/seed.mjs and a diff means a
-  // STYLE change rather than a data change. Without the seed these shots would fail every night for
-  // the most boring possible reason.
+  // Seeded data only (MSM_SEEDED), so numbers are fixed by prisma/seed.mjs and a diff means a STYLE
+  // change. Without the seed these would fail every night for the most boring reason.
 
   /*
-   * The rooms with a generated baseline, read from lib/routes-manifest.json — the ONE list of rooms
-   * (G3). Every manifest entry that carries a `vrtRoom` slug is shot here, light and dark, at every
-   * viewport the project matrix asks for. The list used to be hand-kept in this file, which is how a
-   * room could ship with no pixel lock and nobody notice; lib/routes-manifest.test.ts now reds the
-   * unit suite if a `page.tsx` exists with no manifest entry behind it.
-   *
-   * WHAT STAYED IN THIS FILE, deliberately: the per-shot quirks below (which project skips which
-   * theme, the Desk's freshness assertion) and the arguments for why particular rooms are worth
-   * locking at all. Those are the oracle's business, not the manifest's:
-   *
-   *   · /news and /news/nc-fed-hold — worth locking above almost anything else, because the room is
-   *     carried today by GENERATED imagery: the media bucket does not exist (P-1), so every card
-   *     renders its designed catalyst card rather than a photograph. The claim those rungs make is
-   *     "this reads as an editorial choice, not as a failure", and that claim is only ever true or
-   *     false in a picture. No test can hold it. The oracle can.
-   *
-   *   · /scans/unusual-volume — the match table (F3), the page that replaced the dead "+ N more".
-   *     The recipe card, the named default order, the lottery chip and the pagination footer all
-   *     live here.
-   *
-   *   · /settings — THE CONTROL ROOM (N6), worth locking for one reason above all the others: on
-   *     this page, the most important thing the product says is a SENTENCE, not a control. Plan 8.1
-   *     found that on a normal weeknight the pipeline has already run and a manual re-run would
-   *     recompute identical data — so the honest control for that case is the EXPLANATION. The
-   *     pinned VRT clock (SEEDED_EVENING, 11pm on the seeded session) lands `full` in exactly that
-   *     state, so the baseline photographs the flagship C5 line:
-   *
-   *         "Tonight's run already succeeded at 18:41 ET — there is nothing newer to fetch."
-   *
-   *     A row whose whole job is to be READ is a row whose failure mode is typographic, and no DOM
-   *     assertion can see that. This is the oracle's question, not a test's. (/settings had NO
-   *     baseline at all before N6 — the one room in the app that is a writer, and the pixel oracle
-   *     had never looked at it.)
-   *
-   * The ticker room is NOT here, and the manifest says why: its shots are written by hand further
-   * down, against /ticker/AAPL, because the Range Ladder only renders with seeded vol bands behind
-   * it — while the sweeps and the nav budget open /ticker/SPY, which needs no seed.
+   * The rooms with a generated baseline, read from lib/routes-manifest.json — the ONE list of rooms (G3).
+   * Every entry with a `vrtRoom` slug is shot light and dark at every matrix viewport; the list used to be
+   * hand-kept here (how a room could ship with no lock), and routes-manifest.test.ts now reds if a page.tsx
+   * has no entry. WHAT STAYED HERE deliberately: the per-shot quirks and the arguments for locking
+   * particular rooms — the oracle's business, not the manifest's:
+   *   · /news + /news/nc-fed-hold — carried today by GENERATED imagery (P-1, no media bucket), so every
+   *     card is a designed catalyst card; "reads as an editorial choice, not a failure" is only true or
+   *     false in a picture, which no test can hold.
+   *   · /scans/unusual-volume — the match table (F3): recipe card, named order, lottery chip, pagination.
+   *   · /settings — THE CONTROL ROOM (N6), worth locking because its most important thing is a SENTENCE:
+   *     the pinned clock lands `full` in its "already succeeded at 18:41 ET" C5 line, whose failure mode is
+   *     typographic and invisible to a DOM assertion. (/settings had NO baseline before N6.)
+   * The ticker room is written by hand below, against /ticker/AAPL, because the Range Ladder needs seeded
+   * vol bands (the sweeps open /ticker/SPY, which needs no seed).
    */
   const SEEDED_ROOMS = VRT_ROOMS;
 
@@ -278,28 +186,20 @@ test.describe("visual regression — the design system", () => {
       test(`${room.name} — ${theme === "light" ? "Morning" : "Midnight"}`, async ({ page }, testInfo) => {
         test.skip(!process.env.MSM_SEEDED, "needs the seeded database");
         /*
-         * The layout-only projects lock the GRID, not the palette (Appendix F: "every room at 1536,
-         * light only"). The colours are already pinned at 1366 and 390 in both themes; another set
-         * of dark baselines up here would be pure cost — more pictures to regenerate on every
-         * restyle, for no question that is not already answered.
-         *
+         * The layout-only projects lock the GRID, not the palette (Appendix F: "every room at 1536, light
+         * only"). Colours are pinned at 1366 and 390 in both themes; another dark set here is pure cost.
          * What 1536 answers, and nothing else can, is whether the wide column maps hold.
          */
         test.skip(locksLayoutOnly(testInfo) && theme === "dark", "this project locks layout, not palette");
 
         /*
-         * THE 16-INCH LOCK IS SELECTIVE, AND THE MANIFEST DECIDES — not this file (PD3, §6.3).
-         *
-         * 1512 sits INSIDE the `desk:` band (1366–1535) and the container caps at 1360px, so a room
-         * whose composition is decided by the BREAKPOINT renders the same content box at 1512 as at
-         * 1366 — the same layout, with more margin. Shooting every room here would buy a pile of
-         * baselines that re-answer an answered question and have to be regenerated forever.
-         *
-         * The rooms worth 1512 are the ones where CONTENT HEIGHT decides the layout: that is where
-         * Law 1 lives, that is where the dead gap opened, and a wide empty screen is where it is
-         * worst. The manifest's `mbp16` flag names them and defends each choice in its note. This
-         * loop just obeys it — there is ONE list of rooms, and a second one hiding in a spec file is
-         * how /news went two tagged phases without a single sweep looking at it.
+         * THE 16-INCH LOCK IS SELECTIVE, AND THE MANIFEST DECIDES — not this file (PD3, §6.3). 1512 sits
+         * INSIDE the `desk:` band and the container caps at 1360px, so a breakpoint-composed room renders
+         * the same content box at 1512 as at 1366 (more margin), and shooting every room here re-answers an
+         * answered question forever. The rooms worth 1512 are the ones where CONTENT HEIGHT decides layout —
+         * where Law 1 lives and the dead gap opened; the manifest's `mbp16` flag names them and defends each
+         * in its note. This loop obeys it: one list of rooms, and a second hiding in a spec is how /news went
+         * two tagged phases with no sweep.
          */
         test.skip(
           testInfo.project.name === "mbp16" && !room.mbp16,
@@ -309,14 +209,11 @@ test.describe("visual regression — the design system", () => {
         await useTheme(page, theme);
 
         /*
-         * The Desk carries the pipeline strip, and the strip is the one thing on this page whose
-         * appearance depends on WHEN IT IS. The clock is pinned to the seeded session's evening (see
-         * SEEDED_EVENING), which puts the strip in its FRESH state.
-         *
-         * This asserts that before shooting. If the seed's trading day ever moves and the pin is not
-         * moved with it, the strip escalates to amber or to the red banner and the baseline becomes
-         * a photograph of a state nobody chose — which is precisely how a pixel oracle stops being
-         * one. Better to fail here, saying what happened, than to hand back a picture of a bug.
+         * The Desk carries the pipeline strip, the one thing here whose appearance depends on WHEN IT IS.
+         * The clock is pinned to the seeded evening (SEEDED_EVENING), putting the strip in its FRESH state.
+         * This asserts that before shooting: if the seed's day moves and the pin does not, the strip
+         * escalates and the baseline photographs a state nobody chose. Better to fail here than hand back a
+         * picture of a bug.
          */
         if (room.path === "/") {
           await page.goto("/");
@@ -332,12 +229,9 @@ test.describe("visual regression — the design system", () => {
   }
 
   /**
-   * The table's INTERACTIVE states. A sorted table and a second page are different pictures, and the
-   * baselines that matter most are the ones nobody would think to look at by hand.
-   *
-   * Deterministic by construction: the seeded values are fixed, page 1 is always page 1, and the
-   * sort is instant (a FLIP-animated sort would be a screenful of money figures in motion, which is
-   * banned — so there is no animation to wait out).
+   * The table's INTERACTIVE states. A sorted table and a second page are different pictures, and the ones
+   * that matter most are the ones nobody would think to check by hand. Deterministic by construction: fixed
+   * seed, page 1 is page 1, and the sort is instant (a FLIP-animated sort of money figures is banned).
    */
   test("scans table sorted by RVOL — the header state", async ({ page, isMobile }, testInfo) => {
     test.skip(!process.env.MSM_SEEDED, "needs the seeded database");
@@ -378,12 +272,9 @@ test.describe("visual regression — the design system", () => {
   });
 
   /**
-   * The Front Page's INTERACTIVE states (Appendix F): filtered, empty, and the week window.
-   *
-   * The zero-state shot is the one that earns its keep. "No FDA catalysts today — that is
-   * information, not an error" is a sentence the whole product's posture rests on, and whether it
-   * lands as information or as an apology is decided entirely by how it is SET — its size, its
-   * weight, how much air is around it. That is not something a DOM assertion can see.
+   * The Front Page's INTERACTIVE states (Appendix F): filtered, empty, and the week window. The zero-state
+   * shot earns its keep: "No FDA catalysts today — that is information, not an error" lands as information
+   * or as an apology depending entirely on how it is SET, which no DOM assertion can see.
    */
   test("the front page, filtered — the count line restates the filter", async ({ page }, testInfo) => {
     test.skip(!process.env.MSM_SEEDED, "needs the seeded database");
@@ -455,17 +346,11 @@ test.describe("visual regression — the design system", () => {
   });
 
   /*
-   * PD8 VRT — the story page v2 and the ticker page v2 (Appendix D).
-   *
-   * The FULL story anatomy (nc-fda-nonopioid) and the served ticker (AAPL, now with its depth blocks)
-   * are shot by the main room loop and the bespoke ticker tests above — both themes. The shots below
-   * are the CONTENT variants: a gate-dropped context, a pre-PD7 sparse row, and a non-served name.
-   * They are new pictures nobody has looked at, so every one gets eyes before its baseline is
-   * committed (the law that has bitten this repo four times: an EXACT baseline can still be wrong).
-   *
-   * 9.8 asks the gate-dropped variant in both themes; the sparse and thin variants are light-only
-   * extra-coverage shots, following the room's established convention (the palette is already locked
-   * in both themes by the main shots; these lock the content states).
+   * PD8 VRT — the story page v2 and ticker page v2 (Appendix D). The full story anatomy and the served
+   * ticker are shot by the main loop and the ticker tests above, both themes; these shots are the CONTENT
+   * variants (a gate-dropped context, a pre-PD7 sparse row, a non-served name) — new pictures, so each gets
+   * eyes before its baseline is committed (the law that has bitten this repo four times: an EXACT baseline
+   * can still be wrong). 9.8 asks the dropped variant both themes; sparse/thin are light-only extra coverage.
    */
   for (const theme of ["light", "dark"] as const) {
     test(`story — a gate-dropped context and a record block — ${theme === "light" ? "Morning" : "Midnight"}`, async ({
@@ -494,27 +379,20 @@ test.describe("visual regression — the design system", () => {
   });
 
   /*
-   * PD9 VRT — the detail sheet, OPEN (Appendix D).
-   *
-   * The sheet renders the SAME body the standalone story/ticker pages render — those are already
-   * pinned above, in both themes. So what these six shots lock is the CHROME that only the overlay
-   * has: the scrim, the grabber and card-radius top corners of the phone bottom sheet, the ✕, the L4
-   * glass, and the centred max-720 overlay on the desktop. Brand-new pictures, so each candidate gets
-   * eyes before its baseline is committed (the law that has bitten this repo four times: an EXACT
-   * baseline can still be wrong).
-   *
-   * Two things make these different from every other shot here. First, the sheet must be MOUNTED — it
-   * exists only after an in-app tap intercepts a route — so each opens it the way a reader does.
-   * Second, they shoot the VIEWPORT, not the full page: the sheet is `position: fixed`, and a
-   * full-page shot of a fixed layer is not the thing the reader sees. reducedMotion is forced for the
-   * whole file, so the opacity fade is already settled when the camera fires.
+   * PD9 VRT — the detail sheet, OPEN (Appendix D). The sheet renders the SAME body the standalone pages do
+   * (pinned above, both themes), so these six shots lock the CHROME only the overlay has: the scrim, the
+   * bottom sheet's grabber and top corners, the ✕, the L4 glass, the centred max-720 desktop overlay. New
+   * pictures, so each gets eyes first. Two differences from every other shot: the sheet must be MOUNTED (it
+   * exists only after an in-app tap intercepts a route), so each opens it as a reader does; and they shoot
+   * the VIEWPORT, not the full page (the sheet is `position: fixed`). reducedMotion is forced, so the fade
+   * has settled when the camera fires.
    */
   async function shootOpenSheet(page: Page, name: string) {
     await expect(page.getByRole("dialog")).toBeVisible();
     await expect(page.locator(".skeleton-bone")).toHaveCount(0);
     await waitForFonts(page);
-    // Park the pointer on the scrim's top-left corner: off every chart (no crosshair) and a hover,
-    // never a click, so it does not dismiss the sheet it is about to photograph.
+    // Park the pointer at (0,0): off every chart (no crosshair) and a hover not a click, so it does not
+    // dismiss the sheet it is about to photograph.
     await page.mouse.move(0, 0);
     await expect(page).toHaveScreenshot(`${name}.png`, {
       mask: [page.locator('[data-vrt="mask"], time')],
@@ -578,24 +456,14 @@ test.describe("visual regression — the design system", () => {
   });
 
   /**
-   * THE DESK ON A THIN NIGHT — the shot that would have caught the defect before a human did (PD3).
-   *
-   * Every other Desk baseline in this suite photographs the SEEDED morning, and the seeded morning
-   * is a FULL night: every module fat with data, every row track comfortably filled. The dead hole
-   * under the Brief cannot appear on a night like that. So for as long as this suite has existed, it
-   * has been taking a beautiful, careful, high-resolution picture of the one night the bug does not
-   * happen — and the bug was found by a person looking at his own screen.
-   *
-   * This is the other night. The briefing is HELD, three movers instead of eight, no setup cards: a
-   * short Brief beside a tall open Calendar, which is the exact shape that used to dig the hole. Law
-   * 1 is what closes it, e2e/grid.spec.ts measures the gap mechanically, and this pins what it looks
-   * like — because "does this page have a dead acre in the middle of it" is, in the end, a question
-   * you answer by looking.
-   *
-   * IT RUNS LAST, AND ONLY AT 1512. Last, because it is the only test in the suite that changes the
-   * database it photographs (it snapshots, thins, shoots, and puts the night back — see
-   * e2e/thin-night.ts for the whole safety argument). Only at 1512, because one picture of a thin
-   * night is enough, and 1512×982 is the screen the user was looking at when he reported it.
+   * THE DESK ON A THIN NIGHT — the shot that would have caught the defect before a human did (PD3). Every
+   * other Desk baseline photographs the SEEDED morning, a FULL night where the dead hole cannot appear — so
+   * the suite has been taking a careful picture of the one night the bug does not happen, and a person found
+   * it on his own screen. This is the other night: brief HELD, three movers, no setups — a short Brief beside
+   * a tall open Calendar, the exact shape that dug the hole. Law 1 closes it, grid.spec.ts measures the gap,
+   * and this pins what it looks like. IT RUNS LAST (the only test that mutates the database it photographs —
+   * snapshots, thins, shoots, restores; see thin-night.ts) AND ONLY AT 1512 (one picture is enough, and
+   * 1512×982 is the screen it was reported on).
    */
   test("the Desk on a THIN night — a short brief beside a tall calendar, and no hole", async ({
     page,
@@ -611,9 +479,8 @@ test.describe("visual regression — the design system", () => {
     try {
       await useTheme(page, "light");
 
-      // Prove the night is thin before photographing it. A baseline of a FULL night, filed under the
-      // name "thin", would be the most expensive kind of wrong: it would pass forever, and it would
-      // be a picture of the state that never had the bug.
+      // Prove the night is thin before photographing it. A baseline of a FULL night filed under "thin"
+      // would be the most expensive wrong: it would pass forever, a picture of the state that never had the bug.
       await page.goto("/");
       await expect(
         page.getByText(/Briefing unavailable tonight/),
@@ -629,19 +496,12 @@ test.describe("visual regression — the design system", () => {
 });
 
 /**
- * The fallback-metrics lock (§7.4).
- *
- * Every other shot waits for the fonts, which means every other shot is blind to what the page looks
- * like BEFORE they land — and Playfair loads with `display: swap`, so that pre-swap frame is real,
- * and a slow connection shows it. If the fallback's metrics overflowed the login panel at 375px, no
- * font-loaded screenshot would ever reveal it. This one blocks the fonts and looks.
- *
- * It lives in its OWN describe block, with no sign-in, and that is not tidiness — it is the test
- * working at all. Signing in first navigates the page, which loads the fonts, which puts them in the
- * browser's memory cache; the later navigation then never makes a network request, the route
- * interception never fires, and the "fonts-blocked" screenshot is quietly an ordinary one. The
- * assertion below caught exactly that, which is why it is there: a guard that cannot fail proves
- * nothing, and this one had been proving nothing.
+ * The fallback-metrics lock (§7.4). Every other shot waits for the fonts, so every other shot is blind to
+ * the pre-swap frame — and Playfair loads with `display: swap`, so that frame is real on a slow connection.
+ * This one blocks the fonts and looks. It lives in its OWN describe block with no sign-in, and that is the
+ * test working at all: signing in first loads the fonts into cache, the later navigation makes no request,
+ * the interception never fires, and the "fonts-blocked" shot is quietly an ordinary one. The assertion below
+ * caught exactly that — a guard that cannot fail proves nothing.
  */
 test.describe("visual regression — the pre-swap fallback", () => {
   test("login with the fonts blocked — the fallback layout still holds", async ({ page, context }, testInfo) => {

@@ -5,41 +5,26 @@ import { signIn } from "./session";
 import { sweptBy, type Sweep } from "../lib/routes";
 
 /**
- * hardening.spec.ts — the sweeps (R6, §7.1).
- *
- * Everything here is a rule that applies to EVERY route, which is exactly the kind of rule that a
- * per-page test never catches. A 38px tap target or an input that zooms iOS in and never zooms back
- * out does not break a page — it just makes the app quietly worse on a phone, in a way nobody
- * notices until they are standing on a train with one thumb.
- *
- * So the sweep walks every route and checks every control.
+ * hardening.spec.ts — the sweeps (R6, §7.1). Everything here is a rule that applies to EVERY route, exactly
+ * the kind a per-page test never catches: a 38px tap target or an input that zooms iOS in and never back
+ * out does not break a page, it just makes the app quietly worse on a phone. So the sweep walks every route
+ * and checks every control.
  */
 
 /**
- * Every route a reader can reach — read from lib/routes-manifest.json, the ONE list of rooms (G3).
- *
- * The sweep is only as honest as this list, and it used to be hand-kept here. A route family left
- * out of a sweep is a gap that quietly becomes permanent, because nothing fails: /news shipped in
- * N5 — two horizontally-scrolling chip rows, a pagination control and a card grid of links, which
- * is the single densest room in the app for the 44px rule — and this sweep did not look at it until
- * N7. The manifest now owns the list, and lib/routes-manifest.test.ts reds the unit suite the moment
- * a `page.tsx` exists with no entry behind it.
- *
- * THE ONE ROUTE THAT IS NOT IN THE MANIFEST, and why it is named here by hand: /styleguide is not a
- * product room — no reader ever opens it — so it is deliberately absent from the manifest (argued in
- * routes-manifest.test.ts's exemption list). But it IS the densest control surface in the repo, one
- * of every button, input and disclosure the design system owns, on a single page. That makes it the
- * best possible target for a touch-target and sideways-scroll sweep, and the worst possible one for
- * an accessibility sweep of "rooms". So this file sweeps it and a11y.spec.ts does not — a real
- * difference between the two lists, preserved on purpose rather than smoothed away.
+ * Every route a reader can reach — read from lib/routes-manifest.json, the ONE list of rooms (G3). The sweep
+ * is only as honest as this list, and a route left out is a gap that quietly becomes permanent because
+ * nothing fails: /news shipped in N5 (the densest room for the 44px rule) and this sweep did not look at it
+ * until N7. The manifest owns the list now, and routes-manifest.test.ts reds the unit suite the moment a
+ * page.tsx has no entry. THE ONE ROUTE NOT IN THE MANIFEST: /styleguide is not a product room (no reader
+ * opens it, argued in the exemption list), but it IS the densest control surface in the repo — one of every
+ * button, input and disclosure — so this file sweeps it (best target for touch/scroll) while a11y.spec.ts
+ * does not (worst target for an accessibility sweep of "rooms"). A real difference, preserved on purpose.
  */
 /**
- * Two sweeps live in this file and they are separate rules, so they read the manifest separately.
- *
- * They happen to walk the same rooms today — every swept room carries all three sweeps. Deriving
- * both from one list would still work, and would quietly make the manifest's `sweeps` field a lie
- * the first time a room asked for one sweep and not the other. A field that nothing reads is a
- * measurement that is not being taken.
+ * Two sweeps live here and are separate rules, so they read the manifest separately. They walk the same
+ * rooms today, but deriving both from one list would make the manifest's `sweeps` field a lie the first time
+ * a room asked for one sweep and not the other — a field nothing reads is a measurement not being taken.
  */
 const always = (sweep: Sweep) => sweptBy(sweep).filter((room) => !room.seeded).map((room) => room.path);
 const seeded = (sweep: Sweep) => sweptBy(sweep).filter((room) => room.seeded).map((room) => room.path);
@@ -48,31 +33,19 @@ const ROUTES = [...always("touch"), "/styleguide"];
 const SCROLL_ROUTES = [...always("scroll"), "/styleguide"];
 
 /**
- * Rooms that only EXIST when the database is seeded (N7).
- *
- * Ask for a story by a cluster id that is not there and the route calls `notFound()`, so an unseeded
- * sweep measures the 404 page — and passes. See `open()` for the recording, and for why the status
- * code cannot tell you this.
- *
- * The manifest's `seeded` flag draws this line now, so a new seeded room cannot land in the
- * always-there list by accident.
+ * Rooms that only EXIST when the database is seeded (N7). Ask for a story by a cluster id that is not there
+ * and the route calls `notFound()`, so an unseeded sweep measures the 404 page and passes (see `open()` for
+ * the recording, and why the status code cannot tell you this). The manifest's `seeded` flag draws the line.
  */
 const SEEDED_ROUTES = seeded("touch");
 const SEEDED_SCROLL_ROUTES = seeded("scroll");
 
 /**
- * Open a room, and PROVE it is the room — not an error page, and not the login wall (N7).
- *
- * These sweeps measure whatever is on the screen. A route that 404s puts the error page under the
- * ruler: it has no controls under 44px, it does not scroll sideways, and it passes every rule here
- * while the room it stands for is never looked at.
- *
- * THE STATUS CODE IS NOT THE WITNESS. The first version of this guard asserted `status === 200` and
- * still passed on a missing page. Recorded on this tree: `/news/nc-fed-hold` and
- * `/ticker/NOTAREALTICKER` both answer **HTTP 200 with "404 — This page could not be found" in the
- * body**, because a `notFound()` raised inside a statically-generated route is served as a 200; only
- * a path the router cannot match at all gets a real 404. The body is the only honest witness, so the
- * body is what this reads.
+ * Open a room, and PROVE it is the room — not an error page, not the login wall (N7). These sweeps measure
+ * whatever is on screen: a 404 puts the error page under the ruler (no controls under 44px, no sideways
+ * scroll — passes) while the room it stands for is never looked at. THE STATUS CODE IS NOT THE WITNESS: a
+ * `notFound()` inside a statically-generated route is served as 200 with "404 …" in the body (only an
+ * unmatchable path gets a real 404), so the body is the only honest witness, and the body is what this reads.
  */
 async function open(page: Page, route: string) {
   await page.goto(route);
@@ -98,26 +71,17 @@ test.describe("touch targets (phone)", () => {
   });
 
   /**
-   * Measure every control in one room. Returns the offenders AND the number of controls it actually
-   * looked at, because a sweep that measured nothing must not be allowed to report success — the
-   * lesson the 16px rule below learned the hard way, applied here before it can happen again.
+   * Measure every control in one room. Returns the offenders AND the count it looked at, because a sweep
+   * that measured nothing must not report success — the lesson the 16px rule learned, applied here first.
    */
   async function measureTargets(page: Page, route: string) {
       await open(page, route);
 
-      // Wait for the LAYOUT to settle, which is the only thing this sweep actually depends on — it
-      // measures the size of every control, and a control's size is not final until its text is in
-      // its real font.
-      //
-      // This used to wait for "networkidle", and that stopped working at F1 — not because anything
-      // broke, but because the cure worked. Every room is a static route now, so the router
-      // prefetches the links on screen as the browser goes idle; the network keeps trickling, and
-      // "500ms with nothing in flight" may simply never arrive. It timed out on the busiest pages.
-      //
-      // Fonts are the honest wait here. A button measured mid-swap, still in the fallback face, is a
-      // button measured at the wrong width. (Waiting on the tab bar instead would have been wrong for
-      // a different reason: /styleguide has no tab bar, so the sweep would hang on the one page whose
-      // whole job is to show every control in the system.)
+      // Wait for the LAYOUT to settle, the only thing this sweep depends on — a control's size is not final
+      // until its text is in its real font. This used to wait for "networkidle", which stopped working at F1:
+      // every room is static now, so the router prefetches on-screen links as the browser idles and the
+      // network never goes quiet on busy pages. Fonts are the honest wait; a button measured mid-swap is
+      // measured at the wrong width. (Waiting on the tab bar would hang /styleguide, which has none.)
       await page.waitForLoadState("load");
       await page.evaluate(async () => {
         await document.fonts.ready;
@@ -139,53 +103,33 @@ test.describe("touch targets (phone)", () => {
           swept += 1;
 
           /*
-           * THE INLINE EXCEPTION, and it is a real one — not a way of dodging the rule.
-           *
-           * WCAG 2.5.8 exempts a target that sits "in a sentence or block of text", for a good
-           * reason: a glossary term inside a paragraph has its height set by the LINE it lives on,
-           * and padding it to 44px would break that paragraph — for no accessibility gain at all,
-           * because a reader taps the word where the word is.
-           *
-           * This app leans on that exception deliberately: the dotted-underline glossary terms are
-           * one of its better ideas, and they only work inline.
-           *
-           * The test is two-part, and BOTH halves are needed. The element has to participate in a
-           * line box (a <button> defaults to inline-block, not inline — checking only for `inline`
-           * silently exempted nothing and let the real offenders through), AND it has to actually
-           * be inside running text. A button that is merely inline-block inside a toolbar is a
-           * target like any other, and it gets its 44px.
+           * THE INLINE EXCEPTION, a real one, not a dodge. WCAG 2.5.8 exempts a target "in a sentence or
+           * block of text": a glossary term inside a paragraph has its height set by the LINE, and padding it
+           * to 44px would break the paragraph for no gain (a reader taps the word where it is). This app leans
+           * on that deliberately (the dotted-underline glossary terms only work inline). Two-part, and BOTH
+           * halves needed: the element must participate in a line box (a <button> defaults to inline-block, so
+           * checking only `inline` exempted nothing) AND be inside running text (an inline-block button in a
+           * toolbar gets its 44px).
            */
           const display = getComputedStyle(el).display;
           const inLineBox = display.startsWith("inline");
           /*
-           * `figcaption` joined this list in N2, and it is a real omission being corrected, not a
-           * loophole being opened.
-           *
-           * The chart's attribution reads "Chart by TradingView", with TradingView as the link. That
-           * is a link inside a sentence — precisely the case WCAG 2.5.8's inline exception exists
-           * for — and padding it to 44px would break the caption for no accessibility gain, because
-           * a reader taps the word where the word is. The list simply never named the element that
-           * caption lives in.
-           *
-           * (It surfaced now because it had been passing VACUOUSLY: the chart is code-split, so on a
-           * slower run the figcaption did not exist yet and the sweep found no link to measure. A
-           * guard that only fails when the page happens to be fast is not a guard.)
+           * `figcaption` joined this list in N2 — a real omission corrected, not a loophole. The chart's
+           * "Chart by TradingView" attribution is a link inside a sentence (exactly WCAG 2.5.8's case), and
+           * padding it to 44px would break the caption for no gain; the list simply never named the element it
+           * lives in. (It surfaced now because it had been passing VACUOUSLY: the chart is code-split, so on a
+           * slower run the figcaption did not exist and the sweep found no link — a guard that only fails when
+           * the page is fast is not a guard.)
            */
           const inRunningText =
             el.closest("p, h1, h2, h3, h4, li, dd, blockquote, span, figcaption") !== null;
           if (inLineBox && inRunningText) continue;
 
           /*
-           * THE LABELLED-CONTROL EXCEPTION.
-           *
-           * A native checkbox is 14px and cannot be made 44px without either scaling it into
-           * something that no longer looks like a checkbox, or padding the row into absurdity. But
-           * clicking its LABEL activates it — that is what a label is — so the real target is the
-           * label, and the label is 44px.
-           *
-           * So the rule becomes: the control passes if the thing a thumb actually hits is big
-           * enough. If the enclosing label is under 44px too, this exempts nothing and the failure
-           * still fires, which is the whole point of measuring the label rather than assuming it.
+           * THE LABELLED-CONTROL EXCEPTION. A native checkbox is 14px and cannot be made 44px without scaling
+           * it into something else — but clicking its LABEL activates it, so the real target is the label, and
+           * the label is 44px. The rule: the control passes if the thing a thumb hits is big enough; if the
+           * enclosing label is under 44px too, this exempts nothing and the failure still fires.
            */
           const label = el.closest("label");
           if (label !== null && label.getBoundingClientRect().height >= MIN - 0.5) continue;
@@ -229,32 +173,15 @@ test.describe("touch targets (phone)", () => {
   }
 
   /**
-   * The iOS zoom rule (§7.1) — REPAIRED IN N2, and it was broken in both directions at once.
-   *
-   * The rule itself is real: focusing a TEXT-ENTRY field under 16px makes Safari zoom the viewport
-   * in, and it does NOT zoom back out. The reader is stranded at 1.3x on a page they now have to pan
-   * around. The fix is the font size, never a maximum-scale lock — pinch-zoom is an accessibility
-   * right, not an annoyance to design away.
-   *
-   * WHAT THIS TEST GOT WRONG, TWICE.
-   *
-   * 1. IT COULD PASS WITHOUT LOOKING AT ANYTHING. /paper's ticket lives behind a Suspense boundary
-   *    (it reads useSearchParams, so it cannot prerender). `page.goto()` resolves before that island
-   *    hydrates, so the sweep would query the DOM, find ZERO fields, iterate over nothing, and
-   *    report success. It has been "passing" on the page whose form is the entire reason the rule
-   *    exists. Perturbing the timing by a few milliseconds — any unrelated change — flips it. That
-   *    is not a flake to retry; it is a guard that never ran.
-   *
-   *    So it now WAITS for the form and asserts it actually found fields. A sweep that swept nothing
-   *    is a failure, not a pass.
-   *
-   * 2. IT CRIED WOLF ON CONTROLS iOS DOES NOT ZOOM FOR. It measured every `input`, including the
-   *    segmented control's radios — which are 13.5px, the browser's default, and have been since F2.
-   *    But iOS zooms on focusing a field that summons a KEYBOARD. A radio summons no keyboard; it
-   *    cannot trigger the behaviour. Failing the build for it would have driven someone to "fix" a
-   *    control that was never broken, in a way that made the design worse.
-   *
-   *    So the selector now names the fields iOS actually zooms for, and says why.
+   * The iOS zoom rule (§7.1) — REPAIRED IN N2, broken in both directions at once. The rule is real: focusing
+   * a TEXT-ENTRY field under 16px makes Safari zoom the viewport in and NOT back out, stranding the reader at
+   * 1.3x. The fix is the font size, never a maximum-scale lock (pinch-zoom is a right, not an annoyance).
+   * WHAT THIS TEST GOT WRONG, TWICE. 1. IT COULD PASS WITHOUT LOOKING: /paper's ticket lives behind a Suspense
+   * boundary (useSearchParams, cannot prerender), so `page.goto()` resolved before it hydrated, the sweep
+   * found ZERO fields, and reported success — "passing" on the page whose form is the reason the rule exists;
+   * any timing change flips it. It now WAITS for the form and asserts it found fields. 2. IT CRIED WOLF on
+   * controls iOS does not zoom for: it measured the segmented radios (13.5px), but iOS zooms only on a field
+   * that summons a KEYBOARD, and a radio summons none. The selector now names the fields iOS actually zooms for.
    */
   test("every text-entry field renders at 16px or more, so iOS never zooms in", async ({ page }) => {
     // The field types that summon a keyboard, and therefore zoom. Radios, checkboxes, buttons,
@@ -277,10 +204,9 @@ test.describe("touch targets (phone)", () => {
     for (const route of ["/paper", "/settings", "/login"]) {
       await page.goto(route);
 
-      // The form must actually BE here before we can claim anything about it. This is what stops the
-      // sweep from passing over an empty page. /paper's ticket hydrates behind a Suspense boundary,
-      // so "the document loaded" is not the same thing as "the form exists" — we wait for a real
-      // text-entry field to be attached, which is the thing this test is about.
+      // The form must actually BE here before we claim anything — what stops the sweep passing over an empty
+      // page. /paper's ticket hydrates behind a Suspense boundary, so "the document loaded" is not "the form
+      // exists": wait for a real text-entry field to be attached, the thing this test is about.
       await page.waitForLoadState("load");
       await page
         .locator('input[type="text"], input[type="password"], input[type="number"], textarea, select')
@@ -346,40 +272,28 @@ test.describe("no page scrolls sideways, anywhere", () => {
 });
 
 /**
- * THE 360px SWEEP (PD4, §7.3) — the narrowest width this product honors.
- *
- * The sweep above already runs at every project's own viewport, and the `phone` project is a Pixel 7
- * at 412px. That is a comfortable phone. 360px is not: it is the width of a Galaxy S-series in
- * portrait and of essentially every budget Android sold, and it is the width at which a layout that
- * merely FITS at 412 starts to spill.
- *
- * It gets ONE test rather than one-per-room, and that is deliberate: the count is the point. A sweep
- * that measured nothing reports success — the lesson the 16px rule learned the hard way, and the
- * reason `measureTargets` returns a tally. So this walks the rooms itself, counts them, and refuses
- * to pass unless it actually visited the whole route map. A guard that cannot prove it looked is not
- * a guard.
- *
- * WHY THERE IS NO 360 BASELINE TO GO WITH IT. Pixel truth costs a photograph per room per theme, and
- * one width of it is enough when the other is asserted behaviorally: 412 is photographed, 360 is
- * measured. What only 360 can tell us is whether anything overflows, and overflow is a NUMBER —
- * `scrollWidth - clientWidth` — not a picture. Photographing it would buy a second opinion on a
- * question that already has an exact answer.
+ * THE 360px SWEEP (PD4, §7.3) — the narrowest width this product honors. The sweep above runs at each
+ * project's own viewport, and `phone` is a Pixel 7 at 412px, a comfortable phone; 360px is not (a Galaxy
+ * S-series in portrait, essentially every budget Android), and it is where a layout that merely FITS at 412
+ * starts to spill. It gets ONE test rather than one-per-room, deliberately: the count is the point — a sweep
+ * that measured nothing reports success (the 16px lesson), so this walks the rooms, counts them, and refuses
+ * to pass unless it visited the whole route map. WHY NO 360 BASELINE: pixel truth costs a photograph per room
+ * per theme, and one width is enough when the other is asserted behaviorally — 412 is photographed, 360 is
+ * measured, and overflow is a NUMBER (`scrollWidth - clientWidth`), not a picture.
  */
 test.describe("the phone never scrolls sideways at 360px either", () => {
   test.use({ viewport: { width: 360, height: 780 } });
 
   test("every room stays on-axis at 360 — and the sweep proves it swept them", async ({ page }, testInfo) => {
-    // The phone project only. The other three are desk widths, and resizing one of them to 360 would
-    // measure a phone layout while pretending to be a desktop — a third opinion from a witness who
-    // was not there.
+    // The phone project only: the other three are desk widths, and resizing one to 360 would measure a phone
+    // layout while pretending to be a desktop.
     test.skip(testInfo.project.name !== "phone", "the 360 sweep is a phone-project rule");
 
     await signIn(page);
 
     /*
-     * The rooms this run can HONESTLY sweep. The seeded rooms only exist when the database is seeded;
-     * without it they 404, and `open()` would (correctly) fail rather than quietly measure an error
-     * page. CI seeds, so CI sweeps all of them.
+     * The rooms this run can HONESTLY sweep. The seeded rooms only exist when the database is seeded; without
+     * it they 404 and `open()` correctly fails rather than measure an error page. CI seeds, so CI sweeps all.
      */
     const seededAvailable = process.env.MSM_SEEDED === "1";
     const expected = seededAvailable ? [...SCROLL_ROUTES, ...SEEDED_SCROLL_ROUTES] : SCROLL_ROUTES;
@@ -398,9 +312,8 @@ test.describe("the phone never scrolls sideways at 360px either", () => {
       if (overflow > 1) offenders.push(`${route} (+${overflow}px)`);
     }
 
-    // THE SWEEP PROVES IT SWEPT. Both halves matter: the first catches a loop that silently visited
-    // nothing, the second catches a route list that quietly shrank away from the manifest — which is
-    // exactly how /news went through two tagged phases with no sweep ever looking at it.
+    // THE SWEEP PROVES IT SWEPT. Both halves matter: the first catches a loop that visited nothing, the second
+    // a route list that quietly shrank away from the manifest — how /news went two tagged phases unswept.
     expect(swept, "the 360 sweep visited NO rooms — it measured nothing and would have passed").toBeGreaterThan(0);
     expect(
       swept,

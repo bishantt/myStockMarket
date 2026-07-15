@@ -1,25 +1,19 @@
 """
-nightly.py — Job A's orchestration: the full nightly data flow (plan §2.1, Appendix C, P1 step 5).
+Job A's orchestration: the full nightly data flow (plan §2.1, Appendix C, P1 step 5).
 
-One trading night, in order:
-  1. list the tradable universe,
-  2. ingest end-of-day bars for it,
-  3. FAIL LOUDLY if coverage is below the floor (a thin night must not quietly publish a hole),
-  4. persist the full-universe bars as Parquet and push them to R2 (the history lake),
-  5. run the five scans over the run-date snapshot,
-  6. read the macro context (VIX, 10-year) and compute the day's breadth,
-  7. publish the SERVED subset to Postgres — the indices, sector ETFs, and the user's watchlist —
-     plus the scan matches and the macro-context row, in one transaction.
+One trading night, in order: list the universe, ingest end-of-day bars, fail loudly if coverage is
+below the floor (a thin night must not quietly publish a hole), persist the bars to Parquet + R2,
+run the five scans, read the macro context (VIX, 10-year) and the day's breadth, then publish the
+SERVED subset (indices, sector ETFs, watchlist) plus scan matches and the macro row in one
+transaction.
 
-The design is dependency-injected: every external collaborator (the universe, the bar fetch, the
-macro read, the Parquet store, R2, the publish, the served-symbol list) is a field on NightlyDeps,
-so the flow is tested end to end with fakes and no live key is ever needed. Job A's main() builds
-the real collaborators from settings and calls run_nightly.
+Every external collaborator is a field on NightlyDeps, so the flow is tested end to end with fakes
+and no live key is ever needed; main() builds the real ones from settings and calls run_nightly.
 
-Signal log: every scan match writes one INSERT-ONLY signal_log row, with resolves_on set to exactly
-ten TRADING days out via the NYSE calendar (trading_calendar.py). The rate fields stay null until
-P4 gives the patterns base rates. Publish inserts these ON CONFLICT DO NOTHING, so a rerun of a
-night adds nothing — the log records that a pattern fired and when it resolves, permanently.
+Signal log: every scan match writes one INSERT-ONLY signal_log row, resolves_on exactly ten TRADING
+days out via the NYSE calendar (trading_calendar.py); rate fields stay null until P4. Publish uses
+ON CONFLICT DO NOTHING, so a rerun adds nothing — the log records that a pattern fired and when it
+resolves, permanently.
 """
 
 from __future__ import annotations
@@ -70,9 +64,9 @@ _BAR_COLS = ["symbol", "date", "open", "high", "low", "close", "volume"]
 
 @dataclass(frozen=True)
 class CatalystBundle:
-    """What the catalyst ingest returns: the night's news + calendar to persist, and per-source
-    health. `calendar_events` is None when the calendar sources were down (publish leaves the
-    existing calendar untouched); an empty list means they ran and found nothing."""
+    """What the catalyst ingest returns: news + calendar to persist, and per-source health.
+    `calendar_events` None means the calendar sources were down (publish leaves the existing
+    calendar untouched); an empty list means they ran and found nothing."""
 
     news_items: list[dict]
     calendar_events: list[dict] | None
@@ -82,13 +76,12 @@ class CatalystBundle:
 @dataclass(frozen=True)
 class MacroRead:
     """
-    What one night's FRED read yields: the two context cells, and the three index levels with the
-    level that came before each (redesign §6.1).
+    One night's FRED read: the two context cells, and the three index levels, each with its prior
+    level (redesign §6.1).
 
-    Every field is nullable because every series can fail on its own. The priors are stored, not
-    just the levels, because the app can only diff what is persisted — buildMacro never sees the
-    pipeline's observations, so a change it cannot compute from the database is a change it must
-    render as "—" rather than borrow from an ETF.
+    Every field is nullable because each series can fail on its own. Priors are stored, not just the
+    levels, because the app can only diff what is persisted — buildMacro never sees the pipeline's
+    observations, so an uncomputable change must render as "—" rather than borrow from an ETF.
     """
 
     vix: float | None
@@ -133,11 +126,11 @@ class MacroRead:
 @dataclass(frozen=True)
 class MacroStatsRead:
     """
-    What one night's macro-board fetch yields: the rows worth storing, and each source's health.
+    One night's macro-board fetch: the rows worth storing, and each source's health.
 
-    The rows here are the FOUR EXTERNAL stats only (mortgage, CPI, gold, the rupee). The Mood gauge
-    is not among them and cannot be: it is computed from the night's own universe snapshot, and a
-    run that did not ingest the market has no business restating how the market feels.
+    The rows are the FOUR EXTERNAL stats only (mortgage, CPI, gold, the rupee). The Mood gauge is
+    not among them and cannot be — it is computed from the night's own universe snapshot, and a run
+    that did not ingest the market has no business restating how the market feels.
     """
 
     rows: list[Any]  # list[macro_stats.MacroStatRow]
@@ -149,10 +142,10 @@ class MoodHistory:
     """
     The three FRED distributions the Mood gauge scores its market-independent components against.
 
-    Each list is OLDEST FIRST — the natural order for series maths — and the newest element is
-    tonight's reading. Empty when the source was unreachable, which costs the gauge that one
-    component rather than the whole gauge (and if enough of them are empty, the gauge suppresses
-    itself and says which are missing).
+    Each list is OLDEST FIRST (the order series maths needs); the newest element is tonight's
+    reading. Empty when the source was unreachable, which costs the gauge that one component, not
+    the whole gauge (and if too many are empty, the gauge suppresses itself and says which are
+    missing).
     """
 
     vix: list[float]
@@ -162,12 +155,12 @@ class MoodHistory:
 
 @dataclass(frozen=True)
 class FrontPageRead:
-    """What the newsdesk produced tonight, and how each provider behaved while it did (N4).
+    """What the newsdesk produced tonight, and how each provider behaved (N4).
 
-    The counts travel with the rows because a cut that does not state its own size is a cut nobody
-    can audit (C6): `articles_in` and `boilerplate_dropped` say what arrived and what was refused,
-    and `stage_a_capped` says how many stories were ingested and ranked but never read by the
-    extraction batch — a visible absence rather than a silent one.
+    The counts travel with the rows because a cut that does not state its size is a cut nobody can
+    audit (C6): `articles_in`/`boilerplate_dropped` are what arrived and what was refused, and
+    `stage_a_capped` is how many were ingested and ranked but never read by the extraction batch — a
+    visible absence, not a silent one.
     """
 
     clusters: list[dict]
@@ -176,9 +169,8 @@ class FrontPageRead:
     articles_in: int = 0
     boilerplate_dropped: int = 0
     stage_a_capped: int = 0
-    # What the two LLM stages did, in one plain-English line for the night's log. It rides here
-    # because a page with no notes is invisible on screen — a null why_it_matters prints nothing,
-    # and it prints the same nothing whether the narrator had nothing to add or was never asked.
+    # The two LLM stages' work in one line for the night's log. It rides here because a null
+    # why_it_matters prints nothing whether the narrator had nothing to add or was never asked.
     narration: str = ""
 
 
@@ -194,32 +186,31 @@ class NightlyDeps:
     r2: Any  # R2Store | None
     publish: Callable[..., None]
     conn: Any  # a psycopg connection, passed straight to publish
-    # The session this run EXPECTS to publish — the last one whose bell has rung, per the market's
-    # own calendar (job_a.full_run_edition). It is NOT the wall-clock date, and it is not the final
-    # word either: the ingested bars are, and run_nightly refuses to publish if the two disagree.
-    # It is needed up front because the fetch windows are anchored on it (bars, catalysts, the board).
+    # The session this run EXPECTS to publish — the last whose bell has rung, per the calendar
+    # (job_a.full_run_edition), NOT the wall clock and not the final word (the bars are; run_nightly
+    # refuses if they disagree). Up front because the fetch windows anchor on it (bars, catalysts,
+    # the board).
     run_date: date
     # The catalyst ingest (news + calendar) for the movers. Optional: None skips the catalyst stage
     # (the job owns the per-provider try/catch and reports each source's status in the bundle).
     fetch_catalysts: Callable[[list[str]], CatalystBundle] | None = None
-    # Submit the LLM extraction batch for the night's news and return its batch id (plan P3 step 1).
-    # Optional: None skips extraction (no key configured, or a night with no news). Given the
-    # classified news items; the id it persists lets Job B collect the batch the next evening.
+    # Submit the LLM extraction batch for the night's news, return its batch id (plan P3 step 1).
+    # Optional: None skips it (no key, or no news). The persisted id lets Job B collect the batch
+    # the next evening.
     submit_extraction: Callable[[list[dict]], str] | None = None
     # Publish the P4 honesty engine (base rates, setup cards, vol bands). Optional: None skips the
     # analytics stage (used by the fast fake-driven tests). Signature mirrors publish_analytics.
     publish_analytics: Callable[..., None] | None = None
-    # The macro board (N3). Each is optional so the fake-driven tests can skip the whole board.
-    #
-    # `read_macro_stats` fetches the four external stats, catching each source on its own so one
-    # dead provider degrades one cell. `read_mood_history` reads the three FRED distributions the
-    # gauge needs. `publish_macro_stats` writes whatever is genuinely new (the cadence rule).
+    # The macro board (N3). Each optional so the fake-driven tests can skip the whole board.
+    # `read_macro_stats` fetches the four external stats, catching each source alone so one dead
+    # provider degrades one cell; `read_mood_history` reads the three FRED distributions the gauge
+    # needs; `publish_macro_stats` writes only what is genuinely new (the cadence rule).
     read_macro_stats: Callable[[], MacroStatsRead] | None = None
     read_mood_history: Callable[[], MoodHistory] | None = None
     publish_macro_stats: Callable[..., None] | None = None
-    # The Front Page (N4). `build_front_page` fetches the market-wide news, resolves its tickers,
-    # clusters it, ranks it and fetches its images; `publish_news` writes the result in one
-    # transaction. Both optional, so the fake-driven tests can skip the newsdesk entirely.
+    # The Front Page (N4). `build_front_page` fetches, resolves tickers, clusters, ranks and images
+    # the market-wide news; `publish_news` writes it in one transaction. Both optional so the
+    # fake-driven tests can skip the newsdesk entirely.
     build_front_page: Callable[[], FrontPageRead] | None = None
     publish_news: Callable[..., int] | None = None
 
@@ -237,10 +228,10 @@ class NightlyResult:
 
 
 class EditionDateMismatch(RuntimeError):
-    """The bars do not describe the session this run was supposed to be publishing.
+    """The bars do not describe the session this run was supposed to publish.
 
-    Raised before anything is written. See edition_from_bars for why this is fatal rather than
-    something to shrug at and stamp anyway — shrugging and stamping anyway is the entire bug.
+    Raised before anything is written. Fatal rather than shrugged over — shrugging and stamping
+    anyway is the entire bug (see edition_from_bars).
     """
 
 
@@ -248,22 +239,16 @@ def edition_from_bars(bars: pl.DataFrame, expected: date) -> date:
     """
     The session this night's data actually describes — the newest bar in the ingest.
 
-    THE DATE OF AN EDITION IS A FACT ABOUT THE DATA, NOT ABOUT THE CLOCK (ruling E1). `compute` mode
-    has followed this law since N6 ("THE RUN DATE COMES FROM THE DATA, NOT THE CLOCK"); PD0 is where
-    the full night adopts it, which is where it was needed all along: on 2026-07-11 the clock said
+    THE DATE OF AN EDITION IS A FACT ABOUT THE DATA, NOT THE CLOCK (ruling E1). `compute` mode has
+    followed this since N6; PD0 is where the full night adopts it — on 2026-07-11 the clock said
     Saturday, the bars said Friday, and the clock won.
 
-    `expected` is the calendar's answer to the same question (the last session whose bell has rung).
-    In a healthy night the two agree exactly, and this function is a formality. When they DISAGREE,
-    something is wrong that nobody wants papered over:
-
-      - the provider is stale (Monday evening, Alpaca has not posted Monday's bars yet), and
-        publishing would silently republish Friday's edition under a fresh run;
-      - or the ingest is broken in some way nobody has thought of yet.
-
-    Either way the night fails, loudly, before a row is written — the same judgment the coverage
-    floor already makes twenty lines above. A night that cannot say which session it is describing
-    has nothing publishable to say at all.
+    `expected` is the calendar's answer (the last session whose bell has rung). In a healthy night
+    the two agree and this is a formality. When they DISAGREE something is wrong nobody wants papered
+    over — the provider is stale (Alpaca has not posted the latest bars yet, so publishing would
+    silently republish the prior edition), or the ingest is broken some new way. Either way the night
+    fails loudly, before a row is written, like the coverage floor above. A night that cannot say
+    which session it describes has nothing publishable to say.
     """
     if bars.height == 0:
         raise EditionDateMismatch(
@@ -284,9 +269,9 @@ def edition_from_bars(bars: pl.DataFrame, expected: date) -> date:
         )
 
     if not is_trading_session(edition):
-        # Unreachable through the calendar (`expected` is a session by construction), so this is the
-        # backstop for a bar frame carrying a date the market never had. publish() would refuse it
-        # anyway; failing here means failing BEFORE the ingest is persisted to the lake.
+        # Unreachable via the calendar (`expected` is a session by construction) — the backstop for
+        # a bar frame carrying a date the market never had. publish() would refuse it anyway;
+        # failing here fails BEFORE the ingest is persisted to the lake.
         raise EditionDateMismatch(
             f"nightly: the bars end on {edition.isoformat()}, which is not a trading session. "
             f"Refusing to publish an edition for a day the market never opened."
@@ -321,9 +306,9 @@ def run_nightly(deps: NightlyDeps) -> NightlyResult:
     if deps.r2 is not None:
         deps.r2.sync_up(deps.store.root)
 
-    # The indicator pass is the most expensive thing the night does, and from N3 it is needed twice:
-    # once by the scans, and once by the Mood gauge (whose breadth and range-position components are
-    # measured across the whole universe's history). It is computed ONCE and shared.
+    # The indicator pass is the night's most expensive step and from N3 is needed twice — by the
+    # scans and by the Mood gauge (breadth + range-position, over the whole universe's history). So
+    # it is computed ONCE and shared.
     indicated = build_indicated(bars)
     snapshot = snapshot_from_indicated(indicated)
     scans = run_all(snapshot)
@@ -342,30 +327,21 @@ def run_nightly(deps: NightlyDeps) -> NightlyResult:
     fred_ok = any(value is not None for value in macro.as_columns().values())
     source_status = {"alpaca": "ok", "fred": "ok" if fred_ok else "degraded"}
 
-    # THE INDEX LEVELS GET THEIR OWN SOURCE KEY, and this is not a nicety — it is the bug that
-    # started this phase (NEWS-AND-CONTROL-PLAN §1.1, §3.1).
-    #
-    # On 2026-07-11 in production, all three index levels came back empty while VIX and the 10-year
-    # answered normally. `fred_ok` above was therefore True, the run recorded `fred: ok`, and the
-    # Desk quietly fell back to showing four ETF prices under a footer that still claimed FRED index
-    # levels. Nothing anywhere said the levels were missing.
-    #
-    # The honest reading is that `fred: ok` was CORRECT — FRED really did answer. One key simply
-    # cannot describe two different failures. So the levels get their own key, and a partial read is
-    # degraded too: a Desk showing two true index levels and one ETF proxy has a reader who deserves
-    # to know why the third one changed shape.
-    #
-    # This used to be guarded by `if is_trading_session(deps.run_date)`, because before PD0 a night
-    # COULD be dated to a day the market never opened — and flagging missing index levels for a
-    # Saturday would have lit an amber lamp that meant nothing. That guard is gone, not because the
-    # reasoning was wrong but because the condition can no longer be false: the edition is derived
-    # from the bars and cross-checked against the calendar (edition_from_bars), and publish() refuses
-    # a non-session date outright. A night that reaches this line is a night the market had.
+    # THE INDEX LEVELS GET THEIR OWN SOURCE KEY — the bug that started this phase
+    # (NEWS-AND-CONTROL-PLAN §1.1, §3.1). On 2026-07-11 all three index levels came back empty while
+    # VIX and the 10-year answered; `fred_ok` was therefore True, the run recorded `fred: ok`, and
+    # the Desk quietly showed four ETF prices under a footer still claiming FRED index levels, with
+    # nothing saying the levels were missing. `fred: ok` was CORRECT — one key cannot describe two
+    # failures. So the levels get their own key, and a partial read is degraded too: a reader seeing
+    # two true levels and one ETF proxy deserves to know why the third changed shape.
+    # The old `if is_trading_session(deps.run_date)` guard is gone — not because it was wrong but
+    # because its condition can no longer be false: the edition is derived from the bars and checked
+    # against the calendar (edition_from_bars), and publish() refuses a non-session date outright.
     source_status["fred-indexes"] = "ok" if macro.has_every_index_level() else "degraded"
 
     # The catalyst stage: fetch news for the movers + the calendar, classify, and merge each
-    # provider's health into the source status. A provider being down degrades its section here, in
-    # the source status — the run still succeeds (plan §2, §P2 acceptance).
+    # provider's health into the source status. A provider being down degrades its section, not the
+    # run (plan §2, §P2 acceptance).
     news_items: list[dict] = []
     calendar_events: list[dict] | None = None
     if deps.fetch_catalysts is not None:
@@ -375,9 +351,9 @@ def run_nightly(deps: NightlyDeps) -> NightlyResult:
         calendar_events = bundle.calendar_events
         source_status = {**source_status, **bundle.source_status}
 
-    # Submit the LLM extraction batch for tonight's news; Job B collects it tomorrow evening. The
-    # batch id is recorded on the pipeline_run row in the same publish. A submission failure degrades
-    # the briefing source (the night still publishes its data) rather than failing the run.
+    # Submit the LLM extraction batch for tonight's news; Job B collects it tomorrow evening, using
+    # the batch id recorded on the pipeline_run row in this publish. A submit failure degrades the
+    # briefing source, not the run — the night still publishes its data.
     batch_id: str | None = None
     if deps.submit_extraction is not None and news_items:
         try:
@@ -399,10 +375,9 @@ def run_nightly(deps: NightlyDeps) -> NightlyResult:
     if gauge_row is not None:
         macro_stat_rows.append(gauge_row)
 
-    # The Front Page (N4). Fetched BEFORE the publish for the same reason the macro board is — each
-    # provider's health becomes a source-status key on the run row — and written AFTER it, in its own
-    # transaction, so a slow publisher's image fetch can never delay or endanger the transaction that
-    # carries the morning itself. A dead news provider costs the front page and nothing else.
+    # The Front Page (N4). Fetched BEFORE the publish and written AFTER it in its own transaction,
+    # for the same reason the macro board is — a slow image fetch must never delay or endanger the
+    # morning's transaction, and a dead news provider costs the front page and nothing else.
     front_page: FrontPageRead | None = None
     if deps.build_front_page is not None:
         try:
@@ -446,11 +421,11 @@ def run_nightly(deps: NightlyDeps) -> NightlyResult:
     if deps.publish_macro_stats is not None and macro_stat_rows:
         deps.publish_macro_stats(deps.conn, rows=macro_stat_rows)
 
-    # The P4 honesty engine: base rates, setup cards, and vol bands over the served universe's
-    # history. Published separately so a heavier compute never risks the core morning's transaction.
-    # (Scope note, logged in DECISIONS: base rates are computed over the SERVED + watchlist history —
-    # the symbols the user actually sees cards for — which is fast and honest via the N-gate. The
-    # full-universe historical replay for larger N is a logged enhancement.)
+    # The P4 honesty engine: base rates, setup cards, vol bands over the served universe's history.
+    # Published separately so a heavier compute never risks the core morning's transaction. (Scope,
+    # logged in DECISIONS: base rates run over the SERVED + watchlist history — what the user sees
+    # cards for — fast and honest via the N-gate; the full-universe replay for larger N is a logged
+    # enhancement.)
     if deps.publish_analytics is not None:
         _run_analytics(deps.conn, deps.publish_analytics, edition, bars, snapshot, served, market_context)
 
@@ -469,16 +444,14 @@ def run_nightly(deps: NightlyDeps) -> NightlyResult:
 
 @dataclass(frozen=True)
 class ComputeDeps:
-    """Everything `run_compute` needs — and, far more importantly, everything it CANNOT reach.
+    """Everything `run_compute` needs — and, more importantly, everything it CANNOT reach.
 
-    THIS STRUCT IS THE PROMISE. Compare it with NightlyDeps above: there is no `fetch_universe`, no
-    `fetch_bars`, no `read_macro`, no `fetch_catalysts`, no `build_front_page`, no
-    `submit_extraction`. Every one of those is a door to a provider, and none of them is here. That
-    is what makes "Recompute scans" the one button in the control room that is safe to press at any
-    hour, including with the market open: it physically cannot fetch anything.
-
-    A mode is a promise about what a run will not touch, and a promise the code merely *intends* to
-    keep is worth nothing. This one is held by the type, and a test enumerates these five fields.
+    THIS STRUCT IS THE PROMISE. Unlike NightlyDeps, it has no `fetch_universe`, `fetch_bars`,
+    `read_macro`, `fetch_catalysts`, `build_front_page` or `submit_extraction` — every one a door to
+    a provider, and none is here. That is what makes "Recompute scans" the one control-room button
+    safe to press at any hour, market open included: it physically cannot fetch anything. A promise
+    the code merely intends to keep is worth nothing; this one is held by the type, and a test
+    enumerates these five fields.
     """
 
     # The stored lake, already pulled down from R2. Returns every bar we hold, every symbol.
@@ -500,22 +473,22 @@ class ComputeResult:
 
 
 def run_compute(deps: ComputeDeps) -> ComputeResult:
-    """Re-run the indicators, the scans and the analytics over the stored bars. Fetch nothing.
+    """Re-run the indicators, scans and analytics over the stored bars. Fetch nothing.
 
-    This is the "I fixed a detector, recompute last night with the new code" button (plan 8.1d).
+    The "I fixed a detector, recompute last night with the new code" button (plan 8.1d).
 
-    THE RUN DATE COMES FROM THE DATA, NOT THE CLOCK, and that is what makes the button safe at any
-    hour. Ask the clock and a recompute fired at noon on Tuesday stamps its scans with Tuesday — a
-    session that has not closed, whose bars do not exist, and whose row would then sit on the Desk
-    presenting itself as today's edition. The lake knows exactly which session it holds; ask it.
-    (This build has now shipped a "computed against the wrong clock" bug three times — F4's
-    cooling-off stamp, N4's markets-open strip, and N5's relative timestamps. Not a fourth.)
+    THE RUN DATE COMES FROM THE DATA, NOT THE CLOCK, which is what makes it safe at any hour. Ask the
+    clock and a recompute fired at noon Tuesday stamps its scans with Tuesday — a session that has
+    not closed, whose bars do not exist, and whose row then sits on the Desk as today's edition. The
+    lake knows which session it holds; ask it. (This build has shipped a "computed against the wrong
+    clock" bug three times — F4's cooling-off stamp, N4's markets-open strip, N5's relative
+    timestamps. Not a fourth.)
     """
     bars = deps.read_bars()
     if bars.height == 0:
-        # An empty read is a broken R2 sync, not a market with no stocks in it. Publishing here
-        # would DELETE the session's scan results (the publish replaces them for the run date) and
-        # leave the scans room empty behind a green run. Fail loud instead.
+        # An empty read is a broken R2 sync, not a market with no stocks. Publishing would DELETE
+        # the session's scan results (publish replaces them for the run date) and leave the scans
+        # room empty behind a green run. Fail loud instead.
         raise RuntimeError(
             "compute: the stored lake came back empty — refusing to publish a blank recompute, "
             "which would delete the session's scan results. Check the R2 sync."
@@ -531,13 +504,12 @@ def run_compute(deps: ComputeDeps) -> ComputeResult:
     served = set(deps.read_served_symbols())
     scan_results = curated_scans(scans)
 
-    # The signal log is INSERT-ONLY and idempotent on (fired_date, pattern_key, symbol, horizon).
-    # So a recompute after a detector fix ADDS whatever the new code fires and REMOVES NOTHING — and
-    # that is correct, not a limitation. A signal this app published last night is a historical fact
-    # about what it told the reader; quietly deleting it because the code changed its mind would be
-    # rewriting the track record, which is the one thing the ledger exists to make impossible. (The
-    # table has a trigger blocking UPDATE and DELETE, so it is impossible rather than merely
-    # discouraged.)
+    # The signal log is INSERT-ONLY and idempotent on (fired_date, pattern_key, symbol, horizon), so
+    # a recompute after a detector fix ADDS what the new code fires and REMOVES NOTHING — correct,
+    # not a limitation. A signal published last night is a historical fact about what the app told
+    # the reader; deleting it because the code changed its mind would rewrite the track record, the
+    # one thing the ledger exists to prevent. (A trigger blocks UPDATE and DELETE, so it is
+    # impossible, not merely discouraged.)
     signal_logs = build_signal_logs(scans, run_date)
 
     deps.publish_compute(
@@ -547,9 +519,9 @@ def run_compute(deps: ComputeDeps) -> ComputeResult:
         signal_logs=signal_logs,
     )
 
-    # The regime the setup cards condition on is breadth, which is a property of the STORED bars —
-    # so a recompute can honestly restate it. The macro cells (VIX, the 10-year) are not: those come
-    # from FRED, this run did not call FRED, and it therefore has nothing new to say about them.
+    # The regime the setup cards condition on is breadth, a property of the STORED bars, so a
+    # recompute can honestly restate it. The macro cells (VIX, 10-year) come from FRED; this run
+    # never called FRED, so it has nothing new to say about them.
     if deps.publish_analytics is not None:
         breadth = compute_breadth(snapshot)
         _run_analytics(deps.conn, deps.publish_analytics, run_date, bars, snapshot, served, breadth)
@@ -567,14 +539,14 @@ def _build_mood_row(deps: NightlyDeps, edition: date, indicated: pl.DataFrame, b
 
     THE GAUGE IS COMPUTED BY THE FULL NIGHTLY AND BY NOTHING ELSE. Two of its five components
     (breadth, and where the universe sits in its own 252-day range) can only be measured from a run
-    that actually ingested the market. The 6am macro refresh does not ingest the market — it exists
-    to re-read three numbers FRED published late — so it leaves the gauge alone rather than
-    recomputing a thinner version of it and overwriting a five-component reading with a
-    three-component one. A run that did not look at the market does not get to say how it feels.
+    that ingested the market. The 6am macro refresh does not — it re-reads three numbers FRED
+    published late — so it leaves the gauge alone rather than overwrite a five-component reading with
+    a thinner three-component one. A run that did not look at the market does not get to say how it
+    feels.
 
-    Every component is assembled independently and any of them may come back None: a dead FRED
-    series costs the gauge that one input, not the gauge. If fewer than three survive, `mood.compute`
-    suppresses the score entirely and the board says which inputs are missing.
+    Each component is assembled independently; a dead FRED series costs the gauge that one input,
+    not the gauge. If fewer than three survive, `mood.compute` suppresses the score and the board
+    says which inputs are missing.
     """
     if deps.read_mood_history is None:
         return None
@@ -609,13 +581,12 @@ def _build_mood_row(deps: NightlyDeps, edition: date, indicated: pl.DataFrame, b
 
 def _mood_components(history: MoodHistory, indicated: pl.DataFrame, breadth: dict) -> list[Any]:
     """
-    The five inputs, each scored as a percentile of its OWN trailing year and each oriented so that
-    higher means greedier (Part 6.5).
+    The five inputs, each scored as a percentile of its OWN trailing year and oriented so higher
+    means greedier (Part 6.5).
 
-    Two of them are inverted, and this is where that happens: a HIGH VIX and a WIDE credit spread
-    are both fear. Everything downstream — the unweighted mean, the band word — depends on all five
-    pointing the same way, and this is the only place that is true by construction rather than by
-    someone remembering.
+    Two are inverted here — a HIGH VIX and a WIDE credit spread are both fear. Everything downstream
+    (the unweighted mean, the band word) depends on all five pointing the same way, and this is the
+    only place that holds by construction rather than by someone remembering.
     """
     components: list[Any] = []
 
@@ -681,11 +652,9 @@ def _bars_frame(by_symbol: dict[str, list[Any]]) -> pl.DataFrame:
 
 
 def compute_breadth(snapshot: pl.DataFrame) -> dict:
-    """
-    The day's breadth from the run-date snapshot: how many names advanced, how many declined, and
-    what share sit above their 50-day average. Breadth answers "broad or narrow?" — a rally on
-    narrow breadth is a different thing from a broad one (Research Report §9.2).
-    """
+    """The day's breadth from the run-date snapshot: how many names advanced, how many declined, and
+    what share sit above their 50-day average. Breadth answers "broad or narrow?" — a narrow-breadth
+    rally is a different thing from a broad one (Research Report §9.2)."""
     advancers = int(snapshot.filter(pl.col("ret_1") > 0).height)
     decliners = int(snapshot.filter(pl.col("ret_1") < 0).height)
     with_ma = snapshot.filter(pl.col("sma50").is_not_null())
@@ -694,12 +663,10 @@ def compute_breadth(snapshot: pl.DataFrame) -> dict:
 
 
 def served_price_bars(bars: pl.DataFrame, served: set[str]) -> pl.DataFrame:
-    """
-    The subset of bars mirrored into Postgres: only the served symbols, only their most recent
+    """The subset of bars mirrored into Postgres: only the served symbols, only their most recent
     SERVED_HISTORY_BARS, with an adjusted-close column. Alpaca's adjustment=all already returns
-    adjusted prices, so at P1 adj_close equals close; the column exists so the serving schema and
-    the indicator math have the field they expect.
-    """
+    adjusted prices, so at P1 adj_close equals close; the column exists because the serving schema
+    and the indicator math expect the field."""
     if not served:
         return bars.head(0).with_columns(pl.col("close").alias("adj_close"))
     subset = (
@@ -723,14 +690,14 @@ def _run_analytics(conn: Any, publish_analytics: Callable[..., None], run_date: 
                    market_context: Mapping[str, Any]) -> None:
     """Compute and publish the P4 honesty engine over the served universe's history.
 
-    Runs the detectors over the served symbols' full indicator history to build base rates, turns
-    today's fired events on served symbols into setup cards (tier + stated rate), and computes vol
-    bands from each served symbol's recent closes. A failure here degrades the cards, not the
-    morning — the core data already published above — so it is caught and logged, not raised.
+    Builds base rates from the served symbols' full indicator history, turns today's fired events
+    into setup cards (tier + stated rate), and computes vol bands from recent closes. A failure here
+    degrades the cards, not the morning — the core data is already published — so it is caught and
+    logged, not raised.
 
-    It takes its three collaborators explicitly rather than a deps object, because it has TWO
-    callers now: the full night, and N6's `compute` recompute. Those two hand it different structs,
-    and the honest way to share a function between them is to ask for exactly what it uses.
+    It takes its three collaborators explicitly, not a deps object, because it has TWO callers — the
+    full night and N6's `compute` recompute — which hand it different structs; the honest way to
+    share it is to ask for exactly what it uses.
     """
     try:
         served_bars = bars.filter(pl.col("symbol").is_in(list(served)))
@@ -788,14 +755,13 @@ def _closes_by_symbol(indicated: pl.DataFrame, served: set[str]) -> dict[str, li
 
 
 def _classify_news(news_items: list[dict]) -> list[dict]:
-    """Fill each news item's event_type by classifying its headline, unless it already has one (an
+    """Fill each news item's event_type by classifying its headline unless it already has one (an
     EDGAR filing arrives typed), and stamp a deterministic id.
 
-    The id is derived from (provider, url), so the same article always gets the same id: Job A can
-    use it as the extraction batch's custom_id, publish stores it as the news_item id, and Job B (a
-    separate process) reads the same id back to line the batch results up with their articles — and
-    the app resolves a briefing citation to the article's URL by that id. Returns new dicts; the
-    inputs are not mutated.
+    The id is derived from (provider, url), so the same article always gets the same id: it is the
+    extraction batch's custom_id, publish stores it as the news_item id, Job B reads it back to line
+    batch results up with their articles, and the app resolves a briefing citation to the URL by it.
+    Returns new dicts; the inputs are not mutated.
     """
     return [
         {
@@ -813,11 +779,9 @@ def _news_id(provider: str, url: str) -> str:
 
 
 def build_signal_logs(scans: pl.DataFrame, run_date: date) -> list[dict]:
-    """
-    One insert-only signal_log row per scan match: which pattern fired, on which symbol, and when it
-    resolves — exactly HORIZON_DAYS trading days out on the NYSE calendar. The rate fields stay null
-    until P4. Returns an empty list when nothing matched (the calendar is not consulted then).
-    """
+    """One insert-only signal_log row per scan match: which pattern fired, on which symbol, and when
+    it resolves — exactly HORIZON_DAYS trading days out on the NYSE calendar. Rate fields stay null
+    until P4. Returns an empty list when nothing matched (the calendar is not consulted then)."""
     if scans.height == 0:
         return []
     resolves_on = sessions_ahead(run_date, HORIZON_DAYS)
@@ -834,11 +798,9 @@ def build_signal_logs(scans: pl.DataFrame, run_date: date) -> list[dict]:
 
 
 def curated_scans(scans: pl.DataFrame) -> pl.DataFrame:
-    """
-    Trim a scan-result frame to the columns Postgres keeps: the identity (preset/symbol/rank) plus a
-    curated metric set. Publishing the entire snapshot per match would bloat the metrics JSON with
-    fields nothing reads; this keeps only what the Desk and the setup cards use.
-    """
+    """Trim a scan-result frame to the columns Postgres keeps: the identity (preset/symbol/rank) plus
+    a curated metric set. Publishing the whole snapshot per match would bloat the metrics JSON with
+    fields nothing reads; this keeps only what the Desk and the setup cards use."""
     if scans.height == 0:
         return scans
     metric_cols = [c for c in _SCAN_METRIC_COLS if c in scans.columns]

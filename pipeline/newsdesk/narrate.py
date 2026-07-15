@@ -1,32 +1,23 @@
 """
 narrate.py — the Front Page's one line of prose, and the gate that can delete it (plan 7.5, App. D).
 
-Everything else in the newsdesk is deterministic. This module is the one place a language model
-touches the front page, and it is deliberately the LAST thing to run and the FIRST thing to be
-thrown away: `ingest.py` has already found the stories, linked the companies and put them in order
-before a single token is generated, so if every model call failed tonight the page would still be
-the right stories in the right order — missing only their context lines.
+This is the one place a language model touches the front page. It runs LAST and is the first thing
+thrown away: ingest.py has already found, linked and ordered the stories, so if every model call
+failed the page would still be the right stories in the right order — missing only their context lines.
 
-Two stages, both small:
+Two stages. Stage A (Haiku, one capped call per story) reads ONE article per cluster and returns the
+same `ExtractResult` the evening briefing uses, through the same prompt and parser; a malformed
+extract is dropped, never fatal. Stage B-mini (Sonnet, ONE call for the whole page) writes per cluster
+`why_it_matters` (the "so what" — the mechanism) and `affected_note` where the effect is wider than
+the named tickers.
 
-  Stage A (Haiku, one call per story, capped): read ONE representative article per cluster and
-    return the structured extract — the same `ExtractResult` the evening briefing has used since P3,
-    through the same prompt and the same parser. A malformed extract is dropped, never fatal.
+The narrator is never shown a rank. rank.py computes significance from evidence and the score never
+enters the prompt: if it did, the model could write prose justifying the top slot — the app forming
+an editorial opinion by the back door, which ruling C1 forbids.
 
-  Stage B-mini (Sonnet, ONE call for the whole page): write, per cluster, `why_it_matters` — the
-    "so what", the MECHANISM this class of event moves — and `affected_note` where the effect is
-    wider than the named tickers.
-
-**The narrator is never shown a rank.** Significance is computed from evidence by `rank.py`, and the
-score does not appear in the prompt. If it did, the model could write prose that explains why a
-story deserves the top slot — which is the app forming an editorial opinion by the back door, and
-ruling C1 forbids it. The model explains mechanisms; the pipeline decides order; the two never meet.
-
-**The gate runs on every note regardless, and its failure mode is SILENT.** A dropped note becomes
-null, and a null prints nothing on the card — by design (P9: never a placeholder). Which means a gate
-that was too strict, or a Stage B that never ran at all, would produce a page that looks exactly like
-a page the narrator honestly had nothing to add to. Nothing on screen could tell you which. So every
-outcome here is COUNTED, the counts travel back to the job, and the night prints them.
+The gate runs on every note and its failure mode is SILENT: a dropped note becomes null and prints
+nothing (P9: never a placeholder), which looks exactly like an honest null. So every outcome is
+COUNTED, the counts travel back to the job, and the night prints them.
 """
 
 from __future__ import annotations
@@ -51,12 +42,9 @@ from briefing.verify import Stat, build_source_set, check_text
 WHY_MAX_CHARS = 160
 AFFECTED_MAX_CHARS = 120
 
-# PD7 (plan 9.3): the v2 insight's two new sections.
-#
-# `context` is 2–3 mechanical sentences, so it gets ~3x the room of a why-line — enough to place the
-# move against the name's own volatility, its 52-week position and its sector's night, and no more.
-# A cap is a promise about the shape of the thing: 420 characters cannot hold an essay, and the story
-# page's layout is built for a paragraph, not a column.
+# PD7 (plan 9.3): the v2 insight's two new sections. `context` gets ~3x a why-line's room — enough to
+# place the move against its own volatility, 52-week position and sector, and no more; the cap promises
+# shape, since the page's layout is built for a paragraph, not a column.
 CONTEXT_MAX_CHARS = 420
 # At most two dated facts. A "what's coming" list of six is a diary, not a signal, and the reader is
 # being told what is SCHEDULED — a fact with a date — never what to do about it (E4).
@@ -68,62 +56,42 @@ NOTE_VERSION = 2
 
 # One note per story for the whole page; the page is capped at 20 stories upstream.
 #
-# 4096 was too tight and it failed SILENTLY, which is the worst way for a token cap to fail. Twenty
-# notes, each with a 40-character cluster id, a 160-character sentence, a 120-character note and its
-# citations, is comfortably over 2,500 tokens of JSON before any slack. Run out mid-object and the
-# response is a TRUNCATED JSON document — which the tolerant parser cannot balance, so it reports
-# "malformed" and the page loses all its prose, with nothing anywhere saying "you ran out of room".
+# A too-tight cap fails SILENTLY, the worst way. 4096 overflowed: 20 notes are well over 2,500 tokens
+# of JSON, and running out mid-object returns TRUNCATED JSON the tolerant parser cannot balance, so it
+# reports "malformed" and the page loses all its prose with nothing saying "you ran out of room".
+# Then 8192 failed the SAME way, and only PD7's real dispatch found it: the first live v2 run came back
+# 2 calls × exactly 8192 tokens, printed "failed its schema twice", production went 5 notes → ZERO, and
+# every test stayed green because the suite's fake clients have no token cap to overflow.
 #
-# **AND THEN 8192 WAS TOO TIGHT, THE SAME WAY, AND PD7's REAL DISPATCH IS THE ONLY THING THAT FOUND
-# IT.** The first live `news` run after the v2 schema landed came back: 2 calls, 16,384 output
-# tokens — EXACTLY 2 x 8192, the cap hit dead-on both times — and the night printed "the narrator
-# failed its schema twice; the page publishes without prose." Production went from 5 notes to ZERO,
-# and every test in this repo stayed green, because the fake clients in the suite have no token cap
-# to overflow. This is the SAME BUG the paragraph above was written for, one cap-size up.
+# Two things ate the budget. (1) v2 output is bigger (context + watch) but only ~1,000 extra tokens on
+# a ~4,000-token response — it alone could never reach 8192; plan 9.3 said raise the cap and PD7 missed
+# it. (2) `max_tokens` CAPS THINKING PLUS TEXT, and Sonnet 5 thinks by default (adaptive) where Sonnet
+# 4.6 did not — a silent default that arrived with the model, so reasoning quietly consumed a budget
+# sized for the JSON alone. Nothing here asked for thinking; it simply started happening.
 #
-# TWO THINGS ATE THE BUDGET, and only one of them was obvious:
-#   1. v2 output is bigger — 8 clusters now also carry a 420-char `context` and a `watch` array. But
-#      that is only ~1,000 extra tokens; the whole response is ~4,000 tokens of JSON. It alone could
-#      never have reached 8192. Plan 9.3 said "output cap rises to fit 8x context sections" and PD7
-#      simply missed the instruction.
-#   2. **`max_tokens` CAPS THINKING PLUS TEXT, AND SONNET 5 THINKS BY DEFAULT.** On Sonnet 4.6, a
-#      request that omits `thinking` runs with it OFF. On Sonnet 5 the identical request runs with
-#      ADAPTIVE THINKING — a silent default change that arrived with the model, not with our code.
-#      So the reasoning tokens were quietly consuming a budget sized for the JSON alone. Nothing in
-#      this file asked for thinking; it simply started happening.
-#
-# 16000 leaves ~12,000 tokens of room for reasoning above a ~4,000-token response, and stays under
-# the ~16K line above which a non-streaming request risks an SDK HTTP timeout — so the fix needs no
-# streaming rewrite. `effort` (below) is what keeps the reasoning from expanding to fill it.
+# 16000 leaves ~12,000 tokens for reasoning above a ~4,000-token response and stays under the ~16K line
+# where a non-streaming request risks an SDK HTTP timeout, so no streaming rewrite is needed. `effort`
+# (below) keeps the reasoning from expanding to fill it.
 _MAX_TOKENS = 16000
 
-# The reasoning budget, bounded on purpose (a Sonnet 5 control; it does not exist on Haiku, so the
-# extraction stage neither sets it nor may).
-#
-# "medium" and not "low": the narrator is not merely transcribing. It chooses WHICH computed stats
-# belong in a two-sentence context, and it has to write a mechanism rather than restate a headline —
-# and Sonnet 5 respects low effort strictly enough that under-thinking is a real risk on exactly that
-# kind of judgement. It is also not "high": nothing here is an open-ended problem, and unbounded
-# adaptive thinking is what silently overflowed the cap in the first place. Medium is the setting
-# that says: think enough to choose well, and stop.
+# The reasoning budget, bounded on purpose (a Sonnet 5 control; Haiku has none, so the extraction stage
+# neither sets it nor may). Not "low": the narrator chooses WHICH stats belong in a context and writes a
+# mechanism, and Sonnet 5 respects low effort strictly enough that under-thinking is a real risk on that
+# judgement. Not "high": nothing here is open-ended, and unbounded adaptive thinking is what overflowed
+# the cap. Medium says: think enough to choose well, and stop.
 _EFFORT = "medium"
 
-# How long Stage A may spend reading articles before it gives up on the tail.
-#
-# Job A runs at 22:37 UTC and Job B at 00:25 UTC, so there is nearly two hours of slack — but slack
-# is not a licence to use it. The facts are already computed when this stage starts, and every extra
-# minute here is a minute the front page is not published for a reason nobody would accept: a
-# context line. Six minutes reads a healthy night's 60 articles with room to spare, and caps the
-# damage of a bad one.
+# How long Stage A may read before it gives up on the tail. There is ~2h of slack between Job A and Job
+# B, but the facts are already computed, so every extra minute delays the front page for a reason nobody
+# would accept — a context line. Six minutes reads a healthy night's 60 articles with room to spare and
+# caps the damage of a bad one.
 EXTRACT_BUDGET_SECONDS = 360.0
 
-# The per-call bound on the model client. The SDK's default is TEN MINUTES with retries on top, which
-# is how 60 sequential calls became a twenty-minute stage on the first live run.
-#
-# 30 SECONDS WAS TOO TIGHT, and production said so on the very next run: an extraction call timed out
-# and — because a failed call used to take the whole stage down with it — the night reported "0 of 0
-# extracted". A bound that trips on a healthy night is not a safety rail, it is an outage. 90 seconds
-# is far above what a 1024-token Haiku extract takes and far below anything that could hold the page.
+# The per-call bound. The SDK default is TEN MINUTES with retries on top — how 60 sequential calls
+# became a twenty-minute stage on the first live run. 30s was too tight: a healthy extraction timed out
+# and (a failed call then took the whole stage down) the night reported "0 of 0 extracted" — a bound
+# that trips on a healthy night is an outage, not a rail. 90s is far above a 1024-token Haiku extract
+# and far below anything that could hold the page.
 CALL_TIMEOUT_SECONDS = 90.0
 CALL_MAX_RETRIES = 2
 
@@ -137,19 +105,15 @@ _SYSTEM = (
     "advice verbs (buy/sell/should); no directional forecasts; if the event plausibly affects a "
     "sector beyond the named tickers, say so in affected_note, mechanically; if you cannot add "
     "context beyond the headline, return why_it_matters as null — an honest null beats padding. "
-    # THE LIMITS HAVE TO BE IN THE PROMPT, and this is not belt-and-braces — it is the ONLY place the
-    # model can learn them. The API does not enforce string lengths: `api_schema` strips `maxLength`
-    # before the schema is sent, because the structured-output layer rejects it. So pydantic enforced
-    # a cap on the way back in that nobody had ever stated on the way out, and in production every
-    # note the narrator wrote was thrown away for breaking a rule it had never been given.
+    # THE LIMITS MUST BE IN THE PROMPT — the only place the model can learn them. `api_schema` strips
+    # `maxLength` before sending (the structured-output layer rejects it), so pydantic enforced a cap on
+    # the way back that was never stated on the way out, and production threw away every note.
     f"HARD LIMITS: why_it_matters is at most {WHY_MAX_CHARS} characters and affected_note at most "
     f"{AFFECTED_MAX_CHARS} characters, INCLUDING spaces. A note that runs past its limit is dropped "
     "and the story publishes with no note at all, so a shorter true sentence always beats a longer one. "
     # --- PD7, the v2 sections (Appendix C, verbatim contract) ---
-    #
-    # DEPTH IS PERMISSION TO SAY MORE, NOT PERMISSION TO KNOW MORE. Every rule the one-liner obeyed
-    # applies here unchanged; the only thing that grew is the VOCABULARY, and it grew because the
-    # pipeline computed more (9.2), not because the model was trusted more.
+    # DEPTH IS PERMISSION TO SAY MORE, NOT TO KNOW MORE. Every one-liner rule applies unchanged; only
+    # the vocabulary grew, because the pipeline computed more (9.2), not because the model is trusted more.
     "SOME clusters are marked DEEP and carry a per-ticker stat block and dated calendar rows. For "
     f"those, ALSO write: context (at most {CONTEXT_MAX_CHARS} characters) — 2 to 3 mechanical "
     "sentences placing tonight's move: its scale against the name's OWN normal daily range, where "
@@ -164,10 +128,9 @@ _SYSTEM = (
     "often, rarely, typically, tends) ONLY in a sentence that also cites a computed stat_id — an "
     "uncited 'usually' is a probability claim with no evidence and it will be deleted. If the inputs "
     "give you nothing beyond the headline, return null. An honest null beats padding. "
-    # THE READER SEES THE PROSE. This sentence exists because the first live run did not have it, and
-    # published "carried by 1 outlet tonight (cls:798fa63d...:corroboration)" — a sha1 hash in a
-    # newspaper. Told to cite each number "by its stat_id", the model reasonably wrote the id where a
-    # reader could see it. The `citations` array is where ids live; the gate now enforces it.
+    # THE READER SEES THE PROSE. Without this the first live run published "carried by 1 outlet tonight
+    # (cls:798fa63d...:corroboration)" — a sha1 hash in a newspaper: told to cite "by its stat_id", the
+    # model wrote the id in the sentence. Ids live in `citations`; the gate now enforces it.
     "HOW TO CITE: put the stat_ids and doc_ids in the `citations` array. NEVER write a stat_id, a "
     "doc_id, a cluster_id or any hash INSIDE the prose — a human reads the prose, and an identifier "
     "in a sentence is not English. Write the VALUE (\"2.3x its normal daily range\"), and put the ID "
@@ -178,10 +141,9 @@ _SYSTEM = (
 class ClusterNote(BaseModel):
     """One story's insight, as the model returns it — before the gate has looked at it.
 
-    v2 (PD7) adds `context` and `watch`. Both are OPTIONAL at the schema level even for the deep
-    clusters, because "I had nothing to add" must remain a legal answer at every level of depth —
-    the moment a section becomes mandatory, the model starts padding to fill it, and padding is
-    exactly what the honest-null rule exists to prevent.
+    v2 (PD7) adds `context` and `watch`, both OPTIONAL even for deep clusters: "I had nothing to add"
+    must stay legal at every depth, because a mandatory section makes the model pad to fill it — exactly
+    what the honest-null rule prevents.
     """
 
     model_config = ConfigDict(extra="forbid")
@@ -223,19 +185,14 @@ class Usage:
 class _MeteredClient:
     """A thin proxy over the Anthropic client that records the usage of every call made through it.
 
-    Why a proxy rather than threading a counter through both stages: BOTH stages call
-    `client.messages.create(model=...)` — Stage A once per article in `briefing/extract.py`, Stage B
-    once for the whole page here — so ONE interception point sees the entire night's spend, and
-    neither stage has to learn about accounting. `extract.py` is untouched by 9.5, which is the right
-    outcome: a module that reads articles should not also be a ledger.
+    A proxy, not a counter threaded through both stages: both call `client.messages.create(model=...)`
+    — Stage A per article in `briefing/extract.py`, Stage B once here — so ONE interception point sees
+    the whole night's spend and neither stage learns about accounting (`extract.py` stays untouched: a
+    module that reads articles should not also be a ledger).
 
-    It buckets by the `model` argument, so the extract model and the synth model are priced apart
-    without anyone having to tell it which is which.
-
-    It is deliberately forgiving of a response with no `usage` block: the fake clients in the test
-    suite return bare objects, and a metering wrapper that CRASHED the narration stage over a missing
-    accounting field would be a cost instrument that takes the front page down. The prose is the least
-    important thing in the pipeline; its bookkeeping is even less important than that.
+    It buckets by the `model` argument, pricing the extract and synth models apart on its own. And it is
+    forgiving of a response with no `usage` block: the suite's fake clients return bare objects, and a
+    metering wrapper that crashed the narration over a missing accounting field would take the page down.
     """
 
     def __init__(self, inner: Any, usage: dict[str, Usage]) -> None:
@@ -262,13 +219,12 @@ class _MeteredMessages:
 
 @dataclass(frozen=True)
 class NoteInput:
-    """What the narrator is allowed to know about one story. Note what is absent: the significance
-    score, its rank, and its position on the page.
+    """What the narrator is allowed to know about one story. Absent on purpose: the significance score,
+    its rank, and its page position.
 
-    `deep` says whether this cluster is inside the depth budget (top 8) and therefore gets the v2
-    treatment. `stats` is this cluster's OWN stat block and `calendar` its OWN dated rows — both are
-    per-cluster, because the gate is per-cluster: a figure lifted from another story is a real number
-    in the world and still a fabrication on THIS card.
+    `deep` says whether the cluster is inside the depth budget (top 8) and gets the v2 treatment.
+    `stats` and `calendar` are this cluster's OWN — per-cluster because the gate is: a figure lifted
+    from another story is a real number in the world and still a fabrication on THIS card.
     """
 
     cluster_id: str
@@ -287,11 +243,10 @@ class NoteInput:
 class NoteDecision:
     """What actually publishes for one cluster, and the record of why.
 
-    `verification` carries a `sections` map in v2 — a per-field verdict of narrated / dropped /
-    silent / out_of_budget. That map is the whole reason the story page can tell the reader WHY a
-    section is absent instead of guessing, and it exists because of the N5 lesson: a section the gate
-    deleted and a section the narrator had nothing to say in print the identical nothing, and no
-    screen can tell them apart unless the pipeline writes down which one it was.
+    `verification` carries a v2 `sections` map — a per-field verdict of narrated / dropped / silent /
+    out_of_budget. It lets the story page tell the reader WHY a section is absent instead of guessing
+    (the N5 lesson): a section the gate deleted and one the narrator left blank print identical nothing,
+    and no screen can tell them apart unless the pipeline writes down which it was.
     """
 
     why_it_matters: str | None
@@ -305,23 +260,22 @@ class NoteDecision:
 class NarrationResult:
     """The night's prose, with its outcomes counted.
 
-    `narrated` + `dropped` + `silent` must account for every cluster the narrator was asked about.
-    The counts are the only instrument that can tell a working narrator with nothing to say apart
-    from a broken one — on the page, both print nothing.
+    `narrated` + `dropped` + `silent` must account for every cluster the narrator was asked about — the
+    only instrument that tells a working narrator with nothing to say from a broken one, since on the
+    page both print nothing.
     """
 
     decisions: dict[str, NoteDecision] = field(default_factory=dict)
-    # The Stage-A extract for each story that produced one, keyed by CLUSTER id and already in JSON
-    # form — this is what lands in news_cluster.extract, and what the story page shows as the facts
-    # the note was written from. A story with no entry here published without an extract.
+    # Each story's Stage-A extract, keyed by CLUSTER id and already JSON — lands in news_cluster.extract
+    # and is the facts the story page shows the note was written from. No entry ⇒ published without one.
     extracts: dict[str, dict] = field(default_factory=dict)
     narrated: int = 0
     dropped: int = 0
     silent: int = 0
-    # PD7: the SECTION-level instrument. A v2 note has four sections and they are gated separately, so
-    # the cluster-level counts above can no longer see everything — a story whose `context` the gate
-    # deleted still counts as `narrated` if its why-line survived, and that is correct, and it is also
-    # exactly how a broken depth stage would hide. This counter is what makes the deletion visible.
+    # PD7: the SECTION-level instrument. A v2 note's four sections are gated separately, so the
+    # cluster-level counts miss things — a story whose `context` was deleted still counts `narrated` if
+    # its why-line survived, which is correct and also how a broken depth stage would hide. This makes
+    # the deletion visible.
     sections_dropped: int = 0
     extracted: int = 0
     extract_attempted: int = 0
@@ -352,11 +306,10 @@ class NarrationResult:
     def cost_summary(self) -> str:
         """The night's LLM bill, in tokens and dollars, per model (9.5).
 
-        MEASURED, NEVER ESTIMATED. The token counts come from the API's own `usage` block on each
-        response; only the dollars are arithmetic, and the per-MTok prices they use are constants
-        with a provenance comment in config.py. Plan 0.2.3 priced this phase's depth delta at
-        ≈$0.03–0.06/night on top of ~$0.33 and explicitly said "measured at PD7's gate, not
-        promised" — so this line is what does the measuring, every single night, forever.
+        MEASURED, NEVER ESTIMATED: token counts come from the API's own `usage` block, only the dollars
+        are arithmetic (prices are constants with a provenance comment in config.py). Plan 0.2.3 priced
+        the depth delta at ≈$0.03–0.06/night on ~$0.33 and said "measured at PD7's gate, not promised" —
+        this line is the measuring, every night, forever.
         """
         if not self.usage:
             return "news LLM cost: nothing was spent (no model call ran tonight)"
@@ -374,8 +327,8 @@ class NarrationResult:
     def model_meta(self, *, model_extract: str, model_synth: str) -> dict:
         """The per-night provenance block stamped onto every cluster this run wrote (9.5).
 
-        The story page's provenance footer has been HARDCODING "Claude Haiku" — a claim the row could
-        not support and nobody could check. Now the row carries what actually ran.
+        The story page's provenance footer had HARDCODED "Claude Haiku" — a claim the row could not
+        support and nobody could check. Now the row carries what actually ran.
         """
         return {
             "model_extract": model_extract,
@@ -400,9 +353,8 @@ def narrate(
 ) -> NoteSet | None:
     """Make the one Stage B-mini call and return the parsed notes, or None after a second failure.
 
-    A None return is not an error state: the caller writes null notes and the page publishes its
-    facts without prose (Appendix D). A night with no clusters makes no call at all — an empty page
-    does not pay for a model call to tell it so.
+    None is not an error: the caller writes null notes and the page publishes its facts without prose
+    (Appendix D). No clusters ⇒ no call — an empty page does not pay a model to tell it so.
     """
     if not clusters:
         return None
@@ -423,9 +375,9 @@ def narrate(
         if notes is not None:
             return notes
 
-        # SAY WHAT CAME BACK. A parse failure that prints nothing is a night that cannot be debugged
-        # without re-running it against the live provider, which is exactly the position this stage
-        # put us in: "failed its schema twice" is a symptom, and the response is the evidence.
+        # SAY WHAT CAME BACK. A parse failure that prints nothing can't be debugged without re-running
+        # against the live provider — the position this stage put us in: "failed its schema twice" is a
+        # symptom, the response is the evidence.
         print(
             f"narrate: the notes response did not parse ({len(text)} chars). "
             f"First 200: {text[:200]!r}"
@@ -461,9 +413,8 @@ def build_notes_prompt(clusters: list[NoteInput], stats: list[Stat]) -> tuple[st
         )
         extract = cluster.extract
         if extract is None:
-            # Stated rather than hidden: Stage A drops a malformed article, so a story can reach the
-            # narrator with its headline and nothing else. The model may still write from that — or
-            # honestly return null.
+            # Stated, not hidden: Stage A drops a malformed article, so a story can reach the narrator
+            # with only its headline. The model may still write from that, or honestly return null.
             lines.append("    (no extract — write from the headline alone, or return null)")
         else:
             numbers = "; ".join(f"{kn.value_str} ({kn.what})" for kn in extract.key_numbers) or "(none)"
@@ -471,11 +422,10 @@ def build_notes_prompt(clusters: list[NoteInput], stats: list[Stat]) -> tuple[st
                 f"    doc_id={extract.doc_id} | numbers={numbers} | summary={extract.summary}"
             )
 
-        # The per-cluster depth block. Only a DEEP cluster gets one, and it sits UNDER its story
-        # rather than in the shared table below — a stat about SMCI's 52-week range has no business
-        # being reachable from a note about the Fed, and the gate would refuse it anyway (it checks
-        # each note against its OWN cluster's sources). Putting it here makes the prompt say the same
-        # thing the gate enforces, which is the only way the model can succeed on purpose.
+        # The per-cluster depth block. Only DEEP clusters get one, and it sits UNDER its story, not in
+        # the shared table — a stat about SMCI's 52-week range must not be reachable from a Fed note, and
+        # the gate would refuse it anyway (each note checked against its OWN cluster's sources). Here the
+        # prompt says what the gate enforces, the only way the model can succeed on purpose.
         if cluster.deep:
             for stat in cluster.stats:
                 label = f" ({stat.label})" if stat.label else ""
@@ -509,16 +459,13 @@ def gate_notes(
 ) -> NarrationResult:
     """Check every note against its OWN cluster's sources and return what may publish.
 
-    Per-cluster on purpose. A figure lifted from another story is a real number in the world and
-    still a fabrication on this card — the same shape as the VHI bug, where every number on the card
-    was true and the card was a lie.
+    Per-cluster on purpose: a figure lifted from another story is a real number in the world and still
+    a fabrication on this card — the VHI bug's shape, where every number was true and the card was a lie.
 
-    The verdict is harsher than the briefing's, and it should be. The brief tolerates up to two flags
-    across a whole page of prose because holding the entire briefing over one bad figure costs the
-    reader everything. A note is one sentence: dropping it costs the reader that sentence, and the
-    facts on the card stand without it. So ANY flag drops the note — and it drops the sentence beside
-    it too, because a model that invented one figure has not earned the benefit of the doubt on the
-    next one.
+    Harsher than the briefing's verdict, and it should be. The brief tolerates two flags across a whole
+    page because holding the entire briefing over one bad figure costs the reader everything; a note is
+    one sentence, and dropping it leaves the card's facts standing. So ANY flag drops the note — and the
+    sentence beside it, because a model that invented one figure has not earned the doubt on the next.
     """
     stats = list(stats)
     instruments = list(instruments)
@@ -528,22 +475,17 @@ def gate_notes(
     for note in notes:
         cluster = by_id.get(note.cluster_id)
         if cluster is None:
-            # The model was handed the cluster ids and may only write about those. An invented id is
-            # not a story, and it never reaches the publish transaction.
+            # The model was handed the cluster ids and may only write about those. An invented id is not
+            # a story, and it never reaches the publish transaction.
             continue
 
         if not any((note.why_it_matters, note.affected_note, note.context, note.watch)):
-            # An honest null: "nothing to add beyond the headline". The system working, not failing.
-            #
-            # BUT THE REASON MUST STILL BE THE TRUE ONE, PER SECTION. A cluster outside the depth
-            # budget was never ASKED for a context, so "the narrator had nothing to add" is not what
-            # happened to it — nobody ever put the question. Marking it `silent` would have PD8's
-            # story page tell the reader the narrator was stumped by a section it was never shown,
-            # which is a different sentence and a false one. The first live run made this visible:
-            # 13 sections came back `silent` on a page where only 8 clusters are ever deep.
-            #
-            # This whole `sections` map exists to distinguish absences that print identically. It has
-            # no business being sloppy about which absence this is.
+            # An honest null: "nothing to add beyond the headline" — the system working, not failing.
+            # But the reason must be TRUE per section. A cluster outside the depth budget was never asked
+            # for a context, so `silent` would tell PD8's story page the narrator was stumped by a section
+            # it was never shown — a false sentence. The first live run showed 13 `silent` sections on a
+            # page where only 8 clusters are deep. The `sections` map exists to distinguish absences that
+            # print identically; it must not be sloppy about which this is.
             budgeted = "silent" if cluster.deep else "out_of_budget"
             result.decisions[note.cluster_id] = NoteDecision(
                 why_it_matters=None,
@@ -563,10 +505,9 @@ def gate_notes(
             result.silent += 1
             continue
 
-        # THE SOURCES ARE PER-CLUSTER, and in v2 that now includes the cluster's OWN depth stats.
-        # A figure lifted from another story is a real number in the world and still a fabrication on
-        # this card — the same shape as the VHI bug, where every number on the card was true and the
-        # card was a lie.
+        # THE SOURCES ARE PER-CLUSTER, in v2 including the cluster's OWN depth stats. A figure lifted
+        # from another story is real in the world and a fabrication on this card — the VHI bug's shape,
+        # where every number was true and the card was a lie.
         cluster_stats = [*stats, *cluster.stats]
         sources = build_source_set(
             extracts=[cluster.extract] if cluster.extract is not None else [],
@@ -594,14 +535,11 @@ def gate_notes(
             return [*numbers.flags, *words], list(numbers.cleared), numbers.checked
 
         # ----- the v1 pair: why_it_matters + affected_note, still COUPLED -----
-        #
-        # 9.3's rule is that THE GATE EXTENDS, NOT RELAXES, and that decides this. Decoupling the
-        # pair would be a RELAXATION: a note that is dropped whole today would start publishing half
-        # of itself. The N5 argument that coupled them stands untouched — they are one thought (a
-        # mechanism and its spillover clause), and a model that invented a figure in one has not
-        # earned the benefit of the doubt in the other. What v2 adds is new sections, and a new
-        # section may be gated independently without relaxing anything, because there was nothing
-        # there before.
+        # 9.3's rule: THE GATE EXTENDS, NOT RELAXES. Decoupling the pair would relax it — a note dropped
+        # whole today would start publishing half itself. The N5 coupling stands: they are one thought (a
+        # mechanism and its spillover), and a model that invented a figure in one hasn't earned the doubt
+        # in the other. v2 only adds new sections, which may be gated independently without relaxing
+        # anything, because there was nothing there before.
         pair_flags: list = []
         pair_cleared: list[str] = []
         for location, text in (
@@ -661,11 +599,9 @@ def gate_notes(
                 }
 
         # ----- watch: verified STRUCTURALLY, not textually -----
-        #
-        # There is no prose to check. The narrator SELECTED ids, and the only question is whether each
-        # one resolves to a calendar row this cluster was actually shown. A dangling ref is dropped —
-        # never rendered, never guessed at. This is what makes "the LLM cannot author a calendar
-        # entry" a property of the system rather than a request in a prompt.
+        # No prose to check: the narrator SELECTED ids, and the only question is whether each resolves to
+        # a calendar row this cluster was shown. A dangling ref is dropped, never rendered — this is what
+        # makes "the LLM cannot author a calendar entry" a property of the system, not a request in a prompt.
         watch: list[dict] = []
         if not cluster.deep:
             sections["watch"] = {"status": "out_of_budget"}
@@ -699,26 +635,18 @@ def gate_notes(
             "flags": [flag.to_json() for flag in flags],
         }
         if pair_dropped:
-            # **THE v1 KEY STAYS, AND IT IS LOAD-BEARING IN PRODUCTION RIGHT NOW.**
-            #
-            # `lib/news.ts` reads `verification.dropped === true` to set `noteDropped`, which is how
-            # the story page tells the reader "the gate held this line" instead of "the narrator had
-            # nothing to add" — the N5 distinction, and the whole reason that field exists. PD7 is a
-            # PIPELINE phase: it ships to production BEFORE PD8 builds the surfaces that read
-            # `sections`. Replacing this key with the richer map would have blinded the live story
-            # page the first night this ran, and NOTHING would have failed — the app reads an absent
-            # key as `false` and says "the narrator had nothing to add" about a line the gate killed.
-            #
-            # So the new map is added ALONGSIDE the old key, not instead of it. `dropped` keeps its
-            # exact v1 meaning — the why/affected PAIR was deleted — which is precisely what the app
-            # means by it. PD8 may migrate to `sections` and retire this line; until it does, it stays.
+            # THE v1 KEY STAYS, AND IT IS LOAD-BEARING IN PRODUCTION NOW. `lib/news.ts` reads
+            # `verification.dropped === true` to set `noteDropped` — how the story page says "the gate held
+            # this line" vs "the narrator had nothing to add" (the N5 distinction). PD7 ships BEFORE PD8
+            # builds the surfaces that read `sections`, so replacing this key would blind the live page and
+            # NOTHING would fail — an absent key reads as `false`. So the map is added ALONGSIDE the old key.
+            # `dropped` keeps its exact v1 meaning (the why/affected PAIR was deleted). PD8 may retire it.
             verification["dropped"] = True
             verification["reason"] = "an entity in the note traced back to no source"
 
-        # The allow-list (Q-PD5-1), across every section that SURVIVED. A cluster already had
-        # something that looked like one — its extract's `key_numbers` — but that is the list of
-        # numbers the ARTICLE contained, not the list this gate CLEARED, and the two are not the
-        # same claim. This one is.
+        # The allow-list (Q-PD5-1), across every section that SURVIVED. The extract's `key_numbers`
+        # looks like one but is the numbers the ARTICLE contained, not the list this gate CLEARED — not
+        # the same claim. This one is.
         verification["cleared"] = _dedupe(cleared)
         verification["sections"] = sections
 
@@ -760,29 +688,23 @@ def run_narration(
     clock: Callable[[], float] = time.monotonic,
     extract_budget: float = EXTRACT_BUDGET_SECONDS,
 ) -> NarrationResult:
+    """Both stages, end to end: read the top stories, write their context lines, gate every line.
+
+    `stage_a` is the capped list to extract (each with its ONE representative article); `stage_b_ids`
+    names the subset that gets prose — a subset by construction, since both caps rank by significance.
+
+    Nothing here can take the page down: a failed extract, a failed narration call, a flagged note each
+    cost only a line, and the facts (headline, companies, numbers, order) publish regardless — the whole
+    reason the model runs last.
+
+    And nothing may hold the night open. Stage A makes up to 60 sequential calls and the SDK default
+    per-call timeout is TEN MINUTES with retries, so one slow provider night could delay publish for
+    hours while the computed facts sit in memory (the first live run sat here 20+ minutes). When the
+    budget is gone the extractor stops, the rest go to the narrator with headlines, and the page ships.
+    The night says how many it gave up on.
     """
-    Both stages, end to end: read the top stories, write their context lines, gate every line.
-
-    `stage_a` is the capped list of stories to extract (each carrying its ONE representative
-    article); `stage_b_ids` names the subset that gets prose — a subset by construction, because
-    both caps rank by significance (see `ingest.stage_a_clusters`).
-
-    Nothing here can take the page down. A failed extract is a story without an extract; a failed
-    narration call is a page without prose; a flagged note is a story without a line. In every one of
-    those the facts — the headline, the companies, the numbers, the order — publish exactly as they
-    would have. That is the whole reason the model runs last.
-
-    AND NOTHING HERE MAY HOLD THE NIGHT OPEN. Stage A makes up to 60 sequential calls, and the
-    Anthropic SDK's default per-call timeout is TEN MINUTES with retries on top — so one slow night
-    at the provider could keep the publish waiting for hours while the facts, already computed, sat
-    in memory. The first live run sat in this stage for over twenty minutes. The prose is the least
-    important thing in the pipeline; it does not get to make the page late. When the budget is gone
-    the extractor stops, the remaining stories go to the narrator with their headlines, and the page
-    ships. The night says how many it gave up on.
-    """
-    # EVERY model call in both stages goes through this wrapper, which is the whole point: it is the
-    # one place the night's token spend can be counted, and neither stage has to know it is being
-    # counted (9.5). `sync_extract` below is completely untouched by the cost instrument.
+    # EVERY model call in both stages goes through this wrapper — the one place the night's token spend
+    # is counted, and neither stage knows it is being counted (9.5). `sync_extract` below is untouched.
     usage: dict[str, Usage] = {}
     client = _MeteredClient(client, usage)
 
@@ -886,9 +808,8 @@ class Story:
 def _create(client: Any, model: str, system: str, messages: list[dict]) -> Any:
     """One structured-output Stage B-mini call.
 
-    `effort` rides INSIDE `output_config`, beside the format — it is not a top-level parameter, and
-    putting it at the top level is a 400. See `_EFFORT` for why the reasoning budget is bounded at
-    all: an unbounded one is what overflowed `max_tokens` and cost production every note it had.
+    `effort` rides INSIDE `output_config`, beside the format — top-level is a 400. See `_EFFORT` for
+    why the budget is bounded: an unbounded one overflowed `max_tokens` and cost production every note.
     """
     return client.messages.create(
         model=model,
@@ -905,18 +826,13 @@ def _create(client: Any, model: str, system: str, messages: list[dict]) -> Any:
 def _parse_notes(text: str) -> NoteSet | None:
     """Parse the model text into a NoteSet, NOTE BY NOTE.
 
-    Validating the whole set as one object was a mistake, and production found it: a single sentence
-    forty characters too long invalidated the other nineteen, and the entire page published without
-    prose. That is the same "one bad item kills the batch" disease the extraction stage had one layer
-    up, and it is just as wrong here — a note is one sentence about one story, and its failure should
-    cost exactly that story its sentence.
+    Validating the whole set as one object was a mistake production found: one sentence 40 chars too long
+    invalidated the other nineteen and the page published without prose — the "one bad item kills the
+    batch" disease, and a note's failure should cost only that story its sentence. So each is validated
+    alone and a bad one dropped; the 160-char cap still bites, it just no longer takes neighbours with it.
 
-    So each note is validated alone and a bad one is dropped. The 160-character cap still bites (an
-    over-long note does NOT publish), it simply no longer takes its neighbours with it.
-
-    Returning None — which spends the one retry Appendix D allows — is reserved for a response that
-    produced NO usable note at all. That is the signature of something systematically wrong with the
-    response, and it is worth one more ask.
+    Returning None spends the one Appendix D retry, and is reserved for a response with NO usable note at
+    all — the signature of something systematically wrong, worth one more ask.
     """
     from briefing.extract import _extract_json_object  # the shared tolerant JSON finder
 

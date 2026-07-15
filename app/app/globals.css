@@ -1,22 +1,18 @@
 /*
  * globals.css — the single source of every design token in myStockMarket.
  *
- * The design system is "Morning Broadsheet" (UI-REDESIGN-PLAN.md Part 3): editorial serif
- * over mono numerals, a lavender morning-light wash, glass cards with soft depth, hairlines
- * inside cards, one hero figure per view, color scarce and always meaningful.
+ * Design system: "Morning Broadsheet" (UI-REDESIGN Part 3) — editorial serif over mono numerals, a
+ * lavender morning-light wash, glass cards with soft depth, hairlines inside cards, one hero figure,
+ * colour scarce and always meaningful.
  *
- * HARD RULE (plan §3.10 v2, grepped at every phase exit): no hex color, raw gradient,
- * arbitrary shadow, or arbitrary radius may appear anywhere else in the codebase
- * (lib/tokens.ts holds the OS-facing constants). If you need a value, it is already
- * here, or it does not belong in the product.
+ * HARD RULE (§3.10 v2, grepped at every phase exit): no hex, raw gradient, arbitrary shadow or radius
+ * anywhere else in the codebase (lib/tokens.ts holds the OS-facing constants). If a value is not here,
+ * it does not belong in the product.
  *
- * Tailwind v4 caveat: rgb(r g b / a) tokens work as utilities (bg-surface) but the
- * slash-opacity modifier (bg-surface/50) silently no-ops on them. Never use it; mint a token.
- *
- * `@theme static` (rather than a bare `@theme`) forces Tailwind to emit EVERY variable as a
- * real custom property instead of tree-shaking the ones no utility references. The chart hook
- * reads --color-ink / --color-up / --color-down off the computed style at runtime, and
- * /styleguide renders the whole set as a living spec — Tailwind can see neither.
+ * Tailwind v4 caveat: the slash-opacity modifier (bg-surface/50) silently no-ops on rgb(r g b / a)
+ * tokens — never use it, mint a token. `@theme static` forces Tailwind to emit EVERY variable as a real
+ * custom property (not tree-shaken): the chart hook reads --color-ink/up/down at runtime and /styleguide
+ * renders the whole set, and Tailwind can see neither.
  */
 
 @import "tailwindcss";
@@ -56,14 +52,10 @@
   --color-ink: #0f0d1a;
   --color-ink-2: #3d3a4f;
   /*
-   * Provenance text. Must clear 4.5:1 against the COMPOSITED GLASS — not against the paper.
-   *
-   * It used to be #6e6c80, chosen because it measures 4.83:1 on `--color-paper`. But almost no
-   * muted text in this app sits on the paper: it sits on a Surface, and a Surface is white at 72%
-   * over the lavender wash, which composites to #f0effe. Against what a reader actually looks at,
-   * #6e6c80 measures 4.48:1 — it missed the floor by two hundredths, and the token was verified
-   * against a background it is hardly ever shown on. #676577 measures 4.99:1 on the glass, 5.37:1
-   * on paper, 5.67:1 on a solid card. Approved by the user 2026-07-12 as a readability floor.
+   * Provenance text. Must clear 4.5:1 against the COMPOSITED GLASS, not the paper. #6e6c80 measured
+   * 4.83:1 on paper but muted text sits on a Surface (white 72% over the wash = #f0effe), where it was
+   * 4.48:1 — verified against a background it is hardly ever shown on. #676577 measures 4.99:1 on glass,
+   * 5.37:1 on paper, 5.67:1 on a solid card. Approved by the user 2026-07-12 as a readability floor.
    */
   --color-muted: #676577;
   --color-faint: #a9a7b8;            /* placeholders/disabled; never body text */
@@ -95,16 +87,12 @@
   --color-alert: #8a5200;
   --color-alert-wash: #f7ead0;
 
-  /* Danger — "this app is broken", and nothing else. ONE consumer, ever: the pipeline strip's
-   * DEAD state (NEWS-AND-CONTROL-PLAN Part 4.1), which is the one surface in this app allowed to
-   * be loud, because a silently dead pipeline serving stale data is the catastrophic failure mode.
-   *
-   * It borrows the hue the palette already owns (--color-grade-folklore's red, hue 0°, outside the
-   * reserved amber band) so that NO NEW HUE enters the app — colour stays scarce. What it does not
-   * borrow is the MEANING: a grade says "this pattern is folklore", a danger says "do not trust the
-   * numbers on this page". Two meanings, two token names, and drift rule 19 keeps the second to its
-   * single consumer. Reusing `down` here would have been worse than either: it would have painted a
-   * broken pipeline in the colour of a falling market. */
+  /* Danger — "this app is broken", and nothing else. ONE consumer ever: the pipeline strip's DEAD state
+   * (NEWS-AND-CONTROL Part 4.1), the one surface allowed to be loud, because a silently dead pipeline
+   * serving stale data is the catastrophic failure. It borrows folklore's red (hue 0°, outside the
+   * reserved amber band) so NO NEW HUE enters — but not the MEANING (folklore = "this pattern is
+   * folklore"; danger = "do not trust this page"). Two meanings, two names; drift rule 19 keeps danger to
+   * its single consumer. Reusing `down` would paint a broken pipeline as a falling market. */
   --color-danger: #b91c1c;
   --color-danger-wash: rgb(185 28 28 / 0.07);
 
@@ -176,14 +164,10 @@
   /* ── Layout ───────────────────────────────────────────────────────────────────────── */
   --breakpoint-desk: 1366px;
 
-  /* The broadsheet's widest band (NEWS-AND-CONTROL-PLAN Part 4.3). Above 1536px the app was
-   * buying acres and building nothing on them: every room outside the Desk was one column inside a
-   * 1360px shell, which on a 27" display is a phone layout with enormous margins.
-   *
-   * What `wide` buys is INTERNAL DENSITY, not more columns — cards pack two- and three-up where
-   * their content is enumerable, and prose stays in one column at its measure. The Desk gains no
-   * third column at any width: a second reading column would split the ritual's order into two
-   * ambiguous streams, and the ritual's order is the one thing the layout may not break. */
+  /* The broadsheet's widest band (NEWS-AND-CONTROL Part 4.3). Above 1536px every room outside the Desk
+   * was one column in a 1360px shell — a phone layout with enormous margins on a 27". `wide` buys INTERNAL
+   * DENSITY, not more columns: cards pack two/three-up where content is enumerable, prose stays one column.
+   * The Desk gains no third column at any width — a second reading column would split the ritual's order. */
   --breakpoint-wide: 1536px;
 }
 
@@ -191,10 +175,9 @@
   --scrim: rgb(15 13 26 / 0.4);
 }
 
-/* ── Midnight (D1) — APP-WIDE via [data-theme] on <html>, stamped pre-paint by the root
- * layout's inline script (§7.3; never a server cookie read — static routes must stay
- * static). The [data-theme="system"] block below is a byte-identical duplicate, and a unit
- * test parses this file to prove the two never drift apart. */
+/* ── Midnight (D1) — APP-WIDE via [data-theme] on <html>, stamped pre-paint by the root layout's inline
+ * script (§7.3; never a server cookie read — static routes must stay static). The [data-theme="system"]
+ * block below is a byte-identical duplicate, and a unit test parses this file to prove the two never drift. */
 [data-theme="dark"] {
   --color-paper: #14121f;
   --color-surface: rgb(30 27 48 / 0.72);
@@ -205,14 +188,11 @@
   --color-ink: #ece9f8;
   --color-ink-2: #c3c0d6;
   /*
-   * Midnight's provenance grey. Same floor as Morning's, measured against the LIGHTEST card it
-   * ever sits on — which is the raised surface (#2c293d composited), not the standard one.
-   *
-   * It was #918ea6, and against the standard card (#231f38) that measures 5.00:1, so a first
-   * sweep called Midnight clean and left it alone. It is not clean: on a RAISED card it measures
-   * 4.44:1, and the phone Desk's shelf cards are raised. The sweep missed it because it had been
-   * run on the desktop project only, and the shelf is phone-only — half the app, measured, and
-   * called all of it. #9c99b1 measures 5.10:1 on the raised card and 5.74:1 on the standard one.
+   * Midnight's provenance grey. Same floor as Morning's, measured against the LIGHTEST card it sits on —
+   * the RAISED surface (#2c293d composited), not the standard one. It was #918ea6, which measures 5.00:1
+   * on the standard card (#231f38) — so a desktop-only sweep called Midnight clean, but on a RAISED card
+   * (the phone Desk's shelf cards) it was 4.44:1: half the app measured and all of it called. #9c99b1
+   * measures 5.10:1 on the raised card, 5.74:1 on the standard.
    */
   --color-muted: #9c99b1;
   --color-faint: #6b6880;
@@ -315,9 +295,9 @@ html {
 body { font-family: var(--font-ui); font-size: var(--text-sm); line-height: var(--text-sm--line-height); }
 
 /*
- * L0 wash — the morning light. A fixed layer, NEVER background-attachment: fixed, which is
- * broken on iOS Safari and would repaint the gradient on every scroll frame. The two orbs are
- * ambience, not wallpaper: they are viewport-anchored, halved on phones, and composited.
+ * L0 wash — the morning light. A fixed layer, NEVER background-attachment: fixed (broken on iOS Safari,
+ * repaints the gradient every scroll frame). The two orbs are ambience: viewport-anchored, halved on
+ * phones, composited.
  */
 .app-wash { position: fixed; inset: 0; z-index: 0; pointer-events: none;
   background: var(--gradient-wash); transform: translateZ(0); }
@@ -330,10 +310,9 @@ body { font-family: var(--font-ui); font-size: var(--text-sm); line-height: var(
 }
 
 /*
- * Surfaces (§3.4). L1/L2 never blur — stacked backdrop-filters are a GPU tax that shows up as
- * scroll jank on mid-range phones, and over a static wash translucency alone looks near-identical.
- * L3/L4 blur on an inner wrapper because Safari does not clip backdrop-filter to border-radius
- * on the same element: without the wrapper, the blur bleeds square out of a rounded card.
+ * Surfaces (§3.4). L1/L2 never blur — stacked backdrop-filters are a GPU tax that janks mid-range phones,
+ * and over a static wash translucency alone looks near-identical. L3/L4 blur on an inner wrapper because
+ * Safari does not clip backdrop-filter to border-radius on the same element (the blur bleeds square).
  */
 .surface { background: var(--color-surface); border: 1px solid var(--color-hairline);
   border-radius: var(--radius-card); }
@@ -359,22 +338,16 @@ body { font-family: var(--font-ui); font-size: var(--text-sm); line-height: var(
 .no-scrollbar::-webkit-scrollbar { display: none; }
 
 /*
- * THE KIT (APP-FEEL-PLAN Part 3). Two class bodies live here rather than in Tailwind utilities
- * because one of them is a gradient, and gradients live only in this sheet (drift rule 2).
+ * THE KIT (APP-FEEL Part 3). Two class bodies live here (not Tailwind utilities) because one is a gradient,
+ * and gradients live only in this sheet (drift rule 2).
  *
- * .shelf — a horizontal rail the READER pushes. Ruling M3: user scrolling is not motion. The page
- * already scrolls vertically past every money figure and nobody has ever read that as the number
- * moving; a shelf is the same gesture turned sideways. What is banned is motion with no initiating
- * gesture — autoplay, auto-advance, programmatic scrollTo, `scroll-behavior: smooth`. The UI never
- * moves the paper by itself. `proximity` snapping, never `mandatory`: mandatory fights iOS momentum
- * and feels like the interface grabbing the wheel out of your hand (drift rule 15 greps for both).
- *
- * The `padding-inline` is load-bearing geometry, not spacing taste. Without it the mask below veils
- * the FIRST card's left edge at rest, and the LAST card's right edge at full scroll — permanently.
- * On the pulse shelf that last card holds a money figure, so it would sit under a translucency ramp
- * forever. With 16px of padding, the resting first card and the fully-scrolled last card both sit
- * inside the opaque band, and the fade only ever falls on the peeking NEXT card, which is the whole
- * point of having it.
+ * .shelf — a horizontal rail the READER pushes. Ruling M3: user scrolling is not motion (the page already
+ * scrolls past every money figure). What is banned is motion with no gesture — autoplay, auto-advance,
+ * programmatic scrollTo, `scroll-behavior: smooth`. Snapping is `proximity`, never `mandatory` (which
+ * fights iOS momentum); drift rule 15 greps for both. The `padding-inline` is load-bearing geometry: without
+ * it the mask veils the first card's left edge at rest and the last card's right edge at full scroll — and
+ * on the pulse shelf that last card holds a money figure. 16px keeps both inside the opaque band so the fade
+ * only ever falls on the peeking NEXT card.
  */
 .shelf {
   display: flex;
@@ -387,13 +360,10 @@ body { font-family: var(--font-ui); font-size: var(--text-sm); line-height: var(
 }
 
 /*
- * .shelf-frame — the edge fade. The mask lives on the NON-SCROLLING wrapper, deliberately.
- *
- * WebKit has a long history of mis-compositing a mask applied to a scrolling box: stale frames
- * during momentum, and the fade riding along with the content instead of staying put. There is no
- * mask-image anywhere else in this tree to prove otherwise, so this is not a bet worth taking. The
- * wrapper is pixel-identical in Chromium and removes the iOS gamble entirely. Do not "simplify"
- * this onto .shelf.
+ * .shelf-frame — the edge fade. The mask lives on the NON-SCROLLING wrapper deliberately: WebKit has a
+ * long history of mis-compositing a mask on a scrolling box (stale frames during momentum, the fade riding
+ * with the content). The wrapper is pixel-identical in Chromium and removes the iOS gamble. Do not
+ * "simplify" this onto .shelf.
  */
 .shelf-frame {
   mask-image: linear-gradient(90deg, transparent 0, black 16px, black calc(100% - 16px), transparent 100%);
@@ -406,11 +376,10 @@ body { font-family: var(--font-ui); font-size: var(--text-sm); line-height: var(
 summary::-webkit-details-marker { display: none; }
 
 /*
- * iOS keeps double-tap-to-zoom alive because this app rightly refuses `maximum-scale` (the
- * accessibility stance in layout.tsx stands). But the kit's core gestures ARE literal double taps —
- * tapping a sort header twice to flip its direction, hitting the stepper's + three times — and each
- * of those would otherwise smart-zoom the page out from under the reader. `manipulation` disables
- * the double-tap zoom on these controls only. Pinch zoom is untouched.
+ * iOS keeps double-tap-to-zoom alive because this app refuses `maximum-scale` (the accessibility stance in
+ * layout.tsx). But the kit's core gestures ARE double taps (flip a sort header, hit the stepper's +), each
+ * of which would smart-zoom the page out. `manipulation` disables double-tap zoom on these controls only;
+ * pinch zoom is untouched.
  */
 .touch-manipulation { touch-action: manipulation; }
 
@@ -426,31 +395,21 @@ summary::-webkit-details-marker { display: none; }
 .route-fade { animation: route-fade var(--duration-fade) var(--ease-quiet) both; }
 
 /*
- * The DISCLOSURE content fade — deliberately NOT the route fade, even though the animation is
- * identical, and the difference is the whole point.
- *
- * `.route-fade` is exempted by name from the P2 ancestor walk: it is the one sanctioned animation
- * that may contain a probability visual, because it wraps the entire page and therefore moves
- * nothing RELATIVE to anything else. A disclosure fade is a different animal — it wraps a subtree,
- * and if that subtree holds a base rate then the base rate is fading in, which is a probability
- * arriving, which is the exact thing P2 forbids.
- *
- * Reusing `.route-fade` here would have inherited an exemption this class has not earned, and the
- * violation would have passed the guard silently. It has its own name so the walk can catch it, and
- * `Disclosure`'s `fade` prop is opt-in so the safe path is also the lazy path.
+ * The DISCLOSURE content fade — deliberately NOT the route fade, though the animation is identical.
+ * `.route-fade` is exempted by name from the P2 ancestor walk because it wraps the whole page and moves
+ * nothing RELATIVE to anything else. A disclosure fade wraps a subtree — if it holds a base rate, that
+ * base rate is fading in, a probability arriving, which P2 forbids. It has its own name so the walk can
+ * catch it, and `Disclosure`'s `fade` prop is opt-in so the safe path is the lazy path.
  */
 .content-fade { animation: route-fade var(--duration-fade) var(--ease-quiet) both; }
 
 /*
- * The DETAIL-SHEET fade (PD9) — the @modal overlay's one sanctioned motion, and it is OPACITY ONLY.
- *
- * The detail sheet opens over rooms that carry probability and money figures, so a [data-p2] node
- * WILL have this class as an animating ancestor. It is admitted to the P2 ancestor walk's allowlist
- * BY NAME (p2-motion.test.tsx), on the identical terms as `.route-fade` and for the identical reason:
- * it fades the whole settled layer as one, moving nothing RELATIVE to anything else. A `translateY`
- * slide-up is a veto — a transform on an ancestor of a price MOVES the price, and no "it is only the
- * container" changes what the reader sees (E7). The sheet arrives by fading, or it does not arrive.
- * Reusing `.route-fade` would have inherited an exemption this class must earn under its own name.
+ * The DETAIL-SHEET fade (PD9) — the @modal overlay's one sanctioned motion, OPACITY ONLY. The sheet opens
+ * over rooms with probability/money figures, so a [data-p2] node WILL have this class as an animating
+ * ancestor. It is on the P2 walk's allowlist BY NAME (p2-motion.test.tsx), on the same terms as
+ * `.route-fade`: it fades the whole settled layer as one, moving nothing relative to anything else. A
+ * `translateY` slide-up is a veto — a transform on an ancestor of a price MOVES the price (E7). Reusing
+ * `.route-fade` would inherit an exemption this class must earn under its own name.
  */
 .sheet-fade { animation: route-fade var(--duration-fade) var(--ease-quiet) both; }
 

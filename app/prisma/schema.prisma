@@ -1,18 +1,12 @@
 // Prisma schema — the serving and user-state database (plan Appendix B).
 //
-// Schema v1 (plan P1 step 1): the data spine. Beyond the pipeline_run heartbeat from v0, this
-// adds the tables the nightly pipeline fills and the Desk reads — instruments, price bars, scan
-// results, the insert-only signal log — plus the user's watchlist. The remaining tables
-// (base rates, setup cards, vol bands, briefings, paper trades, ...) arrive in later phases.
-//
-// Two connection URLs, and the split matters (Supabase + Prisma, plan Appendix D):
-//   url       — the transaction pooler (port 6543). The app's runtime queries go here. It
-//               carries ?pgbouncer=true so Prisma disables prepared statements, which the
-//               pooler's transaction mode cannot keep across pooled connections.
-//   directUrl — a per-session connection (port 5432). Prisma Migrate uses this, never the
-//               pooler. On this network it points at Supabase's session pooler rather than the
-//               true direct host, because the free-tier direct host is IPv6-only (see .env and
-//               DECISIONS.md 2026-07-10).
+// Two connection URLs, and the split matters (Supabase + Prisma, Appendix D):
+//   url       — the transaction pooler (port 6543), for the app's runtime queries. It carries
+//               ?pgbouncer=true so Prisma disables prepared statements, which the pooler's
+//               transaction mode cannot keep across pooled connections.
+//   directUrl — a per-session connection (port 5432), for Prisma Migrate. On this network it points
+//               at Supabase's session pooler, because the free-tier direct host is IPv6-only
+//               (see .env and DECISIONS.md 2026-07-10).
 
 generator client {
   provider = "prisma-client-js"
@@ -24,12 +18,9 @@ datasource db {
   directUrl = env("DIRECT_URL")
 }
 
-/// One row per pipeline run — the heartbeat of the nightly cloud jobs (Appendix B).
-///
-/// Keyed by the trading day it processed, so a run is idempotent by date: re-running a night
-/// updates that day's row rather than inserting a duplicate. `stageStatus` and `sourceStatus`
-/// are JSON maps that will carry per-stage and per-provider health as the pipeline grows; at
-/// P0 the hello-run writes them as small placeholder objects.
+/// One row per pipeline run — the heartbeat of the nightly cloud jobs (Appendix B). Keyed by the
+/// trading day it processed, so a run is idempotent by date: re-running a night updates that day's row.
+/// `stageStatus`/`sourceStatus` are JSON maps of per-stage and per-provider health.
 model PipelineRun {
   /// The US trading day this run processed (its primary key). Stored as a bare date.
   runDate      DateTime  @id @map("run_date") @db.Date
@@ -46,19 +37,11 @@ model PipelineRun {
   @@map("pipeline_run")
 }
 
-/// The master list of tradable symbols — the universe (Appendix B).
-///
-/// Delisted names are RETAINED (never deleted): survivorship-filtered history flatters every
-/// backtest, and keeping delisted rows is how the app avoids that trap (Research Report §6.5).
-/// `isActive` and `delistedAt` record a symbol's status without dropping its history.
-///
-/// `exchange` is the venue's raw code as the data provider reports it — NYSE, NASDAQ, AMEX, and
-/// also ARCA and BATS, because ETFs list there and the universe is "common stocks + ETFs"
-/// (Appendix F). It is a plain string, not an enum: the plan's Appendix F named only
-/// NYSE/Nasdaq/AMEX, but the real listing venues for ETFs are more, and a string avoids a schema
-/// migration each time a new code appears. The one hard universe rule — "no OTC" — is enforced at
-/// ingest (OTC symbols are never inserted), not by the column type. Structural correction logged
-/// 2026-07-11.
+/// The master list of tradable symbols — the universe (Appendix B). Delisted names are RETAINED, never
+/// deleted: survivorship-filtered history flatters every backtest (RR §6.5), so `isActive`/`delistedAt`
+/// record status without dropping history. `exchange` is the provider's raw venue code (NYSE, NASDAQ,
+/// AMEX, ARCA, BATS — ETFs list there too) as a plain string, not an enum, so a new code needs no
+/// migration; the one hard rule ("no OTC") is enforced at ingest, not by the column (logged 2026-07-11).
 model Instrument {
   symbol     String    @id
   name       String
@@ -75,11 +58,9 @@ model Instrument {
   @@map("instrument")
 }
 
-/// Daily OHLCV for the symbols the app serves — the watchlist plus the indices and sector ETFs,
-/// roughly five years each (Appendix B). The full ~5-6k-symbol history lives as Parquet on R2 and
-/// is never loaded into Postgres; this table is only what the Desk needs to render.
-///
-/// Keyed by (symbol, date) so a re-pull of a trading day updates in place rather than duplicating.
+/// Daily OHLCV for the symbols the app serves — the watchlist plus indices and sector ETFs, ~5 years each
+/// (Appendix B). The full ~5-6k-symbol history lives as Parquet on R2, never loaded into Postgres; this is
+/// only what the Desk needs. Keyed by (symbol, date) so a re-pull updates in place.
 model PriceBar {
   symbol String   @map("symbol")
   date   DateTime @db.Date
@@ -97,10 +78,9 @@ model PriceBar {
   @@map("price_bar")
 }
 
-/// The user's watchlist — the only table in this file the APP writes (via server actions).
-///
-/// The focus cap (max 3 focus names) is enforced in the UI, not the schema, so the rule can carry
-/// its own explanatory copy rather than surfacing as a raw database error (plan Appendix B).
+/// The user's watchlist — the only table in this file the APP writes (via server actions). The focus cap
+/// (max 3 focus names) is enforced in the UI, not the schema, so the rule carries its own copy rather than
+/// a raw database error (Appendix B).
 model WatchlistItem {
   id         String     @id @default(cuid())
   symbol     String
@@ -115,9 +95,8 @@ model WatchlistItem {
   @@map("watchlist_item")
 }
 
-/// One row per symbol that matched a scan preset on a given run (Appendix B). Written nightly by
-/// the pipeline. `metrics` is JSON so each preset can carry its own fields (RVOL, gap %, the
-/// lottery-risk flag, ...) without a migration per preset.
+/// One row per symbol that matched a scan preset on a run (Appendix B), written nightly. `metrics` is JSON
+/// so each preset carries its own fields (RVOL, gap %, the lottery-risk flag) without a migration per preset.
 model ScanResult {
   id        String   @id @default(cuid())
   runDate   DateTime @map("run_date") @db.Date
@@ -132,12 +111,9 @@ model ScanResult {
   @@map("scan_result")
 }
 
-/// The public track record's foundation: every setup the app flags is logged here, INSERT-ONLY,
-/// from P1 (Appendix B, plan §1.5 rule 7). The database GRANT is revoked for UPDATE/DELETE in a
-/// migration so the log can never be edited — misses stay visible forever.
-///
-/// Rate fields (statedWinRate, statedN) are null until P4, when base rates exist; at P1 the
-/// signal log records only that a pattern fired and when it resolves.
+/// The public track record's foundation: every setup the app flags, logged here INSERT-ONLY from P1
+/// (Appendix B, §1.5 rule 7). The GRANT for UPDATE/DELETE is revoked in a migration, so the log can never be
+/// edited — misses stay visible forever. Rate fields (statedWinRate/statedN) are null until P4.
 model SignalLog {
   id            String            @id @default(cuid())
   firedDate     DateTime          @map("fired_date") @db.Date
@@ -155,25 +131,21 @@ model SignalLog {
   @@map("signal_log")
 }
 
-/// Per-run macro context for the Desk's Macro Pulse module — the VIX, the 10-year yield, and the
-/// day's breadth of the ingested universe (plan §9.2 macro strip). Appendix B's schema had no home
-/// for these (indices live in price_bar as instruments, but VIX/10-yr are FRED series and breadth
-/// is computed across the universe), so this table is added at P1. Structural, logged 2026-07-11.
+/// Per-run macro context for the Macro Pulse — VIX, the 10-year yield, and the day's breadth of the
+/// ingested universe (§9.2). Appendix B had no home for these (VIX/10-yr are FRED series, breadth is
+/// computed), so this table is added at P1 (structural, logged 2026-07-11).
 model MarketContext {
   runDate       DateTime @id @map("run_date") @db.Date
   /// The VIX (FRED VIXCLS) and the 10-year Treasury yield (FRED DGS10), null if FRED was down.
   vix           Float?
   tenYear       Float?   @map("ten_year")
 
-  /// The true index LEVELS from FRED (SP500, NASDAQCOM, DJIA), each with the level before it.
-  ///
-  /// These exist because an ETF is not its index: SPY traded near 755 while the S&P 500 was near
-  /// 6,800, and the Desk used to print the former under the latter's name. The prior level is
-  /// stored alongside each level because the app computes the one-day change by subtracting them —
-  /// it never sees the pipeline's observations, so a prior it does not have is a change it must
-  /// render as "—" rather than invent. Every column is nullable: each FRED series fails alone, and
-  /// a null level sends that slot to its ETF proxy, labelled as a proxy on-surface.
-  /// (UI-REDESIGN-PLAN §6.1. Russell 2000 has no free FRED series, so IWM stays an honest proxy.)
+  /// The true index LEVELS from FRED (SP500, NASDAQCOM, DJIA), each with the level before it. These exist
+  /// because an ETF is not its index (SPY near 755 while the S&P was near 6,800, printed under its name).
+  /// The prior is stored beside each level because the app computes the one-day change by subtracting them —
+  /// it never sees the pipeline's observations, so a prior it lacks is a change it renders "—", not invents.
+  /// Every column is nullable: each FRED series fails alone, and a null sends that slot to its labelled ETF
+  /// proxy (UI-REDESIGN §6.1; Russell 2000 has no free FRED series, so IWM stays an honest proxy).
   sp500                  Float?
   sp500Prior             Float?  @map("sp500_prior")
   nasdaqComposite        Float?  @map("nasdaq_composite")
@@ -186,26 +158,20 @@ model MarketContext {
   decliners     Int
   pctAbove50dma Float    @map("pct_above_50dma")
 
-  /// The date the index LEVELS above are actually for (News plan, N1).
-  ///
-  /// It is not always this run's date, and pretending otherwise is the bug this column exists to
-  /// close. FRED posts the index closes AFTER both nightly jobs run (the Nasdaq series around
-  /// 11:38pm ET, against Job A at 6:37pm), so a level fetched tonight can be last session's. Worse,
-  /// the upsert used to overwrite a good level with NULL on a flaky night — losing a true level and
-  /// silently falling back to an ETF. Now a failed fetch LEAVES the stored level alone, and this
-  /// date is how the Desk can say "as of Jul 9" instead of implying it is tonight's (C7).
+  /// The date the index LEVELS above are actually for (News plan, N1). Not always this run's date, and
+  /// pretending otherwise is the bug this closes: FRED posts index closes AFTER both jobs run (Nasdaq
+  /// ~11:38pm ET vs Job A at 6:37pm), so a level fetched tonight can be last session's — and the upsert used
+  /// to overwrite a good level with NULL on a flaky night. Now a failed fetch LEAVES the stored level alone,
+  /// and this date lets the Desk say "as of Jul 9" instead of implying it is tonight's (C7).
   indexLevelsAsOf DateTime? @map("index_levels_as_of") @db.Date
 
   @@map("market_context")
 }
 
-/// Company and market news that explains why names moved (plan Appendix B, P2). Written by the
-/// nightly catalyst ingest from Finnhub (per-ticker), Marketaux (market-wide, tagged), and EDGAR
-/// (filings). One row per article, deduplicated by (provider, url) so a rerun adds nothing new.
-///
-/// `tickers` is a Postgres text array — an article can name several symbols. `eventType` is the
-/// catalyst-type classification (earnings, guidance, analyst, filing, ...) the matcher assigns, null
-/// until classified. `extract` is reserved for the P3 LLM structured extract.
+/// Company and market news that explains why names moved (Appendix B, P2). Written nightly from Finnhub
+/// (per-ticker), Marketaux (market-wide, tagged) and EDGAR (filings); one row per article, deduped by
+/// (provider, url). `tickers` is a Postgres text array; `eventType` is the catalyst classification, null
+/// until classified; `extract` is reserved for the P3 LLM structured extract.
 model NewsItem {
   id          String   @id @default(cuid())
   publishedAt DateTime @map("published_at")
@@ -219,22 +185,19 @@ model NewsItem {
   sentiment   Float?
   extract     Json?
 
-  /// Added by the News plan (N4). The providers already send all of this and we already threw it
-  /// away; the Front Page needs it.
-  ///
-  /// The outlet's name ("Reuters"), for the corroboration count and the byline under each card.
+  /// Added by the News plan (N4). The providers already send all of this and we threw it away; the Front
+  /// Page needs it. The outlet's name ("Reuters"), for the corroboration count and each card's byline.
   source      String?
-  /// The image URL AS RECEIVED from the provider or the article's og:image. This is a candidate, not
-  /// a serving URL — the copy we actually render lives in news_image, fetched into our own bucket.
-  /// We never hotlink it at render time (0.2.1).
+  /// The image URL AS RECEIVED from the provider or the article's og:image — a candidate, not a serving URL:
+  /// the copy we render lives in news_image, fetched into our own bucket. We never hotlink at render (0.2.1).
   imageUrl    String?  @map("image_url")
   /// The provider's own category ("general", "merger") — an ingest hint, not our taxonomy.
   category    String?
-  /// Marketaux's per-entity industry strings. Feeds the deterministic sector map (Appendix E), which
-  /// is the only thing allowed to assign a sector — the LLM never invents taxonomy (0.2.4).
+  /// Marketaux's per-entity industry strings. Feeds the deterministic sector map (Appendix E), the only
+  /// thing allowed to assign a sector — the LLM never invents taxonomy (0.2.4).
   industries  String[]
-  /// The story this article belongs to, once clustering has run. Null until then, and null forever
-  /// for articles ingested before the Front Page existed — old rows never join new clusters.
+  /// The story this article belongs to, once clustering has run. Null until then, and forever for articles
+  /// ingested before the Front Page existed — old rows never join new clusters.
   clusterId   String?  @map("cluster_id")
 
   @@unique([provider, url])
@@ -243,13 +206,10 @@ model NewsItem {
   @@map("news_item")
 }
 
-/// The forward event calendar — earnings, macro releases, Fed days, dividends (plan Appendix B, P2).
-/// Written nightly from FMP (earnings + consensus) and FRED (economic releases). The nightly refresh
-/// replaces the forward window each run, so the calendar always reflects the latest schedule.
-///
-/// `kind` is a plain string (earnings|macro|fed|div|other), not an enum, so a new event type ships
-/// without a migration. `symbol` is null for market-wide events (a Fed day, a CPI print). `timing`
-/// (bmo|amc|time) is nullable — FMP's /stable/ endpoint does not carry the time of day (logged).
+/// The forward event calendar — earnings, macro releases, Fed days, dividends (Appendix B, P2). Written
+/// nightly from FMP (earnings + consensus) and FRED; the refresh replaces the forward window each run.
+/// `kind` is a plain string, not an enum; `symbol` is null for market-wide events; `timing` (bmo|amc|time)
+/// is nullable — FMP's /stable/ endpoint carries no time of day (logged).
 model CalendarEvent {
   id         String   @id @default(cuid())
   date       DateTime @db.Date
@@ -262,28 +222,22 @@ model CalendarEvent {
   prior      Float?
   /// A coarse importance marker ("high" | "medium"), null on rows written before the allowlist.
   importance String?
-  /// The chip the Desk renders: CPI, JOBS, PPI, GDP, PCE, RETAIL, FOMC, EARNINGS. One vocabulary,
-  /// set by the pipeline's release allowlist (UI-REDESIGN-PLAN §6.2, Appendix C) — never derived
-  /// from the raw provider name, so the calendar cannot start speaking in FRED's dialect again.
+  /// The chip the Desk renders: CPI, JOBS, PPI, GDP, PCE, RETAIL, FOMC, EARNINGS. One vocabulary set by the
+  /// pipeline's release allowlist (UI-REDESIGN §6.2, Appendix C), never the raw provider name — so the
+  /// calendar cannot start speaking in FRED's dialect again.
   code       String?
 
   @@index([date])
   @@map("calendar_event")
 }
 
-/// The evening (and optional pre-open) briefing — the editorial heart (plan Appendix B, P3).
-///
-/// Keyed by the trading day it covers, so a rerun of a night updates that day's briefing rather
-/// than inserting a duplicate. `amJson` and `pmJson` hold the two editions in the Appendix G shape
-/// (the AM pre-open glance and the PM after-close read); `pmJson` is null until the PM edition is
-/// written. `verificationJson` records every decision the deterministic gate made — which entities
-/// were checked, which were flagged, and why a held night was held — so a published or withheld
-/// briefing is fully auditable. `modelMeta` carries the models and token/cost metadata of the run.
-///
-/// `status` is a plain string: "published" (the gate passed) or "held" (a flagged number in the
-/// Today's-focus block, or more than two flags — the app then shows "briefing unavailable" over the
-/// verified scans rather than a fabricated sentence). A string, not an enum, so a new status ships
-/// without a migration.
+/// The evening (and optional pre-open) briefing — the editorial heart (Appendix B, P3). Keyed by the day it
+/// covers, so a rerun updates rather than duplicates. `amJson`/`pmJson` hold the two editions (Appendix G
+/// shape); `pmJson` is null until the PM edition is written. `verificationJson` records every gate decision
+/// (which entities checked, which flagged, why a held night was held), so a published or withheld briefing
+/// is auditable. `modelMeta` carries the run's model/cost metadata. `status` is a plain string: "published"
+/// (gate passed) or "held" (a flagged number in Today's-focus, or >2 flags — the app then shows "briefing
+/// unavailable" over the verified scans rather than a fabricated sentence).
 model Briefing {
   runDate          DateTime @id @map("run_date") @db.Date
   amJson           Json     @map("am_json")
@@ -295,12 +249,11 @@ model Briefing {
   @@map("briefing")
 }
 
-/// The user's PM journal — one reflection per evening, and the accountability record behind the
-/// scorecard (plan Appendix B, P3/P4). App-writable (✎). `prompt` is the question that was posed;
-/// `body` is what the user wrote. The forecast fields are optional and fill in over later phases:
-/// `forecast` is the free-text call, `probability` its stated confidence (0..1), `resolvesOn` the
-/// date it can be graded, `outcome` how it resolved, and `brier` the computed Brier score. Kept
-/// nullable so an entry can be a plain reflection with no forecast attached.
+/// The user's PM journal — one reflection per evening, the accountability record behind the scorecard
+/// (Appendix B, P3/P4). App-writable (✎). `prompt` is the question posed, `body` what the user wrote. The
+/// forecast fields fill in over later phases (`forecast` the call, `probability` its confidence 0..1,
+/// `resolvesOn` when it can be graded, `outcome` how it resolved, `brier` the score) — nullable, so an entry
+/// can be a plain reflection with no forecast.
 model JournalEntry {
   id          String    @id @default(cuid())
   date        DateTime  @db.Date
@@ -316,14 +269,12 @@ model JournalEntry {
   @@map("journal_entry")
 }
 
-/// Base-rate statistics per pattern × universe bucket × horizon × regime (plan Appendix B, P4).
-///
-/// One row is the honest answer to "the last N times this pattern appeared in this bucket and
-/// regime, how often was price higher H days later" — with the Wilson interval (ciLow/ciHigh), the
-/// forward-return percentiles, and the always-up baseline for the same bucket+horizon so a rate can
-/// never pose as an edge it does not have. Provenance rides along: the key paper's year, the RR
-/// Part 4 evidence grade, and the decay note. Recomputed nightly; keyed so a recompute replaces in
-/// place. `n < 30` is suppressed at display (the N-gate), not here — the raw counts are always kept.
+/// Base-rate statistics per pattern × universe bucket × horizon × regime (Appendix B, P4). One row answers
+/// "the last N times this pattern appeared in this bucket and regime, how often was price higher H days
+/// later" — with the Wilson interval, forward-return percentiles, and the always-up baseline for the same
+/// bucket+horizon so a rate can never pose as an edge it lacks. Provenance rides along (paper year, RR Part 4
+/// grade, decay note). Recomputed nightly, keyed so a recompute replaces in place. `n < 30` is suppressed at
+/// display (the N-gate), not here — the raw counts are always kept.
 model BaseRateStat {
   id              String   @id @default(cuid())
   patternKey      String   @map("pattern_key")
@@ -350,12 +301,11 @@ model BaseRateStat {
   @@map("base_rate_stat")
 }
 
-/// A setup card — a pattern that fired on a served symbol, shown on the Desk with its base rate and
-/// weakeners (plan Appendix B, P4, §3.6). `tier` is the tendency tier (strong/moderate/weak) from
-/// the Appendix F bands, capped to weak when the CI spans the baseline. `state` is the rendered
-/// card view-model; `weakeners` is the per-pattern checkbox state, which the app writes (✎). The
-/// card links to the base_rate_stat it was scored against, so the exact N and interval shown are
-/// auditable. Replaced per run date.
+/// A setup card — a pattern that fired on a served symbol, shown with its base rate and weakeners (Appendix
+/// B, P4, §3.6). `tier` is the tendency tier (strong/moderate/weak) from Appendix F, capped to weak when the
+/// CI spans the baseline. `state` is the rendered view-model; `weakeners` is the app-written checkbox state.
+/// It links to the base_rate_stat it was scored against, so the exact N and interval are auditable. Replaced
+/// per run date.
 model SetupCard {
   id         String        @id @default(cuid())
   runDate    DateTime      @map("run_date") @db.Date
@@ -371,11 +321,10 @@ model SetupCard {
   @@map("setup_card")
 }
 
-/// Empirical volatility bands per watchlist symbol (plan Appendix B, P4, Appendix F). The one
-/// forward-looking number the app allows — a range with a frequency label, ALWAYS rendered with the
-/// regime-break caveat (§1.5 rule 1). `lo`/`hi` are return fractions; the chart projects them from
-/// the current close. `horizonDays` is 5, 10, or 20 — nothing beyond 20 by schema. `coverage` is
-/// 0.5 (p25–p75) or 0.8 (p10–p90). Replaced per run date.
+/// Empirical volatility bands per watchlist symbol (Appendix B, P4, Appendix F). The one forward-looking
+/// number the app allows — a range with a frequency label, ALWAYS rendered with the regime-break caveat
+/// (§1.5 rule 1). `lo`/`hi` are return fractions; `horizonDays` is 5, 10, or 20 (nothing beyond by schema);
+/// `coverage` is 0.5 or 0.8. Replaced per run date.
 model VolBand {
   id          String   @id @default(cuid())
   symbol      String
@@ -385,11 +334,9 @@ model VolBand {
   hi          Float
   coverage    Float
   label       String
-  /// How many historical paths this band was drawn from, and over what trailing window.
-  ///
-  /// The Range Ladder prints both on every row (UI-REDESIGN-PLAN §3.8): a range shown without its
-  /// sample size is an assertion, not evidence. The pipeline was already computing them and
-  /// throwing them away. Nullable only for rows written before this column existed.
+  /// How many historical paths this band was drawn from, and over what trailing window. The Range Ladder
+  /// prints both on every row (UI-REDESIGN §3.8): a range shown without its sample size is an assertion, not
+  /// evidence. Nullable only for rows written before this column existed.
   n           Int?
   windowDays  Int?     @map("window_days")
 
@@ -397,12 +344,10 @@ model VolBand {
   @@map("vol_band")
 }
 
-/// The resolved outcome of a fired signal (plan Appendix B, P4). INSERT-ONLY, like the signal log
-/// it resolves: a permanent record that a pattern's horizon passed and how it turned out, so the
-/// track record can show the app's own misses. One resolution per signal (unique), outcome is
-/// hit / miss / na (na = the horizon could not be resolved, e.g. a delisting). The insert-only
-/// guarantee is enforced by a trigger in the migration, not by a grant (a table owner bypasses
-/// grants — see the signal_log lesson).
+/// The resolved outcome of a fired signal (Appendix B, P4). INSERT-ONLY, like the signal log it resolves: a
+/// permanent record of how a pattern's horizon turned out, so the track record can show the app's misses.
+/// One per signal; outcome is hit/miss/na (na = unresolvable, e.g. a delisting). Insert-only is enforced by
+/// a migration trigger, not a grant (a table owner bypasses grants — the signal_log lesson).
 model SignalResolution {
   id         String    @id @default(cuid())
   signalId   String    @unique @map("signal_id")
@@ -413,13 +358,11 @@ model SignalResolution {
   @@map("signal_resolution")
 }
 
-/// The Academy review queue's Leitner state, one row per glossary concept the user has actually
-/// encountered (plan §7 P5 step 5). A concept enters when its glossary popover is first opened on the
-/// Desk — a genuine encounter, not merely a render — starting in box 1. A correct review promotes it
-/// to a higher box scheduled further out; a wrong review resets it to box 1. `dueOn` drives the
-/// daily queue (capped at five in lib/review.ts). The scheduling math lives in lib/review.ts and is
-/// unit-tested there; this table only persists the result. Keyed by the concept slug so an exposure
-/// is idempotent — re-encountering a known concept does not restart its schedule.
+/// The Academy review queue's Leitner state, one row per glossary concept the user has actually encountered
+/// (§7 P5 step 5). A concept enters when its popover is first opened on the Desk (a genuine encounter, not a
+/// render), in box 1; a correct review promotes it further out, a wrong one resets to box 1. `dueOn` drives
+/// the daily queue (capped at five in lib/review.ts, where the scheduling math lives and is tested). Keyed by
+/// slug, so re-encountering a known concept does not restart its schedule.
 model ConceptState {
   /// The glossary key, e.g. "rvol" (its primary key — one row per concept).
   concept        String    @id
@@ -436,10 +379,9 @@ model ConceptState {
   @@map("concept_state")
 }
 
-/// One row per Academy lesson the user has read (plan §7 P5 step 6). Completion is the signal behind
-/// the M3 soft gate: once all four M3 lessons are here, the pattern modules (M4/M5) stop showing their
-/// "do risk first" notice. Written when a lesson page is viewed (a read beacon). Keyed by slug so a
-/// re-read is idempotent.
+/// One row per Academy lesson the user has read (§7 P5 step 6). Completion is the signal behind the M3 soft
+/// gate: once all four M3 lessons are here, the pattern modules (M4/M5) stop showing their "do risk first"
+/// notice. Written on view (a read beacon), keyed by slug so a re-read is idempotent.
 model LessonProgress {
   slug        String   @id
   completedAt DateTime @default(now()) @map("completed_at")
@@ -447,13 +389,12 @@ model LessonProgress {
   @@map("lesson_progress")
 }
 
-/// The paper-trading ledger (plan §7 P6 step 1, Appendix B). Paper trades are the ONLY orders the app
-/// places — no brokerage integration in v1 (§8.1, paper-first). A trade fills at the next-session open
-/// moved against the trader by half the bucket's at-open spread plus slippage (lib/paper.ts), so the
-/// certain cost is recorded, never a mid-price fantasy. `signalViewedAt` (when set) is the moment the
-/// user saw the fired signal that prompted the order — the cooling-off interstitial reads it. A trade
-/// opens `open` and becomes `closed` on exit, when realized P&L is stored. All prices are simulated;
-/// the honesty rules forbid seeding this table on production (dev/test only).
+/// The paper-trading ledger (§7 P6 step 1, Appendix B). Paper trades are the ONLY orders the app places — no
+/// brokerage in v1 (§8.1, paper-first). A trade fills at the next-session open moved against the trader by
+/// half the bucket's at-open spread plus slippage (lib/paper.ts), so the certain cost is recorded, never a
+/// mid-price fantasy. `signalViewedAt` (when set) is when the user saw the fired signal — the cooling-off
+/// interstitial reads it. Opens `open`, becomes `closed` on exit with realized P&L. Simulated; never seeded
+/// on production.
 model PaperTrade {
   id             String    @id @default(cuid())
   symbol         String
@@ -488,17 +429,12 @@ model PaperTrade {
 // arrives with its phase: macro_stat at N3, the news trio at N4, manual_run at N6.
 // ─────────────────────────────────────────────────────────────────────────────────────────────
 
-/// One macro observation, keyed by (series, the date the SOURCE says it is for).
-///
-/// This is a separate table from market_context on purpose. market_context is one row per pipeline
-/// night — a snapshot of the market at that close. These stats are not like that: the mortgage rate
-/// is weekly, CPI is monthly, gold and FX are daily, and each publishes on its own schedule. Storing
-/// them as more market_context columns would force every one of them to inherit the run's date, and
-/// a Thursday mortgage rate stamped "Tuesday" is a lie (ruling C2/C7).
-///
-/// So the as-of date is part of the key, and `asOfLabel` carries the human window the cell prints
-/// ("wk of Jul 9", "Jun 2026"). A source that has not published anything new simply writes no row —
-/// that is not staleness, it is the cadence, and the label says so.
+/// One macro observation, keyed by (series, the date the SOURCE says it is for). A separate table from
+/// market_context on purpose: that is one row per night, but these stats each publish on their own schedule
+/// (mortgage weekly, CPI monthly, gold/FX daily), and storing them as market_context columns would force
+/// every one to inherit the run's date — a Thursday mortgage rate stamped "Tuesday" is a lie (C2/C7). So the
+/// as-of date is part of the key, and `asOfLabel` carries the human window ("wk of Jul 9", "Jun 2026"). A
+/// source that published nothing new writes no row — not staleness, the cadence, and the label says so.
 model MacroStat {
   /// "mortgage30us" | "cpi_yoy" | "gold_usd" | "usd_npr" | "mood" — the closed set lives in code.
   seriesKey String   @map("series_key")
@@ -521,15 +457,11 @@ model MacroStat {
   @@map("macro_stat")
 }
 
-/// One story. Not one article — one STORY.
-///
-/// A single catalyst arrives as N articles from N outlets. Clustering them (deterministically, in
-/// pipeline/newsdesk/cluster.py — no LLM) is what turns a feed into a front page: the reader sees
-/// the event once, with its corroboration count, instead of the same event five times.
-///
-/// `significance` is computed by a fixed formula (Appendix E), never by a model and never by
-/// attention — there is no click, view, or popularity column here, and that absence is the deepest
-/// guard against this room drifting into a trending feed (ruling C1).
+/// One story. Not one article — one STORY. A single catalyst arrives as N articles from N outlets;
+/// clustering them (deterministically, in newsdesk/cluster.py — no LLM) turns a feed into a front page: the
+/// reader sees the event once, with its corroboration count. `significance` is a fixed formula (Appendix E),
+/// never a model and never attention — there is no click, view or popularity column here, and that absence is
+/// the deepest guard against this room drifting into a trending feed (ruling C1).
 model NewsCluster {
   /// sha1 of the SEED member's canonical url (the earliest article), so the id is stable as later
   /// articles join the cluster over the following evenings.
@@ -545,32 +477,29 @@ model NewsCluster {
   significance Float
   /// How many distinct outlets carried it. Corroboration is evidence; volume of coverage is not.
   sources      Int
-  /// The one-line "so what". Null when the verification gate dropped it, or when the cluster was
-  /// outside the narrated top-20. A null here prints NOTHING — never a placeholder (P9).
+  /// The one-line "so what". Null when the gate dropped it or the cluster was outside the narrated top-20;
+  /// a null prints NOTHING — never a placeholder (P9).
   whyItMatters String?  @map("why_it_matters")
   affectedNote String?  @map("affected_note")
   extract      Json
   /// What the gate checked and what it decided, kept so a dropped line can be explained later.
   verification Json
-  /// The articles this story was built from — [{ source, url, headline, published }] — SNAPSHOTTED
-  /// at publish. `sources` above is only a COUNT, and a corroboration count the reader cannot check
-  /// is an unverifiable claim. This is what the card's outlet line and the story page's source list
-  /// render from, and it is why "3 sources" can be opened rather than merely believed.
+  /// The articles this story was built from — [{ source, url, headline, published }] — SNAPSHOTTED at
+  /// publish. `sources` above is only a COUNT, and a corroboration count the reader cannot check is
+  /// unverifiable — this is what the card's outlet line and the source list render from, so "3 sources" can
+  /// be opened rather than believed.
   articles     Json     @default("[]")
-  /// PD7 (Part 9.3) — the v2 insight's context section: 2–3 mechanical sentences placing tonight's
-  /// move, narrated ONLY from cited registry stats. Null when the gate dropped it, when the narrator
-  /// had nothing to add, or when the cluster sat outside the depth budget's top 8. Which of the three
-  /// it was is recorded in `verification.sections`, so the page can say WHY it is absent rather than
-  /// guessing — the N5 distinction, per section.
+  /// PD7 (Part 9.3) — the v2 insight's context section: 2–3 mechanical sentences placing tonight's move,
+  /// narrated ONLY from cited registry stats. Null when the gate dropped it, the narrator had nothing to add,
+  /// or the cluster sat outside the depth budget's top 8 — `verification.sections` records which, per section.
   context      String?
   /// PD7 — the watch section: the already-scheduled calendar facts a reader should know are dated.
-  /// SNAPSHOTTED rows, not bare refs: [{ stat_id, key, code, title, date, kind }]. The narrator may
-  /// only SELECT from the calendar rows it was shown; it can never author one (E4).
+  /// SNAPSHOTTED rows [{ stat_id, key, code, title, date, kind }]; the narrator may only SELECT from the
+  /// calendar rows it was shown, never author one (E4).
   watch        Json     @default("[]")
-  /// PD7 (Part 9.5) — what the models actually cost this story: {model_extract, model_synth,
-  /// extract_count, note_version, usage:{in_tokens, out_tokens} per stage}. Written from the API's
-  /// OWN usage fields, never estimated. The story page's provenance footer prints from this instead
-  /// of hardcoding a model name it cannot know.
+  /// PD7 (Part 9.5) — what the models actually cost this story: {model_extract, model_synth, extract_count,
+  /// note_version, usage per stage}. Written from the API's OWN usage fields, never estimated. The provenance
+  /// footer prints from this instead of hardcoding a model name it cannot know.
   modelMeta    Json?    @map("model_meta")
   imageId      String?  @map("image_id")
 
@@ -581,11 +510,9 @@ model NewsCluster {
   @@map("news_cluster")
 }
 
-/// A cluster's link to one ticker, with the ticker's numbers SNAPSHOTTED at publish time.
-///
-/// The snapshot is the point. If the story page recomputed a move from live tables, the feed's
-/// number and the card's number could drift apart within one night — the same fact, two values.
-/// Freezing them at publish means the front page and the story always agree.
+/// A cluster's link to one ticker, with the ticker's numbers SNAPSHOTTED at publish. The snapshot is the
+/// point: if the story page recomputed a move from live tables, the feed's number and the card's could drift
+/// apart within one night. Freezing them at publish means the front page and the story always agree.
 model CatalystLink {
   id           String  @id @default(cuid())
   clusterId    String  @map("cluster_id")
@@ -594,8 +521,8 @@ model CatalystLink {
   ret1         Float?
   /// Relative volume against the 20-day average, at publish.
   rvol20       Float?
-  /// Whether evidence exists for this ticker — gates the "Setup card" doorway. A doorway to nothing
-  /// is worse than no doorway.
+  /// Whether evidence exists for this ticker — gates the "Setup card" doorway. A doorway to nothing is worse
+  /// than no doorway.
   hasSetupCard Boolean @map("has_setup_card")
 
   cluster NewsCluster @relation(fields: [clusterId], references: [id])
@@ -604,12 +531,10 @@ model CatalystLink {
   @@map("catalyst_link")
 }
 
-/// A cached article image, fetched at INGEST and served from our own bucket — never hotlinked.
-///
-/// Hotlinking a publisher's photo at render time rots (they move and expire), leaks the reader's IP
-/// to every publisher on the page, breaks on referrer blocks, and makes layout shift unknowable
-/// because we never learn the dimensions. Fetching once and storing the dimensions is what lets
-/// every card ship with width, height, and a blur placeholder — which is how CLS stays 0.000.
+/// A cached article image, fetched at INGEST and served from our own bucket — never hotlinked. Hotlinking a
+/// publisher's photo at render rots (they move and expire), leaks the reader's IP to every publisher on the
+/// page, breaks on referrer blocks, and makes layout shift unknowable (we never learn the dimensions).
+/// Fetching once and storing the dimensions lets every card ship with width, height and a blur — CLS 0.000.
 model NewsImage {
   /// sha1 of the source image url.
   id                String   @id
@@ -633,16 +558,11 @@ model NewsImage {
   @@map("news_image")
 }
 
-/// ✎ APP-WRITABLE — this is user state, and the one table in this plan the app may write.
-///
-/// The rule the whole system rests on: the pipeline computes and writes; the app reads, and writes
-/// only what the USER did. A manual run is something the user did. So the app records the REQUEST
-/// here and dispatches a GitHub Action — it never fetches a provider or writes a pipeline table
-/// itself. That would be a second, unaudited writer.
-///
-/// The not_applicable and not_configured states are deliberately absent from `status`: those are UI
-/// states of the panel, describing a run that was never requested. Nothing happened, so nothing is
-/// stored.
+/// ✎ APP-WRITABLE — user state, the one table in this plan the app may write. The rule the system rests on:
+/// the pipeline computes and writes; the app reads, and writes only what the USER did. A manual run is
+/// something the user did, so the app records the REQUEST here and dispatches a GitHub Action — it never
+/// fetches a provider or writes a pipeline table (a second, unaudited writer). The not_applicable and
+/// not_configured states are absent from `status`: those are UI states of a run that was never requested.
 model ManualRun {
   id          String    @id @default(cuid())
   requestedAt DateTime  @default(now()) @map("requested_at")

@@ -5,36 +5,21 @@ import { sessionsBetween, type TradingDate } from "@/lib/market-hours";
 import { toTradingDate } from "@/lib/pipeline";
 
 /**
- * macro-board.ts — the five household stats, and the ladder that decides how honest each cell has
- * to be tonight (NEWS-AND-CONTROL-PLAN Part 6, rulings C7 and C8).
+ * macro-board.ts — the five household stats, and the ladder that decides how honest each cell has to be
+ * tonight (NEWS-AND-CONTROL Part 6, rulings C7 and C8).
  *
- * The board answers the questions a market number cannot: what does a mortgage cost, what did prices
- * actually do, what is gold worth, what is a dollar worth in rupees — and how does the market feel.
- * Four of those are other people's numbers. The fifth is ours, and it is the only one on this board
- * that has to justify its own existence every time it renders (C8).
- *
- * THE HARD PART IS NOT THE HAPPY PATH. It is that these five sources fail in different ways, on
- * different schedules, and a board that rendered identically whether its numbers arrived tonight or
- * a fortnight ago would be exactly the decoration this plan was commissioned to remove. So every
- * cell carries its own state, and the states escalate with how bad the news actually is:
- *
- *   ok       the number is current for its own cadence. A Thursday mortgage rate on a Tuesday is
- *            NOT stale — it is the newest rate that exists, and the label is the honesty.
- *   stale    old enough that the number now misleads more than it informs. The cell goes amber and
- *            says the word: "stale — last Jul 2".
- *   missing  no history at all. An em-dash and "not yet reported" — information, not an apology.
- *
- * And a source that was unreachable TONIGHT adds its own note to whatever it is showing, because a
- * value standing still because nobody could reach its source is a different fact from a value
- * standing still because nothing has changed.
- *
- * AGE IS COUNTED THE WAY EACH SOURCE ACTUALLY PUBLISHES. This is the whole reason STALE_AFTER below
- * is not a single number. Gold trades on market sessions, so Friday's price read on Monday is zero
- * sessions old and perfectly fresh — counting calendar days would paint it amber every Monday, and a
- * lamp that cries wolf every Monday is a lamp nobody looks at on the morning it is telling the truth.
- * The rupee, by contrast, is published by Nepal Rastra Bank every calendar day including weekends,
- * so for that cell a calendar day IS the unit. Same ladder, different clocks, because the sources
- * keep different clocks.
+ * Four of the five are other people's numbers; the fifth (Mood) is ours and must justify its existence
+ * every render (C8). THE HARD PART IS NOT THE HAPPY PATH — the five sources fail in different ways on
+ * different schedules, and a board that rendered identically whether its numbers arrived tonight or a
+ * fortnight ago is the decoration this plan was commissioned to remove. So every cell carries its own
+ * state, escalating with how bad the news is:
+ *   ok       current for its own cadence (a Thursday mortgage rate on a Tuesday is the newest that exists).
+ *   stale    old enough to mislead — amber, and says the word: "stale — last Jul 2".
+ *   missing  no history at all — an em-dash and "not yet reported", information, not an apology.
+ * A source unreachable TONIGHT adds its own note: a value standing still because nobody could reach its
+ * source is a different fact from one standing still because nothing changed. And AGE IS COUNTED THE WAY
+ * EACH SOURCE PUBLISHES (why STALE_AFTER is not one number): gold trades on sessions, so Friday's price
+ * on Monday is zero sessions old; the rupee publishes every calendar day, so there a day is the unit.
  */
 
 /** The closed set. Five cells, each with a verified source, a cadence, and a label grammar. */
@@ -57,19 +42,17 @@ type StaleRule =
   | { unit: "days"; after: number };
 
 /**
- * The C7 rung-5 thresholds: "older than its cadence × 3".
- *
- * Three of a thing is the point at which an absence stops being a hiccup and starts being a pattern:
- * one missed weekly survey is a late Thursday, three is a source that has stopped answering.
+ * The C7 rung-5 thresholds: "older than its cadence × 3". Three is where an absence stops being a
+ * hiccup and starts being a pattern: one missed weekly survey is a late Thursday, three is a source
+ * that has stopped answering.
  */
 const STALE_AFTER: Record<MacroSeriesKey, StaleRule> = {
   // Weekly survey → three weeks.
   mortgage30us: { unit: "days", after: 21 },
-  // Monthly print → three months. Generous on purpose: CPI's release lands mid-month for the month
-  // BEFORE, so a perfectly healthy CPI cell is routinely six weeks old and must not go amber for it.
+  // Monthly print → three months. Generous: CPI lands mid-month for the month BEFORE, so a healthy cell
+  // is routinely six weeks old and must not go amber.
   cpi_yoy: { unit: "days", after: 93 },
-  // A market price → three SESSIONS. Not three days: the gold market is shut at the weekend, and a
-  // Friday price is the newest one that exists until Monday's close.
+  // A market price → three SESSIONS, not days: the gold market is shut at the weekend.
   gold_usd: { unit: "sessions", after: 3 },
   // NRB publishes every calendar day, weekends included — so here a calendar day is the honest unit.
   usd_npr: { unit: "days", after: 3 },
@@ -78,20 +61,12 @@ const STALE_AFTER: Record<MacroSeriesKey, StaleRule> = {
 };
 
 /**
- * A HOUSEHOLD COST'S DELTA CARRIES NO UP/DOWN COLOUR, and the first baseline is what taught us.
- *
- * The mortgage cell shipped with `directionOf()`, like every other delta in the app — and the
- * photograph showed a FALLING mortgage rate rendered in red, wearing a red wash and a down triangle.
- *
- * On a tape, red-down is a fact with no opinion in it: the number went down. On the price of housing
- * money it is an opinion, and the wrong one — a mortgage rate falling is the best news on this board,
- * and the app was colouring it as a loss. The reader would take a full second to work that out, and
- * some readers would not work it out at all; they would simply absorb "red, bad".
- *
- * So the board's deltas render `flat`: ink, no triangle, no wash. The sign and the window carry the
- * fact, exactly as they do everywhere else — what is removed is a judgement the app has no business
- * making. Gold keeps its direction colour, because gold IS a market price and up/down means there
- * what it means everywhere else in this application.
+ * A HOUSEHOLD COST'S DELTA CARRIES NO UP/DOWN COLOUR, and the first baseline taught us: the mortgage cell
+ * shipped with `directionOf()` and the photograph showed a FALLING rate in red with a down triangle. On a
+ * tape red-down is a fact; on the price of housing money it is the wrong opinion — a falling mortgage rate
+ * is the best news on this board. So the board's deltas render `flat`: the sign and window carry the fact,
+ * and the app makes no judgement it has no business making. Gold keeps its direction colour, because gold
+ * IS a market price.
  */
 const HOUSEHOLD_COST: Direction = "flat";
 
@@ -134,13 +109,10 @@ export type MoodComponent = {
 };
 
 /**
- * The gauge, when it has a score.
- *
- * RULING C8 LIVES IN THIS TYPE. `components` is required and is a NON-EMPTY tuple, so a gauge
- * without its breakdown does not type-check — the same enforcement shape BaseRate uses. This is
- * deliberately not a convention, not a lint rule, and not something a code review has to remember:
- * a sentiment number you cannot take apart is a number you have to trust, and this app does not ask
- * anyone to trust it.
+ * The gauge, when it has a score. RULING C8 LIVES IN THIS TYPE: `components` is a NON-EMPTY tuple, so a
+ * gauge without its breakdown does not type-check (the shape BaseRate uses). Not a convention or a lint
+ * rule a review must remember — a sentiment number you cannot take apart is one you must trust, and this
+ * app does not ask anyone to.
  */
 export type MoodView = {
   score: number;
@@ -165,12 +137,9 @@ export type MacroBoard = {
 
 /**
  * The gauge needs at least three of its five inputs, and the APP checks this as well as the pipeline.
- *
- * The pipeline already suppresses a thin gauge and will not write one. Checking it again here is not
- * belt-and-braces for its own sake: it means the display contract does not DEPEND on the writer
- * having been careful. A row assembled by a future job, a hand-repaired database, a replayed fixture
- * — none of them can put a two-component "market mood" on screen, because the surface that renders
- * it refuses to, on its own authority.
+ * Checking again here means the display contract does not DEPEND on the writer being careful — no future
+ * job, hand-repaired row, or replayed fixture can put a two-component "market mood" on screen, because
+ * the surface that renders it refuses on its own authority.
  */
 const MIN_MOOD_COMPONENTS = 3;
 
@@ -185,12 +154,9 @@ const MOOD_INPUTS: Record<string, string> = {
 
 /**
  * Build the board from what the pipeline stored, the run's source health, and tonight's date.
- *
- * `sourceStatus` is the run row's per-source map. A stat whose key reads "degraded" had its source
- * fail TONIGHT — which is why the note it earns ("source unreachable tonight") is a statement about
- * the fetch, while `state` is a statement about the number. They are different facts and the cell
- * can carry both: a value can be perfectly current AND have failed to refresh, and it can be badly
- * stale for a source that answered fine.
+ * `sourceStatus` is the per-source map: a stat keyed "degraded" had its source fail TONIGHT — a statement
+ * about the fetch, while `state` is about the number. Different facts, and a cell can carry both (current
+ * but failed to refresh, or stale for a source that answered fine).
  */
 export function buildMacroBoard(
   rows: MacroStatRow[],
@@ -244,11 +210,9 @@ function startOfUtcDay(day: Date): number {
 }
 
 /**
- * The shared skeleton of every cell: the ladder, in one place.
- *
- * Each stat differs only in how its number is FORMATTED and what its delta means. The decision about
- * how honest to be is identical for all of them, and it is made here — once — so that a new cell
- * cannot arrive next year with its own private idea of what "stale" means.
+ * The shared skeleton of every cell: the ladder, in one place. Each stat differs only in how its number
+ * is FORMATTED and what its delta means; the how-honest decision is identical and made here once, so a
+ * new cell cannot arrive next year with its own private idea of "stale".
  */
 function buildCell(
   key: MacroSeriesKey,
@@ -259,9 +223,8 @@ function buildCell(
   render: (row: MacroStatRow) => Pick<MacroCell, "value" | "delta" | "provenance" | "qualifier" | "attribution">,
   title?: string,
 ): MacroCell {
-  // Rung 4: nothing has ever been stored. The em-dash is the truth, and "not yet reported" says why
-  // without apologising for it. (This is what gold says in production today: its key is not
-  // provisioned, so it has no source, so it has no number — and it will not pretend otherwise.)
+  // Rung 4: nothing ever stored. The em-dash is the truth and "not yet reported" says why. (This is what
+  // gold says in production today: its key is not provisioned, so it has no number and will not pretend.)
   if (!row) {
     return {
       key,
@@ -276,10 +239,9 @@ function buildCell(
 
   const stale = isStale(key, row.asOfDate, runDate);
 
-  // Rung 5 outranks rung 3 in the WORDS, because it is the worse fact: a number too old to trust is
-  // a bigger problem than a fetch that failed once. But a failed fetch tonight is still true and
-  // still worth saying, so when both are true the cell reports the staleness and the note explains
-  // the silence behind it.
+  // Rung 5 outranks rung 3 in the WORDS — a number too old to trust is a worse fact than a fetch that
+  // failed once — but both are worth saying, so a stale+degraded cell reports the staleness and the note
+  // explains the silence behind it.
   const note = stale
     ? fill(copy.macroBoard.staleCell, { asOf: row.asOfLabel })
     : degraded
@@ -289,8 +251,8 @@ function buildCell(
   return {
     key,
     label,
-    // The window comes from the SOURCE's own observation date. It is the entire point of the cadence
-    // rule upstream: this label never says "tonight" about a number that is not from tonight.
+    // The window comes from the SOURCE's own observation date — the point of the cadence rule: this label
+    // never says "tonight" about a number that is not from tonight.
     asOf: row.asOfLabel,
     state: stale ? "stale" : "ok",
     note,
@@ -334,10 +296,8 @@ function cpiCell(row: MacroStatRow | undefined, degraded: boolean, runDate: Date
       // FRED computes this year-over-year figure and we print what it published. The rounding is the
       // only thing the app does to it: FRED reports 4.24867, and a reader wants 4.2%.
       value: percent(r.value / 100, 1),
-      // NO DELTA CHIP, deliberately. A chip reading "-0.4 vs prior month" beside a rate is read by
-      // almost everyone as "prices fell", when what fell is the RATE at which they rose. A delta of a
-      // rate is one of the easiest numbers in finance to misread, and the cell simply does not offer
-      // it: the month label is the context this number actually needs.
+      // NO DELTA CHIP, deliberately: "-0.4 vs prior month" beside a rate reads as "prices fell", when
+      // what fell is the RATE at which they rose. The month label is the context this number needs.
     }),
     copy.macroBoard.cpiNote,
   );
@@ -368,12 +328,10 @@ function goldCell(row: MacroStatRow | undefined, degraded: boolean, runDate: Dat
 }
 
 /**
- * The rupee — and the one cell whose LABEL depends on which source answered.
- *
- * Nepal Rastra Bank publishes the central bank's official reference rate. The fallback publishes a
- * market mid-rate. These are two different measurements of two different things, and the cell names
- * whichever one is actually on screen (ruling C6). It also carries the qualifier that no rate table
- * on the internet is honest without: this is not what a remittance app will give you.
+ * The rupee — the one cell whose LABEL depends on which source answered. NRB publishes the official
+ * reference rate; the fallback publishes a market mid-rate — two measurements of different things, and
+ * the cell names whichever is on screen (ruling C6). It carries the qualifier no rate table is honest
+ * without: this is not what a remittance app will give you.
  */
 function rupeeCell(row: MacroStatRow | undefined, degraded: boolean, runDate: Date): MacroCell {
   return buildCell(
@@ -387,16 +345,14 @@ function rupeeCell(row: MacroStatRow | undefined, degraded: boolean, runDate: Da
       const fromNrb = r.sourceKey === "nrb";
 
       return {
-        // NRB quotes a buy AND a sell, and the cell shows both: picking one side would silently
-        // answer a question the reader never asked. The mid-market fallback HAS no sides, so it
-        // shows the single number it actually is rather than inventing a spread to match the shape.
+        // NRB quotes a buy AND a sell and the cell shows both — picking one side answers a question the
+        // reader never asked. The mid-market fallback has no sides, so it shows the single number it is.
         value:
           pair?.buy !== undefined && pair?.sell !== undefined
             ? fill(copy.macroBoard.nprPair, { buy: decimal(pair.buy, 2), sell: decimal(pair.sell, 2) })
             : decimal(r.value, 2),
-        // No delta. The rupee's prior is the last observation WE HOLD, which may be days back — and
-        // a delta whose two ends are days apart, wearing a one-day label, is precisely the quiet lie
-        // this board exists to prevent.
+        // No delta. The rupee's prior is the last observation WE HOLD, days back — a delta days apart
+        // wearing a one-day label is the quiet lie this board exists to prevent.
         provenance: fromNrb ? copy.macroBoard.nprSourceNrb : copy.macroBoard.nprSourceMid,
         qualifier: copy.macroBoard.nprQualifier,
         // A licence condition of the fallback's free tier — rendered only when the fallback is the
@@ -410,12 +366,10 @@ function rupeeCell(row: MacroStatRow | undefined, degraded: boolean, runDate: Da
 }
 
 /**
- * The Mood gauge — a score with its full breakdown, or an honest absence.
- *
- * There is no third option, and that is ruling C8. The number is ours; it exists only because no
- * legitimate external fear-and-greed source can be licensed; and the single thing that makes a
- * home-built sentiment number legitimate to show at all is that the reader can take it apart. So it
- * renders with its components or it does not render.
+ * The Mood gauge — a score with its full breakdown, or an honest absence. No third option, and that is
+ * ruling C8: the number is ours (no external source can be licensed), and the one thing that makes a
+ * home-built sentiment number legitimate is that the reader can take it apart. So it renders with its
+ * components or not at all.
  */
 function moodView(
   row: MacroStatRow | undefined,
@@ -438,10 +392,9 @@ function moodView(
 
   const components = moodComponents(meta?.components);
 
-  // No row, no breakdown, or too thin a breakdown is not a gauge. It says which inputs were missing
-  // — which is a real answer to "how does the market feel tonight?" when the instruments that would
-  // tell us are down, and a considerably better one than averaging whatever survived into a
-  // confident-looking number.
+  // No row, no breakdown, or too thin a breakdown is not a gauge. Naming which inputs were missing is a
+  // real answer to "how does the market feel?" when the instruments are down — better than averaging
+  // whatever survived into a confident-looking number.
   if (!row || !meta || components.length < MIN_MOOD_COMPONENTS) {
     return {
       reason: fill(copy.macroBoard.moodInsufficient, { names: missingInputs(components) }),
@@ -458,13 +411,10 @@ function moodView(
 }
 
 /**
- * The components, rendered — with the arrow DERIVED from the percentile rather than read from storage.
- *
- * The pipeline computes the same arrow the same way, so the two agree by construction. Deriving it
- * again here is not redundancy: it means no stored value, however it got into the database, can put
- * an arrow on screen that disagrees with the percentile printed beside it. The N0 seed had already
- * drifted exactly that way — a component sitting at the 48th percentile, below its own median,
- * labelled "greedy".
+ * The components, rendered — with the arrow DERIVED from the percentile, not read from storage. The
+ * pipeline computes the same arrow the same way, so deriving it again here means no stored value can put
+ * an arrow on screen that disagrees with the percentile beside it. The N0 seed had drifted exactly that
+ * way: a component at the 48th percentile, below its median, labelled "greedy".
  */
 function moodComponents(raw: unknown[] | undefined): MoodComponent[] {
   if (!Array.isArray(raw)) return [];

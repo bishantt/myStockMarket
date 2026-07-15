@@ -1,37 +1,29 @@
 /**
- * The seeded news night — 14 catalysts for the Front Page (NEWS-AND-CONTROL-PLAN Part 7.10).
+ * The seeded news night — 14 catalysts for the Front Page (NEWS-AND-CONTROL Part 7.10).
  *
- * THE ONE THING THIS FIXTURE EXISTS TO PROVE. The biggest mover does not lead the front page.
- * SMCI rose 18.4% — the largest move on the seeded tape — and it ranks THIRD. The lead is a Fed
- * statement that moved nothing at all. That is not a quirk of the data; it is the whole editorial
- * claim of the room, and if a future change ever lets the big number float to the top, the e2e
- * that asserts this ordering goes red. A feed ranked by size of move is a leaderboard. This is a
- * newspaper (ruling C1).
+ * THE ONE THING THIS FIXTURE EXISTS TO PROVE: the biggest mover does not lead. SMCI rose 18.4% (the largest
+ * move on the seeded tape) and ranks THIRD; the lead is a Fed statement that moved nothing. That is the
+ * room's whole editorial claim, and if the big number ever floats to the top the e2e goes red. A feed ranked
+ * by size of move is a leaderboard; this is a newspaper (ruling C1).
  *
  * SIGNIFICANCE IS COMPUTED, NOT ASSIGNED. Every score below comes from Appendix E's formula:
  *
- *     significance = 0.30·scope + 0.25·corroboration + 0.20·magnitude + 0.15·class_prior
- *                    + 0.10·recency
- *
+ *     significance = 0.30·scope + 0.25·corroboration + 0.20·magnitude + 0.15·class_prior + 0.10·recency
  *     scope         index/Fed/macro-wide 1.0 · sector-wide (≥3 tickers) 0.6 · single-name 0.3
  *     corroboration min(sources, 5) / 5
  *     magnitude     mean over linked tickers of min(|ret1| / ATR14%, 3) / 3   (0 with no tickers)
- *     class_prior   ma/fda/fed-macro 1.0 · earnings/guidance 0.8 · filing/legal 0.6 ·
- *                   analyst 0.4 · product/other 0.3
+ *     class_prior   ma/fda/fed-macro 1.0 · earnings/guidance 0.8 · filing/legal 0.6 · analyst 0.4 · product/other 0.3
  *     recency       same session 1.0 · prior session 0.5 · older 0.25
  *
- * Each cluster below shows its arithmetic in a comment. The numbers were worked out by hand on
- * purpose: when the pipeline's rank.py lands (N4), it has an oracle a human can check it against,
- * rather than a set of magic constants that agree with themselves.
- *
- * Note what is NOT in this file, anywhere: clicks, views, popularity, "most read". The pipeline
- * does not ingest attention data at all, and that absence is the deepest guard the room has.
+ * Each cluster shows its arithmetic in a comment, worked out by hand so rank.py (N4) has an oracle a human
+ * can check. And note what is NOT here anywhere: clicks, views, popularity — the pipeline ingests no
+ * attention data, and that absence is the room's deepest guard.
  */
 
 /*
- * The seeded run date — the same synthetic Thursday the rest of the seed uses — and it now comes
- * from fixtures/clock.mjs rather than being a second copy of the literal. Two copies of one date is
- * how the two drift apart, and drifting apart is the failure (drift rule 21; see clock.mjs).
+ * The seeded run date — the same synthetic Thursday the rest of the seed uses — now comes from
+ * fixtures/clock.mjs rather than a second copy of the literal. Two copies of one date is how they drift
+ * apart, and drifting apart is the failure (drift rule 21; see clock.mjs).
  */
 import { RUN_DATE, sessionAt, sessionDayIso, sessionPlus } from "./clock.mjs";
 
@@ -41,15 +33,10 @@ const t = (hhmm) => sessionAt(hhmm); // 2026-07-09, that time
 const yesterday = (hhmm) => sessionPlus(-1, hhmm); // 2026-07-08, that time
 
 /**
- * The three cached article images.
- *
- * They are GENERATED, not stock photos — see prisma/fixtures/img note in the seed. A generated
- * image carries no licence question into the repo and is byte-identical on every machine, which is
- * what the visual-regression baselines need. In production these rows point at our R2 media bucket;
- * in the seed they point at /fixtures/news/, which Next serves straight out of public/.
- *
- * Every row carries width, height, and a blur placeholder. That is not decoration: it is what makes
- * the layout shift zero. A card that knows its image's shape before the image arrives never jumps.
+ * The three cached article images. GENERATED, not stock photos (see the seed's img note): no licence
+ * question, byte-identical on every machine (what the VRT baselines need). In production these point at our
+ * R2 bucket; in the seed at /fixtures/news/, served straight out of public/. Every row carries width, height
+ * and a blur placeholder — what makes layout shift zero, so a card never jumps when its image arrives.
  */
 export const NEWS_IMAGES = [
   {
@@ -100,43 +87,35 @@ export const NEWS_IMAGES = [
 ];
 
 /**
- * The 14 clusters, in the order the Front Page must render them (significance, descending).
+ * The 14 clusters, in the order the Front Page must render them (significance, descending). `whyItMatters`
+ * is the verified one-liner; ONE cluster (JPM) carries null on purpose — its line failed the gate, so the
+ * facts publish and the prose is dropped, never softened or placeheld (P9 as data; the e2e asserts the card
+ * shows its numbers and says nothing where the sentence would be).
  *
- * `whyItMatters` is the verified one-liner. ONE cluster (JPM earnings) carries null on purpose:
- * its narrative line failed the verification gate, so the facts publish and the prose is dropped —
- * never softened, never replaced with a placeholder. That is P9 rendered as data, and the e2e
- * asserts the card shows its numbers and simply says nothing where the sentence would have been.
+ * PD7: THE FOUR PINNED SHAPES OF THE v2 INSIGHT (plan 9.8). The depth columns (`context`, `watch`,
+ * `modelMeta`) arrive with PD7, and the night carries one row of each shape a real night produces, because
+ * PD8 renders all four and a page built against only the happy one breaks on the first ordinary story:
+ *   1. nc-fda-nonopioid  FULL v2 — context + two watch rows + model_meta. The story with THREE catalyst
+ *                        links, so its affected table has rows to sweep (Q-PD6-2).
+ *   2. nc-smci-earnings  GATE-DROPPED CONTEXT — the narrator invented "94.2%"; the section died, the
+ *                        why-line lived. E3's guard, as data.
+ *   3. nc-amd-acquisition  SILENT — a deep cluster whose narrator honestly had nothing to add. Renders the
+ *                        identical nothing as (2); only `verification.sections` knows why.
+ *   4. nc-uber-expansion (and the tail)  PRE-PD7 — none of the new fields, which is what most of production
+ *                        looks like, because the migration backfills nothing.
  *
- * ===== PD7: THE FOUR PINNED SHAPES OF THE v2 INSIGHT (plan 9.8) =====
- *
- * The depth columns (`context`, `watch`, `modelMeta`) arrive with PD7, and the seeded night now
- * carries one row of each shape a real night produces — because PD8 renders all four, and a page
- * built against only the happy one is a page that breaks on the first ordinary story a reader opens.
- *
- *   1. nc-fda-nonopioid  FULL v2 — context + two watch rows + model_meta. Deliberately the story with
- *                        THREE catalyst links, so its affected table has rows to sweep (Q-PD6-2).
- *   2. nc-smci-earnings  GATE-DROPPED CONTEXT — the narrator invented "94.2%"; the section died and
- *                        the why-line beside it lived. E3's guard, as data.
- *   3. nc-amd-acquisition  SILENT — a deep cluster whose narrator honestly had nothing to add.
- *                        Renders the identical nothing as (2); only `verification.sections` knows why.
- *   4. nc-uber-expansion (and the whole tail)  PRE-PD7 — none of the new fields at all, which is what
- *                        most of production looks like, because the migration backfills nothing.
- *
- * TWO SENTENCES IN HERE WERE QUIETLY WRONG AND PD7 FOUND THEM. The FDA line said an approval
- * "USUALLY re-prices the segment" and the Microsoft line said platform access "RARELY changes this
- * quarter's revenue". Ruling E4's new lexicon check deletes both: an uncited frequency adverb is a
- * probability claim with no base rate behind it, and this product publishes base rates with intervals
- * precisely so it never has to say "usually" and hope. So the fixture was modelling prose its own
- * producer would now refuse — the exact sin the JPM row below was written to name.
+ * TWO SENTENCES IN HERE WERE QUIETLY WRONG AND PD7 FOUND THEM: the FDA line said an approval "USUALLY
+ * re-prices the segment" and the Microsoft line said access "RARELY changes this quarter's revenue". E4's
+ * lexicon check deletes both — an uncited frequency adverb is a probability claim with no base rate — so the
+ * fixture was modelling prose its own producer would now refuse, the exact sin the JPM row was written to name.
  */
 const CLUSTERS = [
   {
     // RANK 1 — THE LEAD. A Fed statement, zero tickers, zero price fireworks.
     //   scope 1.0 (macro-wide) · corrob 5/5 = 1.0 · magnitude 0 (no tickers) · class 1.0 · recency 1.0
     //   0.30(1.0) + 0.25(1.0) + 0.20(0) + 0.15(1.0) + 0.10(1.0) = 0.800
-    // It leads because it is the most significant thing that happened, and significance is not
-    // excitement. This card also carries the C9 "no direct listing" line: it affects everything and
-    // names nothing.
+    // It leads because it is the most significant thing that happened, and significance is not excitement.
+    // It also carries the C9 "no direct listing" line: it affects everything and names nothing.
     id: "nc-fed-hold",
     runDate: RUN_DATE,
     firstSeen: t("18:02"),
@@ -170,13 +149,10 @@ const CLUSTERS = [
     tickers: ["MRNA", "LLY", "PFE"],
     significance: 0.728,
     sources: 4,
-    // PD7 FOUND A LIE HERE, AND IT IS THE FIXTURE'S OWN NAMED SIN. This line used to read "An
-    // approval of this class USUALLY re-prices the whole treatment segment" — and ruling E4's new
-    // lexicon check DELETES that sentence, because an uncited "usually" is a frequency claim with no
-    // base rate, no N, and no interval behind it. So the fixture was modelling prose its own producer
-    // would now refuse to publish: "a fixture that models a shape its producer does not emit is a
-    // fixture that tests the app against a fiction" (see the JPM row below, where that law was
-    // written). The mechanism claim is true and stays; the unearned adverb is gone.
+    // PD7 FOUND A LIE HERE, THE FIXTURE'S OWN NAMED SIN. This read "An approval of this class USUALLY
+    // re-prices the whole segment" — E4's lexicon check DELETES that, because an uncited "usually" is a
+    // frequency claim with no base rate, N or interval. The fixture was modelling prose its own producer
+    // would refuse (see the JPM row, where that law is written). The mechanism claim stays; the adverb is gone.
     whyItMatters:
       "An approval of this class re-prices the whole treatment segment rather than one ticker, because it changes what the standard of care is allowed to be.",
     affectedNote: "Pain-management franchises across large-cap pharma carry exposure.",
@@ -185,32 +161,21 @@ const CLUSTERS = [
       key_numbers: [{ value_str: "2,100", what: "trial participants" }],
     },
     // ===== PINNED SHAPE 1 of 4: THE FULL v2 INSIGHT (PD7, plan 9.8) =====
-    //
-    // Chosen deliberately, and the choice is the point. This is the ONLY seeded story with THREE
-    // catalyst links (MRNA, LLY, PFE), so it is the only one whose affected table renders any ROWS —
-    // and PD6 learned the hard way that a 21px touch target lived on the story page for a whole phase
-    // because the sweep visited `nc-fed-hold`, which has ZERO links, so the table rendered nothing and
-    // there was nothing to measure. **The rule was being kept by the shape of a fixture.** Putting the
-    // full v2 insight on the story that HAS an affected table is how PD8 gets somewhere real to point
-    // its sweep (Q-PD6-2).
-    //
-    // Every number in `context` traces to a registry stat and would clear the gate; the two watch rows
-    // are SNAPSHOTS, exactly as `newsdesk/narrate.py` writes them.
+    // Chosen deliberately: the ONLY seeded story with THREE catalyst links (MRNA, LLY, PFE), so the only one
+    // whose affected table renders any ROWS. PD6 learned the hard way that a 21px target lived on the story
+    // page for a phase because the sweep visited `nc-fed-hold` (ZERO links, empty table, nothing to measure)
+    // — the rule was kept by a fixture's shape. Putting the full v2 insight on the story that HAS a table is
+    // how PD8 gets somewhere real to point its sweep (Q-PD6-2). Every number in `context` traces to a registry
+    // stat and clears the gate; the two watch rows are SNAPSHOTS, as narrate.py writes them.
     context:
       "The move is 2.3x MRNA's normal daily range (ATR14), and the name sits 71.4% of the way up its 52-week range (low 82.10, high 154.90). This is the 2nd story on this name in the last 7 sessions.",
-    // THE WATCH ROWS POINT AT CALENDAR EVENTS THAT ACTUALLY EXIST IN THIS SEEDED WORLD, and the
-    // first draft of them did not — it invented a `cal:LLY:next` for an Eli Lilly earnings date that
-    // is in NO seeded calendar row, and gave CPI a date it does not have. Which is to say the fixture
-    // had seeded, as a RESOLVED watch row, exactly the DANGLING REF the gate exists to drop. It would
-    // have taught PD8's story page to render a link into a calendar day that is not there.
-    //
-    // None of this story's three tickers (MRNA, LLY, PFE) has an earnings row in the seeded calendar,
-    // so a real run offers this cluster only the MARKET-WIDE codes — a CPI print and an FOMC decision
-    // land on everything. These two are the seed's own rows, at the seed's own dates.
-    //
-    // The dates DERIVE from the one clock anchor (drift rule 21): a second hand-typed copy of a date
-    // is how the seeded world and the fixture silently walk apart, which is the bug that rule was
-    // written for. `sessionPlus(3)` is the seed's CPI; `sessionPlus(7)` is its FOMC.
+    // THE WATCH ROWS POINT AT CALENDAR EVENTS THAT ACTUALLY EXIST IN THIS SEEDED WORLD, and the first draft
+    // did not — it invented a `cal:LLY:next` for an Eli Lilly earnings date in no seeded row, and gave CPI a
+    // date it lacks: exactly the DANGLING REF the gate exists to drop, seeded as a RESOLVED row. None of this
+    // story's tickers has an earnings row, so a real run offers only the MARKET-WIDE codes (a CPI print and an
+    // FOMC decision land on everything), at the seed's own dates. The dates DERIVE from the one clock anchor
+    // (drift rule 21) — a second hand-typed copy is how the seeded world and fixture walk apart. `sessionPlus(3)`
+    // is the seed's CPI; `sessionPlus(7)` is its FOMC.
     watch: [
       { stat_id: "cal:CPI:next", key: "CPI", code: "CPI", kind: "macro", title: "Consumer Price Index", date: sessionDayIso(3) },
       { stat_id: "cal:FOMC:next", key: "FOMC", code: "FOMC", kind: "fed", title: "FOMC decision", date: sessionDayIso(7) },
@@ -231,15 +196,13 @@ const CLUSTERS = [
       checked: 6,
       citations: ["tkr:MRNA:move_atr", "tkr:MRNA:pos52w", "cls:nc-fda-nonopioid:history7d"],
       flags: [],
-      // The ALLOW-LIST (Q-PD5-1). E5 says a figure is set in mono only if the gate CLEARED it, and
-      // this is the gate saying which ones it did. PD8's KeyFigure reads exactly this.
-      // VERIFIED BY RUNNING THE REAL GATE OVER THE PROSE ABOVE, not by writing down what looked
-      // plausible — and the first draft of this line was WRONG. It listed "2", from "the 2nd story",
-      // and the gate clears no such thing: "2nd" is an ORDINAL, and `verify.py` has refused to read
-      // one as a number since N5. A fixture that claims the gate cleared a figure it never saw would
-      // license PD8's KeyFigure to set an unverified number in the "this was checked" typeface —
-      // which is the exact bug E5 exists to prevent, seeded into the app's own test data.
-      // This is the gate's literal output: 6 entities checked, 6 cleared, in reading order.
+      // The ALLOW-LIST (Q-PD5-1). E5: a figure is set in mono only if the gate CLEARED it, and this is the
+      // gate saying which — PD8's KeyFigure reads exactly this. VERIFIED BY RUNNING THE REAL GATE OVER THE
+      // PROSE, not by writing what looked plausible: the first draft listed "2" (from "the 2nd story"), and
+      // the gate clears no such thing — "2nd" is an ORDINAL, which verify.py has refused to read as a number
+      // since N5. A fixture claiming the gate cleared a figure it never saw would license KeyFigure to set an
+      // unverified number in the "checked" typeface — the exact bug E5 prevents. This is the gate's literal
+      // output: 6 checked, 6 cleared, in reading order.
       cleared: ["2.3x", "71.4%", "52", "82.10", "154.90", "7"],
       sections: {
         why_it_matters: { status: "narrated" },
@@ -255,9 +218,9 @@ const CLUSTERS = [
     //   scope 0.3 (single-name) · corrob 3/5 = 0.6 · class 0.8 (earnings) · recency 1.0
     //   magnitude: SMCI 18.4 / ATR14 6.5 = 2.83 → min(2.83,3)/3 = 0.943
     //   0.30(0.3) + 0.25(0.6) + 0.20(0.943) + 0.15(0.8) + 0.10(1.0) = 0.649
-    // Read that against rank 1: the Fed moved nothing and scores 0.80; SMCI moved 18.4% and scores
-    // 0.65. Magnitude is one input of five, and it enters in units of the stock's OWN volatility —
-    // so an 18% day in a name that routinely swings 6.5% is a big move, not an extraordinary one.
+    // Read against rank 1: the Fed moved nothing and scores 0.80; SMCI moved 18.4% and scores 0.65. Magnitude
+    // is one input of five, in units of the stock's OWN volatility — an 18% day in a name that swings 6.5% is
+    // a big move, not an extraordinary one.
     id: "nc-smci-earnings",
     runDate: RUN_DATE,
     firstSeen: t("20:15"),
@@ -279,18 +242,11 @@ const CLUSTERS = [
       ],
     },
     // ===== PINNED SHAPE 2 of 4: THE GATE DROPPED THE CONTEXT, AND ONLY THE CONTEXT =====
-    //
-    // E3's guard, rendered as data: "a fixture night includes one insight with a fabricated number
-    // and the test asserts that section — AND ONLY THAT SECTION — is dropped and counted."
-    //
-    // The narrator wrote a context section claiming SMCI sat "94.2% of the way up its 52-week range".
-    // Nobody computed 94.2. The gate deleted the section — and the why-line beside it, which is a
-    // different claim and a true one, STANDS. That asymmetry is the whole design: the feed renders
-    // that why-line on every card, and making the feed worse would be a strange price to pay for
-    // adding depth to the story page.
-    //
-    // So `context` is null, the story page will say the GATE held it (not that the narrator was
-    // silent), and the card is unchanged. The reader is never shown the number.
+    // E3's guard as data: the narrator claimed SMCI sat "94.2% of the way up its 52-week range"; nobody
+    // computed 94.2, so the gate deleted the section — and the why-line beside it (a different, true claim)
+    // STANDS. That asymmetry is the design: the feed renders the why-line on every card, and making the feed
+    // worse to add story-page depth would be a strange price. So `context` is null, the story page says the
+    // GATE held it (not that the narrator was silent), and the reader is never shown the number.
     context: null,
     watch: [],
     modelMeta: {
@@ -354,16 +310,11 @@ const CLUSTERS = [
       key_numbers: [{ value_str: "$12B", what: "deal value" }],
     },
     // ===== PINNED SHAPE 3 of 4: THE NARRATOR HAD NOTHING TO ADD (an honest silence) =====
-    //
-    // A DEEP cluster — inside the top-8 budget, handed its full stat block — whose narrator returned
-    // a null context anyway. That is the system working, not failing: "an honest null beats padding"
-    // is written into the prompt, and a model that pads to fill a section it has nothing to say in is
-    // a model producing exactly the placeholder P9 forbids.
-    //
-    // It renders the SAME NOTHING as shape 2 above, and that is the point of the `sections` map: only
-    // the record can tell a reader which of the two happened. This is the N5 lesson, per section —
-    // "the gate held it" and "the narrator had nothing" print identically, and no screen can
-    // distinguish them unless the pipeline writes down which one it was.
+    // A DEEP cluster — inside the top-8 budget, handed its full stat block — whose narrator returned a null
+    // context anyway. The system working, not failing: "an honest null beats padding" is in the prompt, and a
+    // model that pads a section it has nothing for produces the placeholder P9 forbids. It renders the SAME
+    // NOTHING as shape 2, which is the point of the `sections` map — only the record can tell which happened
+    // (the N5 lesson, per section: "gate held it" and "narrator had nothing" print identically).
     context: null,
     watch: [],
     modelMeta: {
@@ -396,10 +347,9 @@ const CLUSTERS = [
     // RANK 5 — THE GATE-DROPPED NARRATIVE. Facts publish; the prose does not.
     //   scope 0.3 · corrob 4/5 = 0.8 · magnitude: JPM 2.4/2.0 = 1.20 → 0.400 · class 0.8 · recency 1.0
     //   0.30(0.3) + 0.25(0.8) + 0.20(0.400) + 0.15(0.8) + 0.10(1.0) = 0.590
-    // The model's why-it-matters line cited a net-interest-margin figure that appears nowhere in the
-    // extracts, so the deterministic gate dropped it. `whyItMatters` is null and the card renders
-    // without that line — no placeholder, no apology, no softened version. An unverified number
-    // never reaches the page (P9), and this row is the seeded proof of it.
+    // The model's why-it-matters line cited a net-interest-margin figure that appears in no extract, so the
+    // gate dropped it. `whyItMatters` is null and the card renders without that line — no placeholder, no
+    // apology, no softened version. An unverified number never reaches the page (P9); this is the seeded proof.
     id: "nc-jpm-earnings",
     runDate: RUN_DATE,
     firstSeen: t("11:32"),
@@ -416,13 +366,11 @@ const CLUSTERS = [
       summary: "The bank reported higher-than-expected profit and said credit costs remained stable.",
       key_numbers: [{ value_str: "+2.4%", what: "shares" }],
     },
-    // The shape `newsdesk/narrate.py` ACTUALLY writes when the gate deletes a note. It was invented
-    // here in N4 — before the narrator existed — as `{status: "dropped", flags: [<string>]}`, which
-    // the pipeline has never produced and the app therefore never recognised: the story page read
-    // `verification.dropped`, found nothing, and told the reader the narrator simply had nothing to
-    // add. A fixture that models a shape its producer does not emit is a fixture that tests the app
-    // against a fiction. (Same family as the fabricated FRED fixtures N3 found — the lie is in the
-    // SHAPE here rather than the values, and the app reads shapes.)
+    // The shape narrate.py ACTUALLY writes when the gate deletes a note. It was invented here in N4 (before
+    // the narrator existed) as `{status: "dropped", flags: [<string>]}`, which the pipeline never produced and
+    // the app never recognised: the story page read `verification.dropped`, found nothing, and told the reader
+    // the narrator had nothing to add. A fixture that models a shape its producer does not emit tests the app
+    // against a fiction (same family as N3's fabricated FRED fixtures — the lie is in the SHAPE, and the app reads shapes).
     verification: {
       narrated: false,
       dropped: true,
@@ -602,10 +550,9 @@ const CLUSTERS = [
     tickers: ["MSFT"],
     significance: 0.406,
     sources: 3,
-    // The second E4 casualty (see the FDA row). This read "it RARELY changes this quarter's revenue"
-    // — a frequency claim with nothing computed behind it, which the lexicon now deletes. The
-    // sentence's real point was never a base rate: it was that platform access and quarterly revenue
-    // are different mechanisms. It says that directly now, and claims nothing it cannot support.
+    // The second E4 casualty (see the FDA row). This read "it RARELY changes this quarter's revenue" — a
+    // frequency claim with nothing computed behind it, which the lexicon deletes. The real point was never a
+    // base rate but that platform access and quarterly revenue are different mechanisms; it says that directly now.
     whyItMatters:
       "Platform access changes who can build on the stack, which is a different mechanism from this quarter's revenue, and the ranking treats it accordingly.",
     affectedNote: null,
@@ -618,17 +565,12 @@ const CLUSTERS = [
     //   scope 0.3 · corrob 2/5 = 0.4 · magnitude: UBER 1.2/2.4 = 0.50 → 0.167 · class 0.3 · recency 1.0
     //   0.30(0.3) + 0.25(0.4) + 0.20(0.167) + 0.15(0.3) + 0.10(1.0) = 0.368
     // ===== PINNED SHAPE 4 of 4: A PRE-PD7 ROW, LEFT DELIBERATELY ALONE (the regression guard) =====
-    //
-    // No `context`, no `watch`, no `modelMeta`, and a `verification` with no `sections` map and no
-    // `cleared` list. This is not an oversight — **it is what most of the news_cluster table looks
-    // like in production right now**, and it will keep looking like that, because Appendix B's
-    // migration adds three columns and backfills NOTHING.
-    //
-    // So PD8's story page must render this row without a single one of the fields it was designed
-    // around, and every absence state has to answer for itself: no context section, no watch block,
-    // and a provenance footer with no model_meta to print from. A fixture where every row is the
-    // happy new shape is a fixture that lets a phase ship a page that breaks on the first old story
-    // the reader opens. The rows below it are the same, and the whole tail is the guard.
+    // No `context`, `watch` or `modelMeta`, and a `verification` with no `sections` map or `cleared` list.
+    // Not an oversight — it is what most of the news_cluster table looks like in production now, and will keep
+    // looking like, because Appendix B's migration adds three columns and backfills NOTHING. So PD8's story
+    // page must render this without a single one of the fields it was designed around, every absence answering
+    // for itself. A fixture where every row is the happy new shape lets a phase ship a page that breaks on the
+    // first old story; the whole tail is the guard.
     id: "nc-uber-expansion",
     runDate: RUN_DATE,
     firstSeen: t("07:45"),
@@ -648,18 +590,12 @@ const CLUSTERS = [
 ];
 
 /**
- * The articles each story was built from — the thing "3 sources" is a count OF.
- *
- * The corroboration count is the second-heaviest term in the significance formula, and until N5
- * nothing in the app could show the reader what it was counting. A number that cannot be opened is
- * a number that has to be taken on trust, which is the posture this whole product argues against.
- * So every cluster carries its articles, and the story page lists them with their outlets, their
- * publication times and their links out.
- *
- * The wires are collapsed the way `newsdesk/outlets.py` collapses them: GlobeNewswire and
- * BusinessWire carrying one company's announcement are ONE source, not two, because a company PAYS
- * a wire to carry its words verbatim and a wire does not decide whether the words are worth
- * carrying. That is the entire thing corroboration measures.
+ * The articles each story was built from — what "3 sources" is a count OF. Corroboration is the
+ * second-heaviest significance term, and until N5 nothing could show the reader what it counted; a number
+ * that cannot be opened has to be taken on trust, the posture this product argues against. So every cluster
+ * carries its articles, listed with outlets, times and links. Wires are collapsed the way outlets.py does:
+ * GlobeNewswire/BusinessWire carrying one company's announcement are ONE source — a company PAYS a wire to
+ * carry its words, and a wire does not decide whether they are worth carrying. That is what corroboration measures.
  */
 const CLUSTER_ARTICLES = {
   "nc-fed-hold": [
@@ -738,13 +674,10 @@ const CLUSTER_ARTICLES = {
 };
 
 /**
- * The 14 clusters, each carrying the articles it was built from.
- *
- * THE FIXTURE CHECKS ITSELF. A cluster whose `sources` count disagrees with the number of articles
- * behind it is a seed that lies — the card would print "5 sources" over a list of two, and every
- * test would still pass because no test compares those two numbers. So the seed refuses to load.
- * This is cheap here and it is the same discipline the pipeline keeps: a count that nobody checks
- * against the thing it counts is a count that will eventually be wrong.
+ * The 14 clusters, each carrying the articles it was built from. THE FIXTURE CHECKS ITSELF: a cluster whose
+ * `sources` count disagrees with the articles behind it is a seed that lies (the card would print "5 sources"
+ * over a list of two, and every test would pass because none compares them), so the seed refuses to load —
+ * the same discipline the pipeline keeps: a count nobody checks against what it counts will eventually be wrong.
  */
 export const NEWS_CLUSTERS = CLUSTERS.map((cluster) => {
   const articles = CLUSTER_ARTICLES[cluster.id] ?? [];
@@ -758,14 +691,11 @@ export const NEWS_CLUSTERS = CLUSTERS.map((cluster) => {
 });
 
 /**
- * The per-ticker links, with each ticker's numbers SNAPSHOTTED at publish.
- *
- * The snapshot is the point. If the story page recomputed these from live tables, the feed's number
- * and the card's number could disagree within one night — the same fact, two values. Freezing them
- * here means the front page and the story always tell the reader the same thing.
- *
- * `hasSetupCard` gates the "Setup card" doorway. Only SMCI has one in this seed, so only SMCI's row
- * offers the link: a doorway to evidence that does not exist is worse than no doorway at all.
+ * The per-ticker links, with each ticker's numbers SNAPSHOTTED at publish. The snapshot is the point: if the
+ * story page recomputed these from live tables, the feed's number and the card's could disagree within one
+ * night. Freezing them here means the front page and the story always agree. `hasSetupCard` gates the "Setup
+ * card" doorway — only SMCI has one, so only SMCI's row offers the link: a doorway to evidence that does not
+ * exist is worse than none.
  */
 export const CATALYST_LINKS = [
   // FDA — the three pharma names (added to the seed's instruments for this cluster).
@@ -802,14 +732,10 @@ export const NEWS_INSTRUMENTS = [
 ];
 
 /**
- * THE MOVERS WITH NO STORY (ruling C9).
- *
- * PLTR (+6.1%), MARA (-12.1%) and AFRM (+5.2%) are among the Desk's eight movers and appear in NO
- * cluster. That is deliberate, and it is the hardest lesson the room teaches: most large moves have
- * no identifiable cause. They render in their own quiet slot, after the catalysts, never ranked
- * among them, each carrying the standing noise line.
- *
- * Nothing needs seeding for this — the absence IS the fixture. It is written down here so that a
- * future change which "helpfully" invents catalysts for them is recognised as the regression it is.
+ * THE MOVERS WITH NO STORY (ruling C9). PLTR (+6.1%), MARA (-12.1%) and AFRM (+5.2%) are among the Desk's
+ * eight movers and appear in NO cluster — deliberately, the hardest lesson the room teaches: most large moves
+ * have no identifiable cause. They render in their own quiet slot after the catalysts, never ranked among
+ * them, each carrying the noise line. Nothing needs seeding — the absence IS the fixture, written down so a
+ * future change that "helpfully" invents catalysts is recognised as the regression it is.
  */
 export const NO_STORY_MOVERS = ["PLTR", "MARA", "AFRM"];

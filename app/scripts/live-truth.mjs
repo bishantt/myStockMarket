@@ -1,24 +1,18 @@
 /**
  * live-truth.mjs — the six questions `check:live` asks production (plan 3.6, ruling E10).
  *
- * THIS FILE IS THE PURE HALF, AND THAT SPLIT IS THE WHOLE DESIGN. It takes the rendered pages as
- * strings and a clock, and returns verdicts. It fetches nothing, reads no environment, and knows
- * nothing about cookies — which is what makes it testable against recorded HTML, including a
- * recording of the outage that commissioned it. `check-live.mjs` is the other half: it signs a
- * session cookie, fetches the two pages, hands them here, and prints the table.
+ * THIS FILE IS THE PURE HALF, AND THAT SPLIT IS THE WHOLE DESIGN. It takes rendered pages as strings and
+ * a clock and returns verdicts — fetches nothing, reads no environment, knows nothing about cookies, which
+ * is what makes it testable against recorded HTML (including a recording of the outage that commissioned
+ * it). `check-live.mjs` is the other half: it signs a cookie, fetches the pages, and prints the table.
  *
- * WHY THIS EXISTS AT ALL (ruling E10 — "the instrument outranks the vibe"). For two days this app
- * told its reader, in four places at once, that its data ran "through Saturday's close". There is no
- * Saturday close. Every test was green — because every test was asking whether the app rendered its
- * data correctly, and it did. Nothing anywhere asked whether the data was TRUE. The pipeline can now
- * no longer write that lie (the gate, the bar-derived edition, publish's own lock), but a product
- * whose only proof of production health is somebody glancing at it on a phone has no proof at all.
- * This turns "is prod actually right?" from a vibe into a command with an exit code.
- *
- * A CHECKER THAT CANNOT FAIL ITS FIXTURES IS DECORATION. That is the N-build's hardest lesson, and
- * live-truth.test.ts runs every check below against BOTH a healthy recording of production and a
- * reconstruction of the Saturday Desk — so each check is proven to fire on the disease it names, and
- * not merely to pass on a good day.
+ * WHY THIS EXISTS (E10 — "the instrument outranks the vibe"): for two days this app told its reader, in
+ * four places, that its data ran "through Saturday's close". There is no Saturday close, and every test
+ * was green — because every test asked whether the app rendered its data correctly, not whether the data
+ * was TRUE. The pipeline can no longer write that lie, but a product whose only proof of health is a glance
+ * at a phone has no proof; this turns "is prod right?" into a command with an exit code. And a checker that
+ * cannot fail its fixtures is decoration, so live-truth.test.ts runs every check below against BOTH a
+ * healthy recording and a reconstruction of the Saturday Desk.
  */
 
 import calendar from "../lib/market-calendar.json" with { type: "json" };
@@ -62,13 +56,10 @@ export function previousTradingDay(day) {
 }
 
 /**
- * The most recent trading session whose CLOSING BELL HAS ALREADY RUNG, as of `now`.
- *
- * The twin of the pipeline's trading_calendar.latest_closed_session, and it has to answer the same
- * way — the pipeline uses it to decide which session to STAMP, and this uses it to decide which
- * session the masthead should be SHOWING. If they disagreed, this instrument would red on a Desk
- * that is perfectly correct. (pipeline/tests/test_calendars_agree.py walks both calendars day by day
- * through 2028 for exactly that reason.)
+ * The most recent trading session whose CLOSING BELL HAS ALREADY RUNG, as of `now`. The twin of the
+ * pipeline's trading_calendar.latest_closed_session — it must answer the same way, because the pipeline
+ * uses it to decide which session to STAMP and this to decide which the masthead should SHOW; if they
+ * disagreed this would red a correct Desk (test_calendars_agree.py walks both through 2028 for that reason).
  */
 export function latestClosedSession(now) {
   const { day, minute } = easternParts(now);
@@ -115,22 +106,13 @@ const pending = (surface, expected, found, owed) =>
 // ── the six checks ────────────────────────────────────────────────────────────────────────────
 
 /**
- * 1. MASTHEAD SESSION TRUTH — the check this whole instrument was built around.
- *
- * Two questions, and only the first is absolute:
- *
- *   (a) IS THE EDITION DATE A TRADING SESSION? Never negotiable, no timing window, no excuse. A
- *       Saturday masthead is the bug; if this ever fails again, everything else is noise.
- *   (b) IS IT THE CURRENT ONE? Nearly always — but not between the closing bell and the night's
- *       publish. The market shuts at 4:00pm ET and job A does not finish until ~6:40pm, so for
- *       roughly three hours every session day the Desk is CORRECTLY showing yesterday's edition:
- *       today's does not exist yet. The product's own promise is "the briefing lands by 9:00pm ET",
- *       so that is the line drawn here. Before it, one session behind is lawful and is reported as
- *       such rather than gated. After it, a stale masthead means the nightly did not land, which is
- *       exactly what a reader deserves to be told.
- *
- * Gating (b) without (b)'s window would give a guard that reds every single evening — and a guard
- * that cries wolf is not there on the night it is right.
+ * 1. MASTHEAD SESSION TRUTH — the check this whole instrument was built around. Two questions, only the
+ * first absolute: (a) IS THE EDITION DATE A TRADING SESSION? Never negotiable — a Saturday masthead is the
+ * bug. (b) IS IT THE CURRENT ONE? Nearly always, but not between the 4:00pm close and the ~6:40pm publish:
+ * for ~three hours each session the Desk CORRECTLY shows yesterday's edition (today's does not exist yet),
+ * so the line is drawn at the product's own "briefing by 9:00pm ET" promise — before it, one session behind
+ * is lawful and reported as such; after it, a stale masthead means the nightly did not land. Gating (b)
+ * without its window would red every evening, and a guard that cries wolf is not there on the night it is right.
  */
 export function checkMasthead(deskText, now) {
   const shown = parseLongDate(deskText);
@@ -171,12 +153,10 @@ export function checkMasthead(deskText, now) {
 }
 
 /**
- * 2. BOARD PRESENCE — the five figures the user reported as "absent".
- *
- * The failure this catches is the MODULE going missing, not a cell being empty. An empty cell that
- * says "not yet reported" is the product working: it is the honest answer to a source that did not
- * answer. A cell that is not on the page at all is the product lying by omission, and no test in the
- * suite would notice, because a component that renders nothing renders nothing wrong.
+ * 2. BOARD PRESENCE — the five figures the user reported as "absent". This catches the MODULE going
+ * missing, not a cell being empty: an empty cell saying "not yet reported" is the product working, but a
+ * cell not on the page at all is the product lying by omission, and no test notices because a component that
+ * renders nothing renders nothing wrong.
  */
 const BOARD = [
   { label: "30-yr mortgage", absence: "not yet reported" },
@@ -199,16 +179,11 @@ export function checkBoard(deskText) {
 }
 
 /**
- * 3. INDEX-LEVEL HONESTY — a number under a name it does not belong to.
- *
- * The bug (R0): the Desk printed the SPY ETF's price under the label "S&P 500", so it read 754.94
- * while the index was near 6,800. An ETF tracks its index's percentage move, never its level.
- *
- * The fix was not "always show the real level" — FRED's index series genuinely go missing, and on
- * the Saturday they all did. The fix was that a slot may show a proxy ONLY IF IT SAYS SO. So this
- * check does not ask "is the number right?" (it cannot know). It asks the question that IS
- * checkable, and is the actual honesty rule: is every index slot's source named? A value with no
- * attribution is the failure — whether or not the value happens to be correct today.
+ * 3. INDEX-LEVEL HONESTY — a number under a name it does not belong to. The bug (R0): the Desk printed the
+ * SPY ETF's price under "S&P 500", reading 754.94 while the index was near 6,800. The fix was not "always
+ * show the real level" (FRED's series genuinely go missing, and on the Saturday all did) but that a slot may
+ * show a proxy ONLY IF IT SAYS SO. So this asks the checkable honesty question, not "is the number right?":
+ * is every index slot's source named? An unattributed value is the failure, correct or not.
  */
 const INDEX_SLOTS = ["S&P 500", "Nasdaq Composite", "Dow"];
 
@@ -232,31 +207,22 @@ export function checkIndexHonesty(deskText) {
 }
 
 /**
- * 4. CALENDAR HYGIENE — the rows that outlived the provider that wrote them.
- *
- * Two failures, and the second one is the interesting one.
- *
- * (a) A RETIRED PROVIDER'S STRINGS. "Coinbase Cryptocurrencies" came from the pre-allowlist catalyst
- *     ingest. The write path was fixed a month ago; the ROWS were not, because nothing deletes them.
- *     This grep stays forever — it costs nothing and it is the only thing that would notice.
- *
- * (b) ROWS DATED IN THE PAST. The calendar is a SESSION calendar: it says what is coming. Every row
- *     it shows must be today's session or later. The plan assumed these would self-heal, because the
- *     refresh "replaces the forward window on each run" — and that is exactly why they did not: a row
- *     that has fallen BEHIND the window is not in the window, so the replace never touches it. The
- *     rows rot in place. That reasoning is why this check exists as well as (a): fixing the write path
- *     does not clean the table, and only something that reads production would ever tell you.
+ * 4. CALENDAR HYGIENE — the rows that outlived the provider that wrote them. Two failures: (a) A RETIRED
+ * PROVIDER'S STRINGS — "Coinbase Cryptocurrencies" from the pre-allowlist ingest; the write path was fixed
+ * a month ago but nothing deletes the ROWS, so this grep stays forever. (b) ROWS DATED IN THE PAST — the
+ * calendar is a SESSION calendar (what is coming), and the plan assumed these self-heal because the refresh
+ * "replaces the forward window", which is exactly why they don't: a row that fell BEHIND the window is not
+ * in it, so the replace never touches it. Fixing the write path does not clean the table; only reading
+ * production tells you.
  */
 const RETIRED_PROVIDERS = ["Coinbase Cryptocurrencies"];
 
 /**
- * The full date of a calendar row, from its "Jul 14" label, resolved against the edition it sits on.
- *
- * The rows carry no year, so one has to be inferred — and it is inferred from the EDITION, like
- * everything else here. It also has to survive the turn of the year: a "Jan 2" row on a December
- * edition belongs to the NEXT year, and naively stamping the edition's year onto it would make it
- * look 363 days stale and red this gate every Christmas. The calendar only ever looks a fortnight
- * ahead, so a row that lands far in the edition's past is really a row in its future, a year on.
+ * The full date of a calendar row, from its "Jul 14" label, resolved against the edition it sits on. The
+ * rows carry no year, so one is inferred from the EDITION — and it must survive the year turn: a "Jan 2"
+ * row on a December edition belongs to NEXT year, and stamping the edition's year would make it look 363
+ * days stale and red this every Christmas. The calendar looks only a fortnight ahead, so a row far in the
+ * edition's past is really in its future, a year on.
  */
 function rowDate(monthAbbr, dayOfMonth, edition) {
   const month = MONTHS.findIndex((name) => name.startsWith(monthAbbr));
@@ -281,15 +247,12 @@ export function checkCalendar(deskText) {
     );
   }
 
-  // Rows read "Jul 14 EARNINGS …". Anything dated before THE EDITION's session is stale.
-  //
-  // Against the edition, not against the clock — the third surface in this file to be corrected the
-  // same way, and the reason is worth stating once more. The Desk serves a dated edition, and the
-  // calendar is floored at that edition's own session (lib/morning.ts, calendarFloor): an event ON
-  // the edition's day is part of that edition and belongs on it. Measured against the WALL CLOCK,
-  // this check called the edition's own FOMC decision "a row in the past" at 00:25 ET the moment the
-  // date rolled over — a red gate on a Desk that was completely correct. An edition-derived surface
-  // is measured against the edition, or the two disagree for a few hours every night.
+  // Rows read "Jul 14 EARNINGS …"; anything dated before THE EDITION's session is stale — against the
+  // edition, not the clock (the third surface here corrected the same way). The calendar is floored at the
+  // edition's own session (lib/morning.ts, calendarFloor), so an event ON the edition's day belongs on it.
+  // Against the WALL CLOCK this called the edition's own FOMC decision "a row in the past" at 00:25 ET the
+  // moment the date rolled over — a red gate on a correct Desk. An edition-derived surface is measured
+  // against the edition, or the two disagree for a few hours every night.
   const edition = parseLongDate(deskText);
   if (!edition) {
     return fail("session calendar · hygiene", "an edition to measure against", "the Desk names no date");
@@ -311,17 +274,12 @@ export function checkCalendar(deskText) {
 }
 
 /**
- * 5. PRESS-TIME TRUTH — /news's own claim about when it went to press.
- *
- * "Assembled Saturday, July 11, 2026" was the fourth surface that rendered the poisoned stamp
- * faithfully. A press time is a claim that a newsroom sat down that evening; a Saturday press time
- * for a market paper is the same lie as a Saturday close.
- *
- * The byline half of this check (plan 3.6 #5 — "every feed card byline carries a resolvable external
- * url") is PENDING, and deliberately not gated: the feed's publisher names are PLAIN TEXT today, and
- * PD8 (plan 9.4) is the phase that makes them real anchors. It is probed and reported from now, so
- * the day it lands it is already measured — a check added only when the feature ships is a check
- * nobody remembers to add. (This is check-nav.mjs's PENDING mechanism, and the same reasoning.)
+ * 5. PRESS-TIME TRUTH — /news's own claim about when it went to press. "Assembled Saturday, July 11, 2026"
+ * was the fourth surface that rendered the poisoned stamp: a Saturday press time for a market paper is the
+ * same lie as a Saturday close. The byline half (plan 3.6 #5 — "every card byline carries a resolvable url")
+ * is PENDING and not gated: publisher names are PLAIN TEXT today, and PD8 (plan 9.4) makes them anchors; it
+ * is probed and reported from now so it is already measured the day it lands (a check added only when the
+ * feature ships is one nobody remembers to add).
  */
 export function checkPressTime(newsText) {
   const shown = parseLongDate(newsText);
@@ -367,25 +325,14 @@ export function nextTradingDay(day) {
 }
 
 /**
- * 6. STRIP FUTURE-TRUTH — the "next:" promise.
- *
- * The strip ends with "next: Tue 18:37 ET" — a promise about when the following edition lands. A
- * promise naming a day in the past is worse than no promise; it is the surface most likely to go
- * quietly wrong, because it is derived from the edition date, and the edition date is the thing that
- * was broken. (On the Saturday it read "next: Mon" and was, by accident, right — which is precisely
- * why a check that only looked at this one would have seen nothing.)
- *
- * IT IS MEASURED AGAINST THE EDITION, AND IT TAKES NO CLOCK. This check used to walk forward from
- * `now`, and PD1 caught it the night check:live joined the standing gate: at 00:07 ET on a Tuesday it
- * demanded the strip say "Wed", while the Desk — still serving Monday's edition, correctly promising
- * that evening's — said "Tue". It failed a healthy product, and would have done so every night
- * between midnight and the evening run.
- *
- * The promise is a fact ABOUT THE EDITION ("the next paper after this one"), so the edition is what
- * it is measured against. That is the same lesson as the calendar floor in lib/morning.ts, found in
- * the same hour: a surface derived from the edition must never be checked against the wall clock, or
- * the two disagree for a few hours every night. A STALE masthead is assertion 1's job — and assertion
- * 1 does it loudly, so nothing is lost by taking the clock out of this one.
+ * 6. STRIP FUTURE-TRUTH — the "next:" promise. The strip ends "next: Tue 18:37 ET", a promise about when the
+ * following edition lands. A promise naming a past day is worse than none, and it is the surface most likely
+ * to go quietly wrong because it derives from the edition date — the thing that was broken. (On the Saturday
+ * it read "next: Mon" and was accidentally right, which is why a check that looked only here would see
+ * nothing.) IT IS MEASURED AGAINST THE EDITION AND TAKES NO CLOCK: it used to walk from `now`, and PD1 caught
+ * it the night check:live joined the gate — at 00:07 ET Tuesday it demanded "Wed" while the Desk, correctly
+ * serving Monday's edition, said "Tue". The promise is a fact ABOUT THE EDITION, so the edition is what it is
+ * measured against (the calendar-floor lesson again). A STALE masthead is assertion 1's loud job.
  */
 export function checkNextEdition(deskText) {
   const m = deskText.match(/next: (Sun|Mon|Tue|Wed|Thu|Fri|Sat)\b/);

@@ -1,22 +1,16 @@
 #!/usr/bin/env node
 /**
- * check-drift.mjs — the anti-drift checklist v2, made mechanical (UI-REDESIGN-PLAN §3.10).
+ * check-drift.mjs — the anti-drift checklist v2, made mechanical (UI-REDESIGN §3.10).
  *
- * A design system does not die in one bad commit. It dies in twenty small ones: an ad-hoc hex here
- * because the token was "close but not quite", a `rounded-[14px]` there because 12 looked wrong at
- * 2am, a transition on a card that happens to contain a base rate. Each is defensible alone. The
- * sum is a template.
- *
- * So the rules that CAN be checked by a machine are checked by a machine, at every phase exit.
- * All must come back empty. The ones marked HONESTY are not style rules wearing a style rule's
- * clothes — they enforce the preserved constitution (§2.2), and a failure there means the product
+ * A design system dies not in one bad commit but in twenty small ones — an ad-hoc hex, a
+ * `rounded-[14px]`, a transition on a card holding a base rate; each defensible alone, the sum a
+ * template. So the rules a machine CAN check are checked at every phase exit, and all must come back
+ * empty. The HONESTY rules enforce the preserved constitution (§2.2): a failure there means the product
  * can lie, not merely that it looks wrong.
  *
- * THIS SCRIPT IS THE CHECKLIST. §3.10 v2 of UI-REDESIGN-PLAN.md is its prose ancestor and is now a
- * pointer, not a register: it described eleven greps, this file grew to 21 rules, and for a while
- * both documents looked authored and confident while only one of them ran. Do not restate the rule
- * count anywhere else — cite this file. (The count prints itself at the end of every run, which is
- * the only number that cannot rot.)
+ * THIS SCRIPT IS THE CHECKLIST. §3.10 v2 is its prose ancestor and now a pointer, not a register — do
+ * not restate the rule count anywhere else, cite this file (the count prints itself at the end, the one
+ * number that cannot rot).
  *
  * Run: npm run check:drift
  */
@@ -117,12 +111,9 @@ const SEARCH_DIRS = ["app", "components", "lib"];
 const CODE_EXT = new Set([".ts", ".tsx", ".css", ".mjs"]);
 
 /**
- * Every source file we police, as repo-relative paths.
- *
- * Test files are deliberately out of scope. The checklist polices the product's shipped surface,
- * and a test's job is often to NAME the thing being banned — copy.test.ts pins the canonical
- * base-rate sentence verbatim, which is exactly what rule 10 hunts for in product code. Policing
- * the tests would mean writing tests that cannot say what they are testing.
+ * Every source file we police, as repo-relative paths. Test files are deliberately out of scope: a
+ * test's job is often to NAME the thing being banned (copy.test.ts pins the base-rate sentence rule 10
+ * hunts for), so policing tests would mean tests that cannot say what they test.
  */
 function sourceFiles() {
   const found = [];
@@ -145,17 +136,11 @@ const FILES = sourceFiles();
 const read = (f) => readFileSync(join(ROOT, f), "utf8");
 
 /**
- * The files rule 21 polices: the seeded world, and the browser suite that photographs it.
- *
- * These sit OUTSIDE SEARCH_DIRS on purpose — they are not the product's shipped surface, they are
- * its fixtures and its oracle. Every other rule in this file asks "does the app do something it must
- * not?". Rule 21 asks a different question: "does the GATE have a fuse burning in it?" — and the
- * gate's fuses live here.
- *
- * Unit tests (`*.test.ts`) are NOT in scope, deliberately, and the distinction is the whole point. A
- * unit test controls its own clock: it can name any date it likes, because it also decides what "now"
- * means. An e2e spec runs against the real clock unless it explicitly pins one, and the seed is read
- * BY the real clock. Those are the two places a date can quietly expire.
+ * The files rule 21 polices: the seeded world and the browser suite that photographs it. They sit
+ * OUTSIDE SEARCH_DIRS — not the shipped surface, but the fixtures and oracle. Every other rule asks
+ * "does the app do something it must not?"; rule 21 asks "does the GATE have a fuse burning?". Unit
+ * tests are NOT in scope: a unit test controls its own clock, an e2e reads the seed by the real one —
+ * the two places a date can quietly expire.
  */
 function fuseFiles() {
   const files = ["prisma/seed.mjs"];
@@ -169,15 +154,10 @@ function fuseFiles() {
 }
 
 /**
- * The files rule 23 polices: the brand's other two homes.
- *
- * These sit outside SEARCH_DIRS for the same reason the fuse files do — they are not the app's
- * shipped React surface. But the brand's colours live here as surely as they live in globals.css:
- * public/*.svg is rasterised into every monochrome icon, and scripts/*.mjs is what does the
- * rasterising. A hex that lands in either one tints a real pixel a reader will see.
- *
- * The generator's own test file is excluded along with every other test, by the same argument rule
- * 1 makes: a test's job is often to NAME the thing being policed.
+ * The files rule 23 polices: the brand's other two homes. Outside SEARCH_DIRS like the fuse files, but
+ * the brand's colours live here as surely as in globals.css — public/*.svg is rasterised into every
+ * monochrome icon, and scripts/*.mjs does the rasterising, so a hex here tints a real pixel. The
+ * generator's own test file is excluded, like every test (rule 1's argument: a test NAMES what it polices).
  */
 function brandFiles() {
   const files = [];
@@ -191,11 +171,10 @@ function brandFiles() {
 }
 
 /**
- * The two files allowed to say a date out loud — one per world, and they must agree with each other.
- *
- * Everything else derives from these. That is the entire rule: not "never write a date" (the seeded
- * world IS a fixed morning, and has to be, or the pixel oracle is photographing whatever today
- * happens to hold) but "there is exactly ONE date, it has a name, and nothing keeps a second copy."
+ * The two files allowed to say a date out loud — one per world, and they must agree. Everything else
+ * derives from these. The rule is not "never write a date" (the seeded world IS a fixed morning, or the
+ * pixel oracle photographs whatever today holds) but "there is exactly ONE date, it has a name, and
+ * nothing keeps a second copy."
  */
 const DATE_ANCHORS = [
   // The seeded world's anchor: the synthetic trading day everything in prisma/ is measured from.
@@ -247,14 +226,10 @@ const RULES = [
     id: 19,
     name: "HONESTY — danger (red) has exactly ONE consumer: the dead-pipeline strip",
     /*
-     * The one surface in this app allowed to be loud (NEWS-AND-CONTROL-PLAN Part 4.1). A silently
-     * dead pipeline serving stale data is the catastrophic failure mode — the app goes on looking
-     * authoritative and goes on being wrong — so it gets a red banner nobody can miss and nobody
-     * can dismiss.
-     *
-     * The value of that banner is entirely in its scarcity. A second red surface anywhere in the
-     * app makes the reader ask "which red is this?", and the answer to that question always arrives
-     * too late. So: one consumer, and this rule fails the build for the second.
+     * The one surface allowed to be loud (NEWS-AND-CONTROL Part 4.1): a silently dead pipeline serving
+     * stale data is the catastrophic failure, so it gets a red banner nobody can miss or dismiss. The
+     * value is entirely in its scarcity — a second red surface makes the reader ask "which red is this?",
+     * and the answer arrives too late. One consumer; this rule fails the build for the second.
      */
     skip: [...TOKEN_FILES, ...DANGER_ALLOWED],
     match: (line) => /\b(bg|text|border)-danger\b|\bdanger-wash\b/.test(line),
@@ -365,25 +340,13 @@ const RULES = [
     name: "A11Y — `faint` is for placeholders and disabled states, never for information",
     /*
      * The token sheet has said so since R1 — "placeholders/disabled; never body text" — and the app
-     * ignored it, including in the kit this plan added. An axe pass at F7 found up to 58 failing
-     * nodes on a single page, and every one of them was a `text-faint` carrying real information: a
-     * disclosure's count, the em-dash standing in for an unknown value, a table's column label.
-     *
-     * The numbers: `faint` measures 2.23:1 against Morning's paper (WCAG AA wants 4.5:1). `muted`
-     * measures 4.83:1 and passes. So this was never a palette problem — it was a misuse of the
-     * palette, and the fix is to honour the contract the token itself declares rather than to repaint
-     * the design system.
-     *
-     * A DISABLED state is allowed: WCAG explicitly exempts disabled controls, and a disabled control
-     * that looked enabled would be the worse lie.
-     *
-     * Both spellings of "disabled" count, and the second was added in N2 when the RangeControl
-     * needed it. Tailwind can express the state two ways — `disabled:text-faint` on the control
-     * itself, and `has-[:disabled]:text-faint` on a LABEL that wraps a disabled input, which is the
-     * only form available when the thing being greyed is the label rather than the input. The rule
-     * previously knew only the first, so it fired on a use that was not merely allowed but exactly
-     * what the token exists for. A guard that rejects the correct code teaches people to work around
-     * the guard.
+     * ignored it. An axe pass at F7 found up to 58 failing nodes on one page, every one a `text-faint`
+     * carrying real information (a disclosure's count, an em-dash, a column label). The numbers: `faint`
+     * measures 2.23:1 on Morning's paper (AA wants 4.5:1), `muted` measures 4.83:1 and passes — never a
+     * palette problem, a misuse of it. A DISABLED state is allowed (WCAG exempts disabled controls). Both
+     * spellings count: `disabled:text-faint` and `has-[:disabled]:text-faint` on a wrapping LABEL (the only
+     * form when the greyed thing is the label). The rule knew only the first and fired on correct code —
+     * and a guard that rejects correct code teaches people to work around it.
      */
     skip: TOKEN_FILES,
     match: (line) => /\btext-faint\b/.test(line) && !/disabled\]?:text-faint/.test(line),
@@ -392,19 +355,12 @@ const RULES = [
     id: 17,
     name: "PERF/CORRECTNESS — never revalidatePath(..., 'layout'); it 404s the closed-param routes",
     /*
-     * This rule exists because the alternative is a room disappearing.
-     *
-     * `revalidatePath(path, "layout")` drops the known-params set of any route that declares
-     * `dynamicParams = false`. Every URL in that family then returns 404 — permanently, until the
-     * next deploy. /scans/[preset] declares exactly that (it is a closed set of five, and the flag is
-     * what makes /scans/garbage a real 404 rather than a 200 carrying a not-found page).
-     *
-     * The theme action called it from P6 and the watchlist action from F1, so the reader would have
-     * found this by changing their theme. Once. And every scan table in the app would have been gone
-     * until someone redeployed. CI caught it: a VRT baseline came back as a picture of a 404 page.
-     *
-     * Name the paths you are changing instead. The app has five rooms; listing them is not a burden,
-     * and the blast radius is then exactly what you wrote rather than the whole route tree.
+     * This rule exists because the alternative is a room disappearing. `revalidatePath(path, "layout")`
+     * drops the known-params set of any route with `dynamicParams = false` — every URL in that family
+     * then 404s until the next deploy. /scans/[preset] declares exactly that. The theme action (P6) and
+     * watchlist action (F1) both called it, so a reader changing their theme once would have 404'd every
+     * scan table until a redeploy; CI caught it when a VRT baseline came back a picture of a 404. Name the
+     * paths you change instead: the app has five rooms, and the blast radius is then exactly what you wrote.
      */
     skip: [],
     match: (line) => /revalidatePath\([^)]*,\s*["']layout["']\s*\)/.test(line) && !/^\s*(\*|\/\/)/.test(line),
@@ -473,32 +429,17 @@ const RULES = [
     id: 21,
     name: "THE FUSE-FINDER — no absolute date outside the two anchors (seeded world + browser suite)",
     /*
-     * "An absolute fixture under a relative rule has a fuse on it — /paper's baseline expired 28
-     * minutes after the run that certified it."
+     * "An absolute fixture under a relative rule has a fuse on it — /paper's baseline expired 28 minutes
+     * after the run that certified it" (recording in prisma/fixtures/paper.mjs's header). The paper
+     * ledger's closed trades sat on absolute dates while the page counted them against a rolling 7-day
+     * window; the window walked forward, the fixture did not, and the gate went red one evening because of
+     * the calendar, looking exactly like a regression. This class cost two exits, so it becomes a grep.
      *
-     * That sentence is not a metaphor, and the recording is in prisma/fixtures/paper.mjs's own
-     * header. The paper ledger's closed trades sat on absolute dates while the page counted them
-     * against a rolling "last 7 days" window. The window walked forward; the fixture did not. So:
-     *
-     *   nc-6's CI ran 2026-07-13 19:22Z → cutoff 07-06 19:22 → the 07-06T19:50 trade was IN  → 2 ✅
-     *   nc-final's   ran 2026-07-13 20:39Z → cutoff 07-06 20:39 → the same trade was OUT     → 1 ❌
-     *
-     * Nobody changed a line of code. The gate went red one evening because of the calendar, and it
-     * looked exactly like a regression. This class has now cost two exits (LESSONS: "absolute fixture
-     * under a relative rule"), so it stops being a lesson people are asked to remember and becomes a
-     * grep that fails the build.
-     *
-     * WHAT THIS RULE DOES NOT SAY: it does not say "never write a date". The seeded world IS a fixed
-     * morning and must be — a seed that drifted with the calendar would repaint every VRT baseline
-     * every night. What it says is that there is exactly ONE date per world, it has a NAME, and
-     * everything else is derived from it. A second, unnamed copy of the same instant is how the two
-     * silently drift apart, and drifting apart IS the failure. Before G3 there were two copies of the
-     * seeded evening (vrt.spec.ts and desk.spec.ts) and twenty-odd unanchored dates across the seed.
-     *
-     * Comments are exempt, like rule 1's hex: the prose has to be able to say which day it means, and
-     * a date in a comment has no fuse on it because nothing reads it. A trailing `// 2026-07-12` next
-     * to a derived expression is not just allowed, it is ENCOURAGED — it is what lets a human check
-     * the arithmetic against a calendar without running the code.
+     * It does NOT say "never write a date": the seeded world IS a fixed morning and must be. It says there
+     * is exactly ONE date per world, it has a NAME, and everything derives from it — a second unnamed copy
+     * is how the two silently drift apart. Comments are exempt like rule 1's hex, and a trailing
+     * `// 2026-07-12` beside a derived expression is ENCOURAGED — it lets a human check the arithmetic
+     * against a calendar without running the code.
      */
     only: fuseFiles(),
     skip: DATE_ANCHORS,
@@ -555,19 +496,12 @@ const RULES = [
     id: 14,
     name: "PERF — internal links go through next/link, and nobody turns prefetch off",
     /*
-     * A raw <a href="/..."> is a full document reload: the service worker re-runs, the fonts
-     * re-request, React re-hydrates from scratch. Two survived on the Desk until F1 and cost the
-     * reader a whole page load each.
-     *
-     * The `href={` form is in this pattern because the first version of the rule missed one. The
-     * setup card's "Learn: how this pattern is judged →" link was written as
-     * `<a href={`/academy/${slug}`}>` — a template literal, so it never matched a rule that only
-     * looked for `href="/`. It sat there through F1, F2 and F3, reloading the whole document every
-     * time a reader followed the app's single most important doorway into the Academy. Found in F4,
-     * while adding the doorway beside it.
-     *
-     * `prefetch={false}` is the other way to lose the same thing: once a route is static, the
-     * default prefetch is exactly what makes the tap feel instant.
+     * A raw <a href="/..."> is a full document reload — the service worker re-runs, fonts re-request,
+     * React re-hydrates. Two survived on the Desk until F1. The `href={` form is here because the first
+     * rule missed one: the setup card's Academy link was `<a href={`/academy/${slug}`}>`, a template
+     * literal a `href="/`-only rule never matched, reloading the app's most important doorway for three
+     * phases. `prefetch={false}` is the other way to lose the same thing — on a static route the default
+     * prefetch is what makes the tap feel instant.
      */
     skip: [],
     match: (line) =>
@@ -718,24 +652,14 @@ const RULES = [
     id: 27,
     name: "TYPE — no bold inside serif prose: the weight is not loaded, so the browser fakes it (§8)",
     /*
-     * The app loads Inter 400/600, JetBrains Mono 400/500/600, Playfair 700 + italic, and Newsreader
-     * roman + italic. THAT IS EVERY WEIGHT THAT EXISTS. There is no bold Newsreader in the bundle.
-     *
-     * So `font-bold` on a `font-prose` or `font-serif` element does not render bold Newsreader — it
-     * renders SYNTHESIZED bold: the browser smears the roman outline sideways to fake a weight it
-     * does not have. It looks muddy, it breaks the vertical rhythm the serif was chosen for, and it
-     * is banned by the type system's own reasoning (rule 7 already bans the other synthesis routes —
-     * small-caps, a dead width axis).
-     *
-     * The type system's answer to "this word matters" is not weight. It is:
-     *   · ITALIC — Newsreader ships one, and it is the paper's editorial register (§8.2.4).
-     *   · MONO — a figure the gate verified (KeyFigure, §8.2.3). The typeface IS the emphasis.
-     *   · A DOORWAY UNDERLINE — the word has a definition behind it (Term, §8.2.2).
-     * Each of those carries INFORMATION. A bold word carries only volume.
-     *
-     * The tree passes this rule on the day it is written, which is exactly when a rule is worth
-     * writing: PD5 is the phase that hands every surface a richness kit, and "make it stand out" is
-     * the request this rule expects to be asked at 2am for the rest of the build.
+     * The app loads Inter 400/600, JetBrains Mono 400/500/600, Playfair 700 + italic, Newsreader roman +
+     * italic — EVERY weight that exists. There is no bold Newsreader. So `font-bold` on a `font-prose` or
+     * `font-serif` element renders SYNTHESIZED bold: the browser smears the roman outline sideways, muddy
+     * and breaking the vertical rhythm (rule 7 already bans the other synthesis routes). The type system's
+     * answer to "this word matters" is ITALIC (§8.2.4), MONO for a gate-verified figure (§8.2.3), or a
+     * doorway UNDERLINE (§8.2.2) — each carries INFORMATION; a bold word carries only volume. The tree
+     * passes the day this is written, which is when a rule is worth writing: PD5 hands every surface a
+     * richness kit, and "make it stand out" is the 2am request this expects for the rest of the build.
      */
     match: (line) => {
       if (/^\s*(\*|\/\/|\/\*|<!--)/.test(line)) return false;
@@ -788,9 +712,9 @@ const RULES = [
 let failures = 0;
 
 for (const rule of RULES) {
-  // `only` narrows the search to a named set; `skip` then carves the argued exceptions out of it.
-  // They used to be either/or, which meant an `only` rule could not have an allowlist — and rule 21
-  // is exactly that shape: a named set of files, minus the two that are allowed to hold the anchor.
+  // `only` narrows to a named set; `skip` carves the argued exceptions out of it. They used to be
+  // either/or, which meant an `only` rule could not have an allowlist — and rule 21 is exactly that
+  // shape: a named set minus the two files allowed to hold the anchor.
   const scope = (rule.only ?? FILES).filter((f) => !(rule.skip ?? []).includes(f));
   const hits = [];
 

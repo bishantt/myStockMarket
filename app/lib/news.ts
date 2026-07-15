@@ -1,17 +1,12 @@
 /**
- * lib/news.ts — the Front Page's view model (NEWS-AND-CONTROL-PLAN Part 7.7).
+ * lib/news.ts — the Front Page's view model (NEWS-AND-CONTROL Part 7.7).
  *
- * The room's editorial rules live here, in pure functions, rather than inside the components that
- * render them. That is deliberate: "the lead slot is a position, not a prize" is not a layout
- * detail, it is the claim the whole room makes, and a claim that matters is a claim that gets a
- * test. A component can be reviewed by eye; only a function can be held by a gate.
- *
- * What the pipeline decides and this module must never re-decide: the ORDER. `significance` is
- * computed in `newsdesk/rank.py` from evidence — scope, corroboration, the size of the move a story
- * explains, the class of catalyst, and how recent it is — and no behavioural signal (clicks, views,
- * "most read") is ingested anywhere in this system. Nothing here re-ranks. The feed is served in
- * the order the pipeline set, filters remove rows without reordering them, and the lead is simply
- * whatever sits first.
+ * The room's editorial rules live here as pure functions, not inside the components — "the lead slot is
+ * a position, not a prize" is the claim the room makes, and a claim that matters gets a test (a component
+ * is reviewed by eye; only a function is held by a gate). What this module must NEVER re-decide is the
+ * ORDER: `significance` is computed in newsdesk/rank.py from evidence, no behavioural signal is ingested
+ * anywhere, and nothing here re-ranks — filters remove rows without reordering, and the lead is whatever
+ * sits first.
  */
 
 import { copy, fill } from "@/lib/copy";
@@ -28,12 +23,9 @@ export type CatalystTicker = {
 export type KeyNumber = { value: string; what: string };
 
 /**
- * One article behind a story — snapshotted at publish (news_cluster.articles).
- *
- * This is what "3 sources" is a count OF. Until N5 the count existed and the articles did not, so
- * corroboration — the second-heaviest term in the ranking formula — was a number the reader had to
- * take on trust. A number that cannot be opened is exactly the kind of claim this app argues
- * against making.
+ * One article behind a story — snapshotted at publish (news_cluster.articles). This is what "3 sources"
+ * counts. Until N5 the count existed and the articles did not, so corroboration was a number the reader
+ * had to take on trust — the kind of unopenable claim this app argues against.
  */
 export type NewsArticle = { source: string; url: string; headline: string; published: Date };
 
@@ -50,13 +42,13 @@ export type NewsCardImage = {
 };
 
 /**
- * The gate's per-field verdict (PD7, plan 9.3). A section can be absent for FOUR distinct reasons,
- * and the story page owes the reader which one it was:
- *   · narrated      — the section was written and cleared (present, not absent).
+ * The gate's per-field verdict (PD7, plan 9.3). A section can be absent for FOUR distinct reasons, and
+ * the story page owes the reader which:
+ *   · narrated      — written and cleared (present, not absent).
  *   · dropped       — the narrator wrote it and the gate DELETED it (a number traced to no source).
  *   · silent        — a deep cluster whose narrator honestly had nothing to add.
- *   · out_of_budget — the cluster sat outside the depth budget's top 8; nobody ever asked for it.
- * `null` here means the row predates the sections map entirely (a pre-PD7 production row).
+ *   · out_of_budget — the cluster sat outside the depth budget's top 8; nobody asked for it.
+ * `null` means the row predates the sections map (a pre-PD7 production row).
  */
 export type SectionStatus = "narrated" | "dropped" | "silent" | "out_of_budget";
 
@@ -70,10 +62,8 @@ export type SectionVerdicts = {
 
 /**
  * One dated calendar fact a story flags as worth knowing is coming (PD7 `watch`, plan 9.3).
- *
- * SNAPSHOTTED at publish, exactly as the narrator selected it from the calendar rows it was shown —
- * the LLM picks which dated facts are relevant, it can never author one (E4). Because it is a
- * snapshot of a real `calendar_event`, it can never disagree with the calendar the reader lands on.
+ * SNAPSHOTTED at publish from the calendar rows the narrator was shown — the LLM picks which dated facts
+ * are relevant, never authors one (E4) — so it can never disagree with the calendar the reader lands on.
  */
 export type WatchRow = {
   /** The registry stat id it resolved from, e.g. "cal:CPI:next". Kept for provenance, not shown. */
@@ -88,8 +78,8 @@ export type WatchRow = {
 };
 
 /**
- * What the models actually cost this story (PD7, plan 9.5). Null on pre-PD7 rows, where the footer
- * falls back to the honest "no extract" wording rather than a hardcoded model name it cannot know.
+ * What the models actually cost this story (PD7, plan 9.5). Null on pre-PD7 rows, where the footer falls
+ * back to the honest "no extract" wording rather than a model name it cannot know.
  */
 export type NewsModelMeta = {
   modelExtract: string | null;
@@ -112,22 +102,21 @@ export type NewsCard = {
   whyItMatters: string | null;
   affectedNote: string | null;
   /**
-   * The gate's verdict for every narratable field (PD7). The card ignores it; the story page reads
-   * it to say WHY a section is absent — a line the gate DELETED is a different event from a line the
-   * narrator never wrote, and a reader who opened one story is owed which one it was. This SUPERSEDES
-   * the old `noteDropped` boolean: it distinguishes four absences, not two, and per section.
+   * The gate's verdict for every narratable field (PD7). The card ignores it; the story page reads it to
+   * say WHY a section is absent — a gate-DELETED line is a different event from one the narrator never
+   * wrote. Supersedes the old `noteDropped` boolean: four absences, not two, and per section.
    */
   sections: SectionVerdicts;
   /**
    * The v2 insight's context prose (PD7, plan 9.3) — 2–3 mechanical sentences placing tonight's move,
-   * narrated ONLY from cited registry stats. Null is the COMMON case (dropped, silent, out of budget,
-   * or a pre-PD7 row); `sections.context` says which. A null prints nothing — never a placeholder.
+   * narrated ONLY from cited registry stats. Null is the COMMON case (`sections.context` says which); a
+   * null prints nothing, never a placeholder.
    */
   context: string | null;
   /**
-   * The figures the gate CLEARED inside the context prose (PD7, Q-PD5-1). This is the KeyFigure
-   * allow-list for the context section and nothing else (E5): a number is set in mono if and only if
-   * it is in here. An empty list emphasizes nothing, which is the honest default.
+   * The figures the gate CLEARED inside the context prose (PD7, Q-PD5-1) — the KeyFigure allow-list for
+   * this section and nothing else (E5): a number is set in mono iff it is here. Empty emphasizes nothing,
+   * the honest default.
    */
   contextCleared: string[];
   /** The dated calendar facts the narrator flagged, snapshotted (PD7). Empty = no dated events. */
@@ -149,18 +138,11 @@ export type NewsRange = "today" | "week";
 export type NoStoryMover = { symbol: string; ret1: number | null };
 
 /**
- * The catalyst filter chips, in the plan's order (Appendix B / 7.7).
- *
- * A chip maps to a SET of pipeline event types, because the pipeline's vocabulary and the reader's
- * are not the same one. "Fed" and "macro" are two classes to `rank.py` and one thing to a person
- * reading a newspaper, so they share a chip.
- *
- * "Other" is here and is NOT in the plan's list, and that gap was worth closing. The classifier
- * keeps an `other` escape hatch precisely so it never has to force a bad fit — which means real
- * stories carry it, and on the recorded feed a good many do. Ship the plan's list verbatim and the
- * reader sees forty catalysts, adds up the chips, and reaches thirty-seven, with no way to open the
- * missing three. A filter row that cannot reach a story sitting on the page is a cut nobody stated
- * (the same disease as ruling M8's unlabelled slice).
+ * The catalyst filter chips, in the plan's order (Appendix B / 7.7). A chip maps to a SET of pipeline
+ * event types, because the pipeline's vocabulary and the reader's differ ("Fed" and "macro" are two
+ * classes to rank.py, one thing to a reader). "Other" is here though NOT in the plan's list: the
+ * classifier keeps an `other` escape hatch, so real stories carry it, and a chip row that cannot reach a
+ * story on the page is an unstated cut (ruling M8's unlabelled slice).
  */
 export const CATALYST_CHIPS: { key: string; label: string; types: string[] }[] = [
   { key: "earnings", label: "Earnings", types: ["earnings"] },
@@ -176,11 +158,9 @@ export const CATALYST_CHIPS: { key: string; label: string; types: string[] }[] =
 ];
 
 /**
- * The sector vocabulary, in the pipeline taxonomy's own order, then the themes.
- *
- * Order is not alphabetical and should not be: it mirrors `newsdesk/taxonomy.py`, so the room and
- * the pipeline name the world in the same sequence. "Broad market" comes last of the sectors — it
- * is the honest default for a story that resists classification, not a sector.
+ * The sector vocabulary in the pipeline taxonomy's own order (newsdesk/taxonomy.py), then the themes.
+ * Not alphabetical, deliberately — the room and the pipeline name the world in the same sequence.
+ * "Broad market" comes last: the honest default for a story that resists classification, not a sector.
  */
 export const SECTOR_ORDER = [
   "Technology",
@@ -201,20 +181,12 @@ export const SECTOR_ORDER = [
 export const THEME_ORDER = ["AI", "Defense"] as const;
 
 /**
- * Catalyst → Academy doorway (Appendix E's map).
- *
- * The doorway teaches the MECHANISM, not the story: a reader who has just read that an FDA approval
- * gapped a stock open is one tap from the lesson on what gaps actually do, which is the only claim
- * this app is willing to make about what happens next.
- *
- * Two absences are deliberate. `product` and `other` have no entry, because no authored lesson is
- * about them, and a doorway into a room that does not exist is worse than no doorway. And
- * earnings/guidance point at the trading-day lesson rather than an earnings lesson — because there
- * is no earnings lesson yet. Appendix E says so itself ("if/when authored"), and pointing at a
- * plausible-sounding slug nobody has written would produce a 404 dressed as a promise.
- *
- * Every slug here is checked against the Academy manifest before it renders (`isKnownLesson`), so a
- * lesson that is renamed or removed silently closes its doorway instead of breaking a page.
+ * Catalyst → Academy doorway (Appendix E's map). The doorway teaches the MECHANISM, not the story — one
+ * tap from "an FDA approval gapped this open" to the lesson on what gaps do. Two absences are deliberate:
+ * `product`/`other` have no authored lesson (a doorway to a room that does not exist is worse than none),
+ * and earnings/guidance point at the trading-day lesson because no earnings lesson exists yet (Appendix E:
+ * "if/when authored"). Every slug is checked against the manifest (`isKnownLesson`), so a renamed lesson
+ * silently closes its doorway instead of breaking a page.
  */
 export const ACADEMY_DOORWAY: Record<string, string> = {
   earnings: "the-us-trading-day",
@@ -241,12 +213,10 @@ export function catalystLabel(eventType: string): string {
 }
 
 /**
- * The lead story and the rest, in the pipeline's order.
- *
- * THE LEAD IS A POSITION, NOT A PRIZE (ruling C4). It is simply whatever the evidence put first.
- * The seeded night exists to prove this: SMCI rose 18.4% — the largest move on the tape — and it
- * ranks third, behind a Fed statement that moved nothing at all. If a future change ever lets the
- * big number float to the top, the e2e that asserts this ordering goes red.
+ * The lead story and the rest, in the pipeline's order. THE LEAD IS A POSITION, NOT A PRIZE (ruling C4):
+ * whatever the evidence put first. The seeded night proves it — SMCI rose 18.4% (the largest move) and
+ * ranks third, behind a Fed statement that moved nothing; if the big number ever floats to the top, the
+ * e2e goes red.
  */
 export function leadAndRest(cards: NewsCard[]): { lead: NewsCard | null; rest: NewsCard[] } {
   if (cards.length === 0) return { lead: null, rest: [] };
@@ -284,11 +254,8 @@ export function activeSectorChips(cards: NewsCard[]): string[] {
 }
 
 /**
- * The count line, restating every active filter.
- *
- * "6 catalysts" and "6 catalysts · Pharma · FDA" are different claims, and a page showing the
- * second while saying the first is a page hiding its own subset. The restatement is what keeps a
- * filtered view from reading as a complete one.
+ * The count line, restating every active filter. "6 catalysts" and "6 catalysts · Pharma · FDA" are
+ * different claims; the restatement is what keeps a filtered view from reading as a complete one.
  */
 export function countLine(count: number, filters: NewsFilters): string {
   const noun = count === 1 ? "catalyst" : "catalysts";
@@ -301,14 +268,10 @@ export function countLine(count: number, filters: NewsFilters): string {
 }
 
 /**
- * Is this story inside the chosen window?
- *
- * THE SESSION IS NOT THE CLOCK, and this is the second time that has mattered in this build. Job A
- * runs at 6:37pm ET, and an article published at 9:30pm ET is already TOMORROW in UTC while being
- * plainly still tonight's news. A naive same-UTC-day comparison would file it under a session that
- * has not happened yet and quietly drop it out of "Today". So "today" is everything from the start
- * of the session's UTC day ONWARD, with no upper bound — there is no such thing as a story from the
- * future on a page assembled after the close.
+ * Is this story inside the chosen window? THE SESSION IS NOT THE CLOCK: Job A runs at 6:37pm ET, and an
+ * article published at 9:30pm ET is already TOMORROW in UTC while plainly still tonight's news. A naive
+ * same-UTC-day test would drop it from "Today", so "today" is everything from the start of the session's
+ * UTC day onward, with no upper bound.
  */
 export function inRange(card: NewsCard, range: NewsRange, sessionDate: Date): boolean {
   const sessionStart = Date.UTC(
@@ -323,23 +286,15 @@ export function inRange(card: NewsCard, range: NewsRange, sessionDate: Date): bo
 }
 
 /*
- * THE HEADLINE EMPHASIS RENDERER LIVED HERE UNTIL PD5. It is now lib/verified.ts —
- * `splitVerified`, rendered by components/KeyFigure.tsx.
- *
- * It moved because it was never really about headlines. The rule it encodes (E5: a figure is
- * set in mono IF AND ONLY IF the gate cleared it) applies to every narrated surface this app
- * has — a why-it-matters line, an insight paragraph, a brief. Leaving it in `lib/news` meant
- * the app's one honesty-of-emphasis rule was reachable only from the news room, and any other
- * surface that wanted an emphasised number would have hand-rolled its own — which is exactly
- * how a rule becomes a suggestion.
+ * THE HEADLINE EMPHASIS RENDERER LIVED HERE UNTIL PD5. It is now lib/verified.ts — `splitVerified`,
+ * rendered by components/KeyFigure.tsx. It moved because the rule it encodes (E5: a figure is set in
+ * mono iff the gate cleared it) applies to every narrated surface, not just headlines; leaving it here
+ * meant any other surface would hand-roll its own, which is how a rule becomes a suggestion.
  */
 
 /**
- * The movers no catalyst explains (ruling C9).
- *
- * They are never images, never ranked among the catalysts, and never more than three — they are the
- * page's caveat about itself, not a second feed. The standing noise line travels with them: most
- * moves this size have no identifiable cause.
+ * The movers no catalyst explains (ruling C9). Never images, never ranked among the catalysts, never
+ * more than three — the page's caveat about itself, not a second feed. The noise line travels with them.
  */
 export function noStoryMovers(movers: NoStoryMover[], cards: NewsCard[]): NoStoryMover[] {
   const explained = new Set(cards.flatMap((card) => card.tickers.map((t) => t.symbol)));
@@ -385,14 +340,11 @@ export type NewsClusterRow = {
 };
 
 /**
- * One database row into one card, defensively.
- *
- * THE JSON COLUMNS ARE NOT TRUSTED, and not because the pipeline is careless. `extract`,
- * `verification` and `articles` are written by a job that has been rewritten five times this month,
- * they carry no schema at the database level, and rows written by an OLDER version of that job are
- * still sitting in the table — the `{}` extract every cluster published with before the narrator
- * existed is in production right now. A cast would turn any one of those into a crash on a page the
- * reader asked for. So every field is read through a check and every absence has an answer.
+ * One database row into one card, defensively. THE JSON COLUMNS ARE NOT TRUSTED: `extract`,
+ * `verification` and `articles` are written by a job rewritten five times this month, carry no
+ * database-level schema, and old-version rows still sit in the table (the `{}` extract from before the
+ * narrator existed is in production now). A cast would crash a page the reader asked for, so every field
+ * is read through a check and every absence has an answer.
  */
 export function toCard(row: NewsClusterRow): NewsCard {
   const extract = isRecord(row.extract) ? row.extract : {};
@@ -441,14 +393,11 @@ function sectionRecord(
 }
 
 /**
- * The gate's verdict for one field — the v2 `sections` map, with ONE documented v1 fallback.
- *
- * PD7 shipped the `sections` map ALONGSIDE the old `verification.dropped` boolean, because a
- * pre-PD7 production row carries `dropped` and no sections map at all. This is the single reader
- * that reconciles the two: it prefers the per-section verdict, and only when there is none does it
- * fall back to the old whole-note `dropped` flag — and only for `why_it_matters`, the one field the
- * v1 shape knew about. So `verification.dropped` is read in EXACTLY one place, as a version
- * fallback, rather than by two live readers competing (which PD7 warned against retiring into).
+ * The gate's verdict for one field — the v2 `sections` map, with ONE documented v1 fallback. PD7 shipped
+ * `sections` alongside the old `verification.dropped` boolean (a pre-PD7 row carries `dropped` and no
+ * sections map). This is the single reader that reconciles them: it prefers the per-section verdict and
+ * falls back to the whole-note `dropped` flag only for `why_it_matters`, the one field v1 knew — so
+ * `verification.dropped` is read in exactly one place, as a version fallback.
  */
 function readSectionStatus(
   verification: Record<string, unknown>,
@@ -515,11 +464,10 @@ function readModelMeta(value: unknown): NewsModelMeta | null {
 }
 
 /**
- * A model id ("claude-sonnet-5") as a reader-facing name ("Claude Sonnet 5") for the provenance
- * footer. There is deliberately NO per-model lookup table — a table is a thing that rots the day a
- * new model ships, and this build has been bitten by hardcoded model names before. The transform is
- * STRUCTURAL: words are title-cased, and the trailing version digits join with dots. An id it cannot
- * make sense of is returned unchanged rather than mangled.
+ * A model id ("claude-sonnet-5") as a reader-facing name ("Claude Sonnet 5") for the provenance footer.
+ * Deliberately NO per-model lookup table — a table rots the day a new model ships, and this build has
+ * been bitten by hardcoded model names. The transform is STRUCTURAL: words title-cased, trailing version
+ * digits joined with dots; an id it cannot parse is returned unchanged rather than mangled.
  */
 export function formatModel(id: string): string {
   const parts = id.split("-").filter((part) => part.length > 0);
@@ -528,8 +476,8 @@ export function formatModel(id: string): string {
   const words: string[] = [];
   const version: string[] = [];
   for (const part of parts) {
-    // A pure-digit part AFTER the name words is a version segment ("4", "5"); a leading digit is a
-    // word (nothing we ship starts with one, but "gpt-4o" would keep "4o" as a word, not a version).
+    // A pure-digit part AFTER the name words is a version segment ("5"); a leading digit stays a word
+    // (nothing we ship starts with one, but "gpt-4o" would keep "4o" as a word).
     if (/^\d+$/.test(part) && words.length > 0) version.push(part);
     else words.push(part);
   }

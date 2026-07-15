@@ -5,21 +5,14 @@ import { signIn } from "./session";
 import { SEEDED_EVENING } from "./seeded-clock";
 
 /**
- * Journey 1 (P1 variant) — the Desk renders the morning the pipeline published (plan §6.2, §9.2).
- *
- * The unit tests prove the loader's maths and the components' markup in isolation; this proves the
- * whole path end to end: a real browser signs in, the server reads the serving database, and the
- * macro strip, the movers, and the focus watchlist show the exact values that were seeded.
- *
- * It runs ONLY against a seeded test database. Guarded by MSM_SEEDED=1, which CI sets after loading
- * prisma/seed.mjs into a throwaway Postgres — it never runs against the user's production data,
- * where asserting fixed synthetic numbers would be both wrong and dishonest. Locally, without the
- * flag, the whole group skips.
- *
- * Every asserted number is one the seed fixes exactly. The index and watchlist day-changes are
- * exact because the seed sets each symbol's final-day move directly; the macro context, movers, and
- * watchlist reasons are literal seed values. The compounding price LEVELS are deliberately not
- * asserted, only the deltas and context, so a change to the seed's history length never breaks this.
+ * Journey 1 (P1 variant) — the Desk renders the morning the pipeline published (plan §6.2, §9.2). The unit
+ * tests prove the loader's maths and the components' markup in isolation; this proves the whole path end to
+ * end: a real browser signs in, the server reads the serving database, and the macro strip, movers, and
+ * watchlist show the exact seeded values. It runs ONLY against a seeded database (MSM_SEEDED=1, which CI
+ * sets after loading prisma/seed.mjs into a throwaway Postgres) — never against production, where asserting
+ * fixed synthetic numbers would be wrong. Every asserted number the seed fixes exactly; the compounding
+ * price LEVELS are not asserted, only deltas and context, so a change to the seed's history length never
+ * breaks this.
  */
 
 test.describe("Desk — the seeded morning", () => {
@@ -33,19 +26,17 @@ test.describe("Desk — the seeded morning", () => {
     const macro = page.getByRole("region", { name: "Macro pulse" });
     await expect(macro).toBeVisible();
 
-    // The regression lock on the product's worst bug (redesign §6.1). The hero is the S&P 500's
-    // real index level from FRED — the seeded 6,812.34 — NOT the SPY ETF's ~600 price, which the
-    // Desk used to print under this exact label. The change is computed from the level and its
-    // prior level (6,789.10 → 6,812.34 = +0.34%), never borrowed from the ETF.
+    // The regression lock on the product's worst bug (redesign §6.1): the hero is the S&P 500's real FRED
+    // level (seeded 6,812.34), NOT the SPY ETF's ~600 price the Desk used to print under this label. The
+    // change is computed from the level and its prior (6,789.10 → 6,812.34 = +0.34%), never borrowed.
     await expect(macro.getByText("6,812.34").filter({ visible: true })).toBeVisible();
     await expect(macro.getByText("+0.34%").filter({ visible: true })).toBeVisible();
     // Every delta states the window it covers (ruling C2). "+0.34%" is not a fact on its own.
     await expect(macro.getByText("· 1D").filter({ visible: true }).first()).toBeVisible();
 
-    // THE PROVENANCE LINE IS COMPOSED FROM THESE VERY ROWS (ruling C6). It used to be a fixed
-    // string — "Index levels · FRED · prior close" — printed no matter what the rows showed, and on
-    // the night FRED's index series failed it sat under four ETF prices declaring them FRED index
-    // levels. Here the seeded night has all three levels, so the line names all three.
+    // THE PROVENANCE LINE IS COMPOSED FROM THESE VERY ROWS (ruling C6). It used to be a fixed string —
+    // "Index levels · FRED · prior close" — printed no matter the rows, and the night FRED's series failed
+    // it sat under four ETF prices declaring them FRED levels. Here all three levels exist, so it names all three.
     await expect(
       macro.getByText(/S&P 500, Nasdaq Composite, Dow: FRED, prior close/),
     ).toBeVisible();
@@ -55,12 +46,12 @@ test.describe("Desk — the seeded morning", () => {
     await expect(macro.getByText("22,345.67").filter({ visible: true })).toBeVisible(); // Nasdaq Composite
     await expect(macro.getByText("44,210.55").filter({ visible: true })).toBeVisible(); // Dow
 
-    // The small-caps slot is an ETF by design — FRED deleted every free Russell series in 2019 — so
-    // it never claims that index's name, and it carries exactly ONE mark saying what it is.
+    // The small-caps slot is an ETF by design (FRED deleted every free Russell series in 2019), so it never
+    // claims that index's name and carries exactly ONE mark saying what it is.
     await expect(macro.getByText("Small caps").filter({ visible: true }).first()).toBeVisible();
     await expect(macro.getByText("IWM · ETF price").filter({ visible: true }).first()).toBeVisible();
-    // The old double belt is gone: the label suffix "(ETF proxy)" AND a second chip reading "ETF
-    // proxy" both said the same words, and on screen that read as noise.
+    // The old double belt is gone: the "(ETF proxy)" suffix AND a second "ETF proxy" chip said the same
+    // words, which on screen read as noise.
     await expect(macro.getByText("Russell 2000")).toHaveCount(0);
     await expect(macro.getByText("ETF proxy", { exact: true })).toHaveCount(0);
 
@@ -90,13 +81,10 @@ test.describe("Desk — the seeded morning", () => {
     await expect(movers.getByText("earnings")).toBeVisible();
     await expect(movers.getByText(/Super Micro beats Q3/)).toBeVisible();
     await expect(movers.getByRole("link", { name: "reuters.com" })).toBeVisible();
-    // PLTR has no seeded news → the honest noise line (§1.5 rule 9).
-    //
-    // Scoped to PLTR's own row, deliberately. The seed now publishes eight movers (F0), and most of
-    // them have no news, so an unscoped match for the noise line finds six rows and fails strict
-    // mode. The fix is to say what the test always meant — "the mover with no catalyst prints the
-    // noise line" — about a named row, rather than to paper over it with .first(), which would pass
-    // even if PLTR had quietly acquired a catalyst.
+    // PLTR has no seeded news → the honest noise line (§1.5 rule 9). Scoped to PLTR's own row: the seed now
+    // publishes eight movers (F0), most with no news, so an unscoped match finds six rows and fails strict
+    // mode. Say what the test meant — "the mover with no catalyst prints the noise line" — about a named row,
+    // not paper over it with .first() (which would pass even if PLTR quietly acquired a catalyst).
     const pltrRow = movers.locator("li").filter({ hasText: "PLTR" });
     await expect(pltrRow.getByText(/No news found/)).toBeVisible();
   });
@@ -108,10 +96,8 @@ test.describe("Desk — the seeded morning", () => {
     await expect(calendar.getByText("EARNINGS").first()).toBeVisible();
     await expect(calendar.getByText(/AAPL earnings/)).toBeVisible();
 
-    // The consensus figure is deliberately ABSENT here. On the Desk the calendar renders in its
-    // compact rail variant (§5.1): a reader glances at the rail to see what is coming, they do not
-    // study it, so consensus/prior drop to the row's drill. This asserts the design rather than
-    // tolerating its absence.
+    // The consensus figure is deliberately ABSENT here: on the Desk the calendar renders in its compact rail
+    // variant (§5.1), so consensus/prior drop to the row's drill. This asserts the design, not tolerates its absence.
     await expect(calendar.getByText(/cons\./)).toHaveCount(0);
 
     // The market-wide catalysts, each marked with the word "high" beside an ink dot.
@@ -159,11 +145,9 @@ test.describe("Desk — the seeded morning", () => {
 });
 
 /**
- * The Desk, chunked (APP-FEEL-PLAN §4.1).
- *
- * The Desk is a reading RITUAL, not a dashboard, so the cure for the receipt was never to shuffle it
- * into widgets. Each station's body is bounded and its depth is one tap away — and the ritual ORDER
- * is untouchable. These tests are what keep that true.
+ * The Desk, chunked (APP-FEEL §4.1). The Desk is a reading RITUAL, not a dashboard, so the cure for the
+ * receipt was never to shuffle it into widgets: each station's body is bounded, its depth is one tap away,
+ * and the ritual ORDER is untouchable. These tests keep that true.
  */
 test.describe("The Desk, chunked", () => {
   test.skip(process.env.MSM_SEEDED !== "1", "needs a seeded test database (MSM_SEEDED=1)");
@@ -173,29 +157,16 @@ test.describe("The Desk, chunked", () => {
   });
 
   /**
-   * THE READING ORDER — what a screen reader hears, and what the Tab key walks (PD3, amendment 0.2.2).
-   *
-   * THIS TEST USED TO ASSERT THAT THE DOM ASCENDED 01 → 08, and PD3 changed the answer. It is worth
-   * being exact about why, because the number below looks like a regression and is not.
-   *
-   * The Desk's two columns must flow INDEPENDENTLY — that is Law 1, and it is what kills the dead
-   * hole a short module used to dig beside a tall one. Two independent columns means two wrapper
-   * elements, and CSS can only group children that are ADJACENT IN THE MARKUP. The ritual interleaves
-   * the columns (brief, calendar, movers, watchlist…), so a DOM in ritual order and a DOM grouped
-   * into columns are mutually exclusive. There is no CSS that gives you both. Something had to give.
-   *
-   * What gives is the DOM, and the reading order it produces is the one amendment 0.2.2 chose on the
-   * merits: the narrative first (02 brief, 04 movers, 06 setups, 07/08 + scorecard), then the rail's
-   * reference matter (03 calendar, 05 watchlist). A broadsheet is read column-first — nobody reads a
-   * newspaper row-by-row across the columns — and the rail is reference matter by the app's own
-   * definition. A screen reader now hears that same order at EVERY width, which is at least one
-   * consistent story rather than two.
-   *
-   * WHAT A READER SEES is a different question, and it is asserted where it belongs: e2e/grid.spec.ts
-   * measures the BOUNDING BOXES per viewport, and holds the phone to the full ritual 01 → 08. This
-   * test and that one are the two halves of the same contract, and neither is sufficient alone — a
-   * DOM-only assertion would have passed happily through this entire rewrite while the screen showed
-   * something else.
+   * THE READING ORDER — what a screen reader hears, and what Tab walks (PD3, amendment 0.2.2). THIS TEST
+   * USED TO ASSERT THE DOM ASCENDED 01 → 08, and PD3 changed the answer — the number below looks like a
+   * regression and is not. The two columns must flow INDEPENDENTLY (Law 1, which kills the dead hole), which
+   * means two wrapper elements, and CSS can only group children ADJACENT IN THE MARKUP; the ritual interleaves
+   * the columns, so a ritual-order DOM and a column-grouped DOM are mutually exclusive. What gives is the DOM,
+   * and the order amendment 0.2.2 chose on the merits: narrative first (02 brief, 04 movers, 06 setups,
+   * 07/08 + scorecard), then the rail's reference matter (03 calendar, 05 watchlist) — a broadsheet is read
+   * column-first, and a screen reader hears that same order at every width. WHAT A READER SEES is a different
+   * question, asserted in e2e/grid.spec.ts (BOUNDING BOXES per viewport, phone held to the full ritual 01 →
+   * 08). The two are halves of one contract; a DOM-only assertion passed through this rewrite while the screen changed.
    */
   test("the reading order is narrative first, then the rail (the 0.2.2 amendment)", async ({ page }) => {
     await page.goto("/");
@@ -210,17 +181,11 @@ test.describe("The Desk, chunked", () => {
     ).toEqual([1, 2, 4, 6, 7, 8, 3, 5]);
 
     /*
-     * MODULE 00 IS RETIRED (NEWS-AND-CONTROL-PLAN Part 4.1), and this asserts the retirement rather
-     * than merely tolerating it.
-     *
-     * The exact-sequence check above already implies this — but it implies it by accident, and a
-     * guard that only works by accident is one refactor away from not working. The ritual STARTS at
-     * 01. If a future change reinstates a pipeline card in the grid, the strip and the card would
-     * both be on the page, and this says so out loud.
-     *
-     * The mastheads do not renumber: 01 stays 01. A masthead is a name, not an index that has to
-     * start at zero, and renumbering every module, test and VRT baseline to close a cosmetic gap is
-     * churn with regression risk and no reader value.
+     * MODULE 00 IS RETIRED (NEWS-AND-CONTROL Part 4.1), asserted rather than tolerated. The exact-sequence
+     * check above implies it, but by accident, and a guard that works by accident is one refactor from not:
+     * the ritual STARTS at 01, and if a future change reinstates a pipeline card in the grid, the strip and
+     * the card would both be present, and this says so. The mastheads do not renumber (01 stays 01) — a
+     * masthead is a name, and renumbering every module, test and baseline to close a cosmetic gap is churn.
      */
     expect(numbers, "module 00 was retired into the pipeline strip — it must not be back in the grid")
       .not.toContain(0);
@@ -230,19 +195,13 @@ test.describe("The Desk, chunked", () => {
     page,
   }) => {
     /*
-     * THE CLOCK IS PINNED, AND THE TAG'S CI IS WHY.
-     *
-     * The strip grades freshness against the BROWSER's clock (deliberately — a cached render must
-     * never photograph a dead pipeline as a healthy one). The seed publishes one run for a fixed
-     * trading day, and real time keeps moving. So this test asserted the FRESH line while CI, running
-     * days after the seeded session, was correctly showing the AGING one.
-     *
-     * The test was wrong, not the product. A test that reads time-dependent output has to say WHEN it
-     * is reading, or it passes this week and fails next week for a reason nobody can reconstruct.
-     *
-     * The instant itself comes from e2e/seeded-clock.ts (G3). It used to be a second copy of the same
-     * literal, written out here by hand — and two copies of one clock is exactly how the two drift
-     * apart. Drift rule 21 now fails the build for a date written anywhere in e2e/ but there.
+     * THE CLOCK IS PINNED, AND THE TAG'S CI IS WHY. The strip grades freshness against the BROWSER's clock
+     * (deliberately — a cached render must never photograph a dead pipeline as healthy). The seed publishes
+     * one run for a fixed trading day and real time keeps moving, so this asserted the FRESH line while CI,
+     * running days later, correctly showed the AGING one: the test was wrong, not the product. A test reading
+     * time-dependent output must say WHEN it reads. The instant comes from e2e/seeded-clock.ts (G3) — it used
+     * to be a second copy of the literal here, and two copies of one clock is how they drift; drift rule 21
+     * now fails the build for a date anywhere in e2e/ but there.
      */
     await page.clock.setFixedTime(SEEDED_EVENING);
     await page.goto("/");
@@ -262,9 +221,9 @@ test.describe("The Desk, chunked", () => {
     await page.goto("/");
     const calendar = page.getByRole("region", { name: "Session calendar" });
 
-    // The seed places FOMC and the jobs report deliberately BELOW the routine cut. A calendar that
-    // warns you about one and folds the other away has implied a completeness it does not have —
-    // this is the whole of ruling M2, in the one module whose job is warning.
+    // The seed places FOMC and the jobs report deliberately BELOW the routine cut. A calendar that warns you
+    // about one and folds the other away implies a completeness it lacks — the whole of ruling M2, in the one
+    // module whose job is warning.
     await expect(calendar.getByText("FOMC decision")).toBeVisible();
     await expect(calendar.getByText("Jobs report")).toBeVisible();
   });
@@ -278,12 +237,10 @@ test.describe("The Desk, chunked", () => {
     await page.goto("/");
     const scorecard = page.getByRole("region", { name: "Evening scorecard" });
 
-    // Collapsed, it REPORTS ITS STATE — which is the whole of M2's count contract. Either wording is
-    // correct; what may never happen is a disclosure that hides an unstated number of things.
-    //
-    // The number is deliberately not pinned: briefing.spec writes a journal entry, and it runs before
-    // this file, so tonight's count is 1 there and 0 in isolation. Asserting "none saved tonight"
-    // would be asserting the test ORDER, not the product.
+    // Collapsed, it REPORTS ITS STATE — the whole of M2's count contract; either wording is correct, and what
+    // may never happen is a disclosure that hides an unstated number. The number is not pinned: briefing.spec
+    // writes a journal entry and runs before this file, so tonight's count is 1 there and 0 in isolation —
+    // asserting "none saved tonight" would assert the test ORDER, not the product.
     await expect(scorecard.getByText(/(none|1) saved tonight/)).toBeVisible();
 
     // And it is exactly one tap to write.
@@ -307,16 +264,11 @@ test.describe("The Desk, chunked", () => {
 });
 
 /**
- * RULING C2 ON THE DESK — every number states its window, on the surface, where the number is.
- *
- * The plan's Part 5.1 audit table is not documentation. Each of its rows is an acceptance criterion,
- * and these are the rows that live on the Desk. They are asserted against the RENDERED page rather
- * than against the copy deck, because a token that exists in copy.ts and never reaches the screen is
- * a rule that was written down and not obeyed.
- *
- * Why this matters more than it sounds: "+8.2%" is not a fact. Over what? A day? A week? Since the
- * position was opened? A beginner cannot tell, and will guess — and every one of those guesses
- * changes what the number means. The window is not decoration on the figure. It is half the figure.
+ * RULING C2 ON THE DESK — every number states its window, on the surface, where the number is. The plan's
+ * Part 5.1 audit table is acceptance criteria, not documentation, and these are the rows on the Desk;
+ * asserted against the RENDERED page, not the copy deck, because a token in copy.ts that never reaches the
+ * screen is a rule written down and not obeyed. Why it matters: "+8.2%" is not a fact — over what? a day? a
+ * week? since the position opened? — and every guess changes what the number means. The window is half the figure.
  */
 test.describe("C2 — every number on the Desk carries its window", () => {
   test.skip(process.env.MSM_SEEDED !== "1", "needs a seeded test database (MSM_SEEDED=1)");
@@ -341,9 +293,8 @@ test.describe("C2 — every number on the Desk carries its window", () => {
     const watch = page.getByRole("region", { name: "Watchlist" });
     await expect(watch.getByText(/· 1D/).first()).toBeVisible();
 
-    // One caption for the module, because every row's spark covers the same 30 sessions. Repeating
-    // it per row would stutter without adding a fact — but a line with no period at all is a shape
-    // that means nothing, and that is what it was.
+    // One caption for the module, because every row's spark covers the same 30 sessions — repeating it per
+    // row would stutter without adding a fact, but a line with no period at all is a shape that means nothing.
     await expect(watch.getByText("Sparklines: 30 sessions, close only")).toBeVisible();
   });
 
@@ -356,26 +307,17 @@ test.describe("C2 — every number on the Desk carries its window", () => {
 });
 
 /**
- * The macro board (N3, Part 6) — against the seeded night, in a real browser.
- *
- * The unit tests prove the state machine; the component tests prove the markup. This proves the two
- * ends of the system are actually connected: that a row the pipeline stored arrives on the Desk with
- * its window intact, its staleness graded, and — for the one number here that is ours — its entire
- * derivation on the page beside it.
+ * The macro board (N3, Part 6) — against the seeded night, in a real browser. The unit tests prove the state
+ * machine and the component tests the markup; this proves the ends are connected: a row the pipeline stored
+ * arrives on the Desk with its window intact, its staleness graded, and — for the one number that is ours —
+ * its entire derivation on the page beside it.
  */
 /**
- * The one instance of some text that the reader can ACTUALLY SEE.
- *
- * The macro board renders twice — once in the phone shelf (`md:hidden`), once in the ≥md row — and
- * exactly one of the two is display:none at any given width. `.first()` therefore resolves to the
- * SHELF's copy on the desktop project, which is present in the DOM, correct in every particular, and
- * invisible. The nc-3 tag caught this: three tests failed with "13 × locator resolved to <span>…
- * unexpected value: hidden".
- *
- * jsdom has no CSS, so the component tests could never have seen it — they were right to use
- * getAllByText, and they were blind to this by construction. In a real browser the honest question is
- * not "is this in the DOM" but "can the reader see it", and this is how the rest of this file already
- * asked it. I should have read the file before writing new tests into it.
+ * The one instance of some text the reader can ACTUALLY SEE. The macro board renders twice — once in the
+ * phone shelf (`md:hidden`), once in the ≥md row — and exactly one is display:none at any width, so `.first()`
+ * resolves to the SHELF's copy on desktop: in the DOM, correct, and invisible. The nc-3 tag caught this (three
+ * tests failed "resolved to <span>… hidden"). jsdom has no CSS, so the component tests were blind to it by
+ * construction; in a real browser the honest question is "can the reader see it", which this asks.
  */
 function visible(page: Page, text: string | RegExp) {
   return page.getByText(text).filter({ visible: true }).first();
@@ -432,13 +374,11 @@ test.describe("The macro board", () => {
 });
 
 /**
- * THE PHONE'S MACRO GRIDS (PD4, §7.1) — the composition that replaced the two swipe-shelves.
- *
- * The Desk carried the app's only two horizontal rails, and they hid two figures each behind a swipe.
- * PD4 replaced them with grids that show everything at once (amendment 0.2.1). These tests pin the
- * three claims that change makes, and they are asserted in the BROWSER because the claim is about what
- * is on the SCREEN — the jsdom suite can prove which cell a figure sits in, but only a real layout can
- * prove the reader can see it.
+ * THE PHONE'S MACRO GRIDS (PD4, §7.1) — the composition that replaced the two swipe-shelves. The Desk carried
+ * the app's only two horizontal rails, hiding two figures each behind a swipe; PD4 replaced them with grids
+ * that show everything at once (amendment 0.2.1). These pin the three claims that change makes, in the BROWSER
+ * because the claim is about what is on the SCREEN — jsdom can prove which cell a figure sits in, only a real
+ * layout proves the reader can see it.
  */
 test.describe("The phone's macro grids", () => {
   test.skip(process.env.MSM_SEEDED !== "1", "needs a seeded test database (MSM_SEEDED=1)");
@@ -460,19 +400,12 @@ test.describe("The phone's macro grids", () => {
     await expect(money).toHaveCount(4);
 
     /*
-     * EVERY CELL LIES WITHIN THE WIDTH OF THE PHONE — that is what "nothing is hidden" means here, and
-     * it is a narrower claim than it might look, deliberately.
-     *
-     * It is NOT `toBeInViewport`: these cells run down a long page and the money grid sits well below
-     * the fold, which is fine — the Desk is a page you scroll. Vertical distance is reading. Sideways
-     * distance is hiding.
-     *
-     * And it is NOT `toBeVisible`, which would prove nothing at all: an item parked off the end of a
-     * shelf is "visible" to Playwright in exactly the same way it is invisible to a reader. The old
-     * shelf would have passed that assertion on the very figures it was concealing.
-     *
-     * So the question is asked of the BOX: does this cell sit inside the phone's width? A grid cell
-     * does. A card sitting off the right-hand end of a rail does not.
+     * EVERY CELL LIES WITHIN THE WIDTH OF THE PHONE — what "nothing is hidden" means here, and narrower than
+     * it looks. NOT `toBeInViewport`: the money grid sits below the fold, which is fine — vertical distance is
+     * reading, sideways distance is hiding. NOT `toBeVisible`, which proves nothing: an item off the end of a
+     * shelf is "visible" to Playwright exactly as it is invisible to a reader (the old shelf would have passed
+     * that on the very figures it concealed). So the question is asked of the BOX: does this cell sit inside
+     * the phone's width? A grid cell does; a card off the right end of a rail does not.
      */
     const offscreen = await page.evaluate(() => {
       const width = document.documentElement.clientWidth;
@@ -493,22 +426,13 @@ test.describe("The phone's macro grids", () => {
   });
 
   /**
-   * NOTHING INSIDE A MACRO CELL REACHES OUTSIDE IT.
-   *
-   * THIS GUARD EXISTS BECAUSE PD4's HEADLINE GUARD IS BLIND TO PD4's OWN BUG, and that is worth
-   * stating plainly rather than burying.
-   *
-   * The sideways-scroll sweep asks the DOCUMENT a question: `scrollWidth === clientWidth`. A cell that
-   * overflows into the cell NEXT DOOR never touches the document's scrollWidth — the spill lands
-   * inside the page, not past its edge. So the sweep reports a clean page while a figure sits under
-   * the border of the card beside it.
-   *
-   * That is not hypothetical. PD4's first 3-up tape did exactly this: at 360px the index levels
-   * overflowed their cards by 8px, the delta chips shattered into three lines, and the page-level
-   * sweep measured ZERO horizontal overflow and passed. Only a screenshot showed it.
-   *
-   * So the question has to be asked of the CELL, not the page: does anything inside this box reach
-   * past the box's content edge? Bounding boxes, per PD3's law — never the DOM.
+   * NOTHING INSIDE A MACRO CELL REACHES OUTSIDE IT. THIS GUARD EXISTS BECAUSE PD4's HEADLINE GUARD IS BLIND TO
+   * PD4's OWN BUG: the sideways-scroll sweep asks the DOCUMENT `scrollWidth === clientWidth`, but a cell that
+   * overflows into the cell NEXT DOOR never touches the document's scrollWidth — the spill lands inside the
+   * page, not past its edge. PD4's first 3-up tape did exactly this: at 360px the index levels overflowed by
+   * 8px, the delta chips shattered into three lines, and the page sweep measured ZERO overflow and passed;
+   * only a screenshot showed it. So the question is asked of the CELL: does anything inside this box reach past
+   * its content edge? Bounding boxes, per PD3's law — never the DOM.
    */
   test("nothing inside a macro cell reaches outside it — the sweep cannot see this", async ({ page }) => {
     const spills = await page.evaluate(() => {
@@ -545,23 +469,18 @@ test.describe("The phone's macro grids", () => {
   });
 
   test("keeps the Mood gauge OUT of the money grid — a grid row is as tall as its tallest cell", async ({ page }) => {
-    // The gauge was briefly a fifth card on the money shelf, and a shelf stretches every card to the
-    // height of its tallest: the four stat cards were padded with ~200px of dead space each and the
-    // phone Desk grew 347px. A GRID ROW DOES THE VERY SAME THING. The bug's mechanism survived the
-    // shelf's retirement, so this guard has to survive it too.
-    //
-    // It is asserted in BOUNDING BOXES, not the DOM — PD3's law. A DOM-order test passed happily
-    // through an entire rewrite while the screen changed underneath it.
+    // The gauge was briefly a fifth card on the money shelf, and a shelf stretches every card to the tallest:
+    // the four stat cards gained ~200px of dead space each and the phone Desk grew 347px. A GRID ROW DOES THE
+    // SAME, so the bug's mechanism survived the shelf's retirement and this guard must too. Asserted in BOUNDING
+    // BOXES, not the DOM (PD3's law — a DOM-order test passed through a rewrite while the screen changed).
     const cells = page.locator('[data-macro-group="money"] > *');
     await expect(cells).toHaveCount(4);
 
     const heights = await cells.evaluateAll((els) => els.map((el) => el.getBoundingClientRect().height));
 
-    // THE THRESHOLD IS MEASURED, NOT GUESSED. The four stat cells measure 125–163px on the seeded
-    // night (the taller two carry a stale note and an attribution line). The Mood gauge — a score, a
-    // position strip, two unfoldable sentences and a disclosure — is well past 400px. 280 sits in the
-    // empty space between those two facts: comfortably above anything a real glance can grow to, and
-    // comfortably below what a gauge would drag every cell in its row up to.
+    // THE THRESHOLD IS MEASURED, NOT GUESSED. The four stat cells measure 125–163px on the seeded night; the
+    // Mood gauge (a score, a position strip, two unfoldable sentences, a disclosure) is past 400px. 280 sits in
+    // the empty space between: above anything a real glance grows to, below what a gauge drags its row up to.
     for (const h of heights) {
       expect(h, `a money cell is ${Math.round(h)}px tall — has the gauge been put back in the grid?`).toBeLessThan(280);
     }

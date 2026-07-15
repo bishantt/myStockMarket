@@ -1,27 +1,14 @@
 /**
  * copy.ts — the canonical copy deck (plan Appendix J).
  *
- * Every reader-facing sentence that carries a guardrail lives here, verbatim. Components import
- * from this file; they never inline a sentence of their own. That is not a style preference —
- * these strings ARE the honesty rules in their final, human form:
+ * Every guardrail-bearing sentence lives here verbatim; components import, never inline. These
+ * strings ARE the honesty rules in final human form — "A tendency, not a prediction" keeps a base
+ * rate from reading as a forecast; "likely noise" stops a bare +8% from inviting a chase. Changing
+ * any string is a STRUCTURAL decision (plan §1.3.3), and a unit test pins every one to the Appendix,
+ * so a rewording fails the build rather than softening a warning. Voice (§3.9): mechanical third
+ * person, sentence case, no exclamation marks; curly quotes and em dashes are deliberate.
  *
- *   - "A tendency, not a prediction."      keeps a base rate from reading as a forecast.
- *   - "No news found — ... likely noise."  is what stops a bare +8% from inviting a chase.
- *   - "Insufficient history ..."           is the N < 30 suppression, spoken.
- *
- * Changing any string in this file is a STRUCTURAL decision (plan §1.3.3): Appendix J changes
- * are never local edits. A unit test pins every one of them to the Appendix, so a well-meant
- * rewording fails the build rather than quietly softening a warning.
- *
- * Voice (plan §3.9, Research Report §9.4): mechanical third person. "The pattern has
- * historically been followed by..." — never "I think". Sentence case. No exclamation marks.
- * Curly quotes and em dashes are deliberate; this is a broadsheet.
- */
-
-/**
- * Placeholders are written as {name} and filled by `fill()` below. They are left unfilled here
- * so the deck stays greppable: searching for a rendered sentence in the codebase finds exactly
- * one hit, in this file.
+ * Placeholders are {name}, filled by `fill()` below; left unfilled so the deck stays greppable.
  */
 export const copy = {
   baseRate: {
@@ -32,16 +19,12 @@ export const copy = {
     insufficient: "Insufficient history (N = {n}) — treat as anecdote.",
     /** The always-up baseline, shown beside every base rate so 56% cannot masquerade as an edge. */
     baseline: "Unconditional {h}-day up-rate ≈ {pct} — read this against that baseline.",
-    /** N 30–99: the wide-interval note that MUST accompany the natural-frequency form (Appendix J
-     * addition, 2026-07-11 — the plan mandates the note but left the wording to compose; logged in
-     * DECISIONS). Renders in place of the CI numerals, which are suppressed at this sample size. */
+    /** N 30–99: replaces the suppressed CI numerals (Appendix J addition 2026-07-11 — wording
+     * composed per the plan, logged in DECISIONS). */
     wideInterval: "Sample still small — the true rate could sit some way either side of this.",
   },
 
-  /**
-   * Tier actions come from a fixed lexicon, and every one of them is observational. No tier
-   * ever maps to an acquisitional verb — "worth a closer look", never "buy". (RR §9.4.)
-   */
+  /** Tier actions are a fixed, observational lexicon — "worth a closer look", never "buy" (RR §9.4). */
   tier: {
     strong: "worth a closer look",
     moderate: "note it; check the weakeners",
@@ -65,12 +48,9 @@ export const copy = {
   },
 
   /**
-   * THE WINDOW VOCABULARY — a closed set (ruling C2, NEWS-AND-CONTROL-PLAN Appendix B).
-   *
-   * Every number in this app states the period it covers, in the same visual unit as the number
-   * itself — not in a footnote, not only in a module footer. "+8.2%" is not a fact; "+8.2% · 1D"
-   * is. The vocabulary is closed and lives here so that every surface says "20d avg" the same way,
-   * and so a test can check that a metric label carries one of these tokens at all.
+   * THE WINDOW VOCABULARY — a closed set (ruling C2, NEWS-AND-CONTROL Appendix B). Every number
+   * states its period in the same visual unit as the number ("+8.2% · 1D", never bare "+8.2%").
+   * Closed and central so every surface says "20d avg" alike and a test can check a label carries one.
    */
   window: {
     d1: "1D",
@@ -89,41 +69,25 @@ export const copy = {
     atClose: "at {day}'s close",
     vsPriorClose: "vs prior close",
     /**
-     * Added in N3, on purpose and in a diff — which is what the closed set is FOR.
-     *
-     * The macro board states a mortgage rate's change against LAST WEEK'S survey, and there was no
-     * honest way to say that with the tokens that existed. "5D" would have been a lie of precision:
-     * Freddie Mac publishes a weekly survey, not five trading days of quotes, and a reader learning
-     * what these words mean deserves the one that is true.
+     * Added in N3, in a diff — which is what the closed set is FOR. The macro board states a mortgage
+     * rate's change against last week's survey; "5D" would be a lie of precision (Freddie Mac
+     * publishes a weekly survey, not five trading days).
      */
     vsPriorWeek: "vs prior week",
   },
 
   /**
-   * The macro strip (redesign §6.1, extended by NEWS-AND-CONTROL-PLAN Part 3).
-   *
-   * These strings exist because an ETF is not its index: SPY traded near 755 while the S&P 500 was
-   * near 6,800, and the Desk printed the former under the latter's name.
-   *
-   * WHAT CHANGED IN N1 — one mark per row, and a footer that cannot lie.
-   *
-   * The old grammar said "ETF proxy" TWICE on every proxy row: once as a label suffix
-   * ("S&P 500 · SPY (ETF proxy)") and again as a freestanding chip. On screen that reads as noise,
-   * and noise is where a beginner stops reading. Now there is exactly ONE proxy mark: the chip.
-   *
-   * And `provenance` is gone. It was a static sentence — "Index levels · FRED · prior close" —
-   * rendered under whatever the rows happened to show, so on the night FRED's index series failed
-   * it sat under four ETF prices and claimed they were FRED index levels. A provenance line that
-   * can disagree with its own surface is worse than none at all. It is now COMPOSED from the rows
-   * actually rendered (ruling C6, buildMacroProvenance in lib/morning.ts).
+   * The macro strip (redesign §6.1, NEWS-AND-CONTROL Part 3). An ETF is not its index — SPY near 755
+   * under the S&P 500's name near 6,800 — so each proxy row carries exactly ONE proxy mark (the chip;
+   * N1 removed the duplicate suffix). `provenance` is gone: a static "FRED index levels" line sat under
+   * ETF prices the night FRED failed, so it is now COMPOSED from the rows rendered (ruling C6,
+   * buildMacroProvenance in lib/morning.ts).
    */
   macro: {
     /** The single proxy mark on a slot that is an ETF BY DESIGN (small caps — no free index series). */
     proxyChip: "{symbol} · ETF price",
-    /**
-     * The proxy mark on an index slot that DEGRADED to an ETF. It negates the misreading outright,
-     * because this is the one case where an index's name and an ETF's price share a row.
-     */
+    /** The proxy mark on an index slot that DEGRADED to an ETF — the one case where an index's name
+     * and an ETF's price share a row, so it negates the misreading outright. */
     proxyChipDegraded: "{symbol} · ETF price — not the index level",
     /** QQQ tracks the Nasdaq-100, not the Composite. The mismatch is stated, never blurred. */
     proxyChipNasdaq: "QQQ · Nasdaq-100 ETF price — not the Composite",
@@ -137,13 +101,9 @@ export const copy = {
   },
 
   /**
-   * THE MACRO BOARD (NEWS-AND-CONTROL-PLAN Part 6, Appendix B).
-   *
-   * Five household stats that answer what a market number cannot: what does a mortgage cost, what
-   * did prices do, what is gold worth, what is a dollar worth in rupees — and how does the market
-   * feel. The first four are other people's numbers, and the strings below name whose. The fifth is
-   * OURS, and the strings below say so out loud, because that is the only thing that makes it
-   * legitimate to show at all.
+   * THE MACRO BOARD (NEWS-AND-CONTROL Part 6, Appendix B). Five household stats: mortgage, CPI, gold,
+   * USD→NPR, and the Mood gauge. The first four are other people's numbers and the strings name whose;
+   * the fifth is OURS and says so out loud, the only thing that makes it legitimate to show.
    */
   macroBoard: {
     mortgageLabel: "30-yr mortgage",
@@ -152,18 +112,15 @@ export const copy = {
     cpiNote: "Consumer prices vs the same month last year, as published.",
     goldLabel: "Gold (oz)",
     /**
-     * "Indicative spot reference" — and NEVER "LBMA price", never "COMEX settlement". Those are
-     * licensed benchmarks with precise meanings that this app has not bought and cannot verify.
-     * Borrowing their authority for a different number is the exact species of lie C6 exists to stop.
+     * "Indicative spot reference", NEVER "LBMA price" or "COMEX settlement" — licensed benchmarks this
+     * app has not bought and cannot verify. Borrowing their authority is the lie C6 exists to stop.
      */
     goldProvenance: "indicative spot reference · GoldAPI",
     nprLabel: "USD → NPR",
     /** The pair, never one side: picking a side silently answers a question the reader never asked. */
     nprPair: "{buy} buy · {sell} sell",
-    /**
-     * Mandatory. We quote no remittance app — none exposes a legitimate rate API — so rather than
-     * inventing one, the cell says plainly that the number it shows is not the number you will get.
-     */
+    /** Mandatory: no remittance app exposes a legitimate rate API, so the cell says plainly that this
+     * is not the number you will get. */
     nprQualifier: "Remittance apps may differ.",
     nprSourceNrb: "NRB reference",
     nprSourceMid: "mid-market reference",
@@ -172,11 +129,8 @@ export const copy = {
     erApiAttribution: "Rates By Exchange Rate API",
 
     moodLabel: "Mood gauge",
-    /**
-     * Ruling C8's sentence. The gauge is ours because no legitimate external one exists to license,
-     * and a home-built sentiment number that does not say it is home-built is just a rumour with a
-     * decimal point.
-     */
+    /** Ruling C8: the gauge is ours because no external one exists to license, and an unlabeled
+     * home-built sentiment number is a rumour with a decimal point. */
     moodOwnership:
       "Computed by this app from breadth, volatility, momentum, range position, and credit spreads — not CNN's index.",
     /** It is not a signal, and nothing in this app has ever measured what a 42 is followed by. */
@@ -193,10 +147,8 @@ export const copy = {
   },
 
   /**
-   * The Mood gauge's word bands. Deliberately FLAT — there is no "extreme" band here.
-   *
-   * "Extreme greed" is a phrase that manufactures urgency, and urgency is the one thing this
-   * product refuses to sell. The words describe; they do not exhort.
+   * The Mood gauge's word bands — deliberately FLAT, no "extreme" band. "Extreme greed" manufactures
+   * urgency, the one thing this product refuses to sell. The words describe; they do not exhort.
    */
   moodBands: {
     f0: "fearful",
@@ -214,16 +166,10 @@ export const copy = {
   },
 
   /**
-   * THE PIPELINE STRIP (NEWS-AND-CONTROL-PLAN Part 4.1, Appendix B).
-   *
-   * Module 00 used to spend a whole card — the best position on the phone — saying "last cloud run
-   * — Jul 11" in the same quiet voice every day, whether the pipeline was healthy or three days
-   * dead. Its payload was one date and a status that is almost always "fine".
-   *
-   * These four strings are the replacement, and the ESCALATION between them is the honest part.
-   * Freshness is prominent in proportion to how BAD the news is: a live pipeline earns one quiet
-   * line, a stale one earns amber, a dead one earns the loudest surface in the app. The old design
-   * spent hero space on the boring case and had no escalation at all for the frightening one.
+   * THE PIPELINE STRIP (NEWS-AND-CONTROL Part 4.1, Appendix B). Replaces Module 00, which spent the
+   * phone's best card saying "last run — Jul 11" in the same quiet voice whether healthy or three days
+   * dead. The ESCALATION is the honest part: freshness is prominent in proportion to how bad the news
+   * is — a live pipeline earns one quiet line, a stale one amber, a dead one the loudest surface.
    */
   strip: {
     fresh: "Data through {day} close · pipeline ran {time} · next: {next}",
@@ -250,10 +196,8 @@ export const copy = {
     noEdge: "No clear edge either way — that is a valid outcome.",
     /** The word beside a high-importance row's dot — outcome never rides on colour alone. */
     importanceHigh: "high",
-    /**
-     * The empty calendar is a signature, not a failure. The allowlist drops every non-catalyst
-     * FRED release, so a genuinely quiet fortnight now renders as one — and says why.
-     */
+    /** The empty calendar is a signature, not a failure: the allowlist drops every non-catalyst FRED
+     * release, so a genuinely quiet fortnight renders as one — and says why. */
     empty: "A quiet stretch — no scheduled catalysts in the next 14 days.",
     emptySub: "Curated from the full FRED release feed; the rest was noise.",
     /** M8 (app-feel): the cut is named — the reader is told what they are seeing and through when. */
@@ -266,28 +210,13 @@ export const copy = {
   },
 
   /**
-   * The Front Page (NEWS-AND-CONTROL-PLAN Part 7, Appendix B).
-   *
-   * ONE STRING HERE IS NOT THE PLAN'S, AND THE REASON IS THE WHOLE ETHIC OF THE ROOM.
-   *
-   * Appendix B wrote the ordering sentence as: "Ordered by catalyst significance — scope,
-   * corroboration, and the size of the move it explains." Every word of that is true about the
-   * FORMULA, and it is misleading about the PAGE, because on the real feed two of those three terms
-   * barely vary:
-   *
-   *   - corroboration is 1 for 131 of 134 clusters (three outlets, few genuine duplicates)
-   *   - magnitude is 0 for ~130 of them (most stories name no listed company, so there is no move)
-   *
-   * That is 45% of the formula's weight sitting nearly constant, so the order collapses onto scope
-   * and the catalyst's class — and ten or more stories routinely tie at exactly the same score, with
-   * the lead decided by which was published first. A sentence promising a ranking by three
-   * discriminating signals, printed above a page where two of them discriminate nothing, is the app
-   * flattering its own machinery. So the sentence SAYS the ties are there, and says how they break.
-   *
-   * The honest fix was to change the words, not the ranking. Inventing a tiebreaker — a
-   * "US-market relevance" term, say — would be the app forming an editorial opinion about which
-   * stories deserve the front page, which is the one thing ruling C1 forbids. On a day when the Gulf
-   * is on fire, a wall of Gulf stories IS the honest front page. (Q-N4-1; amendment logged.)
+   * The Front Page (NEWS-AND-CONTROL Part 7, Appendix B). The `ordering` string is NOT the plan's, and
+   * the reason is the room's ethic: Appendix B promised a ranking by scope + corroboration + magnitude,
+   * but on the real feed corroboration is 1 for 131/134 clusters and magnitude 0 for ~130 — 45% of the
+   * weight sits near constant, so ten-plus stories tie and the lead is decided by publish time. The
+   * honest fix was to change the WORDS not the ranking: the sentence now says the ties are there and
+   * how they break. Inventing a tiebreaker would be the app forming an editorial opinion, which ruling
+   * C1 forbids. (Q-N4-1; amendment logged.)
    */
   news: {
     roomTitle: "Front page",
@@ -306,11 +235,9 @@ export const copy = {
     oneSource: "1 source",
     photoVia: "Photo via {source}",
     /**
-     * A story published BEFORE the app kept its article list (every row in production written before
-     * N5's migration). The count is real — it was computed from articles that existed — but they were
-     * not saved, so it cannot be opened. Saying that is the only honest move available: printing the
-     * "Sources" heading over an empty list would tell the reader the story had none, which is false,
-     * and hiding the section entirely would hide the fact that the claim is uncheckable.
+     * A story published before the app kept its article list (pre-N5). The count is real but the
+     * articles were not saved, so it cannot be opened — the only honest move: an empty "Sources" list
+     * would claim it had none, and hiding the section would hide that the claim is uncheckable.
      */
     sourcesNotKept:
       "The articles behind this story were not kept when it was published, so this count cannot be opened. Stories published from now on carry their sources.",
@@ -328,10 +255,9 @@ export const copy = {
     sourceList: "Sources",
     weekUnavailable: "less than a week of coverage so far — showing all of it",
     /**
-     * The gate-dropped note, and it is deliberately NOT rendered on the card — a null prints
-     * nothing there (P9). This line exists for the STORY page, where a reader who came looking for
-     * the "why" is owed the reason there is none. Silence on a card is restraint; silence on the
-     * page devoted to one story would be a hole.
+     * The gate-dropped note, deliberately NOT rendered on the card (a null prints nothing — P9). It is
+     * for the STORY page, where a reader who came for the "why" is owed the reason there is none:
+     * silence on a card is restraint; on the page devoted to one story it would be a hole.
      */
     noteDropped:
       "No context line for this story: the one written failed the number check, so it was dropped rather than published unverified.",
@@ -342,9 +268,9 @@ export const copy = {
     /** Block 5 heading — the v2 context prose (mechanism + where the name sits tonight). */
     contextTonight: "Context tonight",
     /**
-     * Block 5's absence, and WHICH absence. A context the gate DELETED is the system working loudly;
-     * a narrator with nothing to add is the system working quietly (silent) and prints nothing at
-     * all. Only the dropped case speaks, because a deleted sentence is the more interesting event.
+     * Block 5's absence, and WHICH absence: a context the gate DELETED speaks (the system working
+     * loudly); a narrator with nothing to add prints nothing (working quietly). Only the deleted case
+     * is worth a sentence.
      */
     contextDropped:
       "No context for this story: the added context cited a figure that traced back to no source, so the gate dropped it rather than publish it unverified.",
@@ -354,18 +280,16 @@ export const copy = {
     onTheCalendar: "On the calendar",
     /** A watch row: "{title} · {date} · {scope}". A market-wide event names no ticker. */
     watchMarketWide: "market-wide",
-    /**
-     * The provenance footer's `{model}` slot, composed from model_meta (9.5) — never hardcoded.
-     * The footer template already says "extracted by {model}", so these fill only the slot.
-     */
+    /** The footer's `{model}` slot, composed from model_meta (9.5), never hardcoded — the template
+     * already says "extracted by {model}". */
     provenanceModels: "{extract}, narrated by {synth}",
     /** A pre-PD7 row ran an extraction but did not record which model — we say so, not a guess. */
     provenanceEarlier: "an earlier run",
   },
 
   /**
-   * The login wall. Even the marketing-flavoured lines obey the one-deck rule and the mechanical
-   * voice — the first page a reader ever sees is not the place to start over-promising.
+   * The login wall. Even the marketing lines obey the one-deck rule and the mechanical voice — the
+   * first page a reader sees is not the place to start over-promising.
    */
   login: {
     headline: "Your personal broadsheet for the market.",
@@ -435,34 +359,21 @@ export const copy = {
   },
 
   /**
-   * The app-feel additions (APP-FEEL-PLAN Appendix B). Same rule as everything above: these are
-   * not labels, they are the honesty rules in their final human form.
-   */
-  /**
-   * The watchlist's own window statements (ruling C2, NEWS-AND-CONTROL-PLAN Part 5.1).
-   *
-   * The sparkline was the least honest thing on the Desk: a line with no axis, no scale, and no
-   * period. A shape that says "up" over an unstated stretch of time is not information — a month and
-   * a year produce the same picture and mean opposite things.
+   * The app-feel additions (APP-FEEL-PLAN Appendix B) — honesty rules in final human form, per above.
+   * The watchlist's window statements (ruling C2, NEWS-AND-CONTROL Part 5.1): the sparkline was the
+   * least honest thing on the Desk — a shape saying "up" over an unstated period, where a month and a
+   * year draw the same picture and mean opposite things.
    */
   watchlist: {
     sparkCaption: "Sparklines: 30 sessions, close only",
   },
 
   /**
-   * The control room (N6, plan Part 8 + Appendix B).
-   *
-   * THE "NOT AVAILABLE" SENTENCES ARE THE FEATURE, not the error messages around the feature.
-   *
-   * The commission asked for buttons that re-run the pipeline. Part 8.1 did the honest evaluation
-   * and found that on a normal weeknight the pipeline HAS ALREADY RUN, and a manual re-run would
-   * recompute byte-identical data. For that case — which is most cases — **the honest control is the
-   * EXPLANATION, not the button.** So most of the time this panel is not a row of buttons at all. It
-   * is a short piece of writing that tells the reader why there is nothing worth pressing, and when
-   * there will be. Ruling C5: an empty state is information, not an apology.
-   *
-   * A button that is present but pointless invites a press that changes nothing, and a product that
-   * lets you do something pointless and says nothing about it has lied to you about what you did.
+   * The control room (N6, plan Part 8 + Appendix B). THE "NOT AVAILABLE" SENTENCES ARE THE FEATURE.
+   * Part 8.1 found that on a normal weeknight the pipeline has already run and a manual re-run would
+   * recompute byte-identical data — so most of the time the honest control is the EXPLANATION, not a
+   * button (ruling C5: an empty state is information). A present-but-pointless button invites a press
+   * that changes nothing and says nothing about it, which is a lie about what you did.
    */
   control: {
     title: "Pipeline",
@@ -471,12 +382,10 @@ export const copy = {
     runFullDesc: "Ingest the close, recompute everything, publish.",
     runNews: "Refresh the news",
     /**
-     * `{cost}` is a MEASURED number (lib/constants NEWS_RUN_COST_USD), not a guess, and it is
-     * printed because this is the only button that spends money. N5 amended news mode's promise: it
-     * runs the narrator now — up to 60 Haiku extracts and one Sonnet call — because the honest scope
-     * of "refresh the news" is the WHOLE page, facts and context lines together. A refresh that
-     * rebuilt the stories while silently blanking their notes would be a button that quietly makes
-     * the page worse, which is not a refresh.
+     * `{cost}` is a MEASURED number (NEWS_RUN_COST_USD), printed because this is the only button that
+     * spends money. N5 made news mode run the narrator now (≤60 Haiku extracts + one Sonnet call):
+     * "refresh the news" honestly means the whole page, facts and context lines together, not stories
+     * rebuilt while their notes are silently blanked.
      */
     runNewsDesc: "Fetch today's articles, re-rank the front page. ~{cost} of API budget.",
     runMacro: "Refresh macro stats",
@@ -494,18 +403,15 @@ export const copy = {
     running: "running — {elapsed}",
 
     /**
-     * What the OTHER buttons say while one run is in flight (plan 8.4).
-     *
-     * The jobs share a GitHub concurrency group (`msm-nightly`, cancel-in-progress false), so runs
-     * are serialized — and GitHub keeps only the LATEST queued run in a group, silently discarding
-     * any it superseded. So a second dispatch fired now would not "also run"; it might simply
-     * evaporate. The panel refuses it as a STATE rather than letting the reader press a button whose
-     * result would be a run that quietly never happened.
+     * What the OTHER buttons say while a run is in flight (plan 8.4). The jobs share a GitHub
+     * concurrency group (`msm-nightly`, serialized, cancel-in-progress false), and GitHub keeps only
+     * the LATEST queued run — so a second dispatch might simply evaporate. The panel refuses it as a
+     * STATE rather than let a press become a run that quietly never happened.
      */
     blocked: "waiting for the run already in flight",
 
-    // The C5 explanations. Each one names the reason AND the next moment something changes, because
-    // "not available" without a "next" is a dead end, and a dead end is where a reader gives up.
+    // The C5 explanations: each names the reason AND the next moment something changes — "not
+    // available" without a "next" is a dead end.
     naMarketOpen:
       "Markets are open — today's closing data doesn't exist until 4:00pm ET. The nightly run lands ~{nightly} ET.",
     naWeekend:
@@ -513,20 +419,15 @@ export const copy = {
     naHoliday: "US markets are closed today ({name}) — {lastDay}'s close stands until {nextDay}.",
     naAlreadyRan: "Tonight's run already succeeded at {time} — there is nothing newer to fetch.",
 
-    /**
-     * P-2 is not provisioned. The panel renders every one of its real states against the missing
-     * secret and says plainly what is missing — it does not hide, and it does not pretend to work.
-     */
+    /** P-2 is not provisioned. The panel renders every real state against the missing secret and says
+     * plainly what is missing — it does not hide or pretend to work. */
     notConfigured: "Manual runs need a GitHub token — see QUESTIONS-FOR-BISHANT (P-2).",
 
     /**
-     * THE SENTENCE THAT STOPS A SILENT FAILURE.
-     *
-     * The dispatch API answers 204 with an empty body, so the run id is not returned — it has to be
-     * recovered by matching the request id in the run's name. Usually that takes a second or two.
-     * When it never resolves, the panel must NOT sit on "requested…" indefinitely, because then a
-     * run that fired and a run that never fired look exactly the same from the couch. It says this
-     * instead, and links the Actions tab so the reader can see for themselves.
+     * THE SENTENCE THAT STOPS A SILENT FAILURE. The dispatch API answers 204 with an empty body, so
+     * the run id is recovered by matching the request id in the run's name — usually a second or two.
+     * If it never resolves, the panel must not sit on "requested…" forever (a fired run and a
+     * never-fired run would look identical); it says this and links the Actions tab.
      */
     lost: "Dispatched, but the run never appeared. It may still be starting — check the Actions tab.",
     failed: "That run failed.",
@@ -550,10 +451,9 @@ export const copy = {
     rangeHigh: "High",
     rangeCurrent: "Last close",
     /**
-     * The strip's window line, and it states the window HONESTLY at any history length. "52-week"
-     * is a claim about a year; over fewer sessions the seed and any thin symbol get the plain
-     * "Trading range" wording and the true session count. Both name the window out loud — the rule
-     * that every number states its scope (§5.2), applied to the range itself.
+     * The strip's window line, stated HONESTLY at any history length: "52-week" is a claim about a
+     * year, so fewer sessions get the plain "Trading range" wording and the true session count. Both
+     * name the window out loud (§5.2, every number states its scope).
      */
     range52wWindow: "52-week range · {n} sessions · through {date}",
     rangeShortWindow: "Trading range · {n} sessions · through {date}",
@@ -580,8 +480,8 @@ export const copy = {
   },
 
   /**
-   * PD8 — "what our record says" for a name (plan 9.6 block 7 / 10.1 block 5). Shared by the story
-   * page and the ticker page, because the record is one thing and two definitions of it would drift.
+   * PD8 — "what our record says" for a name (plan 9.6 block 7 / 10.1 block 5). Shared by the story and
+   * ticker pages, because the record is one thing and two definitions would drift.
    */
   record: {
     /** An open (fired, unresolved) signal — a claim the ledger is still holding. */
@@ -599,10 +499,8 @@ export const copy = {
   },
 
   scans: {
-    /**
-     * Ruling M1, spoken. It is the sentence that separates a scan table from a leaderboard, and it
-     * has exactly one home: under the table, as the DataTable's footnote.
-     */
+    /** Ruling M1, spoken — the sentence that separates a scan table from a leaderboard. One home:
+     * under the table, as the DataTable's footnote. */
     tableNote:
       "Matches are filter hits, not forecasts. Sorting re-orders today’s matches; it never ranks tomorrow.",
     /** The name of the pipeline's own order. Never "top", never "best". */
@@ -611,10 +509,9 @@ export const copy = {
     preview: "First {k} of {n} by scan order",
     allMatches: "All {n} matches →",
     /**
-     * The 500-row cap. It is an honest editorial as much as a limit: a filter that matches this
-     * many names out of ~6,000 has stopped filtering. Sorting is disabled above it, because sorting
-     * a silent subset would present "the biggest movers among the most salient" as "the biggest
-     * movers" — an unlabelled ranking, which is the exact species ruling M1 exists to kill.
+     * The 500-row cap, an honest editorial as much as a limit: a filter matching this many of ~6,000
+     * names has stopped filtering. Sorting is disabled above it — sorting a silent subset would present
+     * "biggest among the most salient" as "biggest", the unlabelled ranking ruling M1 kills.
      */
     cap: "Showing the first 500 of {n} by scan order — a filter matching this many names is closer to noise than a signal. Sorting is off above the cap.",
     /** An empty scan is a result, not a shelf to apologise for. */
@@ -629,11 +526,8 @@ export const copy = {
   },
 
   disclosure: {
-    /**
-     * M2's contract in one string: a collapsed summary must always say HOW MUCH it is hiding and
-     * as of WHEN. A disclosure that hides an unstated number of things is a disclosure that can
-     * hide a miss.
-     */
+    /** M2's contract: a collapsed summary must say HOW MUCH it hides and as of WHEN. A disclosure that
+     * hides an unstated number of things can hide a miss. */
     more: "+ {n} more · {context}",
     calendar: "Full calendar",
     movers: "All movers",
@@ -643,30 +537,20 @@ export const copy = {
 
   overlay: {
     /**
-     * The detail sheet (PD9, plan 11.2). The ✕ is the sheet's first focusable control and its
-     * plainest exit — labelled with the same word the rail's close carries, so the two overlays
-     * speak alike. The reader also has Esc, the scrim, an overscroll-past-top pull, and the back
-     * gesture; the label names only the button a screen reader will announce.
+     * The detail sheet (PD9, plan 11.2). The ✕ is the sheet's first focusable control and plainest
+     * exit, labelled like the rail's close so the two overlays speak alike; the reader also has Esc,
+     * the scrim, an overscroll pull, and the back gesture.
      */
     close: "Close",
   },
 
   pulse: {
     /**
-     * M8, for a shelf: the reader is told what is off-screen and how to reach it.
-     *
-     * THE MACRO PULSE NO LONGER HAS A SHELF, AND THIS KEY DELIBERATELY OUTLIVES THAT (PD4).
-     *
-     * Two sibling strings used to live here — `marketsShelf` ("Markets — {n} figures, swipe") and
-     * `moneyShelf` — and they are DELETED, because their consumers are. PD4 replaced both of the
-     * Desk's swipe-shelves with grids that show every figure at once (amendment 0.2.1), and a count
-     * line announcing what is off the edge of the screen is a lie when nothing is. M8 required those
-     * strings precisely because the shelves hid things; the honest way to satisfy M8 is to stop
-     * hiding things, and then the sentence has no work left to do.
-     *
-     * This one survives because the `Shelf` primitive survives — it remains the house rail for
-     * filter-chip rows and any future glance rail, and the styleguide renders a live specimen of it.
-     * A primitive with no demo is a primitive that rots.
+     * M8, for a shelf: the reader is told what is off-screen and how to reach it. THE MACRO PULSE NO
+     * LONGER HAS A SHELF, and this key outlives that (PD4). Its siblings `marketsShelf`/`moneyShelf`
+     * were DELETED with the Desk's swipe-shelves (amendment 0.2.1 — a count of what's off-edge is a lie
+     * when nothing is). This one survives because the `Shelf` primitive does — the styleguide renders a
+     * live specimen, and a primitive with no demo rots.
      */
     swipe: "5 figures — swipe",
   },
@@ -683,9 +567,9 @@ export const copy = {
 
   paper: {
     /**
-     * The date is load-bearing, not decoration. A served bar can be days old around a holiday or a
-     * data gap, and "last close" without its date is an implicit freshness claim the reader cannot
-     * check. The disclaimer covers liveness; the date covers age. They are different lies to prevent.
+     * The date is load-bearing: a served bar can be days old around a holiday, and "last close" without
+     * its date is an implicit freshness claim the reader cannot check. Disclaimer covers liveness; the
+     * date covers age.
      */
     lastClose: "Use last close ({date}) · {price} — a reference, not a quote",
     /** M9: side has no default, so missing it is a plain validation message, not a nudge. */
@@ -700,15 +584,12 @@ export const copy = {
 export type CopyValues = Readonly<Record<string, string | number>>;
 
 /**
- * Substitutes {placeholders} in a copy-deck string.
+ * Substitutes {placeholders} in a copy-deck string. Strict both ways because a half-rendered guardrail
+ * is worse than a crash: a missing value throws rather than leaving a literal "{n}" on screen, and an
+ * extra value throws rather than being silently ignored (usually a renamed placeholder).
  *
- * Deliberately strict in both directions, because a half-rendered guardrail is worse than a
- * crash: a missing value throws rather than leaving a literal "{n}" on screen, and an extra
- * value throws rather than being silently ignored (which is almost always a renamed
- * placeholder and a sentence that now says something subtly different).
- *
- * @param template a string from the `copy` deck above — never a string literal from a component
- * @param values   one entry per {placeholder} in the template, no more and no fewer
+ * @param template a string from the `copy` deck above — never a literal from a component
+ * @param values   one entry per {placeholder}, no more and no fewer
  */
 export function fill(template: string, values: CopyValues = {}): string {
   const required = new Set(
