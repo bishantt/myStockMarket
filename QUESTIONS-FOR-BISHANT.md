@@ -8,6 +8,75 @@ Format: newest first. I mark each as [FYI], [VETO?], or [NEED] so you can scan.
 
 ---
 
+## 2026-07-16 — CC9 (The Desk greets the morning)
+
+CC9 taught the Desk to greet a Morning Edition. Module 02 becomes THE MORNING PLAN before the open, the
+masthead greets the morning once a dawn has really run, the calendar flips today-first, and check:live
+learned the states. Tagged `cc-9`. Presentation phase (app only). Six heads-ups; one question CLOSED,
+one CC5 transient FIXED.
+
+### [VETO? · Q-CC9-1, marked] "before the open" is edition provenance, not a live market-state claim
+Appendix A's morning status is verbatim: "before the open · market data through {weekday}'s close · news &
+macro refreshed {time}". But R3's e2e guard counts the market-state word (`open`/`closed`) in the header
+and fails on a second one — and "before the open" contains "open" while the pill says "closed", which is
+two. I ruled that **"before the open" is the edition's PROVENANCE** — when it was assembled, the twin of the
+evening's "updated 7:36 PM ET" — **not a live claim about whether the market is open now**. The pill stays
+the single live market-state truth (R3's actual intent). The morning R3 test strips "before the open" before
+counting, with that reasoning in a comment. **Assumption shipped:** the phrase reads as edition-timing, so
+the app tells one live market-state truth (the pill). Veto if you'd rather I reword the morning status to
+avoid the word "open" (e.g. "pre-market"), or drop the phrase — either is a one-line copy change.
+
+### [FYI · marked] The seeded morning's OVERNIGHT section is empty — populated is verified in production
+The Morning Plan's "Overnight" reads news clusters first seen since the evening press time. I chose NOT to
+seed overnight clusters: /news has date-range "week" queries, so any cluster I add to exercise "Overnight"
+would also change /news (its count, its span) — collateral well beyond CC9's VRT surface (Appendix C:
+"masthead + module 02"). So the seeded morning shows the honest empty state ("No new stories crossed the wire
+overnight"), and the Overnight card grammar is ALREADY pixel-locked via FrontPagePreview (identical markup).
+The populated Overnight is verified in production by the step-5 check (a real dawn dispatch + reading the
+morning front page — the pipeline-verification memory's rule). Say the word if you'd rather the seeded VRT
+show a populated Overnight; it is a /news re-shoot's worth of collateral.
+
+### [CLOSED · Q-CC8-1] The dawn sheet now describes the full macro+news+calendar dawn
+CC8 left the control-room Dawn refresh row describing the macro-only dawn it began as. CC9 fixed it: the
+description reads "Rebuilds the morning before the open — overnight news, macro, and the day's calendar," and
+its stages/providers now list macro+news+catalysts+publish+revalidate over fred+finnhub+marketaux. The
+seeded dawn row also gains a real Last run now (the seed stamps a Friday 6:31 AM dawn), so the control room
+shows the dawn's health instead of "—".
+
+### [FIXED · Q-CC5-2] check:live no longer false-reds a healthy morning Desk
+The CC5 transient was check:live reading a morning-window Desk. A Morning masthead is dated TODAY, which is
+ahead of the last closed session — and the old checkMasthead called that "an edition from the FUTURE". CC9's
+edition-state awareness fixes it: a morning masthead is judged by the morning's rule (dated today, a real
+session), and the date-derived checks (next-edition, calendar) measure against the last close. The evening
+six never relax. `--window=morning` adds the Morning truths (the edition claim matches the dawn's presence;
+refreshed before the 9:30 open) — run against a production dawn window.
+
+### [FYI] Module 02 renders BOTH states server-side; the browser switches (a TermProse note)
+The masthead, module 02 and the calendar must react to the reader's CLOCK (R6 — a cached morning served that
+evening must correct itself), so the browser decides which edition shows. To keep module 02's glossary
+decoration a SERVER render (TermProse memoises per server render), both the brief and the Morning Plan are
+rendered server-side and the client picks one (EditionSwitch). The evening brief renders first and claims the
+glossary terms, so its decoration is unchanged; the morning's collapsed copy of the brief (hidden behind a
+"Last evening's brief" fold) gets fewer — invisible, because it is collapsed. Confirmed the evening brief
+baseline did not move in the re-shoot. Noted so the double-render is not a surprise.
+
+### [still open, unanswered since LC1] Q-LC1-1 — vrt-diff.mjs is broken (pixelmatch absent)
+CC9 is a full re-shoot, so "diff every candidate" bit hardest here. `scripts/vrt-diff.mjs` still throws
+`ERR_MODULE_NOT_FOUND: pixelmatch`, so I used the pngjs-only counter (PATTERNS.md) again. The fix is one
+line — `npm i -D pixelmatch` — or a pngjs rewrite. Your call, still.
+
+### [FYI · no action] the tag run's desktop leg flaked 3× on a PRE-EXISTING race before going green
+The cc-9 tag run's desktop leg redded three times on a Next.js `NoFallbackError` (a background ISR
+race on the dynamic `/scans/[preset]` route) before the fourth attempt passed. It is NOT a CC9
+regression: rehearsal #3 on the same SHA passed all four legs, and cc-8's own PASSING tag run carries
+the identical error in its log. The tag stayed put (rule #6) and I re-ran until the timing missed.
+Noted so a red tag-run leg in the history does not alarm you, and flagged for CC10 (it re-shoots VRT).
+
+### [FYI · carry-forward for CC10] the bundle ceiling is tight — /news at 199.6 KB of 200
+The client edition machinery added ~3 KB across the (desk) routes. /news now sits at 199.6 KB against the
+hard 200 KB first-load ceiling. It passes, but CC10 (the janitor + "new" tags) has ~0.4 KB of headroom on
+that route — worth watching, and a reason to keep CC10's client additions lean.
+
 ## 2026-07-16 — CC8 (The dawn run becomes the Morning Edition's engine)
 
 CC8 turned the pre-open dawn cron from a three-number macro fix into the morning refresh: `dawn` mode

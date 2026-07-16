@@ -1307,3 +1307,28 @@ calendar — the dawn refresh — calls the fetcher with movers=[], and the news
 (and the Finnhub earnings-hour enrichment, which is keyed by date not mover) runs in full. The front page's
 own news comes from a separate fetch (_fetch_news_articles), so the dawn still gets fresh news without the
 per-ticker mover-news the nightly needs.
+
+## Render both state variants server-side, switch on the client (CC9, edition-state)
+
+When a surface must react to the reader's CLOCK (not the server's) but its content needs a SERVER render
+— the case CC9 hit: the masthead/module-02/calendar depend on the Morning-vs-Evening edition (a client
+fact, R6), but module 02's brief uses TermProse whose glossary registry only memoises on a server render:
+
+- A client CONTEXT provider computes the state once (`EditionStateProvider`): seed `useState` with the
+  server's instant (`serverNow`) so hydration matches the SSR HTML byte-for-byte AND check:live's read of
+  the raw HTML sees production's real state, then correct to `new Date()` on mount. No interval — the
+  transitions that flip the masthead are server-DATA events (a dawn stamps, a nightly publishes), so one
+  mount correction is the whole of it. This is PipelineStrip's pattern, lifted to a shared context so the
+  masthead, module 02 and the calendar never disagree about the hour.
+- `EditionSwitch` takes the two variants as PROPS (`morning`/`evening`), both server-rendered into the
+  payload, and renders one. It is a Fragment, so it adds no DOM — the chosen node stays a direct grid
+  child and its `order-N` class still lands. Because both variants are server components passed as props,
+  their server-only features (TermProse's `cache()` registry) keep working; the client only PICKS.
+- THE COST, STATED: both variants render server-side every request. Where they share a sub-render (the
+  brief appears in the evening module AND collapsed in the morning plan), the request-scoped glossary
+  registry is claimed by whichever renders FIRST — so render the SHOWN-in-evening one first and the
+  duplicate's decoration lands on the hidden (collapsed) copy. Confirm the shown baseline did not move.
+- THE SEEDED-VRT TRAP: the test webserver's clock is REAL time, not the pinned browser clock, so the SSR
+  renders the EVENING state and the CLIENT swaps to morning on mount. A morning VRT shot must assert the
+  swap landed (`toContainText(/MORNING EDITION/)`) BEFORE the camera fires — a baseline of the evening
+  masthead filed under "morning" is PD3's law all over again (an exact baseline of the wrong state).
