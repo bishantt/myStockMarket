@@ -1,144 +1,146 @@
-# Your session: CC8 — The dawn run becomes the Morning Edition's engine. CC8 ONLY.
+# Your session: CC9 — The Desk greets the morning. CC9 ONLY.
 
-The two-plan commission (2026-07-15) is under way. **CC1–CC7 and LC1–LC3 are DONE and tagged (`cc-1`…
-`cc-7`, `lc-1`…`lc-3`). LEAN-CODEBASE (Plan B) is COMPLETE.** Two plans sit at the repo root:
+The two-plan commission (2026-07-15) is under way. **CC1–CC8 and LC1–LC3 are DONE and tagged (`cc-1`…
+`cc-8`, `lc-1`…`lc-3`). LEAN-CODEBASE (Plan B) is COMPLETE.** Two plans sit at the repo root:
 **CLARITY-AND-CADENCE-PLAN.md** (Plan A, `cc-1`…`cc-10`) and **LEAN-CODEBASE-PLAN.md** (Plan B, done).
 The decided execution order, fixed across both plans:
 
-> **CC1 ✓ → LC1 ✓ → LC2 ✓ → LC3 ✓ → CC2 ✓ → CC3 ✓ → CC4 ✓ → CC5 ✓ → CC6 ✓ → CC7 ✓ → CC8 → CC9 → CC10**
+> **CC1 ✓ → LC1 ✓ → LC2 ✓ → LC3 ✓ → CC2 ✓ → CC3 ✓ → CC4 ✓ → CC5 ✓ → CC6 ✓ → CC7 ✓ → CC8 ✓ → CC9 → CC10**
 
-You run **CC8 of CLARITY-AND-CADENCE-PLAN.md and nothing else** — one phase per session is standing
+You run **CC9 of CLARITY-AND-CADENCE-PLAN.md and nothing else** — one phase per session is standing
 law (CLAUDE.md, Session rhythm). Within the phase the Autonomy Contract holds in full: never ask, never
 wait; anything that would be a question goes to QUESTIONS-FOR-BISHANT.md with the most reasonable
-assumption made and marked. **After CC8 the order continues at CC9.**
+assumption made and marked. **After CC9 the order continues at CC10.**
 
 ## The standing handoff rule (this is how Bishan steers, phase by phase)
 
 At the END of your phase, after the tag is green:
 1. Bring every intelligence file current (PROGRESS.md exact checkpoint, DECISIONS.md, LESSONS.md,
    PATTERNS.md, QUESTIONS-FOR-BISHANT.md, and the phase evidence file — CC evidence goes under
-   `docs/clarity-evidence/cc8.md`).
+   `docs/clarity-evidence/cc9.md`).
 2. **Rewrite THIS file** (NEXT-SESSION-PROMPT.md) as the complete, self-contained, paste-ready prompt
-   for the NEXT phase in the order above (for you, **CC9** of CLARITY-AND-CADENCE-PLAN.md) — carrying
-   this handoff rule forward, the phase-order line, the phase's build list distilled from its plan, its
-   gate, and anything in flight. Assume the next session has NO memory of yours. (Read
-   CLARITY-AND-CADENCE-PLAN.md's CC9 section — Part 4.7-presentation + the Part 5 CC9 line + Appendix A/C.)
+   for the NEXT phase in the order above (for you, **CC10** of CLARITY-AND-CADENCE-PLAN.md) — carrying
+   this handoff rule forward, the phase-order line, the phase's build list distilled from its plan (§4.8
+   the janitor + the Part 5 CC10 line + Appendix D + Appendix B #2), its gate, and anything in flight.
+   Assume the next session has NO memory of yours.
 3. Report back to Bishan in plain English: what was built, what passed (cite the tag and run id), what
-   changed in QUESTIONS, and confirm this file is ready. **Then STOP and wait.** Do not roll into CC9.
+   changed in QUESTIONS, and confirm this file is ready. **Then STOP and wait.** Do not roll into CC10.
 
 ## Session start (the CLAUDE.md ritual)
 
 1. `git pull` → read CLAUDE.md → PROGRESS.md → LESSONS.md → diff DECISIONS.md (any non-[claude] line
    is a user veto, rank 2.5 — honor it FIRST). Check specifically for any answer/veto to the OPEN
-   questions (QUESTIONS-FOR-BISHANT.md): **Q-CC7-1** (dawn's Last run "—" — **CC8 CLOSES THIS**: once
-   publish_dawn stamps a distinct dawn entry, the control-room dawn row gets a real Last run; wire it).
-   **Q-CC7-2** (the action→sheet grouping — macro under dawn; if unanswered, leave it — CC8 doesn't
-   touch /settings except the dawn cron string). **Q-CC6-2** (the BIG one — the pre-existing
-   `classify_event` keyword classifier mislabels real headlines, so the front page leads by a weak guess;
-   NOT CC8's domain, but if Bishan wants a classifier pass it reorders the plan). **Q-LC1-1** (vrt-diff.mjs
-   BROKEN — pixelmatch absent; CC8 is pipeline-first, but a small /settings dawn-cadence diff may need it;
-   fix is `npm i -D pixelmatch` or a pngjs rewrite — the pngjs counter is in PATTERNS.md). **Q-CC5-2** (the
-   check:live "strip · next-edition" transient — if red at your post-deploy, read it: is a nightly delayed
-   past its cron? then it is the PD1 wall-clock window, not your defect. **CC8/CC9 own the edition-state
-   machine that ultimately fixes it.**)
-2. Read CLARITY-AND-CADENCE-PLAN.md before touching anything — especially **Part 4.7-pipeline** (the CC8
-   spec: the `dawn` mode, the cron move, event times, publish_dawn), **the Part 5 CC8 line**, **Part 0.3**
-   (the dawn-cron default — 10:30 UTC Mon–Fri), **Appendix B #4** (calendar_event.timing already exists —
-   CC8 starts writing it, NO migration), and **Appendix C** (CC8 = "— | none (pipeline only)"). Read
-   `.claude/skills/new-provider-adapter` if you touch a provider adapter.
+   questions (QUESTIONS-FOR-BISHANT.md): **Q-CC8-1** (the dawn sheet still describes the macro-only dawn —
+   **CC9 may enrich it** as part of the Morning-Edition presentation: the sheet's description + stages +
+   providers now genuinely run macro+news+calendar; a one-line description + two array edits, VRT-neutral
+   for the sheet). **The "no Anthropic at dawn / facts-only front page" note** (the morning front page
+   carries no prose until CC9 — CC9 decides the morning presentation of module 01 and the Morning Plan).
+   **Q-CC6-2** (the pre-existing `classify_event` keyword classifier mislabels headlines — NOT CC9's domain,
+   but if Bishan wants a classifier pass it reorders the plan). **Q-LC1-1** (vrt-diff.mjs BROKEN —
+   pixelmatch absent; CC9 is a FULL VRT re-shoot phase, so this bites hard — fix is `npm i -D pixelmatch`
+   or a pngjs rewrite; the pngjs counter is in PATTERNS.md). **Q-CC5-2** (the check:live strip/next-edition
+   transient — **CC9 owns the edition-state machine that ultimately fixes it**, and adds the
+   `--window=morning` assertions).
+2. Read CLARITY-AND-CADENCE-PLAN.md before touching anything — especially **Part 4.7-presentation** (the
+   CC9 spec: the edition-state machine, the 4 states + masthead table, THE MORNING PLAN module, the
+   calendar today-first flip, check:live `--window=morning`), **the Part 5 CC9 line**, **Appendix A** (the
+   morning copy, verbatim, into lib/copy.ts), and **Appendix C** (CC9 VRT = full re-shoot, all four legs:
+   masthead everywhere + module 02 morning state). Read `.claude/skills/new-surface` FIRST (the Morning
+   Plan is a new module) and `.claude/skills/vrt-update` (a full re-shoot).
 3. Run both suites (app: `npm test` · pipeline: `env -u DATABASE_URL uv run pytest`) and announce the
-   checkpoint. Expect **app 820 · pipeline 584 passed / 35 skipped** (unchanged since cc-7).
+   checkpoint. Expect **app 825 · pipeline 595 passed / 40 skipped** (unchanged since cc-8; 634/1 with a DB).
 
-## CC8's build list (Part 4.7-pipeline + the Part 5 CC8 line are authoritative; this is the distillation)
+## CC9's build list (Part 4.7-presentation + the Part 5 CC9 line are authoritative; this is the distillation)
 
-**CC8 is a PIPELINE phase (Python, `pipeline/`); the only app touch is the control-room dawn-row update.**
+**CC9 is a PRESENTATION phase (app, `app/`); it builds on the data CC8's dawn run now writes.**
 
-- **New mode `dawn` in `MODE_STAGES`** (`pipeline/jobs/job_a.py`): `("macro", "news", "catalysts",
-  "publish", "revalidate")` — all any-hour-safe or dawn-safe by their own docs. `catalysts` joins so the
-  day's calendar (and its new timing data) is fresh at breakfast. main() REFUSES an unknown mode (the
-  guard stands). If `catalysts` proves close-coupled anywhere, split the calendar refresh out rather than
-  force it (intent binds).
-- **Cron moves to `30 10 * * 1-5`** in nightly-a.yml (Part 0.3: 6:30 AM EDT / 5:30 AM EST, pre-open
-  year-round): Monday GAINS its dawn run (weekend news + Friday close macro), Saturday's pointless dawn
-  run STOPS. The current dawn cron is `0 10 * * 2-6` (Tue–Sat, macro mode). job_a already skips non-sessions.
-- **Event times (the `catalysts` stage):** enrich earnings events with Finnhub's `hour` (bmo/amc/dmh →
-  the EXISTING `calendar_event.timing` column, Appendix B #4 — NO migration). The seven allowlisted macro
-  releases carry canonical ET times from a static table in `catalyst_allowlist.py`
-  (CPI/JOBS/PPI/GDP/PCE/RETAIL → "8:30 AM ET", FOMC → "2:00 PM ET"), labeled in UI as scheduled
-  convention, not a feed. Untimed stays untimed — a null renders nothing (P9).
-- **`publish_dawn`** follows `publish_compute`'s NON-OVERWRITE pattern: it stamps `pipeline_run.sourceStatus`
-  as today's dawn entry WITHOUT claiming a new edition (E1: `runDate` stays the last closed session;
-  dawnness is carried by the run's stages/timestamps). It NEVER overwrites the night's `source_status` —
-  it adds BESIDE it (the same reason compute-mode has its own publish: an ordinary publish would blank the
-  night's degraded-source map).
-- **The workflow input `choice` gains `dawn`** (nightly-a.yml's `workflow_dispatch` inputs). **THE 422
-  TRAP:** GitHub validates dispatch inputs against the workflow file ON THE TARGET REF, so the new `dawn`
-  value must land on `main` FIRST before you can dispatch it. Push, then dispatch.
-- **The control-room dawn row (CC7's `app/lib/pipelines.ts`):** update the dawn def's cron string from
-  `0 10 * * 2-6` to `30 10 * * 1-5` so the cadence reads "Mon–Fri · ~6:30 AM EDT / 5:30 AM EST", and give
-  the dawn row a REAL Last run now that publish_dawn stamps a distinct dawn entry (closes Q-CC7-1). The
-  cron→ET computation is `lib/cron.ts` (CC7, pure + tested) — feed it the new line; add/adjust a cron test.
+- **The edition-state machine (`app/lib/edition-state.ts`)** — client-computed where "now" matters
+  (MarketStateLine's law: the market state rides the reader's clock, not the server's, or a tab left open
+  goes stale). Four states (Part 4.7 table): **Evening** (evening run is the newest fact, publish→midnight
+  ET) · **Morning** (a dawn run succeeded for today's wall-clock session, before the open) · **Session**
+  (open ≤ now < evening publish — Morning masthead + the pill says OPEN, content unchanged) · **Overnight
+  gap** (after midnight, dawn not yet run → Evening masthead; NEVER claim a morning that has not happened —
+  R6). **How the app knows a dawn ran:** CC8's `publish_dawn` stamps a `dawn` entry into the latest
+  `pipeline_run.source_status` (shape: `{ranAt, sources, stages}`); `app/lib/pipelines.ts` already reads it
+  (`lastRunForDawn` / `readDawnEntry`). The state machine reads the same `dawn.ranAt` to know a dawn
+  happened for today's session. Unit-test it on the seeded clock (`e2e/seeded-clock.ts`).
+- **The masthead states** — the Evening masthead is as today; the Morning masthead is
+  `"THE DESK — MORNING EDITION · {weekday, date} · before the open · market data through {weekday}'s close ·
+  news & macro refreshed {time}"` (Appendix A, verbatim into copy.ts). R3's one-truth-per-line + its e2e
+  occurrence-count guard still hold (risk 9 — a second market-state mention reds at build).
+- **Module 02 becomes THE MORNING PLAN in morning state** (a new surface — read new-surface FIRST):
+  (a) *Overnight* — top 3 clusters by significance ingested since the evening press time, same card grammar;
+  (b) *Today's calendar* — today's events with their NEW times ("JNJ earnings · before the open" [bmo→"before
+  the open"], "CPI · 8:30 AM ET"), bmo-first; (c) *Where things closed* — one line reusing the evening's
+  verified numbers. The evening brief, when published, sits beneath as "Last evening's brief →" (collapsed
+  link, same page). In evening state, module 02 is the brief exactly as today. **amJson/pmJson stay untouched
+  dormant slots** — the Morning Plan is assembled from LIVE TABLES, not a second LLM artifact (cheaper, and
+  nothing to verify at dawn — this is why CC8's dawn spends no Anthropic).
+- **The calendar rail flips today-first in morning state** (D7's ordering serves each state).
+- **check:live learns the states** (`app/scripts/live-truth.mjs`): a new `--window=morning` flag asserts the
+  Morning truths (edition claim matches dawn-run presence; refreshed stamp < 9:30 AM ET). The evening
+  assertions NEVER relax (the existing six stand). This is the piece that ultimately fixes Q-CC5-2.
+- **copy.ts strings** — Appendix A's morning kicker/status/plan-headers/last-brief-link, verbatim, mechanical
+  voice reviews every line.
+- **The rendering of `timing`:** CC8 stores earnings timing as the raw `bmo`/`amc`/`dmh` code and macro as a
+  clock string ("8:30 AM ET"). The Morning Plan (and the ticker page, which already renders `row.timing`
+  raw) should map bmo→"before the open", amc→"after the close", dmh→"during the day" for earnings; macro
+  renders as-is. Decide where that mapping lives (a lib/format helper is the natural home).
 
-## CC8's gate (the Endgame, CLAUDE.md)
+## CC9's gate (the Endgame, CLAUDE.md)
 
-1. TDD as the plan's §6.2 list dictates. Tests: **mode-stage pinning** (dawn's stage tuple is in
-   MODE_STAGES and main() dispatches it; unknown-mode refusal stands), **dawn-on-Monday** (the new cron
-   fires Monday, not Saturday), **non-session skip**, **timing enrichment fixtures** (Finnhub hour →
-   timing; the 7 macro canonical times), **publish non-overwrite** (dawn adds beside the night's
-   source_status, never blanks it). Then build.
-2. Local gate (`typecheck && lint && test` · `uv run pytest` · `build` + `check:routes` +
-   `check:bundles` + `check:fonts` · `e2e:local` · `check:drift` — 29 rules at cc-7). Guard scripts need
-   Node 24 — prepend `PATH="$HOME/.nvm/versions/node/v24.18.0/bin:$PATH"`. **check:migrations is
-   once-per-phase; CC8 adds NO migration (timing exists), so it just confirms the live DB still matches.**
-   The pipelines-table dawn-cron-string change is the only /settings touch, so **expect a SMALL VRT diff on
-   the settings shots** (the dawn cadence text "Tue–Sat · ~6:00 AM…" → "Mon–Fri · ~6:30 AM…"). If the
-   rehearsal reds on the 5 settings shots, re-shoot them, diff EVERY candidate (pngjs counter, Q-LC1-1),
-   eyes on each. (Appendix C says CC8 VRT = none because the plan wrote it before CC7 put the cadence on
-   screen; the honest diff is the one-line dawn-cadence text.)
-3. Push to main → confirm branch CI green.
-4. **REHEARSE:** `gh workflow run ci.yml -f job=e2e` on the exact SHA you will tag. In parallel: wait for
-   the Vercel deploy, then `check:live`, `check:nav`, `check:lighthouse`. **check:live watch:** CC8 changes
-   the pipeline + the dawn cron; grep `app/scripts/live-truth.mjs` before the deploy (the CC3 lesson). It
-   asserts the Desk (masthead/board/index/calendar/press-time/next-edition) — read any red before believing
-   it (the edition-state/next-edition logic is CC8/CC9-adjacent).
-5. **Post-deploy, the pipeline-verification memory (THE REAL CHECK):** dispatch a REAL `dawn` run (any
-   hour — it is hour-safe) via `gh workflow run nightly-a.yml -f mode=dawn`, then verify in production:
-   `pipeline_run.sourceStatus` gained the dawn entries (BESIDE, not over, the night's), and the calendar
-   carries event times (earnings bmo/amc, macro "8:30 AM ET"). READ the actual data — the memory's lesson:
-   the suite goes green while production can publish garbage. Read the `pipeline-phase-verification` memory.
-6. Rehearsal green → tag `cc-8` **by SHA** → push → confirm the tag run.
-7. ONE docs commit after (evidence `docs/clarity-evidence/cc8.md`; intelligence files; this file rewritten
-   for CC9). Every evidence file ends with the gate-size line. Then report and STOP.
+1. TDD per §6.2: **edition-state machine** (each of the 4 states from a seeded clock + a seeded run shape),
+   **masthead occurrence-count** (R3's guard survives the morning kicker), **Morning Plan assembly** (the
+   three sections from live tables), **the timing→prose mapping** (bmo→"before the open" etc.). Then build.
+2. Local gate (`typecheck && lint && test` · `uv run pytest` · `build` + `check:routes` + `check:bundles` +
+   `check:fonts` · `e2e:local` · `check:drift` — 29 rules at cc-8). Guard scripts need Node 24 — prepend
+   `PATH="$HOME/.nvm/versions/node/v24.18.0/bin:$PATH"`. **check:migrations is once-per-phase; CC9 adds NO
+   migration (it is presentation).**
+3. **VRT is a FULL RE-SHOOT, all four legs** (Appendix C: masthead everywhere + module 02 morning state).
+   **DECIDE WITH EYES whether the seeded e2e legs render Morning or Evening state.** The seeded world is a
+   fixed morning; today (cc-8) it has NO dawn entry, so it renders EVENING state. To exercise MORNING state
+   you must add a dawn-stamped `pipeline_run` to the seed (a `source_status.dawn = {ranAt, sources, stages}`
+   entry on the latest run) — **the plan wants the default seed to exercise BOTH: one spec pins each state
+   via the two seeded run shapes.** This is a real seed change → a wide VRT re-shoot; budget it. **First-
+   baseline eyes on the Morning Plan** (the PD3 law — a brand-new surface's first baseline gets human
+   judgement). Diff EVERY candidate (pngjs counter, Q-LC1-1), open every image.
+4. Push to main → confirm branch CI green.
+5. **REHEARSE:** `gh workflow run ci.yml -f job=e2e` on the exact SHA you will tag. In parallel: wait for
+   the Vercel deploy, then `check:live`, `check:nav`, `check:lighthouse`. **check:live watch:** CC9 changes
+   the masthead + adds `--window=morning`; grep `app/scripts/live-truth.mjs` before the deploy (the CC3
+   lesson — a masthead/strip copy change can red check:live). Read any red before believing it (the
+   edition-state window is exactly the Q-CC5-2 transient's territory).
+6. Rehearsal green → tag `cc-9` **by SHA** → push → confirm the tag run.
+7. ONE docs commit after (evidence `docs/clarity-evidence/cc9.md`; intelligence files; this file rewritten
+   for CC10). Every evidence file ends with the gate-size line. Then report and STOP.
 
 ## Scope discipline
 
-CC8 is the `dawn` mode + cron move + event times + publish_dawn + the control-room dawn-row update ONLY.
-Do NOT build the CC9 presentation (the edition-state machine, the Morning Plan module, the masthead
-states, check:live --window=morning) — that is CC9. Do NOT touch the janitor (CC10). If a dawn change
-tempts an edition-state or Morning-Plan fix, LOG it — CC9 owns those.
+CC9 is the edition-state machine + masthead states + the Morning Plan module + the calendar today-first flip
++ check:live `--window=morning` + the Appendix A copy ONLY. Do NOT build the janitor (CC10 — retention,
+lifecycle, "new" tags). Do NOT touch the pipeline (CC8's `dawn` mode is done and production-verified). If a
+morning-state change tempts a retention or "new"-tag fix, LOG it — CC10 owns those.
 
 ## Carry-forward notes (do not lose these)
 
-- **`cc-7` state:** app **820** unit · pipeline **584** passed / 35 skipped · **97 VRT baselines** (5
-  re-shot in CC7 for the settings card→table, 0 added) · **29 drift rules** (no new rule) · **27 e2e
-  specs** · **14 manifest rooms** · 4 oracle legs · **16 bundle baselines**. Tag `cc-7` on `1c84bb5`.
-  (All run ids in docs/clarity-evidence/cc7.md.)
-- **CC7 is shipped:** the control room is a table (`components/settings/PipelinesTable.tsx` via DataTable)
-  + a per-row DetailOverlay sheet (`PipelineSheet.tsx`, code-split); `lib/cron.ts` (DST-honest
-  cadence/next-run, pure, tested) and `lib/pipelines.ts` (defs, status mapping, run merge, `loadPipelines`);
-  the N6 dispatch path is reused untouched via `PipelineActionRow.tsx`. DetailOverlay gained a controlled
-  mode (onClose). None of it touched the pipeline Python — CC8's core surface is fresh ground.
-- **Q-CC7-1 is CC8's to close:** the dawn row's Last run is "—" today because dawn shares the nightly's
-  pipeline_run. `publish_dawn` gives it a distinct dawn entry → wire the dawn row (and maybe the seed) to
-  read it.
-- **The dawn cron move is a workflow-file edit + a pipelines.ts cron-string edit.** The 422 trap: the new
-  `dawn` workflow input must be on `main` before you can dispatch it. Push first.
-- **The pipeline-verification memory is load-bearing:** the test suite goes green while production can
-  publish garbage. CC8's real check is dispatching a REAL dawn run and READING the sourceStatus + calendar
-  times in production. Memory: `pipeline-phase-verification`.
-- **The seed's control-room data:** `pipeline_run` + `briefing` rows exist (the table reads them). If CC8
-  wants the seeded world to show a dawn Last run, the seed needs a dawn-stamped pipeline_run (decide with
-  eyes — CC7's dawn row shows "—" against the current seed, which is honest).
+- **`cc-8` state:** app **825** unit · pipeline **595** passed / 40 skipped (**634/1 with a DB**) · **97 VRT
+  baselines** (5 re-shot in CC8 for the dawn cadence, 0 added) · **29 drift rules** (no new rule) · **27 e2e
+  specs** · **14 manifest rooms** · 4 oracle legs · **16 bundle baselines**. Tag `cc-8` on `7cc77ee`. (All
+  run ids in docs/clarity-evidence/cc8.md.)
+- **CC8 is shipped and PRODUCTION-VERIFIED:** the `dawn` mode runs macro+news+catalysts+publish_dawn+
+  revalidate; the cron is `30 10 * * 1-5` (Mon–Fri 6:30 AM ET); earnings carry Finnhub's bmo/amc/dmh and
+  macro releases their canonical ET times in `calendar_event.timing`; `publish_dawn` stamps a `dawn` entry
+  BESIDE the night's `source_status`. A real dawn dispatch confirmed all of it in production (the Jul 15 run
+  gained the dawn entry, none of the night's keys erased; calendar timed 24 of 31 events).
+- **THE DAWN ENTRY IS CC9'S INPUT.** `pipeline_run.source_status.dawn = {ranAt, sources, stages}`. The app
+  reads it in `app/lib/pipelines.ts` (`readDawnEntry`, `lastRunForDawn`). The edition-state machine reads
+  the same entry to know a dawn ran for today's session. `statusFromRun` already ignores the nested entry.
+- **THE SEED HAS NO DAWN ENTRY (CC8 decision).** So the seeded Desk renders EVENING state today. To render
+  MORNING state (for the masthead + Morning Plan VRT), CC9 must seed a dawn-stamped `pipeline_run`. The plan
+  wants BOTH states seeded (two run shapes, one spec each).
+- **The dawn is FACTS-ONLY (no Anthropic).** The morning front page carries overnight stories without the
+  evening's why-it-matters prose. The Morning Plan uses the clusters' FACTS (headline, significance,
+  tickers) in "same card grammar" — no prose needed. This is by design (risk 10).
 - **Guard scripts need Node 24** (Claude Code runs Node 20 and shadows nvm). Prepend the explicit version
   (`v24.18.0`; the glob `v24*` breaks). `check:live`/`check:nav`/`check:lighthouse` need
   `set -a; source .env; set +a` in a FRESH env (they + check:migrations are LOCAL-ONLY — CI builds a fresh
@@ -149,9 +151,17 @@ tempts an edition-state or Morning-Plan fix, LOG it — CC9 owns those.
   `postgresql://postgres:test@localhost:55434/msmtest` (both DATABASE_URL and DIRECT_URL), then
   `npx prisma migrate deploy && npm run db:seed && export MSM_SEEDED=1`, `lsof -ti:3210 | xargs kill -9`
   before any run, ONE project at a time with `--workers=1 --ignore-snapshots`. **RE-SEED before the run.**
-  The pipeline tests: `env -u DATABASE_URL uv run pytest` from `pipeline/` (fixtures: MSM_FIXTURES=1).
+  Pipeline DB tests: `TEST_DATABASE_URL=postgresql://postgres:test@localhost:55434/msmtest env -u
+  DATABASE_URL uv run pytest` from `pipeline/`. **The `db` fixture truncates AFTER each test, so run pytest
+  BEFORE re-seeding for e2e** (else the first DB test reads seed rows — a harness artifact, not a bug;
+  LESSONS 2026-07-16).
+- **To read production directly** (the step-5 check, per the pipeline-verification memory): `set -a; source
+  .env; set +a`, then in `pipeline/`: `from config import load_settings; import psycopg;
+  psycopg.connect(load_settings().database_url_psycopg)` (the raw DATABASE_URL carries a `pgbouncer` param
+  psycopg rejects; `database_url_psycopg` strips it).
 - **Stage by explicit path, never `git add -A`** (the 2026-07-12 scar). The **UI-LIBRARY-EVALUATION trio**
   (`.md` + PDF + HTML, untracked) and **`dummy/`** are audit/deliverable evidence — leave them.
-- **Modes recap (`pipeline/jobs/job_a.py`, MODE_STAGES):** full (the cron) · news · macro · compute. CC8
-  adds `dawn`. main() refuses any mode it has no handler for — an unrecognised mode used to fall through
-  to the full nightly. job_a SKIPS a non-session day and exits cleanly.
+- **The pipeline-verification memory is load-bearing:** the test suite goes green while production can
+  publish garbage. CC8 honoured it (the real dawn dispatch + reading the sourceStatus/calendar). CC9's
+  check:live `--window=morning` is its equivalent real check — run it against a production dawn window.
+  Memory: `pipeline-phase-verification`.

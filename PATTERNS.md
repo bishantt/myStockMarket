@@ -1284,3 +1284,26 @@ DataTable is built for market data (sortable, paginated, delta chips), but the o
   no Rail coupling — DataTable's `useRail()` returns a safe no-op default when no RailProvider is present
   (the provider is per-page, and /settings has none). The sheet opens as a CONTROLLED DetailOverlay
   (onClose), because the parent holds the live polled state a routing @modal sheet would read stale.
+
+## publish_dawn: stamp a run's second act BESIDE the first, never over it (CC8)
+
+A run that shares another run's primary key (the dawn shares the nightly's pipeline_run.run_date — E1) but
+must record its OWN health cannot write its own row and must not overwrite the first's. The pattern: MERGE a
+single namespaced entry into the JSON column with the JSONB `||` operator —
+`source_status = pipeline_run.source_status || EXCLUDED.source_status` where EXCLUDED is `{"dawn": {...}}` —
+so the first run's flat keys survive untouched and the second's entry lands beside them (a re-run replaces
+only its own key). Two rules the app side must then keep: (1) the reader of the FIRST run's status must
+IGNORE the nested entry (statusFromRun filters to string values), or a nested object reads as a degraded
+source and flips the verdict; (2) the reader of the SECOND run reads only its entry (lastRunForDawn), carrying
+its own timestamp because the shared row's finished_at still belongs to the first. This is publish_compute's
+non-overwrite pattern (merge stage_status, leave source_status) turned inside-out (merge source_status).
+Verified in production (CC8 step 5): the dawn entry landed beside the night's 14 source keys, none erased.
+
+## The dawn's calendar fetch passes movers=[] — the calendar needs no movers (CC8)
+
+gather_catalysts branches per provider: Finnhub/Marketaux company-news loops over `movers`, but FMP earnings
+and FRED releases (the CALENDAR) take a date window and ignore movers entirely. So a run that wants only the
+calendar — the dawn refresh — calls the fetcher with movers=[], and the news loops no-op while the calendar
+(and the Finnhub earnings-hour enrichment, which is keyed by date not mover) runs in full. The front page's
+own news comes from a separate fetch (_fetch_news_articles), so the dawn still gets fresh news without the
+per-ticker mover-news the nightly needs.

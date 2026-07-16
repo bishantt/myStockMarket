@@ -8,6 +8,51 @@ Format: newest first. I mark each as [FYI], [VETO?], or [NEED] so you can scan.
 
 ---
 
+## 2026-07-16 — CC8 (The dawn run becomes the Morning Edition's engine)
+
+CC8 turned the pre-open dawn cron from a three-number macro fix into the morning refresh: `dawn` mode
+(macro + news + catalysts), the cron moved to Mon–Fri 6:30 AM, event times on the calendar, publish_dawn,
+and the control-room dawn row now shows a real Last run. Tagged `cc-8`. Pipeline phase; one small app touch.
+Three heads-ups, none blocking; one question CLOSED.
+
+### [CLOSED · Q-CC7-1] The Dawn refresh row now shows a real Last run
+CC7 shipped the dawn row's Last run as "—" because dawn shared the nightly's `pipeline_run`. CC8's
+`publish_dawn` stamps a distinct `dawn` entry beside the night's `source_status`, and `lastRunForDawn` reads
+it — so once a dawn has run, the row shows its status, stamp and per-source health. The production dispatch
+(step 5) confirmed it: the Jul 15 run gained a `dawn` entry (ranAt 12:23 AM ET, every stage/source ok)
+BESIDE the night's 14 source keys, none erased. In the SEEDED world it still reads "—" (the seed models no
+dawn run, which is honest).
+
+### [FYI · Q-CC8-1, marked] The dawn sheet still describes the macro-only dawn
+CC8's mandated control-room touch was the cadence + Last run. The dawn sheet's description ("Re-reads the
+index closes FRED posts overnight") and its stages/providers list still describe the macro-only dawn, not
+the richer macro+news+calendar run it now is. I left them for CC9, which builds the morning masthead and the
+Morning Plan — the sheet's fuller "Morning Edition" framing belongs with that presentation, told as one
+story, rather than half-told now. The assumption I shipped on: the row is honest about WHEN (cadence) and its
+last run; its depth copy catches up in CC9. Say the word if you'd rather the sheet describe the full dawn now
+(a one-line description + two array edits, VRT-neutral for the sheet).
+
+### [FYI · marked] No Anthropic is spent at dawn — the morning front page carries no prose until CC9
+Risk 10 says "No Anthropic spend at dawn," so the dawn's news stage rebuilds the front page FACTS-ONLY
+(fresh clusters, no why-it-matters prose). Between the dawn run and the evening nightly, the front page
+therefore shows the overnight stories without the evening's prose — the designed facts-only state (P9). The
+morning PRESENTATION (whether module 01 shows these as compact overnight cards, and the Morning Plan) is
+CC9's to build; CC8 just refreshes the data cheaply. Noted so a prose-less morning front page in production
+is not a surprise before CC9 lands.
+
+### [still open, unanswered since LC1] Q-LC1-1 — vrt-diff.mjs is broken (pixelmatch absent)
+CC8's settings re-shoot needed "diff every candidate" again — it confirmed the moved set equalled the 5
+settings shots and nothing hid under the tolerance. `scripts/vrt-diff.mjs` still throws
+`ERR_MODULE_NOT_FOUND: pixelmatch`, so I used the pngjs-only counter (PATTERNS.md) again. The fix is one
+line — `npm i -D pixelmatch` — or a pngjs rewrite. Your call, still.
+
+### [carried forward — STILL wants your decision] Q-CC6-2 — the event classifier is weak
+Unchanged from CC6/CC7: the pre-existing `classify_event` keyword classifier mislabels real headlines, so
+the production front page can lead by a weak guess. CC8 did not touch it (it is N4's). It still wants a
+decision: a dedicated classifier pass (its own small phase), or folded into a later CC phase? Now MORE
+visible, because the dawn's news sweep rebuilds the front page every morning too.
+
+
 ## 2026-07-15 — CC7 (The control room)
 
 CC7 turned Settings' flat pipeline panel into a TABLE of the Desk's three schedules (Nightly full, Dawn

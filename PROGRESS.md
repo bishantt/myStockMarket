@@ -1,96 +1,83 @@
 # PROGRESS.md — resumable state
 
-# CC7 IS DONE — tagged `cc-7` (2026-07-15). Next phase: CC8.
+# CC8 IS DONE — tagged `cc-8` (2026-07-16). Next phase: CC9.
 
 **Two plans are active (2026-07-15): CLARITY-AND-CADENCE-PLAN.md (Plan A, `cc-1`…`cc-10`) and
 LEAN-CODEBASE-PLAN.md (Plan B, `lc-1`…`lc-3`, COMPLETE). Fixed execution order:**
 
-> **CC1 ✓ → LC1 ✓ → LC2 ✓ → LC3 ✓ → CC2 ✓ → CC3 ✓ → CC4 ✓ → CC5 ✓ → CC6 ✓ → CC7 ✓ → CC8 → CC9 → CC10**
+> **CC1 ✓ → LC1 ✓ → LC2 ✓ → LC3 ✓ → CC2 ✓ → CC3 ✓ → CC4 ✓ → CC5 ✓ → CC6 ✓ → CC7 ✓ → CC8 ✓ → CC9 → CC10**
 
-**Checkpoint: CC7 ("The control room") is DONE and tagged `cc-7` by SHA on `1c84bb5`.
-Nothing is blocked. The next phase is CC8** (CLARITY-AND-CADENCE-PLAN.md — "The dawn run becomes the
-Morning Edition's engine"), and NEXT-SESSION-PROMPT.md is the paste-ready prompt for it.
+**Checkpoint: CC8 ("The dawn run becomes the Morning Edition's engine") is DONE and tagged `cc-8` by
+SHA on `7cc77ee`. Nothing is blocked. The next phase is CC9** (CLARITY-AND-CADENCE-PLAN.md —
+"The Desk greets the morning"), and NEXT-SESSION-PROMPT.md is the paste-ready prompt for it.
 
-## What CC7 did, in one paragraph
+## What CC8 did, in one paragraph
 
-CC7 turned Settings' flat pipeline panel (N6) into the app's one table (DataTable) of the Desk's three
-schedules — **Nightly full (Job A)** · **Dawn refresh** · **Evening briefing (Job B)** — plus a
-DetailOverlay sheet per row. The five manual modes are now ACTIONS inside the sheet of the pipeline they
-belong to (macro under the dawn refresh — the dawn cron IS macro mode; full/news/compute under the
-nightly; briefing under Job B), not flat rows. Columns: Pipeline (name + one plain line) · Cadence
-(DST-honest ET, both seasons: "Mon–Fri · ~6:37 PM EDT / 5:37 PM EST") · Last run (OK/DEGRADED/FAILED/HELD
-chip + stamp) · Next run (computed in the browser) · Duration · → (opens the sheet). The table renders
-from `pipeline_run` + `briefing` ALONE, so it is never blank, token or not; the run-now controls and the
-missing P-2 token live in the sheets.
+CC8 turned the pre-open dawn cron from a three-number macro fix into the Morning Edition's engine. New
+`dawn` mode (`pipeline/jobs/job_a.py`, MODE_STAGES) = **macro + news + catalysts + publish + revalidate**:
+it re-reads the index closes FRED posts overnight, rebuilds the front page FACTS-ONLY (no Anthropic spend —
+risk 10), and refreshes the forward calendar WITH its event times. It ingests no bar and opens no new
+edition (E1: the session stays the last close). The cron moved to `30 10 * * 1-5` (6:30 AM ET, Mon–Fri) —
+**Monday gains a dawn run**, the pointless Saturday run is gone. Earnings gain Finnhub's `hour` (bmo/amc/dmh)
+in the existing `calendar_event.timing` column (no migration); the 7 allowlisted macro releases carry their
+canonical ET times (8:30 AM / 2:00 PM). `publish_dawn` stamps a `dawn` entry BESIDE the night's
+`source_status` (JSONB merge, never overwrites). The control-room dawn row now reads that entry
+(`lastRunForDawn`) for a real Last run — **closing Q-CC7-1**.
 
 ## The judgment calls worth knowing (all in DECISIONS)
 
-1. **Action→sheet grouping by meaning** (Q-CC7-2): macro→dawn, full/news/compute→nightly, briefing→Job B.
-   Each of the five in exactly one sheet (a unit test proves it). The plan left the grouping open.
-2. **Dawn's Last run reads "—"** (Q-CC7-1): the dawn cron shares the nightly's `pipeline_run`, so no
-   per-dawn record exists until CC8's `publish_dawn`. The N0 honest-degrade pattern; the sheet says so.
-3. **DetailOverlay gained a controlled mode** (onClose): the control-room sheet reads the table's live
-   polled state, which a routing @modal sheet would read stale. Story/ticker sheets stay routing
-   (byte-unchanged; overlay.spec 10/10 proves it).
-4. **Cadence server-computed (pure); Next run browser-computed** against the reader's clock — matches the
-   control room's existing client-state architecture, so the table and nav never disagree and the
-   pinned-clock VRT baseline stays deterministic (the old panel's "markets open" rot lesson).
+1. **The dawn's news is FACTS-ONLY** (risk 10): `_build_front_page(narrate=False)` — a news sweep with no
+   LLM. Consequence: the morning front page carries overnight stories without the evening's prose (P9); the
+   morning PRESENTATION is CC9's.
+2. **publish_dawn is the mirror of publish_compute** — merges a `dawn` entry into `source_status` (`||`),
+   never overwrites the night's, never moves its `finished_at`. The app's `statusFromRun` ignores the
+   nested entry so a dawn never flips the nightly's verdict.
+3. **No dawn entry seeded** (Q-CC8-1 context): the seeded dawn row stays "—" (the seed has no dawn run —
+   honest); the wiring is unit-tested + production-verified. The dawn sheet's description/stages still
+   describe the macro-only dawn — deferred to CC9's presentation (Q-CC8-1).
+4. **Event times from Finnhub** (earnings) and the allowlist (macro) — FMP's endpoint has no time-of-day,
+   which is exactly why the plan named Finnhub.
 
-## The gate at `cc-7` (all green on `1c84bb5`)
+## The gate at `cc-8` (all green on `7cc77ee`)
 
-- **App unit 820** (was 788: +15 cron, +16 pipelines, +1 DetailOverlay controlled, +4 PipelinesTable,
-  −4 PipelinePanel deleted). **Pipeline 584 passed / 35 skipped (unchanged — CC7 touched no pipeline
-  code).** typecheck · lint · build · check:routes 14/15 · check:bundles (/settings **158.4 KB** ≤ bound,
-  worst 198.8 < 200) · check:fonts (243 KB, 317 KB headroom) · **check:drift 29/29 (NO new rule)** ·
-  check:migrations (production DB matches — CC7 adds no migration).
-- **e2e:local (--ignore-snapshots):** control-room desktop 6 + phone 6 (table renders all 3 rows, sheet
-  opens, banner once, sheet depth, degraded source named); a11y desktop 27 (/settings axe clean);
-  hardening phone 30 (/settings on-axis at 412 AND 360); overlay phone 10 (routing sheets unbroken);
-  settings desktop 2 (watchlist — the documented Desk-disclosure flake cleared on re-seed). The
-  dispatch-loop tests skip without a token (P-2 unprovisioned): page.route cannot mock the server-side
-  GitHub fetch, so they are structurally skip-only, as they always were.
+- **App unit 825** (was 820: +4 pipelines.test [statusFromRun robustness + 3 lastRunForDawn], +1 cron.test
+  [dawn weekday range]). **Pipeline 595 passed / 40 skipped** (was 584/35: +11 non-DB tests; the 5 new
+  publish_dawn/publish_calendar DB tests skip without a Postgres) — **634 passed / 1 skipped with a DB**.
+- typecheck · lint · build · check:routes 14/15 · check:bundles (/settings **158.4 KB**, unchanged) ·
+  check:fonts (243 KB, 317 KB headroom) · **check:drift 29/29 (NO new rule)** · check:migrations (production
+  DB matches — CC8 adds NO migration; `timing` already existed).
+- **e2e:local (--ignore-snapshots):** control-room desktop 6 + phone 6.
+- **VRT: 5 of 97 re-shot** (settings-light/dark-desktop, -phone, settings-light-wide — the dawn cadence +
+  next-run text). Diffed every candidate across 3 legs (pngjs counter, Q-LC1-1): exactly 5 of 90 moved,
+  each opened by eye; the change is confined to the Dawn refresh row, no resize, the other two rows
+  byte-identical, the dawn Last run stays "—". **97 total (unchanged count).**
 
-## VRT at `cc-7` — 5 of 97 re-shot (the settings card→table), every diff explained
+## CI + production evidence (full in docs/clarity-evidence/cc8.md)
 
-Rehearsal #1 (`74ea87a`) redded on VRT (settings changed). Per the PD5 law, EVERY candidate was diffed
-against its committed baseline (pngjs counter — vrt-diff.mjs still broken, Q-LC1-1). The moved set EQUALS
-the settings set: 5 baselines across 3 legs — settings-light/dark-desktop, settings-light/dark-phone,
-settings-light-wide. All RESIZED SHORTER (the compact 3-row table replaces the taller panel: desktop
-1693→1341, phone 2291→2036). mbp16 has no settings shot and passed. login moved 129px — AA jitter under
-the 200px floor, the pre-existing camera-noise shot, LEFT at its committed baseline (PD5 camera law).
-Every settings candidate was opened by eye: the diff is the Pipeline table and the rest of the page
-(Add/Theme/Watchlist) is untouched. Rehearsal #2 (`1c84bb5`, with the 5 baselines) went GREEN. 5 re-shot,
-0 added, **97 total** (unchanged count).
-
-## CI evidence (full in docs/clarity-evidence/cc7.md)
-
-- **Push CI (74ea87a = code): `29467357378` green.** Rehearsal #1 (74ea87a): `29467363726` RED on VRT
-  (expected), minted candidates.
-- **Push CI (1c84bb5 = 5 baselines): `29467901371`.** Rehearsal #2 (1c84bb5): `29467901014` GREEN.
-- **Tag run (cc-7 on 1c84bb5): `29468244086` — green after a /scans NoFallbackError flake rerun.** The
-  first attempt's desktop leg failed one /scans e2e (a transient Next server render error on a page CC7
-  never touched; the same SHA passed rehearsal `29467901014` clean, 7m58s). Read first, then `gh run rerun
-  --failed` per the Endgame — the tag STAYED on 1c84bb5, never re-pointed.
-- **Post-deploy: check:live 7/7** (masthead 2026-07-15, calendar clean, next-edition Thu — the CC5
-  transient did NOT recur). check:nav worst 461ms (settings writer room, +4ms vs CC6 — noise).
-  check:lighthouse gates green (CLS 0.000–0.002, first-load JS ≤200, a11y 100); advisory perf 74–83
-  (synthetic-4G, RE-SAMPLED — the Desk is untouched by CC7, so pure variance).
-- **Step 5 (the pipeline-verification READ):** opened production /settings — the table renders all three
-  rows from the live DB, cadences read DST-honestly, the buttons are dark with the banner. PASS.
+- **Push CI (4845938 = code): `29470586551` green.** Rehearsal #1 (4845938): `29470617312` RED on VRT
+  (expected — the dawn cadence), minted candidates.
+- **Push CI (7cc77ee = 5 baselines): `29471200024` green.** Rehearsal #2 (7cc77ee): `29471206140` GREEN,
+  all four legs (7m56s).
+- **Tag run (cc-8 on 7cc77ee): `29471548172` — four-leg oracle.**
+- **Post-deploy: check:live 7/7 (before AND after the dawn run).** check:nav worst 442ms. check:lighthouse
+  gates green (CLS 0.000, first-load JS 182 KB, a11y 100); advisory perf 77 (synthetic-4G variance).
+- **Step 5 — the REAL check (dawn dispatch `29471227250`, READ production):** the Jul 15 `pipeline_run`
+  gained a `dawn` entry BESIDE the night's 14 source keys (none erased; ranAt 12:23 AM ET, all stages/sources
+  ok; run_date stayed Jul 15 — E1). The calendar carries times: earnings from Finnhub (JNJ/UNH bmo,
+  NFLX/TSLA amc, …), macro from the allowlist (PPI "8:30 AM ET", FOMC "2:00 PM ET"); 24 of 31 timed.
 
 ## Open / carried forward (none blocking)
 
-1. **Q-CC7-1 (new, [FYI marked]):** the dawn refresh's Last run is "—" — it shares the nightly's record
-   until CC8's publish_dawn. The N0 pattern. CC8 closes it.
-2. **Q-CC7-2 (new, [VETO?]):** the action→sheet grouping (macro→dawn etc.). A one-line swap if Bishan
-   wants a different map.
-3. **Q-CC6-2 STILL open (carried, NOT CC7's domain):** the event classifier mislabels headlines, so the
-   production front page can lead by a weak guess. Wants a dedicated classifier pass or a folded phase.
-4. **Q-LC1-1 STILL open:** vrt-diff.mjs broken (`pixelmatch` absent). Worked around with the pngjs
-   counter again. Fix is `npm i -D pixelmatch` or a pngjs rewrite — Bishan's call.
-5. **Q-CC5-2:** the check:live strip transient — did NOT recur at CC7 (7/7). Still owed to CC8/CC9.
-6. **P-1 (news media bucket) + P-2 (control-room PAT) still unprovisioned** — CC7's control room is
-   display-only without P-2 (the plan's default). Nothing blocked.
+1. **Q-CC7-1 CLOSED** — the dawn row's Last run reads the dawn entry (production-verified).
+2. **Q-CC8-1 (new, [FYI marked]):** the dawn sheet's description/stages still describe the macro-only dawn —
+   deferred to CC9's Morning-Edition presentation.
+3. **No Anthropic at dawn (new, [FYI marked]):** the morning front page is facts-only (no prose) until CC9
+   builds the morning presentation. The designed facts-only state (P9).
+4. **Q-CC6-2 STILL open (carried):** the event classifier mislabels headlines — now more visible (the dawn
+   rebuilds the front page every morning too). Wants a dedicated classifier pass or a folded phase.
+5. **Q-LC1-1 STILL open:** vrt-diff.mjs broken (`pixelmatch` absent). Worked around with the pngjs counter
+   again. Fix is `npm i -D pixelmatch` or a pngjs rewrite.
+6. **P-1 (news media bucket) + P-2 (control-room PAT) still unprovisioned** — nothing blocked.
 7. **`dummy/` + the UI-LIBRARY-EVALUATION trio** — untracked audit/deliverable evidence, LEFT in place.
 
 ## The local harness (unchanged — still works; Node 24 required for the guard scripts)
@@ -99,17 +86,22 @@ Every settings candidate was opened by eye: the diff is the Pipeline table and t
 docker start msm-e2e   # or it may already be up
 export DATABASE_URL="postgresql://postgres:test@localhost:55434/msmtest"
 export DIRECT_URL="postgresql://postgres:test@localhost:55434/msmtest"
-npx prisma migrate deploy && npm run db:seed && export MSM_SEEDED=1   # RE-SEED before any run
+npx prisma migrate deploy && npm run db:seed && export MSM_SEEDED=1   # RE-SEED before any e2e run
 lsof -ti:3210 | xargs kill -9                     # ALWAYS, before any run
 npx playwright test --project=desktop --workers=1 --ignore-snapshots   # one project at a time
 ```
 Guard scripts need **Node 24** — prepend `PATH="$HOME/.nvm/versions/node/v24.18.0/bin:$PATH"`.
 `check:live/nav/lighthouse` need `set -a; source .env; set +a`; Lighthouse needs
 `CHROME_PATH="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"`. check:migrations + check:live
-are LOCAL-ONLY (CI builds a fresh DB every run); run them in a fresh env with the root .env sourced.
+are LOCAL-ONLY. **Pipeline DB tests: `TEST_DATABASE_URL=postgresql://postgres:test@localhost:55434/msmtest
+env -u DATABASE_URL uv run pytest` — but the `db` fixture truncates AFTER each test, so run pytest BEFORE
+re-seeding for e2e (else the first DB test reads seed rows — LESSONS 2026-07-16).**
+To read production directly: `set -a; source .env; set +a`, then `from config import load_settings;
+psycopg.connect(load_settings().database_url_psycopg)` (the raw DATABASE_URL carries a `pgbouncer` param
+psycopg rejects; `database_url_psycopg` strips it).
 
 ## The committed dev tools (LC1–LC3 + the VRT diff)
 
 - `pipeline/scripts/comment_stats.py` · `pipeline/scripts/comment_prover.py`
-- `app/scripts/vrt-diff.mjs` — **STILL BROKEN (pixelmatch absent); see Q-LC1-1.** The pngjs-only
-  workaround pattern is in PATTERNS.md ("Count VRT candidate pixels without pixelmatch").
+- `app/scripts/vrt-diff.mjs` — **STILL BROKEN (pixelmatch absent); see Q-LC1-1.** The pngjs-only workaround
+  pattern is in PATTERNS.md ("Count VRT candidate pixels without pixelmatch").
