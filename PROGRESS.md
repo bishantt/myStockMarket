@@ -1,115 +1,97 @@
 # PROGRESS.md — resumable state
 
-# CC6 IS DONE — tagged `cc-6` (2026-07-15). Next phase: CC7.
+# CC7 IS DONE — tagged `cc-7` (2026-07-15). Next phase: CC8.
 
 **Two plans are active (2026-07-15): CLARITY-AND-CADENCE-PLAN.md (Plan A, `cc-1`…`cc-10`) and
 LEAN-CODEBASE-PLAN.md (Plan B, `lc-1`…`lc-3`, COMPLETE). Fixed execution order:**
 
-> **CC1 ✓ → LC1 ✓ → LC2 ✓ → LC3 ✓ → CC2 ✓ → CC3 ✓ → CC4 ✓ → CC5 ✓ → CC6 ✓ → CC7 → CC8 → CC9 → CC10**
+> **CC1 ✓ → LC1 ✓ → LC2 ✓ → LC3 ✓ → CC2 ✓ → CC3 ✓ → CC4 ✓ → CC5 ✓ → CC6 ✓ → CC7 ✓ → CC8 → CC9 → CC10**
 
-**Checkpoint: CC6 ("Honest relevance") is DONE and tagged `cc-6` by SHA on `2764e4f`.
-Nothing is blocked. The next phase is CC7** (CLARITY-AND-CADENCE-PLAN.md — "The control room"), and
-NEXT-SESSION-PROMPT.md is the paste-ready prompt for it.
+**Checkpoint: CC7 ("The control room") is DONE and tagged `cc-7` by SHA on `1c84bb5`.
+Nothing is blocked. The next phase is CC8** (CLARITY-AND-CADENCE-PLAN.md — "The dawn run becomes the
+Morning Edition's engine"), and NEXT-SESSION-PROMPT.md is the paste-ready prompt for it.
 
-## What CC6 did, in one paragraph
+## What CC7 did, in one paragraph
 
-CC6 made the Desk's relevance deterministic, inspectable, pipeline-side and tested (R5). Four things:
-(1) **Front-page significance v2** — `newsdesk/rank.py`'s N-phase 5-term SUM is replaced by the plan's
-4-term PRODUCT (`catalyst_weight × corroboration × entity_weight × freshness`); entity_weight is the new
-dollar-volume term (a macro/Fed event is market-wide → max; else the largest linked name's bucket); scope
-and magnitude leave the formula; ties break newest-first; Appendix E (d>a>b>c) is the acceptance test with
-a unit test per weight row. (2) **The movers liquid floor** (D6) — the Desk's Movers module shows liquid
-names only (large/mid by dollar volume AND a common stock or one of the 15 core ETFs); trusts, wrappers,
-structured products and other funds fall to Scans; a per-row `data-liquid-floor` marker + the footnote
-"Liquid names only — the full universe stays in Scans." (3) **RelVol "≥20×"** — the degenerate 20.0×
-(a thin name's rvol saturating at its window length) now says so. (4) **Calendar hygiene** (D7) — an
-earnings row speaks its symbol once (`[EARNINGS] [JPM]` via TickerChip, no "JPM earnings" title);
-forward-first ordering; today's reported earnings collapse into one "Reported today: BAC · C · GS · JPM ·
-WFC" line. One additive migration: `instrument.asset_class` + `dv_bucket`, backfilled each full nightly.
+CC7 turned Settings' flat pipeline panel (N6) into the app's one table (DataTable) of the Desk's three
+schedules — **Nightly full (Job A)** · **Dawn refresh** · **Evening briefing (Job B)** — plus a
+DetailOverlay sheet per row. The five manual modes are now ACTIONS inside the sheet of the pipeline they
+belong to (macro under the dawn refresh — the dawn cron IS macro mode; full/news/compute under the
+nightly; briefing under Job B), not flat rows. Columns: Pipeline (name + one plain line) · Cadence
+(DST-honest ET, both seasons: "Mon–Fri · ~6:37 PM EDT / 5:37 PM EST") · Last run (OK/DEGRADED/FAILED/HELD
+chip + stamp) · Next run (computed in the browser) · Duration · → (opens the sheet). The table renders
+from `pipeline_run` + `briefing` ALONE, so it is never blank, token or not; the run-now controls and the
+missing P-2 token live in the sheets.
 
 ## The judgment calls worth knowing (all in DECISIONS)
 
-1. **significance v2 REPLACES the N-phase 5-term sum** (the plan specified v2 unaware rank.py existed;
-   built the product form faithfully, kept the classifier + magnitude-as-evidence). See LESSONS.
-2. **The liquidity notion is scans' single-day `is_large_mid`, NOT baserates' 63-day `_DV_WINDOW`** —
-   both top-1000, differ only in the window; scans' is the existing notion the movers carry + more apt for
-   a "today's movers" floor. Marked as **Q-CC6-1** (a swap if Bishan wants the 63-day median).
-3. **The migration adds `dv_bucket` beyond the plan's named columns** (exchange already exists;
-   entity_weight needs per-symbol size the newsdesk can read). assetClass is name-derived (Alpaca gives
-   no security type).
-4. **The movers loader has a backfill BRIDGE** — falls back to the raw top 8 when dv_bucket is not
-   backfilled (a fresh deploy / this migration), so the module never empties; self-heals on the next
-   nightly (N0's honest-degrade shape). VRT-neutral (the seed has buckets).
+1. **Action→sheet grouping by meaning** (Q-CC7-2): macro→dawn, full/news/compute→nightly, briefing→Job B.
+   Each of the five in exactly one sheet (a unit test proves it). The plan left the grouping open.
+2. **Dawn's Last run reads "—"** (Q-CC7-1): the dawn cron shares the nightly's `pipeline_run`, so no
+   per-dawn record exists until CC8's `publish_dawn`. The N0 honest-degrade pattern; the sheet says so.
+3. **DetailOverlay gained a controlled mode** (onClose): the control-room sheet reads the table's live
+   polled state, which a routing @modal sheet would read stale. Story/ticker sheets stay routing
+   (byte-unchanged; overlay.spec 10/10 proves it).
+4. **Cadence server-computed (pure); Next run browser-computed** against the reader's clock — matches the
+   control room's existing client-state architecture, so the table and nav never disagree and the
+   pinned-clock VRT baseline stays deterministic (the old panel's "markets open" rot lesson).
 
-## The gate at `cc-6` (all green on `2764e4f`)
+## The gate at `cc-7` (all green on `1c84bb5`)
 
-- **App unit 788 (was 781: +1 RelVol cap, +3 isLiquidFloorEligible, +3 CalendarTimeline CC6). Pipeline
-  584 passed / 35 skipped (was 579: +4 test_universe, +1 nightly-instrument-enrichment; test_rank
-  rewritten for v2).** typecheck · lint · build · check:routes 14/15 · check:bundles (worst 198.9 KB <
-  200) · check:fonts (243 KB, 317 KB headroom) · **check:drift 29/29 (NO new rule)** · check:migrations
-  (applied locally AND confirmed against production).
-- **e2e:local (--ignore-snapshots):** desk desktop 20 + phone 23 (incl. the new movers-marker,
-  calendar reported-today, and news-ordering-dek assertions); news desktop 26. Eyeballed the desk-light
-  and news-zero-state candidates — all CC6 changes render correctly.
+- **App unit 820** (was 788: +15 cron, +16 pipelines, +1 DetailOverlay controlled, +4 PipelinesTable,
+  −4 PipelinePanel deleted). **Pipeline 584 passed / 35 skipped (unchanged — CC7 touched no pipeline
+  code).** typecheck · lint · build · check:routes 14/15 · check:bundles (/settings **158.4 KB** ≤ bound,
+  worst 198.8 < 200) · check:fonts (243 KB, 317 KB headroom) · **check:drift 29/29 (NO new rule)** ·
+  check:migrations (production DB matches — CC7 adds no migration).
+- **e2e:local (--ignore-snapshots):** control-room desktop 6 + phone 6 (table renders all 3 rows, sheet
+  opens, banner once, sheet depth, degraded source named); a11y desktop 27 (/settings axe clean);
+  hardening phone 30 (/settings on-axis at 412 AND 360); overlay phone 10 (routing sheets unbroken);
+  settings desktop 2 (watchlist — the documented Desk-disclosure flake cleared on re-seed). The
+  dispatch-loop tests skip without a token (P-2 unprovisioned): page.route cannot mock the server-side
+  GitHub fetch, so they are structurally skip-only, as they always were.
 
-## VRT at `cc-6` — 19 of 97 re-shot, every diff explained
+## VRT at `cc-7` — 5 of 97 re-shot (the settings card→table), every diff explained
 
-Rehearsal #1 (`9fb1cfa`) redded on VRT. Per the PD5 law, EVERY candidate was diffed against its committed
-baseline (pngjs counter — vrt-diff.mjs still broken, Q-LC1-1). The moved set EQUALLED the failed set on
-the CC6 surfaces: 19 baseline FILES across four legs. desk-light/dark + desk-thin-night grew ~19px (the
-movers footnote + the calendar's reported-today line); news-light/dark/filtered/week/zero-state moved (the
-v2 ordering dek + the reordered front page). FOUR shots moved WITHOUT failing on pages CC6 never touched —
-login (~17.5k px), sheet-ticker, ticker (6px), track-record (29px) — AA noise on gradients/grids (login
-byte-visually identical, confirmed by EYE); LEFT at their committed baselines (PD5 camera law). 19 re-shot,
-0 added, 97 total.
+Rehearsal #1 (`74ea87a`) redded on VRT (settings changed). Per the PD5 law, EVERY candidate was diffed
+against its committed baseline (pngjs counter — vrt-diff.mjs still broken, Q-LC1-1). The moved set EQUALS
+the settings set: 5 baselines across 3 legs — settings-light/dark-desktop, settings-light/dark-phone,
+settings-light-wide. All RESIZED SHORTER (the compact 3-row table replaces the taller panel: desktop
+1693→1341, phone 2291→2036). mbp16 has no settings shot and passed. login moved 129px — AA jitter under
+the 200px floor, the pre-existing camera-noise shot, LEFT at its committed baseline (PD5 camera law).
+Every settings candidate was opened by eye: the diff is the Pipeline table and the rest of the page
+(Add/Theme/Watchlist) is untouched. Rehearsal #2 (`1c84bb5`, with the 5 baselines) went GREEN. 5 re-shot,
+0 added, **97 total** (unchanged count).
 
-## CI evidence (full in docs/clarity-evidence/cc6.md) — two pushes, two rehearsals, one tag
+## CI evidence (full in docs/clarity-evidence/cc7.md)
 
-- **Push CI (9fb1cfa = code): 29463477067 green. Rehearsal #1 (9fb1cfa): 29463479390 RED on VRT
-  (expected), minted candidates.**
-- **Push CI (2764e4f = bridge + 19 baselines): 29464231324 green. Rehearsal #2 (2764e4f): 29464236697
-  GREEN, all four legs.**
-- **Tag run (cc-6 on 2764e4f): `29464652788` — four-leg oracle, green (8 m 19 s).**
-- **Post-deploy: check:live 7/7 (masthead 2026-07-15, calendar hygiene clean, next-edition Thu — the
-  CC5 transient did NOT recur). check:migrations PASS (production got the CC6 migration). check:nav worst
-  457ms (settings, no regression). check:lighthouse gates green (CLS 0.002, JS 183 KB, a11y 100); advisory
-  perf 86.**
-- **Step 5 (the pipeline-verification READ): dispatched a real `news` run (`29464668482`, green) and read
-  the production front page — see the finding below.**
-
-## THE FINDING FROM READING PRODUCTION (Q-CC6-2 — needs Bishant's eyes)
-
-The formula is correct (the seed orders Fed/macro → FDA → SMCI earnings; Appendix E passes), but the REAL
-production front page leads with MISCLASSIFIED stories: a crypto stablecoin PR classified "macro" (leads),
-and two SeekingAlpha analyst opinions classified "ma". The fault is `rank.py`'s pre-existing
-`classify_event` keyword classifier — **which CC6 never touched** (byte-identical cc-5→cc-6). NOT a CC6
-regression (v1 misclassified too, via `scope`), but v2 makes catalyst_weight a full factor, so the
-classifier's quality is now load-bearing and newly visible. The entity backfill will NOT fix it (a
-macro-misclassified story is market-wide regardless of its bucket). **A classifier improvement is a real,
-separate piece of work — Q-CC6-2 (its own small phase, or folded into a later CC phase). The green suite
-and the seed both looked perfect; production did not — the pipeline-verification memory earning its keep.**
-
-## THE PENDING LIVE-OBSERVATION GATE (not a blocker — the N0 pattern)
-
-Production's `instrument.dv_bucket` is NULL for all 12,992 rows until the next full nightly (22:37 UTC)
-runs the CC6 code. So the movers floor's data is not ready in production yet: the **backfill bridge** shows
-the raw top 8 (the pre-CC6 junk parade, e.g. AHD/ASMH — no worse than the status quo), NOT an empty module.
-**The floor's full production effect (junk filtered) and entity_weight are confirmed at the next full
-nightly.** To see it sooner: `gh workflow run nightly-a.yml -f mode=full`, then open the Desk (the movers
-should lose AHD/ASMH and gain the liquid names; the front page should lead with the corroborated macro
-story). The seeded world (VRT/e2e) shows CC6 in full already. This is exactly N0's "a migration takes
-effect on the next run" — the Autonomy Contract permits proceeding with the pending gate.
+- **Push CI (74ea87a = code): `29467357378` green.** Rehearsal #1 (74ea87a): `29467363726` RED on VRT
+  (expected), minted candidates.
+- **Push CI (1c84bb5 = 5 baselines): `29467901371`.** Rehearsal #2 (1c84bb5): `29467901014` GREEN.
+- **Tag run (cc-7 on 1c84bb5): `29468244086` — green after a /scans NoFallbackError flake rerun.** The
+  first attempt's desktop leg failed one /scans e2e (a transient Next server render error on a page CC7
+  never touched; the same SHA passed rehearsal `29467901014` clean, 7m58s). Read first, then `gh run rerun
+  --failed` per the Endgame — the tag STAYED on 1c84bb5, never re-pointed.
+- **Post-deploy: check:live 7/7** (masthead 2026-07-15, calendar clean, next-edition Thu — the CC5
+  transient did NOT recur). check:nav worst 461ms (settings writer room, +4ms vs CC6 — noise).
+  check:lighthouse gates green (CLS 0.000–0.002, first-load JS ≤200, a11y 100); advisory perf 74–83
+  (synthetic-4G, RE-SAMPLED — the Desk is untouched by CC7, so pure variance).
+- **Step 5 (the pipeline-verification READ):** opened production /settings — the table renders all three
+  rows from the live DB, cadences read DST-honestly, the buttons are dark with the banner. PASS.
 
 ## Open / carried forward (none blocking)
 
-1. **Q-CC6-1 (new, [VETO?]):** the liquidity notion — scans' single-day is_large_mid vs baserates'
-   63-day `_DV_WINDOW`. Marked deviation; a swap if Bishan wants the median. See DECISIONS + QUESTIONS.
-2. **Q-LC1-1 still open:** vrt-diff.mjs broken (`pixelmatch` absent). Worked around with the pngjs
+1. **Q-CC7-1 (new, [FYI marked]):** the dawn refresh's Last run is "—" — it shares the nightly's record
+   until CC8's publish_dawn. The N0 pattern. CC8 closes it.
+2. **Q-CC7-2 (new, [VETO?]):** the action→sheet grouping (macro→dawn etc.). A one-line swap if Bishan
+   wants a different map.
+3. **Q-CC6-2 STILL open (carried, NOT CC7's domain):** the event classifier mislabels headlines, so the
+   production front page can lead by a weak guess. Wants a dedicated classifier pass or a folded phase.
+4. **Q-LC1-1 STILL open:** vrt-diff.mjs broken (`pixelmatch` absent). Worked around with the pngjs
    counter again. Fix is `npm i -D pixelmatch` or a pngjs rewrite — Bishan's call.
-3. **Q-CC5-2:** the check:live strip transient — did NOT recur at CC6 (7/7). Still owed to CC8/CC9.
-4. **P-1 (news media bucket) + P-2 (control-room PAT) still unprovisioned** — CC7's control room is
+5. **Q-CC5-2:** the check:live strip transient — did NOT recur at CC7 (7/7). Still owed to CC8/CC9.
+6. **P-1 (news media bucket) + P-2 (control-room PAT) still unprovisioned** — CC7's control room is
    display-only without P-2 (the plan's default). Nothing blocked.
-5. **`dummy/` + the UI-LIBRARY-EVALUATION trio** — untracked audit/deliverable evidence, LEFT in place.
+7. **`dummy/` + the UI-LIBRARY-EVALUATION trio** — untracked audit/deliverable evidence, LEFT in place.
 
 ## The local harness (unchanged — still works; Node 24 required for the guard scripts)
 
@@ -123,7 +105,8 @@ npx playwright test --project=desktop --workers=1 --ignore-snapshots   # one pro
 ```
 Guard scripts need **Node 24** — prepend `PATH="$HOME/.nvm/versions/node/v24.18.0/bin:$PATH"`.
 `check:live/nav/lighthouse` need `set -a; source .env; set +a`; Lighthouse needs
-`CHROME_PATH="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"`.
+`CHROME_PATH="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"`. check:migrations + check:live
+are LOCAL-ONLY (CI builds a fresh DB every run); run them in a fresh env with the root .env sourced.
 
 ## The committed dev tools (LC1–LC3 + the VRT diff)
 

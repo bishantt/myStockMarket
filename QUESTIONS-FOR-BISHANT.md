@@ -8,6 +8,48 @@ Format: newest first. I mark each as [FYI], [VETO?], or [NEED] so you can scan.
 
 ---
 
+## 2026-07-15 — CC7 (The control room)
+
+CC7 turned Settings' flat pipeline panel into a TABLE of the Desk's three schedules (Nightly full, Dawn
+refresh, Evening briefing) plus a detail sheet per row; the five manual modes are now actions inside the
+sheets. Tagged `cc-7`. Four heads-ups, none blocking, plus one carried-forward that still wants a decision.
+
+### [VETO? · Q-CC7-2] The action→sheet grouping — macro lives under the Dawn refresh
+The plan said "the four manual modes as actions, not rows" without fixing WHICH sheet each lives in. I
+grouped them by meaning: **macro → Dawn refresh** (the dawn cron IS macro mode, so a manual dawn refresh
+and a manual macro run are the same dispatch), **full/news/compute → Nightly full**, **briefing →
+Evening briefing**. Each of the five actions has exactly one home, and a unit test proves the partition
+is total and disjoint. If you'd rather all four Job-A modes sat under Nightly full, that's a small change
+— but then the Dawn refresh row has no run-now button of its own. Full reasoning in DECISIONS.
+
+### [FYI · Q-CC7-1, marked] The Dawn refresh's Last run reads "—" — it has no record of its own yet
+The dawn cron runs macro mode, which shares the nightly's `pipeline_run` row and `market_context` — there
+is no per-dawn timestamp in the schema until CC8's `publish_dawn` stamps one. So the dawn row honestly
+shows "—" for Last run and Duration, and its sheet says it shares the nightly's record for now. This is
+the exact N0 migration pattern (a record arrives on the next relevant run), and **CC8 closes it** — the
+control-room row updates to "Dawn refresh · Mon–Fri ~6:30 AM ET" when the dawn run gets its own publish.
+
+### [FYI] One deliberate DetailOverlay extension: a controlled mode
+The story and ticker sheets are ROUTING sheets (dismiss = `router.back`, a real deep-linkable URL). The
+control-room sheet can't be — the table holds the live polled ledger, and a routing @modal sheet would
+render stale server data. So DetailOverlay now has a second mode (`onClose`), used only here; the routing
+path is byte-unchanged and overlay.spec passes 10/10 on the phone. If you'd rather two components, say so;
+I chose one door (a duplicated overlay is a bug's habitat — the sibling law this build keeps re-learning).
+
+### [still open, unanswered since LC1] Q-LC1-1 — vrt-diff.mjs is broken (pixelmatch absent)
+CC7's settings re-shoot needed "diff every candidate" again (it confirmed the moved set equalled the
+settings set — 5 shots — and caught nothing hiding under the tolerance). `scripts/vrt-diff.mjs` still
+throws `ERR_MODULE_NOT_FOUND: pixelmatch`, so I used the pngjs-only counter (PATTERNS.md) again. The fix
+is one line — `npm i -D pixelmatch` — or a pngjs rewrite. Your call, still.
+
+### [carried forward — NOT CC7's domain, but STILL wants your decision] Q-CC6-2 — the event classifier is weak
+This is the big one from CC6, and it is unchanged: the pre-existing `classify_event` keyword classifier
+mislabels real headlines (a crypto stablecoin PR as "macro" so it leads; SeekingAlpha opinions as "M&A"),
+so the production front page can lead by a weak guess. CC7 is the control room and did not touch it. It
+still wants a decision: a **dedicated classifier pass (its own small phase)**, or **folded into a later CC
+phase**? Until then the front page leads by the classifier's guess — same as before CC6, just more visible.
+
+
 ## 2026-07-15 — CC6 (Honest relevance)
 
 CC6 made the Desk's relevance deterministic and tested (R5): front-page significance v2 (a 4-term

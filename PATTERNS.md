@@ -1269,3 +1269,18 @@ the real feature; the fallback is production-transition code only. The only way 
 state is to QUERY PRODUCTION before tagging — the seed and CI both have the data, so they cannot show you
 the gap. Same family as the N0 migration (a schema change takes effect on the next run, and the app must
 degrade honestly until then).
+
+## The one-table law meets a 3-row config table: DataTable for the control room (CC7)
+
+DataTable is built for market data (sortable, paginated, delta chips), but the one-table law (drift rule
+16) means even a 3-row CONFIG table renders through it. Three things to know:
+- **`sortable={false}` removes the sort UI but the memo STILL sorts by `defaultSort.key`.** To keep rows
+  in a GIVEN order (reading order, not alphabetical), pass a `defaultSort.key` that NO column has —
+  DataTable's `columns.find(...) ? sortRows(...) : rows` fallback then leaves the order untouched.
+- **The page line "Page 1 of 1 · N rows" always renders.** Accept it (it is honest — M8 states the count)
+  rather than special-casing the shared table.
+- **A custom `render` per column gives full cell control**, and the → depth affordance is a `render`
+  button that closes over the parent's `openRow` state. Rows stay INERT (no `onRowPayload`), so there is
+  no Rail coupling — DataTable's `useRail()` returns a safe no-op default when no RailProvider is present
+  (the provider is per-page, and /settings has none). The sheet opens as a CONTROLLED DetailOverlay
+  (onClose), because the parent holds the live polled state a routing @modal sheet would read stale.
