@@ -53,6 +53,25 @@ type Props = {
 export function PipelineSheet({ display, runs, records, lastRunSession, configured, now, onDispatched }: Props) {
   const { def, lastRun } = display;
 
+  // The janitor fetches nothing, runs no hand-fired mode and has no stages of its own — it is a cleanup
+  // that rides the nightly. So its sheet is one focused section: what it retired last night, made visible
+  // and countable (plan 4.8). The generic sections below would all be empty for it.
+  if (def.id === "janitor") {
+    return (
+      <div className="flex flex-col gap-6 py-4">
+        <header>
+          <h2 className="font-display text-xl font-bold text-ink">{def.name}</h2>
+          <p className="max-w-[60ch] pt-1 font-prose text-base text-ink-2">{def.description}</p>
+        </header>
+        <Section title={copy.control.sheet.housekeeping}>
+          <p className="font-mono text-sm text-ink-2">
+            {lastRun?.report ?? copy.control.sheet.janitorEmpty}
+          </p>
+        </Section>
+      </div>
+    );
+  }
+
   // The action states are decided here, in the browser, against the reader's clock — the same rule the
   // Desk's freshness strip follows, so the sheet and the nav can never disagree about the market. Before
   // the clock mounts, grade against the newest thing we know rather than flash an empty control.

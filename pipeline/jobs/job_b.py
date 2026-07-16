@@ -248,12 +248,14 @@ def _read_news(conn: psycopg.Connection, run_date: date) -> list[dict]:
     since = run_date - timedelta(days=_NEWS_WINDOW_DAYS)
     with conn.cursor() as cur:
         cur.execute(
-            "SELECT id, headline, snippet, url, tickers FROM news_item WHERE published_at >= %s",
+            "SELECT id, headline, snippet, url, tickers, source FROM news_item WHERE published_at >= %s",
             (since,),
         )
         rows = cur.fetchall()
+    # `source` (the outlet) rides along for CC10's citation snapshot — publish_briefing freezes it so a
+    # news purge never orphans the brief. It plays no part in extraction; it is provenance the brief keeps.
     return [
-        {"id": r[0], "headline": r[1], "snippet": r[2], "url": r[3], "tickers": list(r[4] or [])}
+        {"id": r[0], "headline": r[1], "snippet": r[2], "url": r[3], "tickers": list(r[4] or []), "source": r[5]}
         for r in rows
     ]
 

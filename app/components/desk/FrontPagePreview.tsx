@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { NewTag } from "@/components/NewTag";
 import { SectionMasthead } from "@/components/SectionMasthead";
 import { Tag } from "@/components/Tag";
 import { copy, fill } from "@/lib/copy";
@@ -70,6 +71,8 @@ export function FrontPagePreview({
                   className="flex min-h-11 items-center font-display text-base text-ink underline-offset-2 hover:underline md:min-h-0"
                 >
                   {story.headline}
+                  {/* CC10 (R8): first published in this edition — a quiet mono word after the title. */}
+                  {story.isNew ? <NewTag /> : null}
                 </Link>
                 <span className="flex items-center gap-2">
                   <Tag variant="catalyst">{catalystLabel(story.eventType)}</Tag>

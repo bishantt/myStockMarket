@@ -11,7 +11,7 @@ from datetime import date
 import exchange_calendars as xcals
 import pandas as pd
 
-from trading_calendar import previous_session, sessions_ahead, sessions_between
+from trading_calendar import previous_session, sessions_ahead, sessions_before, sessions_between
 
 
 def test_matches_stepping_next_session_ten_times():
@@ -47,6 +47,19 @@ def test_sessions_between_counts_trading_days_not_calendar_days():
     assert sessions_between(date(2026, 7, 10), date(2026, 7, 13)) == 1
     # The same session is zero old.
     assert sessions_between(date(2026, 7, 10), date(2026, 7, 10)) == 0
+
+
+def test_sessions_before_is_the_mirror_of_sessions_ahead():
+    # The janitor's session-retention floor. Stepping back n sessions must undo stepping forward n.
+    assert sessions_before(date(2026, 7, 15), 10) == date(2026, 6, 30)
+    # Zero sessions before a session is itself.
+    assert sessions_before(date(2026, 7, 10), 0) == date(2026, 7, 10)
+    # It skips the holiday walking backwards, exactly as the forward step skips it: 6 July is one
+    # session before 7 July's... no — 3 July is the observed holiday, so one session before Monday
+    # 6 July is Thursday 2 July.
+    assert sessions_before(date(2026, 7, 6), 1) == date(2026, 7, 2)
+    # A weekend anchor snaps to the session on or before it (Saturday → Friday), then steps back.
+    assert sessions_before(date(2026, 7, 11), 1) == date(2026, 7, 9)
 
 
 def test_sessions_between_snaps_a_weekend_date_to_the_session_it_belongs_to():

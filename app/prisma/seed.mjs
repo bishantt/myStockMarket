@@ -308,9 +308,18 @@ async function main() {
     sources: { fred: "ok", finnhub: "ok", marketaux: "ok" },
     stages: { macro: "ok", news: "ok", catalysts: "ok", publish: "ok", revalidate: "ok" },
   };
-  // marketaux degraded on purpose, so the SourceStatusFooter's honest degraded line shows. The dawn entry
-  // rides BESIDE these strings (statusFromRun ignores the nested object); it is the morning's engine.
-  const NIGHT_SOURCE_STATUS = { alpaca: "ok", finnhub: "ok", marketaux: "degraded", fmp: "ok", fred: "ok", dawn: DAWN_ENTRY };
+  // The janitor's retirements, stamped BESIDE the night's source_status by publish_janitor (CC10, plan 4.8).
+  // Seeded so the control room's Janitor row shows a real "Retired last night" line — not "—" — and the
+  // settings VRT locks it. Like the dawn entry, it rides BESIDE the provider strings as a nested object
+  // (statusFromRun, buildSourceStatus and nightSources all skip it — it is a cleanup, not a provider).
+  const JANITOR_ENTRY = {
+    ranAt: sessionAt("22:40").toISOString(), // the janitor is the last stage of the nightly
+    news: 214, days: 45, scans: 1, backupsKept: 8, backupsSeen: 9,
+    deleted: { news_item: 200, news_cluster: 12, catalyst_link: 2, scan_result: 30, setup_card: 8, vol_band: 8, price_bar: 15 },
+  };
+  // marketaux degraded on purpose, so the SourceStatusFooter's honest degraded line shows. The dawn and
+  // janitor entries ride BESIDE these strings (statusFromRun ignores the nested objects).
+  const NIGHT_SOURCE_STATUS = { alpaca: "ok", finnhub: "ok", marketaux: "degraded", fmp: "ok", fred: "ok", dawn: DAWN_ENTRY, janitor: JANITOR_ENTRY };
   await db.pipelineRun.upsert({
     where: { runDate: RUN_DATE },
     // The update refreshes sourceStatus too, so a LOCAL re-seed of an existing row picks up the dawn entry
@@ -322,6 +331,23 @@ async function main() {
       finishedAt: sessionAt("22:40"), // 2026-07-09T22:40Z
       stageStatus: { ingest: "ok", compute: "ok", scan: "ok", publish: "ok" },
       sourceStatus: NIGHT_SOURCE_STATUS,
+    },
+  });
+
+  // The PRIOR edition's heartbeat — Wednesday 2026-07-08's nightly (CC10, R8). The "new" tag is
+  // edition-relative: a cluster first seen after the prior edition went to press wears it. Without a prior
+  // run there is no prior press time, so nothing is "new" and the tag never renders. This one gives the
+  // seeded world a genuine prior edition, so tonight's fresh clusters tag "new" and the carried-over
+  // nc-nvda-guidance (first seen Wednesday 21:10, before this 22:40 press) does not — the honest contrast.
+  await db.pipelineRun.upsert({
+    where: { runDate: sessionPlus(-1) }, // 2026-07-08
+    update: { finishedAt: sessionPlus(-1, "22:40") },
+    create: {
+      runDate: sessionPlus(-1), // 2026-07-08
+      startedAt: sessionPlus(-1, "22:37"),
+      finishedAt: sessionPlus(-1, "22:40"), // 2026-07-08T22:40Z — the prior edition's press time
+      stageStatus: { ingest: "ok", compute: "ok", scan: "ok", publish: "ok" },
+      sourceStatus: { alpaca: "ok", finnhub: "ok", marketaux: "ok", fmp: "ok", fred: "ok" },
     },
   });
 

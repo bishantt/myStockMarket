@@ -291,6 +291,14 @@ export const copy = {
      * fact, said at a glance.
      */
     marketWide: "Market-wide",
+    /**
+     * CC10 (R8). A story first published in THIS edition wears one quiet mono tag after its headline.
+     * It is INFORMATION, never urgency — no count, no badge, no colour, nothing that moves. It is
+     * edition-relative (first-seen after the prior edition's press time), so it is safe on a cached page
+     * and no reader is tracked, and it falls away with the next edition. copy owns the word (R8's guard).
+     */
+    newTag: "new",
+    newTagTitle: "First published in this edition",
     noStoryHeader: "Moved without a story",
     sources: "{n} sources",
     oneSource: "1 source",
@@ -515,6 +523,13 @@ export const copy = {
         name: "Evening briefing (Job B)",
         description: "Assembles the evening brief from the day's stored data.",
       },
+      // CC10 (plan 4.8): the janitor rides the nightly full run, retiring what has aged out. Deletion is
+      // visible, boring and countable; the record — briefings, the signal log, the reader's own state — is
+      // kept forever and the janitor cannot name it.
+      janitor: {
+        name: "Janitor",
+        description: "Retires stale news, scans and old backups on the nightly run — the record is kept forever.",
+      },
     },
 
     /** The table's column headers. */
@@ -545,6 +560,10 @@ export const copy = {
       recentEmpty: "No runs recorded yet.",
       /** The honest note under the dawn refresh's empty last-run — it shares the nightly's record today. */
       dawnShares: "The dawn refresh shares the nightly's run record for now; its own last-run appears once it runs on its own schedule.",
+      /** CC10: the janitor sheet's own section — deletion made visible and countable (plan 4.8, Appendix A). */
+      housekeeping: "Housekeeping",
+      janitorReport: "Retired last night: {news} news items past {days}d · {scans} sessions of scan rows · backups kept {kept}",
+      janitorEmpty: "Nothing retired yet — the janitor runs with the nightly full.",
     },
   },
 

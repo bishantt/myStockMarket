@@ -1,9 +1,9 @@
 import { type RunAction } from "@/lib/constants";
-import { copy } from "@/lib/copy";
+import { copy, fill } from "@/lib/copy";
 import { describeCadence, parseCron } from "@/lib/cron";
 import { db } from "@/lib/db";
 import type { ManualRunRow } from "@/lib/pipeline-control";
-import { DAWN_KEY, readDawnEntry, toTradingDate } from "@/lib/pipeline";
+import { DAWN_KEY, JANITOR_KEY, readDawnEntry, readJanitorEntry, toTradingDate } from "@/lib/pipeline";
 import { formatEtStamp, formatUtcDate } from "@/lib/time";
 
 /**
@@ -19,7 +19,7 @@ import { formatEtStamp, formatUtcDate } from "@/lib/time";
  * tested; loadPipelines is the messy half (Prisma, a clock), untested like readPanel.
  */
 
-export type PipelineId = "nightly-full" | "dawn-refresh" | "evening-briefing";
+export type PipelineId = "nightly-full" | "dawn-refresh" | "evening-briefing" | "janitor";
 
 /** A run's verdict, with the word in the chip (colour is redundant). HELD is a briefing-only state. */
 export type PipelineStatus = "OK" | "DEGRADED" | "FAILED" | "HELD";
@@ -86,6 +86,20 @@ export const PIPELINES: PipelineDef[] = [
     providers: ["anthropic"],
     writesPipelineRun: false,
   },
+  {
+    // CC10 (plan 4.8): the janitor is a stage OF the nightly full run — it shares that cron and writes no
+    // run row of its own (its report rides the night's source_status, read by lastRunForJanitor). It fetches
+    // nothing and has no hand-only button: deletion is scheduled, boring and countable, never fired by a reader.
+    id: "janitor",
+    name: copy.control.pipelines.janitor.name,
+    description: copy.control.pipelines.janitor.description,
+    crons: ["37 22 * * 1-5"],
+    workflow: "nightly-a.yml",
+    actions: [],
+    stages: [],
+    providers: [],
+    writesPipelineRun: false,
+  },
 ];
 
 /**
@@ -106,11 +120,12 @@ export function statusFromRun(
   return "OK";
 }
 
-/** The night's own per-provider map — the string entries, with the dawn sub-entry removed (CC8). */
+/** The night's own per-provider map — the string entries, with the dawn (CC8) and janitor (CC10)
+ * sub-entries removed: both are nested objects that belong to their own rows, not the nightly's providers. */
 function nightSources(sourceStatus: Record<string, unknown>): Record<string, string> {
   const out: Record<string, string> = {};
   for (const [key, value] of Object.entries(sourceStatus)) {
-    if (key !== DAWN_KEY && typeof value === "string") out[key] = value;
+    if (key !== DAWN_KEY && key !== JANITOR_KEY && typeof value === "string") out[key] = value;
   }
   return out;
 }
@@ -193,6 +208,8 @@ export type LastRunFacts = {
   duration: string | null;
   sources: Record<string, string> | null;
   stages: Record<string, string> | null;
+  /** CC10: the janitor row's "Retired last night" line — null on every other pipeline. */
+  report: string | null;
 };
 
 export type PipelineDisplay = {
@@ -220,6 +237,7 @@ function lastRunForNightly(run: RunRow | null): LastRunFacts | null {
     duration: formatDuration(run.finishedAt.getTime() - run.startedAt.getTime()),
     sources,
     stages,
+    report: null,
   };
 }
 
@@ -240,6 +258,31 @@ export function lastRunForDawn(run: RunRow | null): LastRunFacts | null {
     duration: null,
     sources,
     stages,
+    report: null,
+  };
+}
+
+/**
+ * The janitor's Last run, read from the entry publish_janitor stamps beside the night's source_status
+ * (CC10, plan 4.8). Null until a janitor has actually run — the honest "—" the seeded world shows if it
+ * models none. The stamp is the janitor's own instant; the "Retired last night" line is formatted here,
+ * in the mechanical voice (copy.ts), from the counts the entry carries.
+ */
+export function lastRunForJanitor(run: RunRow | null): LastRunFacts | null {
+  const janitor = readJanitorEntry(run?.sourceStatus);
+  if (!janitor?.ranAt) return null;
+  return {
+    status: "OK",
+    stamp: formatEtStamp(new Date(janitor.ranAt)),
+    duration: null,
+    sources: null,
+    stages: null,
+    report: fill(copy.control.sheet.janitorReport, {
+      news: janitor.news ?? 0,
+      days: janitor.days ?? 45,
+      scans: janitor.scans ?? 0,
+      kept: janitor.backupsKept ?? 0,
+    }),
   };
 }
 
@@ -252,6 +295,7 @@ function lastRunForBriefing(brief: { runDate: Date; status: string } | null): La
     duration: null,
     sources: null,
     stages: null,
+    report: null,
   };
 }
 
@@ -297,7 +341,9 @@ export async function loadPipelines(): Promise<{ pipelines: PipelineDisplay[]; r
           ? lastRunForBriefing(latestBriefing)
           : def.id === "dawn-refresh"
             ? lastRunForDawn(latestRun)
-            : null,
+            : def.id === "janitor"
+              ? lastRunForJanitor(latestRun)
+              : null,
   }));
 
   return { pipelines, records };

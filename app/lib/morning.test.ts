@@ -444,6 +444,18 @@ describe("buildSourceStatus", () => {
     // Exactly one degraded source — marketaux, not marketaux + a phantom "dawn".
     expect(rows.filter((r) => r.status !== "ok")).toHaveLength(1);
   });
+
+  it("skips the nested janitor entry too — deletion is not a degraded provider (CC10)", () => {
+    // publish_janitor stamps a `janitor` OBJECT beside the night's strings, exactly as the dawn does.
+    // The same footer bug would print "janitor [object Object]" and inflate the degraded count.
+    const rows = buildSourceStatus({
+      alpaca: "ok",
+      fred: "ok",
+      janitor: { ranAt: "2026-07-10T22:40:00Z", news: 214, scans: 1, backupsKept: 8 },
+    });
+    expect(rows.map((r) => r.name)).not.toContain("janitor");
+    expect(rows.filter((r) => r.status !== "ok")).toHaveLength(0);
+  });
 });
 
 describe("buildScanBreakdown — the Desk's Sectors & Scans module (CC4, D4)", () => {

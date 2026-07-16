@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { toTradingDate } from "@/lib/pipeline";
+import { isNewInEdition } from "@/lib/news";
 import { freshness } from "@/lib/freshness";
 
 /**
@@ -36,6 +37,23 @@ describe("toTradingDate — a @db.Date is a DAY, not an instant", () => {
     // A bare date stored at UTC midnight IS 2026-07-10. Formatting it in Eastern time would make it
     // "2026-07-09" — the trap lib/time.ts already documents, here at the other end of the pipe.
     expect(toTradingDate(new Date("2026-07-13T00:00:00.000Z"))).toBe("2026-07-13");
+  });
+});
+
+describe("isNewInEdition — the 'new' tag's boundary is the prior edition's press time (CC10, R8)", () => {
+  const prior = new Date("2026-07-14T23:36:00Z"); // when the prior edition went to press
+
+  it("tags a row first seen AFTER the prior edition went to press", () => {
+    expect(isNewInEdition(new Date("2026-07-15T06:31:00Z"), prior)).toBe(true);
+  });
+
+  it("does NOT tag a row carried over from the prior edition (first seen at or before its press)", () => {
+    expect(isNewInEdition(new Date("2026-07-14T20:00:00Z"), prior)).toBe(false);
+    expect(isNewInEdition(prior, prior)).toBe(false); // exactly at press time is not "after"
+  });
+
+  it("tags NOTHING when there is no prior edition — 'everything is new' is not information (R8)", () => {
+    expect(isNewInEdition(new Date("2026-07-15T06:31:00Z"), null)).toBe(false);
   });
 });
 

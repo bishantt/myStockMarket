@@ -678,6 +678,35 @@ def test_a_second_dawn_replaces_its_own_entry_but_still_keeps_the_nights(db):
     assert source["dawn"]["ranAt"].endswith("10:33:00+00:00")
 
 
+# ── publish_janitor: the retirement stamp lands BESIDE the night's, never over it (CC10) ──────
+
+
+def test_the_janitor_stamp_lands_beside_the_nights_source_status_never_over_it(db):
+    """The twin of the dawn test. The janitor is a stage of the full run and shares its run_date, so its
+    entry must merge beside the night's provider health, not replace it — a healthy night must never read
+    degraded because deletion ran."""
+    pub.publish(
+        db,
+        run_date=RUN,
+        stage_status={"ingest": "ok", "publish": "ok"},
+        source_status={"alpaca": "ok", "marketaux": "degraded"},
+    )
+    ran_at = datetime(2026, 7, 1, 22, 40, tzinfo=timezone.utc)
+    entry = {"ranAt": ran_at.isoformat(), "news": 214, "days": 45, "scans": 1,
+             "backupsKept": 8, "backupsSeen": 9, "deleted": {"news_item": 200, "scan_result": 30}}
+    pub.publish_janitor(db, run_date=RUN, entry=entry)
+
+    source = db.execute("SELECT source_status FROM pipeline_run WHERE run_date = %s", (RUN,)).fetchone()[0]
+    # The night's per-provider health survives untouched.
+    assert source["alpaca"] == "ok"
+    assert source["marketaux"] == "degraded"
+    # The janitor's report lands beside them, self-contained.
+    assert source["janitor"]["news"] == 214
+    assert source["janitor"]["scans"] == 1
+    assert source["janitor"]["backupsKept"] == 8
+    assert source["janitor"]["ranAt"] == ran_at.isoformat()
+
+
 # ── publish_calendar: the dawn refreshes the forward view, and nothing else (CC8) ─────────────
 
 

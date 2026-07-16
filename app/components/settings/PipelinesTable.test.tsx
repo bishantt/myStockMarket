@@ -37,6 +37,7 @@ const DISPLAYS: PipelineDisplay[] = PIPELINES.map((def) => ({
           duration: "3m 0s",
           sources: { alpaca: "ok", marketaux: "degraded" },
           stages: { ingest: "ok", publish: "ok" },
+          report: null,
         }
       : null,
 }));

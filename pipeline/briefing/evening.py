@@ -78,10 +78,13 @@ def run_briefing(deps: BriefingDeps) -> BriefingResult:
         return BriefingResult(status="skipped")
 
     extracts = _gather_extracts(deps, late_items)
+    # Freeze the brief's sources HERE, from the articles it was synthesized over (CC10, plan 4.8) — so
+    # the janitor's later news purge can never orphan a published brief's citations.
+    sources = _briefing_sources(deps, late_items, extracts)
 
     draft = synthesize(deps.anthropic, extracts.values(), deps.stats, model=deps.model_synth)
     if draft is None:
-        return _publish_held_no_draft(deps, extract_count=len(extracts))
+        return _publish_held_no_draft(deps, extract_count=len(extracts), sources=sources)
 
     verification = verify(
         draft,
@@ -97,8 +100,27 @@ def run_briefing(deps: BriefingDeps) -> BriefingResult:
         verification_json=verification.to_json(),
         model_meta=_model_meta(deps, len(extracts)),
         status=status,
+        sources_json=sources,
     )
     return BriefingResult(status=status, extract_count=len(extracts), flag_count=len(verification.flags))
+
+
+def _briefing_sources(deps: BriefingDeps, late_items: list[dict], extracts: dict) -> list[dict]:
+    """The articles this brief was written from, as [{title, outlet, url}] — snapshotted at publish so a
+    news purge never leaves a published brief citing an article that no longer exists (4.8's coupling).
+
+    The set is every article that fed synthesis: the batched items and any late-swept news whose extract
+    survived. A superset of what the prose cites, deliberately — the guarantee is that nothing the brief
+    could reference can be orphaned, not that only cited rows are kept."""
+    seen: set[str] = set()
+    sources: list[dict] = []
+    for item in [*deps.batched_items, *late_items]:
+        doc_id = str(item["id"])
+        if doc_id not in extracts or item.get("url") in seen:
+            continue
+        seen.add(item.get("url"))
+        sources.append({"title": item.get("headline"), "outlet": item.get("source"), "url": item.get("url")})
+    return sources
 
 
 # ----- internals -----
@@ -124,9 +146,10 @@ def _gather_extracts(deps: BriefingDeps, late_items: list[dict]) -> dict[str, Ex
     return extracts
 
 
-def _publish_held_no_draft(deps: BriefingDeps, *, extract_count: int) -> BriefingResult:
+def _publish_held_no_draft(deps: BriefingDeps, *, extract_count: int, sources: list[dict]) -> BriefingResult:
     """Publish a held briefing when synthesis failed twice (Appendix G). The am_json carries the
-    unavailable shell; the verification JSON records the reason."""
+    unavailable shell; the verification JSON records the reason. It still snapshots the night's sources —
+    a held brief marks the snapshot cutover too, so the janitor knows the app has begun storing them."""
     verification = {"status": "held", "checked": 0, "flags": [], "held_reason": "synthesis failed validation"}
     deps.publish(
         run_date=deps.run_date,
@@ -134,6 +157,7 @@ def _publish_held_no_draft(deps: BriefingDeps, *, extract_count: int) -> Briefin
         verification_json=verification,
         model_meta=_model_meta(deps, extract_count),
         status="held",
+        sources_json=sources,
     )
     return BriefingResult(status="held", extract_count=extract_count, flag_count=0)
 

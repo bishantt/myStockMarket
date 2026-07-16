@@ -98,6 +98,10 @@ export type NewsCard = {
   significance: number;
   sources: number;
   firstSeen: Date;
+  /** CC10 (R8): first published in the CURRENT edition — first seen after the prior edition's press time.
+   * A quiet "new" tag renders after the headline when true. False on the story sheet (a single-story deep
+   * view is not where "what's new" is scanned) and on any surface with no prior edition to compare against. */
+  isNew: boolean;
   /** The verified one-liner, or null. A null prints NOTHING on a card — never a placeholder (P9). */
   whyItMatters: string | null;
   affectedNote: string | null;
@@ -356,7 +360,18 @@ export type NewsClusterRow = {
  * narrator existed is in production now). A cast would crash a page the reader asked for, so every field
  * is read through a check and every absence has an answer.
  */
-export function toCard(row: NewsClusterRow): NewsCard {
+/**
+ * Was this row first published in the CURRENT edition? True iff first seen AFTER the prior edition went
+ * to press (CC10, R8). Null prior (a first-ever edition) tags nothing — "new" is information, and
+ * "everything is new" is not. It lives HERE, not in lib/pipeline (which imports the Prisma client), because
+ * this module is pulled into the CLIENT bundle by NewsCard — a db import would drag Prisma onto /news.
+ * Edition-relative by construction: no visit, no reader, no tracking.
+ */
+export function isNewInEdition(firstSeen: Date, priorPressTime: Date | null): boolean {
+  return priorPressTime !== null && firstSeen.getTime() > priorPressTime.getTime();
+}
+
+export function toCard(row: NewsClusterRow, priorPressTime: Date | null = null): NewsCard {
   const extract = isRecord(row.extract) ? row.extract : {};
   const verification = isRecord(row.verification) ? row.verification : {};
 
@@ -369,6 +384,8 @@ export function toCard(row: NewsClusterRow): NewsCard {
     significance: row.significance,
     sources: row.sources,
     firstSeen: row.firstSeen,
+    // Passed only by the front-page feed; the story sheet omits it, so its cards never wear the tag.
+    isNew: isNewInEdition(row.firstSeen, priorPressTime),
     whyItMatters: row.whyItMatters,
     affectedNote: row.affectedNote,
     sections: readSections(verification),

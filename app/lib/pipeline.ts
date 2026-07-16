@@ -32,6 +32,38 @@ export function readDawnEntry(sourceStatus: unknown): DawnEntry | null {
   return dawn as DawnEntry;
 }
 
+/** The key the janitor's retirements live under, inside the night's source_status (CC10, publish_janitor). */
+export const JANITOR_KEY = "janitor";
+
+/** The janitor's report, stamped beside the night's source_status by publish_janitor (CC10, plan 4.8). */
+export type JanitorEntry = {
+  ranAt?: string;
+  /** Total news rows retired across the news group — the "N news items" the reader sees. */
+  news?: number;
+  /** The trailing window for news, in days (45). */
+  days?: number;
+  /** How many whole sessions of scan rows fell past the 30-session window. */
+  scans?: number;
+  /** Weekly database dumps kept under R2 `backups/`, and how many were there to begin with. */
+  backupsKept?: number;
+  backupsSeen?: number;
+  /** The full per-table breakdown, kept for the record. */
+  deleted?: Record<string, number>;
+};
+
+/**
+ * The janitor entry publish_janitor merged into a run's source_status, or null if no janitor has run.
+ * The twin of readDawnEntry: it rides BESIDE the night's per-provider strings as a non-string object, so
+ * the control room reads it here and everything that walks the provider strings (statusFromRun, the
+ * SourceStatusFooter, nightSources) skips it — deletion is not a provider's health.
+ */
+export function readJanitorEntry(sourceStatus: unknown): JanitorEntry | null {
+  if (!sourceStatus || typeof sourceStatus !== "object") return null;
+  const janitor = (sourceStatus as Record<string, unknown>)[JANITOR_KEY];
+  if (!janitor || typeof janitor !== "object") return null;
+  return janitor as JanitorEntry;
+}
+
 /** The shape the Desk needs from the most recent run. Dates are ISO strings because this is cached
  * (the data cache serialises to JSON); the page reconstructs them. */
 export type LatestRun = {
@@ -109,6 +141,29 @@ export type CompletedRunRow = {
 /** A `@db.Date` value as the bare calendar date it actually represents. */
 export function toTradingDate(date: Date): TradingDate {
   return date.toISOString().slice(0, 10);
+}
+
+/**
+ * The moment the PRIOR edition went to press — the finish time of the second-most-recent finished run
+ * (CC10, R8). Null when only one edition exists (a fresh database): with no prior edition to compare
+ * against, nothing is "new since last edition", which is the honest default rather than tagging everything.
+ *
+ * It is a fact about the RUN, not the reader — so a "new since last edition" tag computed from it is
+ * edition-relative, safe on a cached page, and tracks nobody (R8).
+ */
+export async function getPriorEditionPressTime(): Promise<Date | null> {
+  try {
+    const rows = await db.pipelineRun.findMany({
+      where: { finishedAt: { not: null } },
+      orderBy: { runDate: "desc" },
+      take: 2,
+      select: { finishedAt: true },
+    });
+    return rows.length >= 2 ? rows[1].finishedAt : null;
+  } catch (error) {
+    console.error("getPriorEditionPressTime: could not read pipeline_run", error);
+    return null;
+  }
 }
 
 export async function getLatestCompletedRun(): Promise<CompletedRunRow | null> {

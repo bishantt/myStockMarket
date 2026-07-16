@@ -20,6 +20,7 @@ from zoneinfo import ZoneInfo
 import httpx
 import psycopg
 
+import janitor
 import macro_stats
 import publish as pub
 from adapters.alpaca import AlpacaAdapter
@@ -589,12 +590,24 @@ def main() -> None:
         )
         result = run_nightly(deps)
 
+        # CC10 — fresh in, stale out (plan 4.8). The janitor is a stage of the FULL run, appended after
+        # publish and before revalidate: it retires what has aged out (the trailing tables its manifest
+        # allows, and the R2 backups/ prefix), and stamps its counts beside the night's source_status for
+        # the control room. The record is untouchable — the allow-list is the door forever models can't enter.
+        janitor_report = janitor.run_janitor(conn, run_date=run_date, r2=r2)
+        pub.publish_janitor(conn, run_date=run_date, entry=janitor_report.to_entry(datetime.now(_MARKET_TZ)))
+
     _revalidate_desk(settings)
 
     print(
         f"job_a: {run_date.isoformat()} — universe {result.universe_size}, "
         f"coverage {result.coverage:.1%}, {result.scan_matches} scan matches, "
         f"{result.served_symbols} served symbols, breadth {result.breadth}."
+    )
+    print(
+        f"job_a[janitor]: retired {janitor_report.news_rows} news row(s), "
+        f"{janitor_report.scan_sessions} session(s) of scan rows; "
+        f"backups kept {janitor_report.backups_kept} of {janitor_report.backups_seen}."
     )
 
 

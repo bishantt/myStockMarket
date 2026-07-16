@@ -41,6 +41,7 @@ function card(over: Partial<NewsCard> = {}): NewsCard {
     significance: 0.5,
     sources: 1,
     firstSeen: new Date("2026-07-09T18:00:00.000Z"),
+    isNew: false,
     whyItMatters: null,
     affectedNote: null,
     sections: { whyItMatters: null, affectedNote: null, context: null, watch: null },
@@ -277,6 +278,15 @@ describe("the database boundary", () => {
     expect(card.context).toBeNull();
     expect(card.watch).toEqual([]);
     expect(card.modelMeta).toBeNull();
+  });
+
+  it("tags a card 'new' when first seen after the prior edition's press time, and not otherwise (CC10, R8)", () => {
+    // The fixture's firstSeen is 2026-07-09 18:00. A prior edition that went to press BEFORE that ⇒ new.
+    expect(toCard(row, new Date("2026-07-09T00:00:00.000Z")).isNew).toBe(true);
+    // A prior edition that went to press AFTER it ⇒ carried over, not new.
+    expect(toCard(row, new Date("2026-07-09T20:00:00.000Z")).isNew).toBe(false);
+    // No prior edition, or the story sheet (which passes nothing) ⇒ never tagged.
+    expect(toCard(row).isNew).toBe(false);
   });
 
   it("reads the key numbers the gate cleared", () => {

@@ -253,6 +253,11 @@ model Briefing {
   verificationJson Json     @map("verification_json")
   modelMeta        Json     @map("model_meta")
   status           String
+  /// The citation snapshot (CC10, plan 4.8 / Appendix B #2): [{ title, outlet, url }] of the articles
+  /// this briefing was written from, frozen at publish. So the janitor's news purge never orphans a
+  /// published brief — its sources resolve from here, with no news_item join. Null on briefings written
+  /// before CC10 (their news is never purged — the janitor's news deletion starts at this column's cutover).
+  sourcesJson      Json?    @map("sources_json")
 
   @@map("briefing")
 }

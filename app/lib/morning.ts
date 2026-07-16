@@ -5,7 +5,8 @@ import { copy } from "@/lib/copy";
 import { directionOf, multiple, percent, price, signedPercent, timingLabel } from "@/lib/format";
 import { formatUtcDate, formatUtcWeekday } from "@/lib/time";
 import { nextTradingDay } from "@/lib/market-hours";
-import { DAWN_KEY, toTradingDate } from "@/lib/pipeline";
+import { isNewInEdition } from "@/lib/news";
+import { DAWN_KEY, JANITOR_KEY, getPriorEditionPressTime, toTradingDate } from "@/lib/pipeline";
 import { buildBrief, parseBriefDraft, type BriefView } from "@/lib/briefing";
 import { isKnownLesson } from "@/lib/academy";
 import {
@@ -505,7 +506,10 @@ const SOURCE_ORDER = ["alpaca", "finnhub", "marketaux", "fmp", "fred", "edgar"];
  */
 export function buildSourceStatus(status: Record<string, unknown> | null): SourceStatus[] {
   if (!status) return [];
-  const isProvider = (name: string) => name !== DAWN_KEY;
+  // Neither the dawn (CC8) nor the janitor (CC10) is a provider — both stamp a nested object beside the
+  // night's strings, and both are skipped here so the footer never prints "[object Object]" as a degraded
+  // source or inflates the "N degraded" count (the exact footer bug CC9 caught for dawn).
+  const isProvider = (name: string) => name !== DAWN_KEY && name !== JANITOR_KEY;
   const known = SOURCE_ORDER.filter((name) => name in status).map((name) => ({
     name,
     status: String(status[name]),
@@ -616,6 +620,10 @@ export type FrontPagePreviewRow = {
   headline: string;
   eventType: string;
   sources: number;
+  /** CC10 (R8): first published in this edition. The Desk front-page module wears a quiet "new" tag when
+   * true. The Morning Plan's Overnight list sets it false on purpose — that whole section IS "since the
+   * close", so a per-row tag there would be noise, not information (R8). */
+  isNew: boolean;
 };
 
 /** One preset's line in the Desk's Sectors & Scans module (CC4): its name, its evidence grade, and
@@ -774,7 +782,10 @@ async function loadMorningPlan(): Promise<MorningPlanView | null> {
       }),
     ]);
 
-    return { overnight, todayCalendar: buildMorningPlanCalendar(todayEvents) };
+    // The Overnight list is self-labeling — the whole section IS "since the close", so a per-row "new"
+    // tag would be noise, not information (R8). isNew is set false; the section heading does the telling.
+    const overnightRows: FrontPagePreviewRow[] = overnight.map((r) => ({ ...r, isNew: false }));
+    return { overnight: overnightRows, todayCalendar: buildMorningPlanCalendar(todayEvents) };
   } catch (error) {
     console.error("getMorning: could not assemble the Morning Plan", error);
     return null;
@@ -797,19 +808,28 @@ async function loadFrontPage(): Promise<{ top: FrontPagePreviewRow[]; total: num
     });
     if (!latest) return { top: [], total: 0 };
 
-    const [rows, total] = await Promise.all([
+    const [rows, total, priorPressTime] = await Promise.all([
       db.newsCluster.findMany({
         where: { runDate: latest.runDate },
         // significance v2 first; ties break NEWEST-first (CC6, amending the old oldest-first tie) —
         // this must match the pipeline's own sort (newsdesk/ingest.py) or the Desk and the room disagree.
         orderBy: [{ significance: "desc" }, { firstSeen: "desc" }, { id: "asc" }],
         take: FRONT_PAGE_PREVIEW,
-        select: { id: true, headline: true, eventType: true, sources: true },
+        select: { id: true, headline: true, eventType: true, sources: true, firstSeen: true },
       }),
       db.newsCluster.count({ where: { runDate: latest.runDate } }),
+      // CC10 (R8): a cluster first seen after the prior edition went to press wears a "new" tag.
+      getPriorEditionPressTime(),
     ]);
 
-    return { top: rows, total };
+    const top: FrontPagePreviewRow[] = rows.map((r) => ({
+      id: r.id,
+      headline: r.headline,
+      eventType: r.eventType,
+      sources: r.sources,
+      isNew: isNewInEdition(r.firstSeen, priorPressTime),
+    }));
+    return { top, total };
   } catch (error) {
     console.error("getMorning: could not load the front page preview", error);
     return { top: [], total: 0 };

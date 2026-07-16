@@ -25,7 +25,7 @@ STATS = [Stat("breadth", "5091", label="advancers")]
 
 def _news(doc_id: str, headline: str = "Acme beat estimates") -> dict:
     return {"id": doc_id, "headline": headline, "snippet": "Acme reported revenue of $1.2B.",
-            "url": f"https://example.com/{doc_id}", "tickers": ["ACME"]}
+            "url": f"https://example.com/{doc_id}", "tickers": ["ACME"], "source": "Reuters"}
 
 
 def _extract_json(doc_id: str) -> str:
@@ -126,6 +126,17 @@ def test_happy_path_publishes():
     assert len(publish.calls) == 1
     assert publish.calls[0]["status"] == "published"
     assert publish.calls[0]["am_json"]["today_focus"]["headline"] == "A quiet session"
+
+
+def test_publish_snapshots_the_briefings_sources():
+    """CC10: the brief freezes [{title, outlet, url}] of the articles it was written from, so the
+    janitor's later news purge can never orphan it."""
+    client = _client(["ended"], [_batch_result("news-1")], [_draft_json()])
+    publish = _Capture()
+    run_briefing(_deps(client, publish, batched=[_news("news-1", headline="Acme beat estimates")]))
+    assert publish.calls[0]["sources_json"] == [
+        {"title": "Acme beat estimates", "outlet": "Reuters", "url": "https://example.com/news-1"}
+    ]
 
 
 def test_cutoff_remainder_is_sync_extracted_then_published():

@@ -6,6 +6,7 @@ import {
   PIPELINES,
   formatDuration,
   lastRunForDawn,
+  lastRunForJanitor,
   mergeRuns,
   statusFromBriefing,
   statusFromRun,
@@ -21,8 +22,17 @@ import {
  */
 
 describe("the pipeline definitions", () => {
-  it("names the three CC7 rows in reading order", () => {
-    expect(PIPELINES.map((p) => p.id)).toEqual(["nightly-full", "dawn-refresh", "evening-briefing"]);
+  it("names the rows in reading order — the three CC7 schedules, then CC10's janitor", () => {
+    expect(PIPELINES.map((p) => p.id)).toEqual([
+      "nightly-full", "dawn-refresh", "evening-briefing", "janitor",
+    ]);
+  });
+
+  it("gives the janitor no hand-fired mode — deletion is scheduled, never a reader's button (CC10)", () => {
+    expect(PIPELINES.find((p) => p.id === "janitor")?.actions).toEqual([]);
+    // It rides the nightly full's cron and writes no run row of its own.
+    expect(PIPELINES.find((p) => p.id === "janitor")?.crons).toEqual(["37 22 * * 1-5"]);
+    expect(PIPELINES.find((p) => p.id === "janitor")?.writesPipelineRun).toBe(false);
   });
 
   it("assigns every manual action to exactly one sheet — no action is unreachable or duplicated", () => {
@@ -97,6 +107,33 @@ describe("lastRunForDawn — the dawn refresh reads its own stamp from the night
     const dawn = { ranAt: "2026-07-15T10:31:00Z", sources: { fred: "degraded" }, stages: { macro: "ok" } };
     const facts = lastRunForDawn(nightRow({ alpaca: "ok", dawn }));
     expect(facts?.status).toBe("DEGRADED");
+  });
+});
+
+describe("lastRunForJanitor — the janitor reads its retirements from the night's row (CC10, plan 4.8)", () => {
+  const nightRow = (sourceStatus: Record<string, unknown>) => ({
+    startedAt: new Date("2026-07-14T23:33:00Z"),
+    finishedAt: new Date("2026-07-14T23:36:00Z"),
+    stageStatus: { ingest: "ok", publish: "ok" },
+    sourceStatus,
+  });
+
+  it("is null until a janitor has run — the honest '—' the seeded world shows if it models none", () => {
+    expect(lastRunForJanitor(null)).toBeNull();
+    expect(lastRunForJanitor(nightRow({ alpaca: "ok" }))).toBeNull();
+  });
+
+  it("formats the 'Retired last night' line from the entry's counts, in the mechanical voice", () => {
+    const janitor = {
+      ranAt: "2026-07-14T23:37:00Z",
+      news: 214, days: 45, scans: 1, backupsKept: 8, backupsSeen: 9,
+      deleted: { news_item: 200, news_cluster: 12, catalyst_link: 2, scan_result: 30 },
+    };
+    const facts = lastRunForJanitor(nightRow({ alpaca: "ok", janitor }));
+    expect(facts?.status).toBe("OK");
+    expect(facts?.report).toBe(
+      "Retired last night: 214 news items past 45d · 1 sessions of scan rows · backups kept 8",
+    );
   });
 });
 

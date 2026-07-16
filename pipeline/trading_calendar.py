@@ -47,6 +47,23 @@ def sessions_ahead(fired_date: date, n: int) -> date:
     return cal.sessions[index + n].date()
 
 
+def sessions_before(anchor: date, n: int) -> date:
+    """
+    The trading session `n` sessions BEFORE `anchor` on the NYSE calendar — the mirror of
+    sessions_ahead, and what a session-based retention floor is measured in.
+
+    `anchor` is snapped to the session on or before it, so a floor asked from a weekend measures
+    from the Friday it belongs to. "Keep the most recent N sessions" is `sessions_before(anchor,
+    N - 1)`: the window [that session … anchor] inclusive is exactly N sessions, and the janitor
+    deletes rows dated strictly before it. Trading sessions, never calendar days — a weekend is not
+    two sessions of age, and trimming by calendar days would retire a Friday's rows on a Monday.
+    """
+    cal = _calendar()
+    base = cal.date_to_session(pd.Timestamp(anchor), direction="previous")
+    index = cal.sessions.get_loc(base)
+    return cal.sessions[index - n].date()
+
+
 def previous_session(day: date) -> date:
     """
     The last trading session that actually CLOSED before `day`.

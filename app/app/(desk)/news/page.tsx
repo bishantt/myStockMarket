@@ -3,6 +3,7 @@ import { Surface } from "@/components/Surface";
 import { copy, fill } from "@/lib/copy";
 import { db } from "@/lib/db";
 import { type NewsCard, type NoStoryMover, toCard } from "@/lib/news";
+import { getPriorEditionPressTime } from "@/lib/pipeline";
 import { formatEtClock, formatUtcDateLong } from "@/lib/time";
 
 /**
@@ -73,7 +74,7 @@ async function readFrontPage(): Promise<FrontPage> {
     const since = new Date(latest.runDate);
     since.setUTCDate(since.getUTCDate() - (WINDOW_DAYS - 1));
 
-    const [rows, run, movers, oldest] = await Promise.all([
+    const [rows, run, movers, oldest, priorPressTime] = await Promise.all([
       db.newsCluster.findMany({
         where: { runDate: { gte: since } },
         // significance v2, ties NEWEST-first (CC6) — the same sort the Desk preview and the pipeline use.
@@ -92,6 +93,8 @@ async function readFrontPage(): Promise<FrontPage> {
         select: { symbol: true, metrics: true },
       }),
       db.newsCluster.findFirst({ orderBy: { runDate: "asc" }, select: { runDate: true } }),
+      // CC10 (R8): when the prior edition went to press — a cluster first seen after it wears a "new" tag.
+      getPriorEditionPressTime(),
     ]);
 
     const cards = rows.map((row) =>
@@ -115,7 +118,7 @@ async function readFrontPage(): Promise<FrontPage> {
           rvol20: link.rvol20,
           hasSetupCard: link.hasSetupCard,
         })),
-      }),
+      }, priorPressTime),
     );
 
     // The archive has to actually SPAN a week before "This week" can promise one. Otherwise the

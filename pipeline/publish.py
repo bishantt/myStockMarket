@@ -234,6 +234,36 @@ def publish_dawn(
         raise
 
 
+def publish_janitor(conn: psycopg.Connection, *, run_date: date, entry: Mapping[str, Any]) -> None:
+    """
+    Stamp the janitor's retirements BESIDE the night's on the session's pipeline_run row (CC10, plan 4.8).
+
+    The exact mirror of publish_dawn, and for the same reason. The janitor is a stage of the full run, so
+    the run row already exists; going through the whole publish() would REPLACE source_status and erase
+    the night's per-provider health. So this MERGES source_status (`||`) — a single `janitor` entry lands
+    beside the provider strings, none of them touched. It is not a provider (statusFromRun and the footer
+    both skip the nested entry), so a healthy night never reads degraded because deletion happened. The
+    control room reads this entry for the Janitor row's "Retired last night" line.
+    """
+    _require_session(run_date, "publish_janitor")
+    payload = {"janitor": dict(entry)}
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                INSERT INTO pipeline_run (run_date, started_at, finished_at, stage_status, source_status)
+                VALUES (%(run_date)s, now(), now(), '{}'::jsonb, %(source)s)
+                ON CONFLICT (run_date) DO UPDATE SET
+                    source_status = pipeline_run.source_status || EXCLUDED.source_status
+                """,
+                {"run_date": run_date, "source": Json(payload)},
+            )
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        raise
+
+
 def publish_calendar(conn: psycopg.Connection, *, calendar_events: Iterable[Mapping[str, Any]] | None) -> None:
     """
     Replace the forward calendar and touch nothing else — the dawn's catalyst stage (CC8).
@@ -498,6 +528,7 @@ def publish_briefing(
     model_meta: Mapping[str, Any],
     status: str,
     pm_json: Mapping[str, Any] | None = None,
+    sources_json: Iterable[Mapping[str, Any]] | None = None,
 ) -> None:
     """
     Persist the evening briefing atomically (plan P3 step 2 — the single-transaction publish).
@@ -507,21 +538,29 @@ def publish_briefing(
     night is auditable); `status` is "published" or "held". `pm_json` is written only when a PM
     edition is supplied, else a re-publish preserves the stored edition (COALESCE) so writing the AM
     never blanks a later PM.
+
+    `sources_json` (CC10, plan 4.8) is the citation snapshot — [{title, outlet, url}] of the articles
+    this brief was written from, frozen HERE so the janitor's later news purge can never orphan it. It
+    is the twin of the news_cluster.articles snapshot, and for the same reason: a source the reader
+    cannot open is not a source. COALESCE'd like pm_json, so a later PM re-publish never blanks it. Its
+    presence is what the janitor reads as the cutover — the date from which news deletion is safe.
     """
     _require_session(run_date, "publish_briefing")
+    sources = list(sources_json) if sources_json is not None else None
     try:
         with conn.cursor() as cur:
             cur.execute(
                 """
                 INSERT INTO briefing
-                    (run_date, am_json, pm_json, verification_json, model_meta, status)
-                VALUES (%(run_date)s, %(am)s, %(pm)s, %(verify)s, %(meta)s, %(status)s)
+                    (run_date, am_json, pm_json, verification_json, model_meta, status, sources_json)
+                VALUES (%(run_date)s, %(am)s, %(pm)s, %(verify)s, %(meta)s, %(status)s, %(sources)s)
                 ON CONFLICT (run_date) DO UPDATE SET
                     am_json = EXCLUDED.am_json,
                     pm_json = COALESCE(EXCLUDED.pm_json, briefing.pm_json),
                     verification_json = EXCLUDED.verification_json,
                     model_meta = EXCLUDED.model_meta,
-                    status = EXCLUDED.status
+                    status = EXCLUDED.status,
+                    sources_json = COALESCE(EXCLUDED.sources_json, briefing.sources_json)
                 """,
                 {
                     "run_date": run_date,
@@ -532,6 +571,7 @@ def publish_briefing(
                     "verify": Json(dict(verification_json)),
                     "meta": Json(dict(model_meta)),
                     "status": status,
+                    "sources": Json([dict(s) for s in sources]) if sources is not None else None,
                 },
             )
         conn.commit()

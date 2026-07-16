@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { ExternalLink } from "@/components/ExternalLink";
+import { NewTag } from "@/components/NewTag";
 import { NewsImage } from "@/components/news/NewsImage";
 import { Tag } from "@/components/Tag";
 import { TickerChip } from "@/components/TickerChip";
@@ -117,6 +118,8 @@ export function NewsCard({ card, tier }: NewsCardProps) {
             {/* The N5 headline renderer, now the app's ONE emphasis path (PD5). A figure is set in
              * mono if and only if the gate cleared it — the typeface is the receipt. */}
             <VerifiedProse text={card.headline} allowed={keyNumbers} />
+            {/* CC10 (R8): first published in this edition — a quiet mono word, no shout. */}
+            {card.isNew ? <NewTag /> : null}
           </h3>
 
           {/* Why-it-matters is the LEAD's alone (CC5) — the hero gets the breath, a row gets scanned.

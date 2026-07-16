@@ -52,6 +52,15 @@ class R2Store:
         self._client.upload_file(str(local_path), self._bucket, key)
         return key
 
+    def list_keys(self, prefix: str) -> list[str]:
+        """Every object key under a prefix, sorted. The janitor lists the `backups/` prefix to trim it."""
+        return self._list_keys(prefix)
+
+    def delete_key(self, key: str) -> None:
+        """Delete one object by exact key. The janitor's one R2 write: retiring an old weekly dump under
+        `backups/`. It NEVER touches the parquet lake (compute mode reads the five-year history there)."""
+        self._client.delete_object(Bucket=self._bucket, Key=key)
+
     def sync_up(self, local_root: str | Path) -> list[str]:
         """
         Upload every .parquet file under `local_root`, keyed by its path relative to the root.
