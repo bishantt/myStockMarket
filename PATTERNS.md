@@ -1332,3 +1332,32 @@ fact, R6), but module 02's brief uses TermProse whose glossary registry only mem
   renders the EVENING state and the CLIENT swaps to morning on mount. A morning VRT shot must assert the
   swap landed (`toContainText(/MORNING EDITION/)`) BEFORE the camera fires — a baseline of the evening
   masthead filed under "morning" is PD3's law all over again (an exact baseline of the wrong state).
+
+## A retention manifest: one list, mirrored against the schema, deletions derived from it (CC10)
+
+A deletion stage is a data-loss hazard, so it gets the routes-manifest treatment. ONE manifest
+(`pipeline/janitor.py`) names EVERY model with a policy — `Forever`, `Replace`, `Trailing(N,unit,column)`.
+A unit test mirrors it against `schema.prisma` BOTH directions: a new table with no policy reds the
+build, and a policy for a gone table reds it too. The DELETE targets DERIVE from the trailing entries
+(`delete_allow_list()`), and every DELETE goes through a `_guard(table)` that refuses anything off that
+list — so a `forever` model is unreachable through the deletion door even by a typo, proven by a test
+that `briefing`/`signal_log`/`watchlist_item` raise. Three things a future manifest must get right:
+- **Every trailing entry NAMES its date column** — "old" is defined by the data, not the janitor's
+  opinion (Appendix D). A child with no date of its own (catalyst_link) is `TrailingByParent`, retired
+  when its parent is, in FK-safe order (children first, then the parent, then any now-unreferenced target).
+- **Sessions vs days is load-bearing** — `sessions_before(anchor, N-1)` (the trading calendar) is the
+  floor for "keep N sessions"; `timedelta(days=N)` for calendar-day windows. A weekend is not two sessions.
+- **The deletion writes its counts BESIDE the run's status, never through the ordinary publish** —
+  `publish_janitor` merges a `janitor` entry into `source_status` (`||`), the mirror of `publish_dawn`.
+  Every reader that walks the provider strings (statusFromRun, buildSourceStatus, nightSources) must SKIP
+  the nested entry, or the footer prints it as a phantom degraded provider (the CC9 dawn footer bug's sibling).
+
+## Edition-relative marking needs a prior-edition anchor in the seed (CC10, R8)
+
+A "new since last edition" tag compares a row's first-seen to the PRIOR edition's press time
+(`getPriorEditionPressTime` = the 2nd-most-recent finished `pipeline_run`'s `finishedAt`). With one
+seeded run there is no prior, so nothing is "new" and the tag never renders — the oracle would photograph
+a feature that never fires. The seed needs TWO editions: the current run plus a prior run whose press time
+sits BEFORE tonight's fresh rows and AFTER a carried-over one, so the seeded world shows both the tagged
+and the untagged state. The pure comparison lives in a client-safe module (a db import would drag Prisma
+into the client bundle — see LESSONS); the DB read for the prior press time stays server-side in the loader.

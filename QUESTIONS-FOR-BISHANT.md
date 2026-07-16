@@ -8,6 +8,63 @@ Format: newest first. I mark each as [FYI], [VETO?], or [NEED] so you can scan.
 
 ---
 
+## 2026-07-16 — CC10 (Fresh in, stale out) — **the LAST CC phase; the commission is complete**
+
+CC10 built the janitor (a retention manifest + a nightly deletion stage + the R2 backup trim), the
+briefing citation snapshot (one migration), the control-room Janitor row, and the "new" tags (R8).
+Tagged `cc-10`. Three heads-ups — two marked assumptions in the janitor manifest, and one deferral I
+want your eyes on.
+
+### [FYI · Q-CC10-1, marked] `watchlist_item` is `forever` — the one model the plan's manifest table did not name
+The janitor's manifest must name EVERY Prisma model (a bidirectional test reds the build otherwise).
+The plan's §4.8 table named 22 of the 23 models; `watchlist_item` — the reader's own watchlist, the
+names and the reasons you wrote — was the one it missed. I made it **`forever`**: it is user data, the
+record, and the janitor may never touch it (the allow-list refuses it, proven by a test). This is the
+only reasonable reading, but it is an assumption I made rather than one the plan wrote down. Veto only
+if you ever want a watchlist name to expire, which I cannot imagine you do.
+
+### [VETO? · Q-CC10-2, marked] The calendar "new" tag is DEFERRED — clusters carry it, the calendar does not
+§4.8 says clusters AND calendar rows get the "new" tag. Clusters do. The calendar does **not**, and the
+reason is structural: `calendar_event` is a **`replace`-policy** table — the pipeline rewrites the whole
+forward window every run — and it has **no first-seen column**. So "first published in this edition" is
+undefined for a calendar row without a *second* migration (`firstSeenAt`) plus a change to
+`_replace_calendar` to preserve that stamp across the nightly replace. Appendix B sanctions exactly ONE
+CC10 migration (`sourcesJson`), Appendix C bounds CC10's VRT as "small," and R8 says the tag is
+information, not noise — and the only thing I could do *without* the second migration is tag EVERY
+calendar row every night, which is noise. So I shipped the cluster tag (the meaningful surface — genuinely
+new stories are marked) and left the calendar tag for a small dedicated follow-up. **Assumption shipped:**
+the cluster tag is the value R8 wanted; the calendar tag waits for a deliberate `firstSeenAt` migration.
+Say the word and it is a ~1-session follow-up (migration + preserve-on-replace + thread it through).
+
+### [VETO? · Q-CC10-3] On a fresh evening, MOST front-page stories wear the "new" tag — by design, but you may find it heavy
+The tag marks a cluster first seen since the prior edition went to press. On a normal evening that is
+most of the day's news, so most front-page headlines wear a quiet "new". This is honest — the tag's real
+signal is its ABSENCE on a carried-over multi-day story (in the seed, only nc-nvda-guidance, first seen
+the day before, lacks it). But if a page of mostly-tagged headlines reads as clutter to you rather than
+information, the fix is a one-line scope change: e.g. show it ONLY on the Desk's front-page module (the 3
+top stories), or only on the /news "This week" view where the contrast is sharp. I built the plan's
+literal spec (every new cluster, quietly); veto toward a narrower scope if you'd prefer it.
+
+### [FYI · no action] The janitor's news deletion protects a permanent pre-cutover backlog
+The janitor never deletes a news_item published before the "snapshot cutover" (the earliest briefing that
+stored its own sources). This is the coupling §4.8 asked for — it keeps a pre-CC10 briefing's sources
+joinable — but it means the news that already exists at the CC10 deploy is never purged (a bounded, one-time
+backlog; everything published after the cutover trims normally at 45 days). Noted so the storage footprint
+in PROGRESS is not a surprise: the janitor's steady-state is small, but it does not reclaim the old backlog.
+
+### [still open, unanswered since LC1] Q-LC1-1 — vrt-diff.mjs is broken (pixelmatch absent)
+CC10 re-shot VRT for the new tags + the Janitor row, so "diff every candidate" bit again. `vrt-diff.mjs`
+still throws `ERR_MODULE_NOT_FOUND: pixelmatch`; I used the pngjs-only counter (PATTERNS.md). The fix is
+one line — `npm i -D pixelmatch` — or a pngjs rewrite. **This is the LAST CC phase, so this question now
+travels alone** — it is nobody's phase to fold in until you say the word.
+
+### [carried, NOT CC10's domain] Q-CC6-2 — the event classifier is weak; Q-CC9-1 — "before the open" wording
+Both unchanged. Q-CC6-2 (the `classify_event` keyword classifier mislabels headlines) still wants a
+decision: a dedicated classifier pass or a folded phase. Q-CC9-1 ("before the open" ruled edition-provenance
+so R3 holds) is still marked for veto if you'd rather reword the morning status. Neither was CC10's to touch.
+
+---
+
 ## 2026-07-16 — CC9 (The Desk greets the morning)
 
 CC9 taught the Desk to greet a Morning Edition. Module 02 becomes THE MORNING PLAN before the open, the
