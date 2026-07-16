@@ -172,6 +172,14 @@ const BRIEFING = {
  * calendar back to a plain first-N slice, these two rows disappear and that test goes red.
  */
 const CALENDAR = [
+  // Reported on the edition's OWN session (2026-07-09): post-close, these are retrospective, so the
+  // Desk collapses them into one "Reported today: BAC · C · GS · JPM · WFC" line rather than letting
+  // five bank earnings lead the rail above the week ahead (CC6, D7). Exercises the collapse in VRT/e2e.
+  { date: sessionPlus(0), kind: "earnings", symbol: "JPM", timing: null, title: "JPM earnings", consensus: 4.12, prior: 4.05, importance: "medium", code: "EARNINGS" }, // 2026-07-09
+  { date: sessionPlus(0), kind: "earnings", symbol: "BAC", timing: null, title: "BAC earnings", consensus: 0.86, prior: 0.83, importance: "medium", code: "EARNINGS" }, // 2026-07-09
+  { date: sessionPlus(0), kind: "earnings", symbol: "GS", timing: null, title: "GS earnings", consensus: 9.4, prior: 8.62, importance: "medium", code: "EARNINGS" }, // 2026-07-09
+  { date: sessionPlus(0), kind: "earnings", symbol: "C", timing: null, title: "C earnings", consensus: 1.55, prior: 1.42, importance: "medium", code: "EARNINGS" }, // 2026-07-09
+  { date: sessionPlus(0), kind: "earnings", symbol: "WFC", timing: null, title: "WFC earnings", consensus: 1.28, prior: 1.2, importance: "medium", code: "EARNINGS" }, // 2026-07-09
   { date: sessionPlus(3), kind: "macro", symbol: null, timing: null, title: "Consumer Price Index", consensus: null, prior: null, importance: "high", code: "CPI" }, // 2026-07-12
   { date: sessionPlus(4), kind: "earnings", symbol: "MSFT", timing: null, title: "MSFT earnings", consensus: 3.12, prior: 2.94, importance: "medium", code: "EARNINGS" }, // 2026-07-13
   { date: sessionPlus(5), kind: "earnings", symbol: "GME", timing: null, title: "GME earnings", consensus: 0.04, prior: 0.02, importance: "medium", code: "EARNINGS" }, // 2026-07-14
@@ -298,8 +306,25 @@ async function main() {
   // The Desk's own names, plus every name the scan tables reference, plus the four the news night
   // introduces — the match table joins on Instrument for its Name column, and a match whose
   // instrument is missing renders a nameless row.
+  //
+  // CC6: each instrument also carries the two fields the Movers floor reads — a coarse class and a
+  // dollar-volume bucket. The pipeline stamps these nightly; the seed mirrors it. Class is name-derived
+  // (fund vs stock); the bucket comes from the scan's own is_large_mid where a symbol is a match, else
+  // large/mid (the index ETFs and watchlist names are all liquid). The awkward scan rows carry
+  // is_large_mid=false, so the floor's filter is genuinely exercised on the universe-wide scan set.
+  const FUND_NAME = /\b(?:etf|etn|fund)\b/i;
+  const bucketBySymbol = new Map(
+    SCAN_ROWS
+      .filter((r) => r.metrics && "is_large_mid" in r.metrics)
+      .map((r) => [r.symbol, r.metrics.is_large_mid ? "large_mid" : "small"]),
+  );
   for (const i of [...INSTRUMENTS, ...SCAN_INSTRUMENTS, ...NEWS_INSTRUMENTS]) {
-    await db.instrument.upsert({ where: { symbol: i.symbol }, update: i, create: i });
+    const enriched = {
+      ...i,
+      assetClass: FUND_NAME.test(i.name) ? "fund" : "stock",
+      dvBucket: bucketBySymbol.get(i.symbol) ?? "large_mid",
+    };
+    await db.instrument.upsert({ where: { symbol: i.symbol }, update: enriched, create: enriched });
   }
 
   for (const b of PRICE_HISTORY) {

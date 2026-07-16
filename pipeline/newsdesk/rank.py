@@ -4,12 +4,14 @@ rank.py — what leads the Front Page, and why (plan Appendix E; ruling C1).
 THIS FILE IS THE ANSWER TO "WILL YOUR NEWS SECTION DRIFT INTO A TRENDING FEED?"
 
 It cannot, and the reason is structural rather than disciplinary. The order of the page is a fixed
-arithmetic formula over five measured quantities, all of them properties of the EVENT — how broadly
-it reaches, how many independent newsrooms judged it worth printing, how big a price move it
-explains, what class of thing it is, and how fresh it is. There is no term for popularity, no term
-for engagement, no term for what the reader clicked last time, and — the deepest guard — no
-behavioral signal is INGESTED anywhere in this system, so there is nothing for such a term to be
-built from even by accident.
+arithmetic formula (significance v2, plan 4.5) over four measured factors, all of them properties of
+the EVENT — what CLASS of thing happened, how many independent newsrooms judged it worth printing,
+how big the NAMED ENTITY is, and how fresh it is. It is a PRODUCT, not a sum: each factor gates the
+others, so a corroborated macro print leads, a single-outlet macro event outranks a micro-cap PR on
+entity weight, and a hard event outranks an opinion at equal corroboration. There is no term for
+popularity, no term for engagement, no term for what the reader clicked last time, and — the deepest
+guard — no behavioral signal is INGESTED anywhere in this system, so there is nothing for such a term
+to be built from even by accident.
 
 The weights are module constants. Changing one is a structural change to what the app claims its
 front page is, and it goes through DECISIONS.md like any other.
@@ -17,11 +19,18 @@ front page is, and it goes through DECISIONS.md like any other.
 The language model never sees a rank and never sets one. It writes prose about clusters this file
 has already ordered.
 
-ON class_prior, THE ONE TERM THAT LOOKS LIKE AN OPINION: it is a prior about the CLASS of event, not
-about the instance — an FDA approval reprices a company more often than an analyst note does, and
-that is a fact about how markets work, not a view about today. It is the smallest weight but one, it
-is stated on the surface (the room's header sentence explains the ordering), and it is the only place
-in the formula where the app's own judgment appears at all.
+ON catalyst_weight, THE ONE FACTOR THAT LOOKS LIKE AN OPINION: it is a prior about the CLASS of event,
+not about the instance — an FDA approval reprices a company more often than an analyst note does, and
+that is a fact about how markets work, not a view about today. It is stated on the surface (the room's
+header sentence explains the ordering), and it is the only place in the formula where the app's own
+judgment appears at all.
+
+WHAT V2 DROPPED, AND WHY. v1 (the N-phase) summed five weighted terms, two of them a `scope` term
+(ticker count) and a price-`magnitude` term. v2 replaces scope with entity_weight — a mega-cap or an
+index outranks a micro-cap PR at equal catalyst, which ticker-count could not see — and drops
+magnitude from the order entirely: the front page ranks NEWSWORTHINESS, not who moved most (R5), and
+"movers need a catalyst" is the Movers module's rule, not this one. magnitude is still COMPUTED and
+kept on the row as diagnostic evidence; it simply no longer sets the order.
 """
 
 from __future__ import annotations
@@ -29,33 +38,14 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 
-# The five weights. They sum to 1.0, and the test asserts it — a formula whose weights quietly
-# stopped summing to one would still produce an order, and it would mean nothing.
-W_SCOPE = 0.30
-W_CORROBORATION = 0.25
-W_MAGNITUDE = 0.20
-W_CLASS_PRIOR = 0.15
-W_RECENCY = 0.10
+# ── The four factors of significance v2 (plan 4.5, Appendix E) ────────────────────────────────
+# score = catalyst_weight × corroboration × entity_weight × freshness. Every factor is in [0, 1], so
+# the product is too, and a maximal story scores exactly 1.0 (the test asserts it). No weights sum to
+# one here — a product needs none — but each factor's own ceiling is 1.0, which is what keeps it bounded.
 
-# How far the event reaches. The biggest single term, because "how many people does this touch" is
-# the most honest proxy for "how much does this matter" that does not require an opinion.
-SCOPE_MACRO = 1.0        # a Fed decision, a CPI print, a war closing a shipping strait
-SCOPE_SECTOR = 0.6       # three or more names, or an event about a whole industry
-SCOPE_SINGLE = 0.3       # one company
-SCOPE_NO_LISTING = 0.15  # real news, nobody we hold — it still gets a place, at the bottom
-
-# Corroboration saturates at five independent outlets: the difference between one newsroom and three
-# is enormous, and the difference between eight and ten is nothing.
-CORROBORATION_CEILING = 5
-
-# A move is measured in units of the ticker's OWN volatility, not in percent. A 3% day is enormous
-# for a utility and a quiet Tuesday for a biotech, and a formula that could not tell them apart would
-# rank every speculative name above every real story. Capped at 3 ATRs, because past that the number
-# stops discriminating — everything is simply "huge".
-MAGNITUDE_ATR_CAP = 3.0
-
-# The class priors (Appendix E, verbatim).
-CLASS_PRIOR: dict[str, float] = {
+# catalyst_weight — hard events outrank commentary (Appendix E, verbatim). This is the factor that
+# keeps a single-name analyst blog off the lead: M&A/FDA/macro/Fed are 1.0, an analyst note is 0.4.
+CATALYST_WEIGHT: dict[str, float] = {
     "ma": 1.0,
     "fda": 1.0,
     "macro": 1.0,
@@ -69,9 +59,36 @@ CLASS_PRIOR: dict[str, float] = {
     "other": 0.3,
 }
 
-RECENCY_SAME_SESSION = 1.0
-RECENCY_PRIOR_SESSION = 0.5
-RECENCY_OLDER = 0.25
+# Corroboration saturates at five independent outlets: the difference between one newsroom and three
+# is enormous, and the difference between eight and ten is nothing. As a MULTIPLICATIVE factor it does
+# real work — the ~3 corroborated clusters a night rise above the single-outlet pack, which then sorts
+# among itself by catalyst × entity × freshness. That is the editorial order the plan asked for.
+CORROBORATION_CEILING = 5
+
+# entity_weight — the dollar-volume bucket (reuse `_DV_WINDOW`/scans.py's large/mid split; do NOT
+# invent a second liquidity notion). A market-wide event reaches the whole tape, so it takes the max;
+# a single-name story is worth its LARGEST linked name; an unknown or sub-$5 name is not a big liquid
+# name, so a micro-cap PR trying to look like news scores half.
+ENTITY_MARKET_WIDE = 1.0  # a macro/Fed event — its entity is the whole tape
+ENTITY_LARGE_MID = 1.0    # a name in the top-N by dollar volume (large/mid)
+ENTITY_SMALL = 0.5        # a small, sub-$5, unknown, or no-listing name
+
+# A macro or Fed event is about the whole market, not a company, so its entity is the market itself —
+# this is what carries "Iran closes the Strait of Hormuz" to the lead over a merger we hold no ticker
+# for. It is the ONE place entity_weight reads the event class, and it is faithful to Appendix E,
+# which labels both market-wide clusters as macro.
+_MARKET_WIDE_EVENTS = frozenset({"macro", "fed"})
+
+# freshness — today's news leads, yesterday's is halved, older barely holds on. Ties at equal
+# significance break NEWEST-first at the sort site (ingest.py), amending v1's oldest-first tie.
+FRESHNESS_SAME_SESSION = 1.0
+FRESHNESS_PRIOR_SESSION = 0.5
+FRESHNESS_OLDER = 0.25
+
+# A move is measured in units of the ticker's OWN volatility, not in percent. A 3% day is enormous
+# for a utility and a quiet Tuesday for a biotech. Capped at 3 ATRs, because past that the number
+# stops discriminating. Retained as diagnostic evidence on each row (magnitude_for) — NOT a v2 factor.
+MAGNITUDE_ATR_CAP = 3.0
 
 # The deterministic event classifier. Stage A (the language model) refines an event_type for the
 # clusters it reaches; the ~70 clusters a night that fall past its cap still need one, and calling
@@ -148,24 +165,28 @@ def classify_event(category: str, headline: str, summary: str = "") -> str:
     return "other"
 
 
-def scope_for(tickers: tuple[str, ...] | list[str], event_type: str, sectors: list[str]) -> float:
+def entity_weight_for(
+    tickers: tuple[str, ...] | list[str],
+    buckets: dict[str, str | None],
+    event_type: str,
+) -> float:
     """
-    How far does this reach?
+    How big is the entity this story is about, by dollar-volume bucket?
 
-    A macro event is macro whether or not it names a company — that is the whole point of it, and it
-    is why "Iran closes the Strait of Hormuz" outranks any single earnings beat on this page. Three
-    or more names, or a story the taxonomy could only call Broad market, is sector-wide. One name is
-    one name. And a story we hold no listing for still appears — at the bottom, honestly labeled.
+    A macro or Fed event is about the whole tape, so it takes the max — that is why "Iran closes the
+    Strait of Hormuz" leads over a merger whose ticker we hold no listing for. Every other story is
+    about specific companies: it is worth its LARGEST linked name (a cluster naming Apple and a
+    micro-cap is an Apple story), and a name we cannot size — no listing, delisted, or sub-$5 —
+    scores small rather than borrowing the market's weight.
     """
-    if event_type in {"macro", "fed"}:
-        return SCOPE_MACRO
-
-    count = len(tickers)
-    if count >= 3:
-        return SCOPE_SECTOR
-    if count >= 1:
-        return SCOPE_SINGLE
-    return SCOPE_NO_LISTING
+    if event_type in _MARKET_WIDE_EVENTS:
+        return ENTITY_MARKET_WIDE
+    if not tickers:
+        return ENTITY_SMALL
+    return max(
+        ENTITY_LARGE_MID if buckets.get(symbol) == "large_mid" else ENTITY_SMALL
+        for symbol in tickers
+    )
 
 
 def corroboration_for(sources: int) -> float:
@@ -198,40 +219,40 @@ def magnitude_for(moves: list[TickerMove]) -> float:
     return sum(scores) / len(scores)
 
 
-def class_prior_for(event_type: str) -> float:
-    """The prior for this CLASS of event. Unknown classes get the floor, never a middle guess."""
-    return CLASS_PRIOR.get(event_type, CLASS_PRIOR["other"])
+def catalyst_weight_for(event_type: str) -> float:
+    """The weight for this CLASS of event. Unknown classes get the floor, never a middle guess."""
+    return CATALYST_WEIGHT.get(event_type, CATALYST_WEIGHT["other"])
 
 
-def recency_for(sessions_ago: int) -> float:
+def freshness_for(sessions_ago: int) -> float:
     """Today's news leads. Yesterday's is halved. Older than that is barely holding on."""
     if sessions_ago <= 0:
-        return RECENCY_SAME_SESSION
+        return FRESHNESS_SAME_SESSION
     if sessions_ago == 1:
-        return RECENCY_PRIOR_SESSION
-    return RECENCY_OLDER
+        return FRESHNESS_PRIOR_SESSION
+    return FRESHNESS_OLDER
 
 
 def significance(
     *,
     tickers: tuple[str, ...] | list[str],
     event_type: str,
-    sectors: list[str],
     sources: int,
-    moves: list[TickerMove],
+    buckets: dict[str, str | None],
     sessions_ago: int,
 ) -> float:
     """
-    The one number that orders the Front Page (Appendix E).
+    The one number that orders the Front Page (significance v2, plan 4.5 / Appendix E).
 
-    Every input is a property of the EVENT. None of them is a property of the reader, and none of
-    them could become one without someone adding a behavioral signal to a pipeline that does not
-    collect any.
+    A PRODUCT of four factors, each a property of the EVENT: catalyst_weight × corroboration ×
+    entity_weight × freshness. None of them is a property of the reader, and none of them could become
+    one without someone adding a behavioral signal to a pipeline that does not collect any. `buckets`
+    maps each symbol to its dollar-volume bucket ("large_mid" / "small" / None), the same split the
+    base-rate engine uses.
     """
     return (
-        W_SCOPE * scope_for(tickers, event_type, sectors)
-        + W_CORROBORATION * corroboration_for(sources)
-        + W_MAGNITUDE * magnitude_for(moves)
-        + W_CLASS_PRIOR * class_prior_for(event_type)
-        + W_RECENCY * recency_for(sessions_ago)
+        catalyst_weight_for(event_type)
+        * corroboration_for(sources)
+        * entity_weight_for(tickers, buckets, event_type)
+        * freshness_for(sessions_ago)
     )

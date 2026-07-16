@@ -70,3 +70,41 @@ describe("CalendarTimeline — the cut (M2)", () => {
     expect(screen.getByText(/A quiet stretch/)).toBeVisible();
   });
 });
+
+describe("CalendarTimeline — the CC6 grammar and the reported-today collapse (D7)", () => {
+  const earningsRow = (dateLabel: string, symbol: string): CalendarRow => ({
+    dateLabel,
+    kind: "earnings",
+    code: "EARNINGS",
+    title: `${symbol} earnings`,
+    symbol,
+  });
+
+  it("speaks an earnings symbol ONCE — the ticker, not 'JPM · JPM earnings'", () => {
+    render(<CalendarTimeline asOf={asOf} events={[earningsRow("Wed, Jul 15", "MSFT")]} />);
+    // The ticker chip shows the symbol once; the redundant "MSFT earnings" title is gone (the KIND
+    // chip already says EARNINGS).
+    expect(screen.getByText("MSFT")).toBeVisible();
+    expect(screen.queryByText("MSFT earnings")).toBeNull();
+    expect(screen.queryByText(/·\s*MSFT/)).toBeNull();
+  });
+
+  it("collapses today's reported earnings into ONE retrospective line, below the forward rows", () => {
+    render(
+      <CalendarTimeline
+        asOf={asOf}
+        events={[earningsRow("Thu, Jul 16", "MSFT")]}
+        reportedToday={["BAC", "C", "GS", "JPM", "WFC"]}
+      />,
+    );
+    expect(screen.getByText(/Reported today/i)).toBeVisible();
+    expect(screen.getByText(/BAC · C · GS · JPM · WFC/)).toBeVisible();
+  });
+
+  it("shows the reported-today line even when there are no forward events left", () => {
+    // A day with nothing ahead but names that reported today is NOT the empty state.
+    render(<CalendarTimeline asOf={asOf} events={[]} reportedToday={["JPM"]} />);
+    expect(screen.queryByText(/A quiet stretch/)).toBeNull();
+    expect(screen.getByText(/Reported today/i)).toBeVisible();
+  });
+});

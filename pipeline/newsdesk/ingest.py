@@ -147,6 +147,7 @@ def build_night(
     moves: dict[str, TickerMove],
     session_date: date,
     sectors_by_symbol: dict[str, str] | None = None,
+    buckets_by_symbol: dict[str, str | None] | None = None,
 ) -> NightResult:
     """
     Turn a night's raw articles into the ranked front page.
@@ -165,10 +166,15 @@ def build_night(
     clusters = cluster_items(items)
 
     ranked = [
-        _rank_cluster(cluster, kept, moves, session_date, sectors_by_symbol or {})
+        _rank_cluster(
+            cluster, kept, moves, session_date, sectors_by_symbol or {}, buckets_by_symbol or {}
+        )
         for cluster in clusters
     ]
-    ranked.sort(key=lambda c: (-c.significance, c.first_seen, c.id))
+    # Highest significance first; ties break NEWEST-first (v2, amending v1's oldest-first tie —
+    # fresher is more useful), and id last as a stable final tiebreak. Negating the timestamp is how
+    # a most-recent-first order rides an ascending sort.
+    ranked.sort(key=lambda c: (-c.significance, -c.first_seen.timestamp(), c.id))
 
     return NightResult(
         clusters=ranked,
@@ -223,6 +229,7 @@ def _rank_cluster(
     moves: dict[str, TickerMove],
     session_date: date,
     sectors_by_symbol: dict[str, str],
+    buckets_by_symbol: dict[str, str | None],
 ) -> RankedCluster:
     """Score one cluster and dress it with everything the publish transaction needs."""
     by_id = {str(a["id"]): a for a in articles}
@@ -252,9 +259,8 @@ def _rank_cluster(
     significance = rank.significance(
         tickers=cluster.tickers,
         event_type=event_type,
-        sectors=sectors,
         sources=cluster.sources,
-        moves=linked_moves,
+        buckets=buckets_by_symbol,
         sessions_ago=sessions_ago,
     )
 

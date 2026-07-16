@@ -208,6 +208,12 @@ export const copy = {
     quiet: "No moves cleared the catalyst-or-noise bar today.",
     relvolNote:
       'RelVol = volume ÷ 20-day average. "No clear catalyst" usually means noise; a cause sometimes surfaces later — absence of news is not a reason to act.',
+    /** The floor footnote (CC6, D6): the Movers module shows liquid names only; the raw universe —
+     * trusts, wrappers, structured products, thin ETFs — stays in the universe-wide Scans. */
+    floorNote: "Liquid names only — the full universe stays in Scans.",
+    /** RelVol saturates at the window length (a 20-day average that includes today cannot be beaten
+     * by more than 20×), so a value at the ceiling reads "≥20×" rather than a canned "20.0×" (CC6). */
+    relvolCapped: "≥20×",
   },
 
   calendar: {
@@ -221,6 +227,9 @@ export const copy = {
     emptySub: "Curated from the full FRED release feed; the rest was noise.",
     /** M8 (app-feel): the cut is named — the reader is told what they are seeing and through when. */
     next: "Next {k} of {n} · through {date}",
+    /** The label on the collapsed retrospective row (CC6, D7): today's already-reported earnings are
+     * one line ("Reported today: JPM · BAC · GS · C · WFC"), not a stack that buries the week ahead. */
+    reportedToday: "Reported today",
   },
 
   brief: {
@@ -241,7 +250,7 @@ export const copy = {
     roomTitle: "Front page",
     pressTime: "Assembled {date} {time} ET · from {articles} articles, {clusters} catalysts",
     ordering:
-      "Ordered by catalyst significance: how broad the event is, how many separate outlets carried it, and how large a move it explains. Stories that score the same tie, and ties run oldest first.",
+      "Ordered by significance: the kind of event (a hard catalyst outranks an opinion), how many separate outlets carried it, how large the company or index is, and how recent it is. Ties run newest first.",
     /** C10. The room is a newspaper: it has a press time, and it does not pretend to be a wire. */
     cadence: "Assembled nightly after the US close. This page does not update during the day.",
     countLine: "{n} catalysts{filters}",

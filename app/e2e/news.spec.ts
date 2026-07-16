@@ -42,9 +42,9 @@ test.describe("The Front Page", () => {
 
   test("the room explains its own ordering, and does not overclaim it", async ({ page }) => {
     // Ruling C1: a page that ranks without explaining how is asking to be trusted rather than
-    // checked. And the sentence must admit the ties, because the real feed is full of them.
-    await expect(page.getByText("Ordered by catalyst significance")).toBeVisible();
-    await expect(page.getByText("Stories that score the same tie", { exact: false })).toBeVisible();
+    // checked. The dek now names significance v2's four factors and the newest-first tie (CC6).
+    await expect(page.getByText("Ordered by significance", { exact: false })).toBeVisible();
+    await expect(page.getByText("Ties run newest first", { exact: false })).toBeVisible();
   });
 
   test("the press time and the cadence are both stated (C10)", async ({ page }) => {

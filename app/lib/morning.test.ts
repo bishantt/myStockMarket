@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { buildCalendar, buildMacro, buildMovers, buildScanBreakdown, buildSourceStatus, buildWatchlist, calendarFloor } from "@/lib/morning";
+import { buildCalendar, buildMacro, buildMovers, buildScanBreakdown, buildSourceStatus, buildWatchlist, calendarFloor, isLiquidFloorEligible } from "@/lib/morning";
 import { SCAN_PRESETS } from "@/lib/scan-presets";
 
 /**
@@ -278,6 +278,7 @@ describe("buildMovers", () => {
       changePct: "+8.20%",
       direction: "up",
       rvol: "3.1×",
+      emphasizeRvol: true,
       catalyst,
     });
     expect(movers[1].changePct).toBe("−4.50%");
@@ -287,6 +288,39 @@ describe("buildMovers", () => {
   it("leaves catalyst undefined when a mover has no matched news (the noise line renders)", () => {
     const [mover] = buildMovers([{ symbol: "XYZ", name: "Xyz", changeFraction: 0.09, rvol: 1.1 }]);
     expect(mover.catalyst).toBeUndefined();
+    expect(mover.emphasizeRvol).toBe(false); // 1.1× does not clear the 2× bar
+  });
+
+  it("saturates RelVol at the window ceiling — a degenerate 20× reads ≥20×, not a canned 20.0×", () => {
+    // rvol20 is bounded by its own window length; a value at the ceiling means a thin/newly-listed
+    // name whose prior days had ~no volume. It should say so rather than print a suspicious "20.0×".
+    const [capped] = buildMovers([{ symbol: "THIN", name: "Thinly Traded", changeFraction: 0.5, rvol: 20 }]);
+    expect(capped.rvol).toBe("≥20×");
+    expect(capped.emphasizeRvol).toBe(true);
+    // Anything that would round up to 20.0 saturates too; a genuine 19.4× still reads honestly.
+    expect(buildMovers([{ symbol: "A", name: "A", changeFraction: 0.1, rvol: 19.97 }])[0].rvol).toBe("≥20×");
+    expect(buildMovers([{ symbol: "B", name: "B", changeFraction: 0.1, rvol: 19.4 }])[0].rvol).toBe("19.4×");
+  });
+});
+
+describe("isLiquidFloorEligible (the Movers liquid floor, CC6/D6)", () => {
+  it("keeps a large/mid common stock", () => {
+    expect(isLiquidFloorEligible({ symbol: "SMCI", assetClass: "stock", dvBucket: "large_mid" })).toBe(true);
+  });
+
+  it("drops anything below the dollar-volume floor, stock or not", () => {
+    // The thin structured products and obscure ETFs of the junk parade are small by dollar volume.
+    expect(isLiquidFloorEligible({ symbol: "TINY", assetClass: "stock", dvBucket: "small" })).toBe(false);
+    expect(isLiquidFloorEligible({ symbol: "OBSC", assetClass: "fund", dvBucket: "small" })).toBe(false);
+    // A name we could not size (no bucket yet) is not a big liquid name.
+    expect(isLiquidFloorEligible({ symbol: "NEW", assetClass: "stock", dvBucket: null })).toBe(false);
+  });
+
+  it("keeps a core index/sector ETF even though it is a fund, but drops every other fund", () => {
+    expect(isLiquidFloorEligible({ symbol: "SPY", assetClass: "fund", dvBucket: "large_mid" })).toBe(true);
+    expect(isLiquidFloorEligible({ symbol: "XLK", assetClass: "fund", dvBucket: "large_mid" })).toBe(true);
+    // A big, liquid, but non-core fund (a leveraged/thematic ETF) is still not a Desk mover.
+    expect(isLiquidFloorEligible({ symbol: "TQQQ", assetClass: "fund", dvBucket: "large_mid" })).toBe(false);
   });
 });
 

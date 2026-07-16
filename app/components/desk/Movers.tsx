@@ -36,16 +36,14 @@ export type Mover = {
   /** Already formatted and signed, e.g. "+8.2%". */
   changePct: string;
   direction: Direction;
-  /** Relative volume, formatted, e.g. "3.1×". */
+  /** Relative volume, formatted, e.g. "3.1×" — or "≥20×" when it saturates at the window ceiling. */
   rvol: string;
+  /** Whether RVOL clears 2× and earns the accent — decided on the number in buildMovers, because the
+   * display string may read "≥20×" and has no leading digit to parse back out. */
+  emphasizeRvol: boolean;
   /** The matched catalyst, or undefined — in which case the honest noise line renders. */
   catalyst?: Catalyst;
 };
-
-
-/** RVOL is emphasised once it clears 2x — the point at which "unusual volume" stops being a phrase
- * and starts being a fact. It is accent, because it is the row's one interactive-grade signal. */
-const RVOL_EMPHASIS_THRESHOLD = 2;
 
 
 /** How many movers stay in view on a phone before the rest fold away (§4.1). */
@@ -135,9 +133,12 @@ export function Movers({
       ) : null}
 
       {movers.length > 0 ? (
-        <p className={cx("max-w-[70ch] font-ui text-2xs text-muted", allNoise ? "pt-2" : "pt-4")}>
-          {copy.mover.relvolNote}
-        </p>
+        <div className={cx(allNoise ? "pt-2" : "pt-4")}>
+          {/* The floor footnote names what this module is (liquid names) and where the rest lives
+           * (Scans) — so a reader never reads the eight rows as "the whole market" (CC6, D6). */}
+          <p className="max-w-[70ch] font-ui text-2xs text-muted">{copy.mover.floorNote}</p>
+          <p className="max-w-[70ch] pt-1 font-ui text-2xs text-muted">{copy.mover.relvolNote}</p>
+        </div>
       ) : null}
     </section>
   );
@@ -150,7 +151,9 @@ export function Movers({
  */
 function MoverRow({ mover: m, suppressNoise = false }: { mover: Mover; suppressNoise?: boolean }) {
   return (
-<div className="flex flex-wrap items-baseline gap-x-4 gap-y-1">
+    // data-liquid-floor is the marker the loader now exposes (CC6): every rendered mover has cleared
+    // the liquid floor, so the e2e can assert the floor is live on every row, not just in the footnote.
+<div data-liquid-floor className="flex flex-wrap items-baseline gap-x-4 gap-y-1">
 <RailTrigger
                 payload={{
                   symbol: m.symbol,
@@ -200,7 +203,7 @@ function MoverRow({ mover: m, suppressNoise = false }: { mover: Mover; suppressN
                 <span
                   className={cx(
                     "shrink-0 text-right font-mono text-sm",
-                    parseFloat(m.rvol) >= RVOL_EMPHASIS_THRESHOLD ? "font-semibold text-accent-deep" : "text-ink-2",
+                    m.emphasizeRvol ? "font-semibold text-accent-deep" : "text-ink-2",
                   )}
                 >
                   {m.rvol}

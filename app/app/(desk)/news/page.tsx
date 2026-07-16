@@ -76,7 +76,8 @@ async function readFrontPage(): Promise<FrontPage> {
     const [rows, run, movers, oldest] = await Promise.all([
       db.newsCluster.findMany({
         where: { runDate: { gte: since } },
-        orderBy: [{ significance: "desc" }, { firstSeen: "asc" }, { id: "asc" }],
+        // significance v2, ties NEWEST-first (CC6) — the same sort the Desk preview and the pipeline use.
+        orderBy: [{ significance: "desc" }, { firstSeen: "desc" }, { id: "asc" }],
         include: { image: true, links: { orderBy: { symbol: "asc" } } },
       }),
       db.pipelineRun.findUnique({ where: { runDate: latest.runDate } }),

@@ -155,7 +155,15 @@ def test_a_full_night_publishes_the_served_data_and_macro_context():
     # Only the served symbol (SPY) reaches Postgres; AAPL stays in the Parquet lake.
     served_symbols = set(published["price_bars"]["symbol"].to_list())
     assert served_symbols == {"SPY"}
-    assert published["instruments"] == universe
+
+    # Every published instrument keeps its identity AND is stamped with CC6's class + size bucket: the
+    # class is name-derived ("S&P 500 ETF" → "fund"), the bucket is this run's dollar-volume split.
+    published_instruments = {i["symbol"]: i for i in published["instruments"]}
+    assert set(published_instruments) == {u["symbol"] for u in universe}
+    assert published_instruments["SPY"]["assetClass"] == "fund"
+    assert published_instruments["SPY"]["dvBucket"] in {"large_mid", "small"}
+    # Identity fields are untouched by the enrichment.
+    assert published_instruments["SPY"]["exchange"] == "ARCA"
 
 
 def test_the_catalyst_stage_classifies_news_and_merges_source_status():

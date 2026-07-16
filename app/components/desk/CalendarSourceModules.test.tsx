@@ -7,13 +7,16 @@ import { copy } from "@/lib/copy";
 const ASOF = new Date("2026-07-11T20:05:00Z");
 
 describe("CalendarTimeline", () => {
-  it("shows each event with its chip code, title, and consensus", () => {
+  it("shows each event with its chip code, its ticker spoken once, and consensus", () => {
     render(<CalendarTimeline asOf={ASOF} events={[
       { dateLabel: "Jul 15", kind: "earnings", code: "EARNINGS", symbol: "AAPL", title: "AAPL earnings", consensus: "1.28", prior: "1.40" },
     ]} />);
     // The chip renders the allowlist's CODE, never the raw kind (redesign §6.2).
     expect(screen.getByText("EARNINGS")).toBeInTheDocument();
-    expect(screen.getByText(/AAPL earnings/)).toBeInTheDocument();
+    // The ticker is spoken ONCE (CC6): the chip says EARNINGS, the ticker says AAPL, and the old
+    // redundant "AAPL earnings" title is gone.
+    expect(screen.getByText("AAPL")).toBeInTheDocument();
+    expect(screen.queryByText(/AAPL earnings/)).toBeNull();
     expect(screen.getByText(/cons\. 1\.28/)).toBeInTheDocument();
   });
 

@@ -339,6 +339,18 @@ export type MoverSource = {
   catalyst?: Catalyst;
 };
 
+/** RVOL is emphasised once it clears 2× — the point at which "unusual volume" stops being a phrase
+ * and starts being a fact. The decision is made here, on the number, not parsed back out of the
+ * display string (which may read "≥20×" and has no leading digit). */
+const RVOL_EMPHASIS_THRESHOLD = 2;
+
+/** rvol20 = today's volume ÷ its own 20-day average, and that average INCLUDES today — so the ratio
+ * is mathematically bounded by the window length (20). A value at the ceiling means the trailing
+ * average is degenerate (a thin or newly-listed name whose prior days had ~no volume), so the display
+ * saturates to "≥20×" (copy.mover.relvolCapped) rather than a canned "20.0×" (CC6, D6). The −0.05
+ * catches everything that would round up to 20.0. */
+const RVOL_CEILING = 20;
+
 /**
  * Format the movers, preserving the pipeline's order. Each carries its matched catalyst or none — the
  * component renders the catalyst chip when present and the honest "likely noise" line when absent
@@ -350,12 +362,21 @@ export function buildMovers(sources: MoverSource[]): Mover[] {
     name: s.name,
     changePct: signedPercent(s.changeFraction),
     direction: directionOf(s.changeFraction),
-    rvol: multiple(s.rvol),
+    rvol: s.rvol >= RVOL_CEILING - 0.05 ? copy.mover.relvolCapped : multiple(s.rvol),
+    emphasizeRvol: s.rvol >= RVOL_EMPHASIS_THRESHOLD,
     catalyst: s.catalyst,
   }));
 }
 
 // ── Calendar ──────────────────────────────────────────────────────────────────────────────────
+
+/** The session calendar as the Desk shows it (CC6, D7): the forward rows, plus the symbols that
+ * reported earnings on the edition's OWN session — collapsed into one retrospective "Reported today"
+ * line, so a post-close reader leads with what is ahead rather than a stack of names already reported. */
+export type CalendarView = {
+  rows: CalendarRow[];
+  reportedToday: string[];
+};
 
 /** One calendar event as it comes from the calendar_event table. */
 export type CalendarSource = {
@@ -479,7 +500,7 @@ export type Morning = {
   setupCards: SetupCardView[] | null;
   movers: Mover[] | null;
   watch: WatchRow[] | null;
-  calendar: CalendarRow[] | null;
+  calendar: CalendarView | null;
   /** Per-source health for the run's footer; an empty array when no run is recorded. */
   sources: SourceStatus[];
   /**
@@ -641,7 +662,9 @@ async function loadFrontPage(): Promise<{ top: FrontPagePreviewRow[]; total: num
     const [rows, total] = await Promise.all([
       db.newsCluster.findMany({
         where: { runDate: latest.runDate },
-        orderBy: [{ significance: "desc" }, { firstSeen: "asc" }, { id: "asc" }],
+        // significance v2 first; ties break NEWEST-first (CC6, amending the old oldest-first tie) —
+        // this must match the pipeline's own sort (newsdesk/ingest.py) or the Desk and the room disagree.
+        orderBy: [{ significance: "desc" }, { firstSeen: "desc" }, { id: "asc" }],
         take: FRONT_PAGE_PREVIEW,
         select: { id: true, headline: true, eventType: true, sources: true },
       }),
@@ -751,22 +774,44 @@ export function calendarFloor(editionDate: Date | null, now: Date): Date {
  * (publish._replace_calendar); the floor here is the other half of the fence, and the half that holds
  * when the pipeline has not run for days.
  */
-async function loadCalendar(): Promise<CalendarRow[] | null> {
+async function loadCalendar(): Promise<CalendarView | null> {
   try {
     const edition = await db.pipelineRun.findFirst({
       orderBy: { runDate: "desc" },
       select: { runDate: true },
     });
-    const rows = await db.calendarEvent.findMany({
-      where: { date: { gte: calendarFloor(edition?.runDate ?? null, new Date()) } },
-      orderBy: [{ date: "asc" }],
-      take: CALENDAR_ROWS,
-      select: {
-        date: true, kind: true, symbol: true, title: true,
-        consensus: true, prior: true, code: true, importance: true,
-      },
-    });
-    return buildCalendar(rows);
+    const editionDate = edition?.runDate ?? null;
+
+    // FORWARD-FIRST (CC6, D7). The reader is post-close, so what already reported on THIS session is
+    // retrospective. Two reads, not one: the forward rows lead with the NEXT session on (date > the
+    // edition), and today's earnings are collected separately and collapsed into one "Reported today"
+    // line — so a busy Thursday's fifteen bank earnings never evict the week ahead. With no edition at
+    // all, there is no "today" to speak of, so the floor stands in and nothing is collapsed.
+    const [todayEarnings, forwardRows] = await Promise.all([
+      editionDate
+        ? db.calendarEvent.findMany({
+            where: { date: editionDate, OR: [{ kind: "earnings" }, { code: "EARNINGS" }] },
+            orderBy: { symbol: "asc" },
+            select: { symbol: true },
+          })
+        : Promise.resolve([] as { symbol: string | null }[]),
+      db.calendarEvent.findMany({
+        where: editionDate
+          ? { date: { gt: editionDate } }
+          : { date: { gte: calendarFloor(editionDate, new Date()) } },
+        orderBy: [{ date: "asc" }],
+        take: CALENDAR_ROWS,
+        select: {
+          date: true, kind: true, symbol: true, title: true,
+          consensus: true, prior: true, code: true, importance: true,
+        },
+      }),
+    ]);
+
+    const reportedToday = todayEarnings
+      .map((r) => r.symbol)
+      .filter((s): s is string => s !== null);
+    return { rows: buildCalendar(forwardRows), reportedToday };
   } catch (error) {
     console.error("getMorning: could not load the calendar", error);
     return null;
@@ -865,27 +910,71 @@ async function loadMacro(): Promise<MacroView | null> {
  * the after-hours news that explains an open. */
 const CATALYST_WINDOW_DAYS = 3;
 
+/** The Desk's Movers module shows this many, after the liquid floor. */
+const DESK_MOVERS = 8;
+
+/** The only funds the liquid floor keeps — the four index ETFs and eleven sector SPDRs (mirrors the
+ * pipeline's CORE_SERVED). Every other fund, and every thin name, falls out to the universe-wide
+ * Scans. A common stock needs no whitelist; it qualifies on assetClass alone. */
+const CORE_FUND_MOVERS = new Set([
+  "SPY", "QQQ", "DIA", "IWM",
+  "XLK", "XLF", "XLE", "XLV", "XLI", "XLY", "XLP", "XLU", "XLB", "XLRE", "XLC",
+]);
+
+/**
+ * The Movers liquid floor (CC6, D6). A mover is eligible only if it is a large/mid name by dollar
+ * volume (the base-rate engine's own bucket, reused — never a second liquidity notion) AND either a
+ * common stock or one of the core index/sector ETFs. Everything else — trusts, ADR-hedged wrappers,
+ * structured products, thin or exotic funds — belongs in the universe-wide Scans, not the Desk's
+ * front-of-paper module. Pure and exported so the floor is tested directly, without a database.
+ */
+export function isLiquidFloorEligible(meta: {
+  symbol: string;
+  assetClass: string | null;
+  dvBucket: string | null;
+}): boolean {
+  if (meta.dvBucket !== "large_mid") return false;
+  return meta.assetClass === "stock" || CORE_FUND_MOVERS.has(meta.symbol);
+}
+
 async function loadMovers(): Promise<Mover[] | null> {
   try {
-    // The movers are the volume-confirmed moves — the "unusual-volume" scan's top eight, ranked.
-    const rows = await db.scanResult.findMany({
+    // Take the LATEST run's unusual-volume matches in full, ranked — not a pre-truncated top eight,
+    // because the liquid floor is applied AFTER ranking and the raw top of the list is exactly the
+    // thin junk it removes (D6: eight rows all reading "20.0×", none a name to open Yahoo for).
+    const latest = await db.scanResult.findFirst({
       where: { presetKey: "unusual-volume" },
-      orderBy: [{ runDate: "desc" }, { rank: "asc" }],
-      take: 8,
-      select: { symbol: true, metrics: true, runDate: true },
+      orderBy: { runDate: "desc" },
+      select: { runDate: true },
+    });
+    if (!latest) return [];
+    const rows = await db.scanResult.findMany({
+      where: { presetKey: "unusual-volume", runDate: latest.runDate },
+      orderBy: { rank: "asc" },
+      select: { symbol: true, metrics: true },
     });
     if (rows.length === 0) return [];
 
-    const symbols = rows.map((r) => r.symbol);
-    const [names, catalysts] = await Promise.all([
-      instrumentNames(symbols),
-      loadCatalysts(symbols, rows[0].runDate),
-    ]);
-    const sources: MoverSource[] = rows.map((r) => {
+    const meta = await instrumentFloorMeta(rows.map((r) => r.symbol));
+
+    // THE LIQUID FLOOR (CC6, D6). A mover is eligible only if it is a large/mid name by dollar volume
+    // (the base-rate engine's own bucket — reused, never a second liquidity notion) AND either a
+    // common stock or one of the core index/sector ETFs. Trusts, ADR-hedged wrappers, structured
+    // products and every other fund fall out here — in the front-of-paper module, not in Scans.
+    const eligible = rows
+      .filter((r) => {
+        const m = meta[r.symbol];
+        return m !== undefined && isLiquidFloorEligible({ symbol: r.symbol, ...m });
+      })
+      .slice(0, DESK_MOVERS);
+    if (eligible.length === 0) return [];
+
+    const catalysts = await loadCatalysts(eligible.map((r) => r.symbol), latest.runDate);
+    const sources: MoverSource[] = eligible.map((r) => {
       const m = (r.metrics ?? {}) as Record<string, unknown>;
       return {
         symbol: r.symbol,
-        name: names[r.symbol] ?? r.symbol,
+        name: meta[r.symbol]?.name ?? r.symbol,
         changeFraction: Number(m.ret_1 ?? 0),
         rvol: Number(m.rvol20 ?? 0),
         catalyst: catalysts[r.symbol],
@@ -973,11 +1062,16 @@ async function loadWatchlist(): Promise<WatchRow[] | null> {
   }
 }
 
-/** Look up display names for a set of symbols, returning a symbol → name map. */
-async function instrumentNames(symbols: string[]): Promise<Record<string, string>> {
+/** For a set of mover symbols, look up each one's display name and the two fields the liquid floor
+ * reads — its coarse class and its dollar-volume bucket (CC6). */
+async function instrumentFloorMeta(
+  symbols: string[],
+): Promise<Record<string, { name: string; assetClass: string | null; dvBucket: string | null }>> {
   const rows = await db.instrument.findMany({
     where: { symbol: { in: symbols } },
-    select: { symbol: true, name: true },
+    select: { symbol: true, name: true, assetClass: true, dvBucket: true },
   });
-  return Object.fromEntries(rows.map((r) => [r.symbol, r.name]));
+  return Object.fromEntries(
+    rows.map((r) => [r.symbol, { name: r.name, assetClass: r.assetClass, dvBucket: r.dvBucket }]),
+  );
 }

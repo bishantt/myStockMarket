@@ -42,6 +42,7 @@ from scans import (
 from storage import R2Store
 from trading_calendar import is_trading_session
 from trading_calendar import sessions_ahead
+from universe import classify_asset_class
 
 # The regime line and the primary card horizon (Appendix F). Breadth is a fraction (0-1).
 _REGIME_LINE = 0.5
@@ -322,6 +323,16 @@ def run_nightly(deps: NightlyDeps) -> NightlyResult:
     scan_results = curated_scans(scans)
     signal_logs = build_signal_logs(scans, edition)
 
+    # CC6: stamp each instrument's coarse class and its point-in-time dollar-volume bucket, so the
+    # Movers floor (app loader) and the front-page entity_weight (newsdesk, a Postgres closure with no
+    # lake) can read a name's type and size from Postgres. Reuses scans.py's is_large_mid — one
+    # liquidity notion, never a second. assetClass is name-derived; the bucket is this run's snapshot.
+    universe_buckets = _universe_buckets(snapshot)
+    instruments = [
+        {**u, "assetClass": classify_asset_class(u["name"]), "dvBucket": universe_buckets.get(u["symbol"])}
+        for u in universe
+    ]
+
     # FRED is "ok" if any of its cells came back — the levels and the context cells fail separately,
     # and a partial read still fills part of the strip. Only a total FRED outage is "degraded".
     fred_ok = any(value is not None for value in macro.as_columns().values())
@@ -392,7 +403,7 @@ def run_nightly(deps: NightlyDeps) -> NightlyResult:
         run_date=edition,
         stage_status={"ingest": "ok", "compute": "ok", "scan": "ok", "publish": "ok"},
         source_status=source_status,
-        instruments=universe,
+        instruments=instruments,
         price_bars=served_bars if served_bars.height else None,
         scan_results=scan_results if scan_results.height else None,
         signal_logs=signal_logs,
@@ -740,6 +751,18 @@ def _bucket_of(snapshot: pl.DataFrame, served: set[str]) -> dict[str, str]:
     (sub-$5 excluded, matching the historical bucketing)."""
     out: dict[str, str] = {}
     for row in snapshot.filter(pl.col("symbol").is_in(list(served))).iter_rows(named=True):
+        if row["close"] < 5.0:
+            continue
+        out[row["symbol"]] = "large_mid" if row.get("is_large_mid") else "small"
+    return out
+
+
+def _universe_buckets(snapshot: pl.DataFrame) -> dict[str, str]:
+    """Every symbol's size bucket today (CC6) — the whole-universe analogue of `_bucket_of`, stamped
+    onto the instrument table so the news stage and the Movers loader can size a name from Postgres.
+    Sub-$5 names are excluded (null bucket), matching the historical bucketing exactly."""
+    out: dict[str, str] = {}
+    for row in snapshot.iter_rows(named=True):
         if row["close"] < 5.0:
             continue
         out[row["symbol"]] = "large_mid" if row.get("is_large_mid") else "small"

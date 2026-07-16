@@ -501,19 +501,26 @@ def _upsert_pipeline_run(cur, run_date, stage_status, source_status, batch_id=No
 def _upsert_instruments(cur, instruments) -> None:
     rows = [
         (i["symbol"], i["name"], i["exchange"], i.get("sector"), i.get("industry"),
-         i.get("cik"), i.get("is_active", True), i.get("delisted_at"))
+         i.get("cik"), i.get("is_active", True), i.get("delisted_at"),
+         i.get("assetClass"), i.get("dvBucket"))
         for i in instruments
     ]
     if not rows:
         return
+    # asset_class / dv_bucket COALESCE, never a bare EXCLUDED (LESSONS: an upsert that writes what it
+    # fetched destroys what it had). Only the full nightly computes the dollar-volume bucket; a later
+    # run upserting these rows with a null bucket must LEAVE the last good one, not erase it.
     cur.executemany(
         """
-        INSERT INTO instrument (symbol, name, exchange, sector, industry, cik, is_active, delisted_at)
-        VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+        INSERT INTO instrument
+            (symbol, name, exchange, sector, industry, cik, is_active, delisted_at, asset_class, dv_bucket)
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         ON CONFLICT (symbol) DO UPDATE SET
             name = EXCLUDED.name, exchange = EXCLUDED.exchange, sector = EXCLUDED.sector,
             industry = EXCLUDED.industry, cik = EXCLUDED.cik, is_active = EXCLUDED.is_active,
-            delisted_at = EXCLUDED.delisted_at
+            delisted_at = EXCLUDED.delisted_at,
+            asset_class = COALESCE(EXCLUDED.asset_class, instrument.asset_class),
+            dv_bucket = COALESCE(EXCLUDED.dv_bucket, instrument.dv_bucket)
         """,
         rows,
     )

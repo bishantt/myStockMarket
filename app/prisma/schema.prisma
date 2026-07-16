@@ -53,6 +53,14 @@ model Instrument {
   isActive   Boolean   @default(true) @map("is_active")
   delistedAt DateTime? @map("delisted_at") @db.Date
 
+  /// Coarse instrument class for the Movers liquid floor (CC6): "stock" or "fund". Name-derived
+  /// (Alpaca gives no security type), null on delisted rows never re-ingested.
+  assetClass String? @map("asset_class")
+  /// Point-in-time dollar-volume bucket, refreshed each full nightly (CC6): "large_mid" / "small" /
+  /// null. The Movers floor and the front-page entity_weight (significance v2) both read it; the news
+  /// stage is a Postgres closure with no lake, so this is how it sizes a name.
+  dvBucket   String? @map("dv_bucket")
+
   watchlistItems WatchlistItem[]
 
   @@map("instrument")

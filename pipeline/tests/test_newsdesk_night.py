@@ -130,13 +130,19 @@ def test_the_page_is_led_by_the_biggest_story_of_the_day_and_it_names_no_company
     down. It names no listed company at all. A feed ranked by ticker moves, or by how many people
     clicked it, would have buried it under a price-target change on a mid-cap.
 
-    It leads because scope is the biggest term in the formula and a macro event has the highest
-    scope there is. That is what "edited by evidence" means in practice.
+    It leads because a macro event is market-wide, so it takes the maximum on BOTH catalyst_weight
+    and entity_weight (significance v2) — no single-name story, however large, can beat it at equal
+    corroboration and freshness. That is what "edited by evidence" means in practice. (The absolute
+    score is 0.2, not a big number: on the recorded night this cluster has a single outlet, and
+    corroboration is a multiplicative factor. The ORDER is the promise, not the magnitude.)
     """
     lead = _night().clusters[0]
 
     assert lead.event_type in {"macro", "fed"}
-    assert lead.significance > 0.5
+    # The lead is the maximum on this night; its exact value depends on its outlet count, but nothing
+    # may outrank it. Assert it leads by comparing to the runner-up rather than a v1 absolute floor.
+    runner_up = _night().clusters[1]
+    assert lead.significance >= runner_up.significance
 
 
 def test_the_resolver_makes_no_false_links_across_the_whole_real_night():

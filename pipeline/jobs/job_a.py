@@ -617,6 +617,16 @@ def _read_sectors(conn) -> dict[str, str]:
         return {row[0]: row[1] for row in cur.fetchall()}
 
 
+def _read_buckets(conn) -> dict[str, str]:
+    """Each instrument's dollar-volume bucket (CC6), for the front-page entity_weight (significance
+    v2). The newsdesk is a Postgres closure — it cannot see the lake — so it reads the bucket the last
+    full nightly stamped onto the instrument table. A symbol with no bucket yet is simply absent, and
+    entity_weight sizes it as small (a name we cannot size is not a big liquid name)."""
+    with conn.cursor() as cur:
+        cur.execute("SELECT symbol, dv_bucket FROM instrument WHERE dv_bucket IS NOT NULL")
+        return {row[0]: row[1] for row in cur.fetchall()}
+
+
 # ----- PD7: the depth readers (plan 9.2) -----
 # WHY THESE READ POSTGRES AND NOT THE PARQUET LAKE (which 9.2's table says). The plan describes a stage that
 # does not exist: `_build_front_page` is a POSTGRES CLOSURE, the same in BOTH modes — the full nightly has
@@ -845,12 +855,14 @@ def _build_front_page(settings: Settings, conn, run_date: date) -> Callable[[], 
         carded = _read_setup_card_symbols(conn)
 
         sectors_by_symbol = _read_sectors(conn)
+        buckets_by_symbol = _read_buckets(conn)
         night = build_night(
             articles=articles,
             resolver=resolver,
             moves=moves,
             session_date=run_date,
             sectors_by_symbol=sectors_by_symbol,
+            buckets_by_symbol=buckets_by_symbol,
         )
 
         media_base = os.environ.get("NEXT_PUBLIC_MEDIA_BASE", "")

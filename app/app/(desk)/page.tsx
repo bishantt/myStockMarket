@@ -316,7 +316,13 @@ export default async function DeskPage() {
            */}
           {asOf && morning.calendar ? (
             <Surface className={cx("p-5", CALENDAR)}>
-              <CalendarTimeline asOf={asOf} editionAsOf={editionAsOf} events={morning.calendar} compact />
+              <CalendarTimeline
+                asOf={asOf}
+                editionAsOf={editionAsOf}
+                events={morning.calendar.rows}
+                reportedToday={morning.calendar.reportedToday}
+                compact
+              />
             </Surface>
           ) : (
             <EmptyModule

@@ -75,6 +75,17 @@ test.describe("Desk — the seeded morning", () => {
     await expect(movers.getByText("PLTR")).toBeVisible();
   });
 
+  test("every rendered mover carries the liquid-floor marker, and the module names the floor (CC6, D6)", async ({ page }) => {
+    const movers = page.getByRole("region", { name: "Movers" });
+    // The marker the loader now exposes: every rendered mover has cleared the liquid floor. If the
+    // floor were bypassed (raw top-8, junk and all), these rows would still render — but they would
+    // not be the liquid names the loader vouched for, and this is what pins that they are.
+    await expect(movers.locator("[data-liquid-floor]").first()).toBeVisible();
+    expect(await movers.locator("[data-liquid-floor]").count()).toBeGreaterThan(0);
+    // The footnote names the floor so the eight rows never read as the whole market.
+    await expect(movers.getByText(/Liquid names only/)).toBeVisible();
+  });
+
   test("a mover with news shows a catalyst chip + source link; one without shows the noise line", async ({ page }) => {
     const movers = page.getByRole("region", { name: "Movers" });
     // SMCI has seeded earnings news → a catalyst chip, the headline, and a source link.
@@ -94,7 +105,15 @@ test.describe("Desk — the seeded morning", () => {
 
     // The chip is the allowlist's CODE — the calendar's one vocabulary (redesign §6.2).
     await expect(calendar.getByText("EARNINGS").first()).toBeVisible();
-    await expect(calendar.getByText(/AAPL earnings/)).toBeVisible();
+    // The symbol is spoken ONCE (CC6, D7): an earnings row is [EARNINGS] [AAPL], the redundant
+    // "AAPL earnings" title gone. AAPL here is the calendar's forward earnings ticker (scoped to the
+    // region, so it is not the watchlist's AAPL).
+    await expect(calendar.getByText("AAPL", { exact: true })).toBeVisible();
+    await expect(calendar.getByText(/AAPL earnings/)).toHaveCount(0);
+    // Forward-first: today's reported bank earnings collapse into one retrospective line, below the
+    // week ahead, rather than five rows leading the rail (D7).
+    await expect(calendar.getByText(/Reported today/i)).toBeVisible();
+    await expect(calendar.getByText(/BAC · C · GS · JPM · WFC/)).toBeVisible();
 
     // The consensus figure is deliberately ABSENT here: on the Desk the calendar renders in its compact rail
     // variant (§5.1), so consensus/prior drop to the row's drill. This asserts the design, not tolerates its absence.

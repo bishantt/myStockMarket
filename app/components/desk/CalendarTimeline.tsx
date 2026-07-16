@@ -1,6 +1,7 @@
 import { Disclosure } from "@/components/Disclosure";
 import { SectionMasthead } from "@/components/SectionMasthead";
 import { Tag } from "@/components/Tag";
+import { TickerChip } from "@/components/TickerChip";
 import { copy } from "@/lib/copy";
 import { cx } from "@/lib/cx";
 
@@ -97,12 +98,16 @@ export function CalendarTimeline({
   asOf,
   editionAsOf,
   events,
+  reportedToday = [],
   compact = false,
 }: {
   asOf: Date;
   /** The edition's own stamp, for the as-of matches/differs treatment (CC4). */
   editionAsOf?: Date;
   events: CalendarRow[];
+  /** The symbols that reported earnings on the edition's own session (CC6, D7) — rendered as one
+   * retrospective "Reported today" line below the forward rows, never as a stack that leads the rail. */
+  reportedToday?: string[];
   /**
    * The rail variant (§5.1). In the 340px sidebar a row wraps to two lines and the consensus/prior
    * figures drop away — a reader glances at the rail to see what is coming, they do not study it.
@@ -111,6 +116,7 @@ export function CalendarTimeline({
   compact?: boolean;
 }) {
   const { visible, folded } = cutCalendar(events);
+  const nothingToShow = events.length === 0 && reportedToday.length === 0;
 
   return (
     <section aria-label="Session calendar">
@@ -122,7 +128,7 @@ export function CalendarTimeline({
         provenance="FRED release calendar · FMP earnings"
       />
 
-      {events.length === 0 ? (
+      {nothingToShow ? (
         /*
          * The empty calendar is a signature, not an apology.
          *
@@ -167,10 +173,11 @@ export function CalendarTimeline({
                 {e.high && compact ? <HighMark /> : null}
               </span>
 
-              <span className="min-w-0 flex-1 truncate font-ui text-sm text-ink-2">
-                {e.symbol ? <span className="font-semibold text-ink">{e.symbol}</span> : null}
-                {e.symbol ? " · " : ""}
-                {e.title}
+              {/* The symbol is spoken ONCE (CC6, D7): the KIND chip already says EARNINGS and the ticker
+               * chip says JPM, so an earnings row is [EARNINGS] [JPM] — not the old "JPM · JPM earnings".
+               * A macro row has no ticker, so it carries its release name as the title. */}
+              <span className="flex min-w-0 flex-1 items-baseline gap-2 truncate font-ui text-sm text-ink-2">
+                {e.symbol ? <TickerChip symbol={e.symbol} /> : e.title}
                 {e.high && !compact ? <HighMark inline /> : null}
               </span>
 
@@ -204,12 +211,24 @@ export function CalendarTimeline({
                     {e.dateLabel}
                   </span>
                   <Tag variant="catalyst">{e.code}</Tag>
-                  <span className="min-w-0 flex-1 font-ui text-sm text-ink-2">{e.title}</span>
+                  <span className="flex min-w-0 flex-1 items-baseline gap-2 font-ui text-sm text-ink-2">
+                    {e.symbol ? <TickerChip symbol={e.symbol} /> : e.title}
+                  </span>
                   {e.high ? <HighMark /> : null}
                 </li>
               ))}
             </ul>
           </Disclosure>
+        ) : null}
+
+        {/* The retrospective line: what already reported THIS session, collapsed to one row so the
+         * forward view above it leads (CC6, D7). Quiet mono — it is context, not a thing to watch for. */}
+        {reportedToday.length > 0 ? (
+          <p className="max-w-[70ch] pt-3 font-mono text-2xs text-muted">
+            <span className="uppercase tracking-[0.04em]">{copy.calendar.reportedToday}</span>
+            {": "}
+            {reportedToday.join(" · ")}
+          </p>
         ) : null}
         </>
       )}

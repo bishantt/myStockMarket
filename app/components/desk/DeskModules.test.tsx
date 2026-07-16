@@ -9,10 +9,10 @@ const ASOF = new Date("2026-07-09T20:05:00Z");
 describe("Movers", () => {
   const movers = [
     {
-      symbol: "SMCI", name: "Super Micro", changePct: "+8.2%", direction: "up" as const, rvol: "3.1×",
+      symbol: "SMCI", name: "Super Micro", changePct: "+8.2%", direction: "up" as const, rvol: "3.1×", emphasizeRvol: true,
       catalyst: { type: "earnings", headline: "Super Micro beats Q3 estimates", source: "Reuters", url: "https://ex.com/1" },
     },
-    { symbol: "XYZ", name: "Noise Co", changePct: "+5.1%", direction: "up" as const, rvol: "0.8×" },
+    { symbol: "XYZ", name: "Noise Co", changePct: "+5.1%", direction: "up" as const, rvol: "0.8×", emphasizeRvol: false },
   ];
 
   it("shows each mover's symbol, change and RVOL", () => {
@@ -37,8 +37,8 @@ describe("Movers", () => {
 
   it("prints ONE card-level noise line and NO per-row lines when nothing has a catalyst (D10)", () => {
     const allNoise = [
-      { symbol: "AAA", name: "A Co", changePct: "+5.0%", direction: "up" as const, rvol: "1.2×" },
-      { symbol: "BBB", name: "B Co", changePct: "−4.0%", direction: "down" as const, rvol: "0.9×" },
+      { symbol: "AAA", name: "A Co", changePct: "+5.0%", direction: "up" as const, rvol: "1.2×", emphasizeRvol: false },
+      { symbol: "BBB", name: "B Co", changePct: "−4.0%", direction: "down" as const, rvol: "0.9×", emphasizeRvol: false },
     ];
     render(<Movers asOf={ASOF} movers={allNoise} />);
     expect(screen.getByText(copy.mover.allNoise)).toBeInTheDocument();

@@ -272,6 +272,7 @@ describe("the Desk's rows never animate the money on them (PD5)", () => {
     changePct: "+18.40%",
     direction: "up",
     rvol: "4.7×",
+    emphasizeRvol: true,
     catalyst: {
       type: "earnings",
       headline: "Raised full-year guidance",
