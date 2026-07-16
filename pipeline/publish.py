@@ -189,6 +189,69 @@ def publish_compute(
         raise
 
 
+def publish_dawn(
+    conn: psycopg.Connection,
+    *,
+    run_date: date,
+    ran_at: datetime,
+    sources: Mapping[str, str],
+    stages: Mapping[str, str],
+) -> None:
+    """
+    Stamp the dawn run's health BESIDE the night's on the session's pipeline_run row (CC8, plan 4.7).
+
+    The dawn does not open a new edition (E1): it shares the last closed session's run_date with the
+    nightly, so it cannot write its own row — pipeline_run is keyed by run_date. Instead it merges a
+    single `dawn` entry into source_status, carrying its own timestamp, per-source health and stages.
+
+    The mirror of publish_compute, and for the same reason. `_upsert_pipeline_run` REPLACES
+    source_status wholesale on conflict; going through it would erase the night's record of how each
+    provider behaved. So this MERGES source_status (`||`) — the night's keys survive untouched and
+    the dawn entry lands beside them — and it never moves the night's finished_at, because the dawn's
+    own instant lives inside the entry. A degraded dawn source degrades the dawn entry, never the
+    night. The control room reads this entry to give the dawn row a real Last run.
+
+    If no nightly wrote this session yet (a dawn dispatched by hand before its night — never off the
+    cron, which always runs the night first), it inserts a dawn-only row rather than failing; a later
+    nightly for a past session never runs, so nothing overwrites it.
+    """
+    _require_session(run_date, "publish_dawn")
+    entry = {"dawn": {"ranAt": ran_at.isoformat(), "sources": dict(sources), "stages": dict(stages)}}
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                INSERT INTO pipeline_run (run_date, started_at, finished_at, stage_status, source_status)
+                VALUES (%(run_date)s, now(), now(), '{}'::jsonb, %(source)s)
+                ON CONFLICT (run_date) DO UPDATE SET
+                    source_status = pipeline_run.source_status || EXCLUDED.source_status
+                """,
+                {"run_date": run_date, "source": Json(entry)},
+            )
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        raise
+
+
+def publish_calendar(conn: psycopg.Connection, *, calendar_events: Iterable[Mapping[str, Any]] | None) -> None:
+    """
+    Replace the forward calendar and touch nothing else — the dawn's catalyst stage (CC8).
+
+    The whole publish() would rewrite the served slice; the dawn only needs the calendar fresh (with
+    its new event times). `None` means the calendar sources were down, so the existing calendar is
+    left untouched (a degraded source must not blank the Desk's calendar); a list — even an empty
+    one — replaces it, the same contract _replace_calendar keeps inside the nightly.
+    """
+    try:
+        with conn.cursor() as cur:
+            _replace_calendar(cur, calendar_events)
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        raise
+
+
 def publish_macro(
     conn: psycopg.Connection,
     *,

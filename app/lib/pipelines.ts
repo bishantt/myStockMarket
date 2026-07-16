@@ -44,9 +44,11 @@ export type PipelineDef = {
 };
 
 /**
- * The three rows, in reading order. The dawn refresh runs `macro` mode today and becomes the Morning
- * Edition's engine at CC8 — so it owns the `macro` action but writes no run record of its own yet (it
- * shares the nightly's `pipeline_run`), which is why its Last run reads "—" honestly until CC8.
+ * The three rows, in reading order. Since CC8 the dawn refresh IS the Morning Edition's engine (it
+ * runs `dawn` mode pre-open — macro + news + calendar), and `publish_dawn` stamps a distinct dawn
+ * entry BESIDE the night's on the shared `pipeline_run` row. So it still writes no run row of its own
+ * (writesPipelineRun stays false — the row is the night's), but its Last run now reads that dawn entry
+ * (lastRunForDawn) rather than "—". Its one hand-only button stays `macro`, the cheap number-refresh.
  */
 export const PIPELINES: PipelineDef[] = [
   {
@@ -64,7 +66,7 @@ export const PIPELINES: PipelineDef[] = [
     id: "dawn-refresh",
     name: copy.control.pipelines.dawnRefresh.name,
     description: copy.control.pipelines.dawnRefresh.description,
-    crons: ["0 10 * * 2-6"],
+    crons: ["30 10 * * 1-5"],
     workflow: "nightly-a.yml",
     actions: ["macro"],
     stages: ["macro", "publish"],
@@ -84,14 +86,34 @@ export const PIPELINES: PipelineDef[] = [
   },
 ];
 
-/** A run counts as DEGRADED if a source misbehaved, FAILED if a stage broke — the graver fact wins. */
+/** The key the dawn refresh's entry lives under, inside the night's source_status (CC8). */
+const DAWN_KEY = "dawn";
+
+/**
+ * A run counts as DEGRADED if a source misbehaved, FAILED if a stage broke — the graver fact wins.
+ *
+ * Only STRING values are verdicts. Since CC8 the dawn stamps a nested object under `dawn` in the
+ * night's source_status; a non-string entry is metadata, not a provider's health, so it is ignored
+ * here — otherwise a healthy nightly would read DEGRADED the moment a dawn entry sat beside it.
+ */
 export function statusFromRun(
-  stageStatus: Record<string, string>,
-  sourceStatus: Record<string, string>,
+  stageStatus: Record<string, unknown>,
+  sourceStatus: Record<string, unknown>,
 ): PipelineStatus {
-  if (Object.values(stageStatus).some((s) => s === "failed" || s === "error")) return "FAILED";
-  if (Object.values(sourceStatus).some((s) => s !== "ok")) return "DEGRADED";
+  const stages = Object.values(stageStatus).filter((s): s is string => typeof s === "string");
+  const sources = Object.values(sourceStatus).filter((s): s is string => typeof s === "string");
+  if (stages.some((s) => s === "failed" || s === "error")) return "FAILED";
+  if (sources.some((s) => s !== "ok")) return "DEGRADED";
   return "OK";
+}
+
+/** The night's own per-provider map — the string entries, with the dawn sub-entry removed (CC8). */
+function nightSources(sourceStatus: Record<string, unknown>): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const [key, value] of Object.entries(sourceStatus)) {
+    if (key !== DAWN_KEY && typeof value === "string") out[key] = value;
+  }
+  return out;
 }
 
 /** The briefing's own status field carries HELD — a brief the gate flagged but still published. */
@@ -190,11 +212,47 @@ type RunRow = {
 function lastRunForNightly(run: RunRow | null): LastRunFacts | null {
   if (!run?.finishedAt) return null;
   const stages = (run.stageStatus ?? {}) as Record<string, string>;
-  const sources = (run.sourceStatus ?? {}) as Record<string, string>;
+  // The dawn entry rides in the night's source_status (CC8); it belongs to the dawn row, not this
+  // one, so it is dropped from the nightly's provider list.
+  const sources = nightSources((run.sourceStatus ?? {}) as Record<string, unknown>);
   return {
     status: statusFromRun(stages, sources),
     stamp: formatEtStamp(run.finishedAt),
     duration: formatDuration(run.finishedAt.getTime() - run.startedAt.getTime()),
+    sources,
+    stages,
+  };
+}
+
+/** The dawn refresh's own entry, stamped by publish_dawn beside the night's source_status (CC8). */
+type DawnEntry = {
+  ranAt?: string;
+  sources?: Record<string, string>;
+  stages?: Record<string, string>;
+};
+
+function readDawnEntry(sourceStatus: unknown): DawnEntry | null {
+  if (!sourceStatus || typeof sourceStatus !== "object") return null;
+  const dawn = (sourceStatus as Record<string, unknown>)[DAWN_KEY];
+  if (!dawn || typeof dawn !== "object") return null;
+  return dawn as DawnEntry;
+}
+
+/**
+ * The dawn refresh's Last run, read from the entry publish_dawn stamps beside the night's
+ * source_status (CC8, closes Q-CC7-1). Null until a dawn has actually run — the honest "—", exactly
+ * what the seeded world (no dawn run) still shows. The dawn carries its own instant (`ranAt`), so its
+ * stamp is independent of the night's finishedAt.
+ */
+export function lastRunForDawn(run: RunRow | null): LastRunFacts | null {
+  const dawn = readDawnEntry(run?.sourceStatus);
+  if (!dawn?.ranAt) return null;
+  const sources = dawn.sources ?? {};
+  const stages = dawn.stages ?? {};
+  return {
+    status: statusFromRun(stages, sources),
+    stamp: formatEtStamp(new Date(dawn.ranAt)),
+    duration: null,
     sources,
     stages,
   };
@@ -217,8 +275,8 @@ function lastRunForBriefing(brief: { runDate: Date; status: string } | null): La
  * plus the recent scheduled records for the merged history. The cadence is pure (from the cron); the
  * next run is computed in the browser against the reader's clock (like the control room's states).
  *
- * The dawn refresh's Last run is deliberately null in CC7: it shares the nightly's `pipeline_run`, so no
- * honest per-dawn record exists yet — CC8's publish_dawn gives it one. "—" is the honest unknown.
+ * The dawn refresh's Last run reads the `dawn` entry publish_dawn stamps into the latest run's
+ * source_status (CC8) — or "—" until a dawn has run (the seeded world, which has none, still shows it).
  */
 export async function loadPipelines(): Promise<{ pipelines: PipelineDisplay[]; records: RunRecord[] }> {
   const [latestRun, recentRuns, latestBriefing] = await Promise.all([
@@ -252,7 +310,9 @@ export async function loadPipelines(): Promise<{ pipelines: PipelineDisplay[]; r
         ? lastRunForNightly(latestRun)
         : def.id === "evening-briefing"
           ? lastRunForBriefing(latestBriefing)
-          : null,
+          : def.id === "dawn-refresh"
+            ? lastRunForDawn(latestRun)
+            : null,
   }));
 
   return { pipelines, records };

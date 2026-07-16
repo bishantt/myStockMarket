@@ -27,6 +27,10 @@ _MARKETAUX_SYMBOL_LIMIT = 10
 _NEWS_WINDOW_DAYS = 3
 _CALENDAR_AHEAD_DAYS = 14
 
+# Finnhub's own time-of-day codes we keep. Anything else — an empty string, an unknown value — leaves
+# the report untimed, which renders nothing (P9).
+_EARNINGS_HOURS = frozenset({"bmo", "amc", "dmh"})
+
 
 def gather_catalysts(
     movers: list[str],
@@ -66,8 +70,13 @@ def gather_catalysts(
 
     if fmp is not None:
         try:
-            for event in fmp.earnings_calendar(run_date, run_date + timedelta(days=_CALENDAR_AHEAD_DAYS)):
-                calendar.append(_fmp_event(event))
+            window_end = run_date + timedelta(days=_CALENDAR_AHEAD_DAYS)
+            # FMP owns the dates + consensus; Finnhub times each report (CC8). The hour lookup is
+            # best-effort and isolated — a Finnhub outage leaves earnings untimed, it never marks
+            # FMP down, because FMP's own answer arrived intact.
+            hours = _earnings_hours(finnhub, run_date, window_end)
+            for event in fmp.earnings_calendar(run_date, window_end):
+                calendar.append(_fmp_event(event, timing=hours.get((event.symbol, event.date))))
             status["fmp"] = "ok"
             calendar_ran = True
         except Exception as error:  # noqa: BLE001
@@ -158,12 +167,30 @@ def earnings_importance(symbol: str) -> str:
     return "high" if symbol in CORE_SERVED else "medium"
 
 
-def _fmp_event(event: Any) -> dict:
+def _earnings_hours(finnhub: Any | None, start: date, end: date) -> dict[tuple[str, date], str]:
+    """Finnhub's before-open / after-close split for the window, keyed by (symbol, date) (CC8).
+
+    Best-effort by design: a Finnhub outage returns an empty map and every earnings row stays
+    untimed (P9 — a null renders nothing), it never fails the calendar the times decorate. Only the
+    three real codes (bmo/amc/dmh) are kept; an empty or unknown `hour` is dropped, so it too stays
+    untimed rather than printing a value the Desk cannot explain."""
+    if finnhub is None:
+        return {}
+    try:
+        entries = finnhub.earnings_calendar(start, end)
+    except Exception as error:  # noqa: BLE001 — earnings stay untimed; the calendar does not fail
+        print(f"catalysts: finnhub earnings hours down ({error}); earnings stay untimed")
+        return {}
+    return {(e.symbol, e.date): e.hour for e in entries if e.hour in _EARNINGS_HOURS}
+
+
+def _fmp_event(event: Any, *, timing: str | None) -> dict:
     return {
         "date": event.date,
         "kind": "earnings",
         "symbol": event.symbol,
-        "timing": None,
+        # Finnhub's bmo/amc/dmh when it timed this report, else None — untimed renders nothing (P9).
+        "timing": timing,
         "title": f"{event.symbol} earnings",
         "consensus": event.eps_estimate,
         "prior": None,
@@ -174,13 +201,14 @@ def _fmp_event(event: Any) -> dict:
 
 def _fred_event(release: Any, entry: Release) -> dict:
     """Map one allowlisted FRED release onto the calendar's row shape. Every field the Desk renders —
-    the chip code, the title, the importance — comes from the allowlist table, never from the raw
-    FRED name, so the calendar speaks one vocabulary (redesign §6.2, Appendix C)."""
+    the chip code, the title, the importance, the release time — comes from the allowlist table,
+    never from the raw FRED name, so the calendar speaks one vocabulary (redesign §6.2, Appendix C)."""
     return {
         "date": release.date,
         "kind": entry.kind,
         "symbol": None,
-        "timing": None,
+        # The canonical ET release time, a scheduled convention rather than a feed stamp (CC8).
+        "timing": entry.time_et,
         "title": entry.display,
         "consensus": None,
         "prior": None,

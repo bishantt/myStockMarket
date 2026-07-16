@@ -41,18 +41,24 @@ class Release:
     release_id: int
     #: The lowercase fragment of the FRED release name that identifies this release.
     match: str
+    #: The canonical ET release time, as a scheduled convention (CC8). Six of the seven land at
+    #: 8:30 AM ET; the FOMC statement at 2:00 PM ET. It is the SCHEDULE's time, not a feed's stamp —
+    #: FRED gives a release DATE, and these hours are the fixed convention the Desk labels as such.
+    time_et: str
 
 
 # The seven. Ordered as they appear in Appendix C.
+_MORNING_ET = "8:30 AM ET"  # CPI, jobs, PPI, GDP, PCE, retail sales all release at 8:30 AM ET
+_FOMC_ET = "2:00 PM ET"     # the FOMC statement lands at 2:00 PM ET
 ALLOWLIST: tuple[Release, ...] = (
-    Release("CPI", "Consumer Price Index", "macro", "high", 10, "consumer price index"),
-    Release("JOBS", "Jobs report", "macro", "high", 50, "employment situation"),
-    Release("PPI", "Producer Price Index", "macro", "medium", 46, "producer price index"),
-    Release("GDP", "GDP", "macro", "medium", 53, "gross domestic product"),
-    Release("PCE", "PCE (inflation)", "macro", "medium", 54, "personal income and outlays"),
+    Release("CPI", "Consumer Price Index", "macro", "high", 10, "consumer price index", _MORNING_ET),
+    Release("JOBS", "Jobs report", "macro", "high", 50, "employment situation", _MORNING_ET),
+    Release("PPI", "Producer Price Index", "macro", "medium", 46, "producer price index", _MORNING_ET),
+    Release("GDP", "GDP", "macro", "medium", 53, "gross domestic product", _MORNING_ET),
+    Release("PCE", "PCE (inflation)", "macro", "medium", 54, "personal income and outlays", _MORNING_ET),
     Release("RETAIL", "Retail sales", "macro", "medium", 8,
-            "advance monthly sales for retail and food services"),
-    Release("FOMC", "FOMC decision", "fed", "high", 101, "fomc press release"),
+            "advance monthly sales for retail and food services", _MORNING_ET),
+    Release("FOMC", "FOMC decision", "fed", "high", 101, "fomc press release", _FOMC_ET),
 )
 
 

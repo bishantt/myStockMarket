@@ -5,6 +5,7 @@ import type { ManualRunRow } from "@/lib/pipeline-control";
 import {
   PIPELINES,
   formatDuration,
+  lastRunForDawn,
   mergeRuns,
   statusFromBriefing,
   statusFromRun,
@@ -32,13 +33,13 @@ describe("the pipeline definitions", () => {
     expect(new Set(assigned).size).toBe(assigned.length);
   });
 
-  it("groups macro under the dawn refresh (the dawn cron IS macro mode)", () => {
+  it("keeps macro as the dawn refresh's one hand-only button (a stage of the dawn run, CC8)", () => {
     expect(PIPELINES.find((p) => p.id === "dawn-refresh")?.actions).toEqual(["macro"]);
   });
 
-  it("carries a real cron line for each row", () => {
+  it("carries a real cron line for each row (CC8 moved the dawn to Mon–Fri, pre-open)", () => {
     expect(PIPELINES.find((p) => p.id === "nightly-full")?.crons).toEqual(["37 22 * * 1-5"]);
-    expect(PIPELINES.find((p) => p.id === "dawn-refresh")?.crons).toEqual(["0 10 * * 2-6"]);
+    expect(PIPELINES.find((p) => p.id === "dawn-refresh")?.crons).toEqual(["30 10 * * 1-5"]);
     expect(PIPELINES.find((p) => p.id === "evening-briefing")?.crons).toEqual(["25 0 * * 2-6"]);
   });
 });
@@ -54,6 +55,48 @@ describe("statusFromRun — a run's health from its stage and source maps", () =
 
   it("is FAILED when a stage failed — a stage failure outranks a source degradation", () => {
     expect(statusFromRun({ ingest: "ok", compute: "failed" }, { alpaca: "degraded" })).toBe("FAILED");
+  });
+
+  it("ignores the nested dawn entry — a dawn beside the night's sources cannot degrade the night (CC8)", () => {
+    // publish_dawn stamps `dawn` as an object; a healthy nightly must stay OK, and a degraded dawn
+    // must not leak into the nightly's verdict.
+    const dawnBeside = { alpaca: "ok", fred: "ok", dawn: { ranAt: "x", sources: { fred: "degraded" } } };
+    expect(statusFromRun({ ingest: "ok", publish: "ok" }, dawnBeside)).toBe("OK");
+  });
+});
+
+describe("lastRunForDawn — the dawn refresh reads its own stamp from the night's row (CC8, Q-CC7-1)", () => {
+  const finishedNight = new Date("2026-07-14T23:36:00Z");
+  const nightRow = (sourceStatus: Record<string, unknown>) => ({
+    startedAt: new Date("2026-07-14T23:33:00Z"),
+    finishedAt: finishedNight,
+    stageStatus: { ingest: "ok", publish: "ok" },
+    sourceStatus,
+  });
+
+  it("is null until a dawn has run — the honest '—', which the seeded world (no dawn) still shows", () => {
+    expect(lastRunForDawn(null)).toBeNull();
+    // A night with no dawn entry beside it: still no dawn Last run.
+    expect(lastRunForDawn(nightRow({ alpaca: "ok" }))).toBeNull();
+  });
+
+  it("reads the dawn's own instant, sources and stages once publish_dawn has stamped one", () => {
+    const dawn = {
+      ranAt: "2026-07-15T10:31:00Z",
+      sources: { fred: "ok", fmp: "ok" },
+      stages: { macro: "ok", news: "ok", catalysts: "ok", publish: "ok" },
+    };
+    const facts = lastRunForDawn(nightRow({ alpaca: "ok", marketaux: "degraded", dawn }));
+    expect(facts?.status).toBe("OK");
+    expect(facts?.sources).toEqual({ fred: "ok", fmp: "ok" }); // the DAWN's sources, not the night's
+    expect(facts?.stages).toEqual(dawn.stages);
+    expect(facts?.duration).toBeNull(); // the dawn carries an instant, not a span
+  });
+
+  it("reports the dawn DEGRADED when a dawn source misbehaved — independent of the night's verdict", () => {
+    const dawn = { ranAt: "2026-07-15T10:31:00Z", sources: { fred: "degraded" }, stages: { macro: "ok" } };
+    const facts = lastRunForDawn(nightRow({ alpaca: "ok", dawn }));
+    expect(facts?.status).toBe("DEGRADED");
   });
 });
 

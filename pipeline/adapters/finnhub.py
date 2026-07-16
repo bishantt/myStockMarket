@@ -46,6 +46,18 @@ class NewsItem:
     article_id: int = 0
 
 
+@dataclass(frozen=True)
+class EarningsHour:
+    """One scheduled report's time of day, joined to FMP's calendar on (symbol, date).
+
+    `hour` is Finnhub's own value — bmo | amc | dmh, or "" when it did not say. The empty string is
+    a real state, not a missing value: an untimed report renders no time on the calendar (P9)."""
+
+    symbol: str
+    date: date
+    hour: str = ""
+
+
 class FinnhubAdapter(Adapter):
     """Finnhub company news + metrics. The API token rides on the query string, so it is held here
     and added to every request (Finnhub does not use an auth header)."""
@@ -95,6 +107,27 @@ class FinnhubAdapter(Adapter):
             f"{_BASE}/stock/metric", params={"symbol": symbol, "metric": "all", "token": self._key}
         ).json()
         return payload.get("metric", {})
+
+    def earnings_calendar(self, start: date, end: date) -> list[EarningsHour]:
+        """Each scheduled report's time of day between start and end (inclusive) — and ONLY that.
+
+        FMP owns the earnings calendar's dates and consensus (fmp.py), but its /stable endpoint does
+        not carry the before-open / after-close split (CC8, plan 4.7). Finnhub does — its `hour` is
+        one of bmo (before market open), amc (after market close) or dmh (during market hours). The
+        pipeline joins this to FMP's rows on (symbol, date) to time them. A report Finnhub does not
+        time comes back with an empty `hour`, which stays untimed downstream (P9)."""
+        payload = self.get(
+            f"{_BASE}/calendar/earnings",
+            params={"from": start.isoformat(), "to": end.isoformat(), "token": self._key},
+        ).json()
+        return [
+            EarningsHour(
+                symbol=row["symbol"],
+                date=date.fromisoformat(row["date"]),
+                hour=row.get("hour", "") or "",
+            )
+            for row in (payload.get("earningsCalendar") or [])
+        ]
 
 
 def _parse(article: dict, *, fallback_symbol: str) -> NewsItem:

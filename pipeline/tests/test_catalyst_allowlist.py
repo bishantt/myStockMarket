@@ -59,6 +59,17 @@ def test_the_allowlist_carries_a_code_kind_and_importance_for_every_entry():
         assert entry.importance in {"high", "medium"}
 
 
+def test_every_release_carries_its_canonical_et_time():
+    # CC8: the six data releases land at 8:30 AM ET, the FOMC statement at 2:00 PM ET. The calendar
+    # labels these as the SCHEDULE's convention, not a feed — so the value is fixed here, not fetched.
+    times = {entry.code: entry.time_et for entry in ALLOWLIST}
+    assert times == {
+        "CPI": "8:30 AM ET", "JOBS": "8:30 AM ET", "PPI": "8:30 AM ET",
+        "GDP": "8:30 AM ET", "PCE": "8:30 AM ET", "RETAIL": "8:30 AM ET",
+        "FOMC": "2:00 PM ET",
+    }
+
+
 def test_only_fomc_is_classified_as_a_fed_event():
     assert match_release("FOMC Press Release").kind == "fed"
     assert match_release("Consumer Price Index").kind == "macro"

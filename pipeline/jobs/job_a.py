@@ -406,6 +406,11 @@ MODE_STAGES: dict[str, tuple[str, ...]] = {
     # which makes it the one button besides `news` safe with the market open. The promise is held by the TYPE,
     # not this comment: run_compute takes a ComputeDeps, which has no provider on it (nightly.py + its test).
     "compute": ("compute", "scan", "publish", "revalidate"),
+    # CC8 makes the pre-open dawn cron the Morning Edition's engine. `dawn` is macro + news + catalysts:
+    # it re-reads the index closes FRED posts overnight, rebuilds the front page, and refreshes the forward
+    # calendar with its event times — then publishes and revalidates. Like macro/news it ingests no bar and
+    # opens no new edition (E1): it stamps a `dawn` entry beside the night's, keeping the last close's date.
+    "dawn": ("macro", "news", "catalysts", "publish", "revalidate"),
 }
 
 # A mode is a promise about what a run will not touch. Declaring one here without a handler in main() would
@@ -428,7 +433,10 @@ def parse_mode(argv: list[str]) -> str:
 
 
 def run_macro_mode(settings: Settings) -> None:
-    """The dawn run: re-read FRED, fix the last session's index levels, refresh the board. Nothing else.
+    """Re-read FRED, fix the last session's index levels, refresh the board. Nothing else.
+
+    Since CC8 the pre-open cron runs `dawn` mode (which does this as one stage plus news + calendar);
+    `macro` stays a hand-only button — the cheap "just re-pull the numbers" refresh in the control room.
 
     FRED posts the index closes after both nightly jobs run (the Nasdaq Composite ~11:38pm ET, vs Job A at
     6:37pm), so the levels the night stored are one session behind by the time the user reads the Desk. This
@@ -490,6 +498,21 @@ def full_run_edition(now: datetime) -> date | None:
     return latest_closed_session(now)
 
 
+def dawn_edition(now: datetime) -> date | None:
+    """
+    The session a dawn run at `now` should refresh — or None if today is not a session (skip).
+
+    The dawn prepares the reader's morning BEFORE today's open, so it runs only on days the market
+    will open. The Mon–Fri cron fires on market HOLIDAYS too (it cannot know them), and on a holiday
+    there is no morning to prepare — so it skips, the same gate full_run_edition keeps. The session
+    it refreshes is the last close, exactly as macro and news modes read it (previous_session), never
+    today's: at dawn today has not opened.
+    """
+    if not is_trading_session(now.date()):
+        return None
+    return previous_session(now.date())
+
+
 def main() -> None:
     """Build the real collaborators and run one night. Raises on any failure, so the workflow goes red."""
     settings = load_settings()
@@ -503,6 +526,9 @@ def main() -> None:
         return
     if mode == "compute":
         run_compute_mode(settings)
+        return
+    if mode == "dawn":
+        run_dawn_mode(settings)
         return
     if mode != "full":
         # Belt and braces. parse_mode rejects a mode not in MODE_STAGES; this refuses one that IS in the table
@@ -838,12 +864,18 @@ def _fetch_news_articles(settings: Settings) -> tuple[list[dict], dict[str, str]
     return articles, status
 
 
-def _build_front_page(settings: Settings, conn, run_date: date) -> Callable[[], FrontPageRead]:
+def _build_front_page(
+    settings: Settings, conn, run_date: date, *, narrate: bool = True
+) -> Callable[[], FrontPageRead]:
     """
     The newsdesk, wired to the real world (plan 7.3-7.6, 7.9). Images are fetched only when the media bucket
     exists (provisioning row P-1); when it does not — today — every card falls to the DESIGNED L3/L4 rungs
     (first-class outcomes, not empty states) and the night records that it did so. The feed ships either way,
     which is the whole point of building the ladder before the bucket.
+
+    `narrate=False` publishes the facts-only front page — fresh clusters, no LLM prose. The dawn run
+    uses it (CC8, risk 10): the morning refresh re-fetches and re-ranks the news but spends no
+    Anthropic, so the reader's morning page carries the overnight stories without the evening's prose.
     """
 
     def read() -> FrontPageRead:
@@ -905,18 +937,24 @@ def _build_front_page(settings: Settings, conn, run_date: date) -> Callable[[], 
             cluster_calendar[cluster.id] = calendar
             depth_stats[cluster.id].extend(build_calendar_stats(calendar))
 
-        narration = _narrate_front_page(
-            settings,
-            night=night,
-            articles=articles,
-            moves=moves,
-            rvol=rvol,
-            instruments=list(sectors_by_symbol),
-            run_date=run_date,
-            status=status,
-            deep_ids=[cluster.id for cluster in deep],
-            depth_stats=depth_stats,
-            calendar=cluster_calendar,
+        # The dawn refresh publishes facts-only (narrate=False) — a news sweep with no Anthropic spend
+        # (CC8, risk 10). The stories, order and numbers are identical; only the prose is withheld.
+        narration = (
+            _narrate_front_page(
+                settings,
+                night=night,
+                articles=articles,
+                moves=moves,
+                rvol=rvol,
+                instruments=list(sectors_by_symbol),
+                run_date=run_date,
+                status=status,
+                deep_ids=[cluster.id for cluster in deep],
+                depth_stats=depth_stats,
+                calendar=cluster_calendar,
+            )
+            if narrate
+            else NarrationResult()
         )
 
         default_note = NoteDecision(
@@ -1159,6 +1197,94 @@ def run_compute_mode(settings: Settings) -> None:
         f"{result.symbols} symbols, {result.scan_matches} scan matches. "
         f"No provider was called; the night's own source health is untouched."
     )
+
+
+def run_dawn_mode(settings: Settings) -> None:
+    """
+    The dawn run — the Morning Edition's engine (CC8, plan 4.7, MODE_STAGES["dawn"]).
+
+    What a reader wakes up to, refreshed before the open without ingesting the market:
+    - macro: re-read FRED so the prior close's index levels are the real ones (they post overnight);
+    - catalysts: refresh the forward calendar WITH its event times (earnings bmo/amc, macro 8:30 ET);
+    - news: rebuild the front page from fresh providers, FACTS-ONLY — a news sweep that spends no
+      Anthropic (risk 10), so the mood gauge and the LLM stay evening-only work.
+
+    E1: it opens NO new edition — the session stays the last close, exactly as macro/news modes read
+    it, and dawnness is carried by publish_dawn's stamp, not by a new date. On a market holiday there
+    is no morning to prepare, so it skips (dawn_edition). The macro and calendar land in their own
+    transactions first; a newsdesk outage then degrades only the front page, and the dawn is stamped
+    either way so its record says exactly which stages succeeded.
+    """
+    now = datetime.now(_MARKET_TZ)
+    session = dawn_edition(now)
+    if session is None:
+        print(
+            f"job_a[dawn]: {now.date().isoformat()} is not a trading session — the market does not "
+            f"open, so there is no morning to prepare. Skipping. (The last edition stands.)"
+        )
+        return
+
+    fred = _fred(settings)
+    macro = _read_macro(fred)()
+    board = _read_macro_stats(settings, fred, session)()
+    # The calendar refresh needs no movers — FMP earnings and FRED releases do not depend on them
+    # (only mover-news does), so it fetches with an empty mover list: the calendar and its new event
+    # times, and none of the per-ticker news the front page fetches for itself.
+    catalysts = build_catalyst_fetcher(settings, session)([])
+
+    written = 0
+    front_page = None
+    with psycopg.connect(settings.database_url_psycopg) as conn:
+        # macro: fix the prior close's index levels and refresh the board (run_macro_mode's core).
+        pub.publish_macro(conn, run_date=session, macro=macro.as_columns())
+        pub.publish_macro_stats(conn, rows=board.rows)
+        # catalysts: refresh the forward calendar with its event times; a degraded source leaves it.
+        pub.publish_calendar(conn, calendar_events=catalysts.calendar_events)
+        # news: rebuild the front page from fresh providers, FACTS-ONLY (narrate=False) — a news
+        # sweep with no Anthropic spend (risk 10). A newsdesk failure degrades the front page and
+        # nothing else — the macro and calendar are already stored above.
+        try:
+            front_page = _build_front_page(settings, conn, session, narrate=False)()
+            written = pub.publish_news(
+                conn, run_date=session, clusters=front_page.clusters, images=front_page.images
+            )
+        except Exception as error:  # noqa: BLE001 — a dead newsdesk costs the front page, not the run
+            print(f"job_a[dawn]: the newsdesk failed ({error}); the front page is left as the night's.")
+
+        sources = _dawn_source_status(macro, board, catalysts, front_page)
+        stages = {
+            "macro": "ok",
+            "catalysts": "ok" if catalysts.calendar_events is not None else "degraded",
+            "news": "ok" if front_page is not None else "degraded",
+            "publish": "ok",
+        }
+        pub.publish_dawn(conn, run_date=session, ran_at=now, sources=sources, stages=stages)
+
+    _revalidate_desk(settings)
+    calendar_note = "refreshed" if catalysts.calendar_events is not None else "left (sources down)"
+    levels = "complete" if macro.has_every_index_level() else "PARTIAL"
+    print(
+        f"job_a[dawn]: {session.isoformat()} refreshed for the morning — index levels {levels}, "
+        f"{written} stories published, calendar {calendar_note}."
+    )
+
+
+def _dawn_source_status(macro, board, catalysts, front_page) -> dict[str, str]:
+    """The dawn's per-provider health, assembled like the nightly's (nightly.run_nightly): FRED (the
+    macro read and, separately, the index levels), then the calendar's, board's and front page's own
+    source maps. A None front page means the newsdesk failed, so news degrades."""
+    fred_ok = any(value is not None for value in macro.as_columns().values())
+    sources = {
+        "fred": "ok" if fred_ok else "degraded",
+        "fred-indexes": "ok" if macro.has_every_index_level() else "degraded",
+    }
+    sources.update(catalysts.source_status)
+    sources.update(board.source_status)
+    if front_page is not None:
+        sources.update(front_page.source_status)
+    else:
+        sources["news"] = "degraded"
+    return sources
 
 
 # The entrypoint stays at the very BOTTOM of the module, and that is not a style choice. It was briefly above

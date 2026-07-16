@@ -86,6 +86,21 @@ def test_the_mode_dropdown_offers_exactly_the_modes_the_job_implements():
     )
 
 
+def test_the_dawn_cron_fires_monday_to_friday_pre_open():
+    """
+    CC8 moved the dawn run to `30 10 * * 1-5` (6:30 AM EDT / 5:30 AM EST, Mon–Fri). Monday GAINS a
+    dawn run — the morning after the most news, weekend plus Friday's close — and the pointless
+    Saturday run (the old `0 10 * * 2-6`) is gone. The mode-picker maps this schedule to `dawn`.
+    """
+    text = _text("nightly-a.yml")
+
+    assert 'cron: "30 10 * * 1-5"' in text, "the dawn cron must fire Mon–Fri, pre-open"
+    assert "0 10 * * 2-6" not in text, "the old Tue–Sat dawn cron must be gone (it ran Saturday, skipped Monday)"
+    # The schedule→mode step turns exactly this cron into the `dawn` mode.
+    assert 'github.event.schedule }}" = "30 10 * * 1-5"' in text
+    assert "value=dawn" in text
+
+
 def test_the_guard_can_actually_fail():
     """Negative control. A guard that cannot fail is not a guard — this build has shipped three.
 

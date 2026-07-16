@@ -6,7 +6,7 @@ per-run scan replacement, and atomic rollback (a failure leaves nothing behind).
 
 import json
 import math
-from datetime import date
+from datetime import date, datetime, timezone
 
 import polars as pl
 import pytest
@@ -603,3 +603,98 @@ def test_a_recompute_of_a_session_no_night_ever_ran_records_itself_honestly(db):
     assert stage == {"compute": "ok", "scan": "ok", "publish": "ok"}
     assert "ingest" not in stage  # it did not ingest, and does not claim to
     assert source == {}
+
+
+# ── publish_dawn: the dawn entry lands BESIDE the night's, never over it (CC8) ────────────────
+
+
+def test_the_dawn_stamp_lands_beside_the_nights_source_status_never_over_it(db):
+    """
+    The mirror of the compute test above. The dawn shares the night's run_date (E1: it opens no new
+    edition), so it must add its health beside the night's, not replace it. A dawn merged through
+    publish() would blank the night's per-provider record — the same M2 back door publish_compute
+    was written to close.
+    """
+    pub.publish(
+        db,
+        run_date=RUN,
+        stage_status={"ingest": "ok", "compute": "ok", "scan": "ok", "publish": "ok"},
+        source_status={"alpaca": "ok", "marketaux": "degraded"},
+    )
+    night_finished = db.execute("SELECT finished_at FROM pipeline_run WHERE run_date = %s", (RUN,)).fetchone()[0]
+
+    ran_at = datetime(2026, 7, 1, 10, 31, tzinfo=timezone.utc)
+    pub.publish_dawn(
+        db,
+        run_date=RUN,
+        ran_at=ran_at,
+        sources={"fred": "ok", "fmp": "ok"},
+        stages={"macro": "ok", "news": "ok", "catalysts": "ok", "publish": "ok"},
+    )
+
+    finished, stage, source = db.execute(
+        "SELECT finished_at, stage_status, source_status FROM pipeline_run WHERE run_date = %s", (RUN,)
+    ).fetchone()
+
+    # The night's per-provider health SURVIVES, untouched — this is the whole test.
+    assert source["alpaca"] == "ok"
+    assert source["marketaux"] == "degraded"
+    # The dawn's own entry lands beside them, self-contained (its timestamp, sources and stages).
+    assert source["dawn"]["sources"] == {"fred": "ok", "fmp": "ok"}
+    assert source["dawn"]["stages"] == {"macro": "ok", "news": "ok", "catalysts": "ok", "publish": "ok"}
+    assert source["dawn"]["ranAt"] == ran_at.isoformat()
+    # The night's stage record and finish time are NOT moved — the dawn carries its own instant, so
+    # the nightly's own Last run stamp stays the night's.
+    assert stage == {"ingest": "ok", "compute": "ok", "scan": "ok", "publish": "ok"}
+    assert finished == night_finished
+
+
+def test_a_dawn_run_for_a_session_no_night_ran_records_only_its_own_entry(db):
+    """An orphan dawn writes its own entry rather than failing, and claims nothing about a night that
+    never happened — the same honesty publish_compute keeps for an orphan recompute."""
+    ran_at = datetime(2026, 7, 1, 10, 31, tzinfo=timezone.utc)
+    pub.publish_dawn(db, run_date=RUN, ran_at=ran_at, sources={"fred": "ok"}, stages={"macro": "ok"})
+
+    stage, source = db.execute(
+        "SELECT stage_status, source_status FROM pipeline_run WHERE run_date = %s", (RUN,)
+    ).fetchone()
+
+    assert stage == {}  # it ingested nothing and computed nothing, and does not claim to
+    assert source == {"dawn": {"ranAt": ran_at.isoformat(), "sources": {"fred": "ok"}, "stages": {"macro": "ok"}}}
+
+
+def test_a_second_dawn_replaces_its_own_entry_but_still_keeps_the_nights(db):
+    """A re-run at dawn overwrites the previous dawn entry (latest wins) while the night's keys ride
+    through untouched — `||` replaces the shared `dawn` key, keeps every other."""
+    pub.publish(db, run_date=RUN, stage_status={"ingest": "ok"}, source_status={"alpaca": "ok"})
+    pub.publish_dawn(db, run_date=RUN, ran_at=datetime(2026, 7, 1, 10, 31, tzinfo=timezone.utc),
+                     sources={"fred": "degraded"}, stages={"macro": "ok"})
+    pub.publish_dawn(db, run_date=RUN, ran_at=datetime(2026, 7, 1, 10, 33, tzinfo=timezone.utc),
+                     sources={"fred": "ok"}, stages={"macro": "ok"})
+
+    source = db.execute("SELECT source_status FROM pipeline_run WHERE run_date = %s", (RUN,)).fetchone()[0]
+    assert source["alpaca"] == "ok"  # the night's key survives both dawns
+    assert source["dawn"]["sources"] == {"fred": "ok"}  # the later dawn won
+    assert source["dawn"]["ranAt"].endswith("10:33:00+00:00")
+
+
+# ── publish_calendar: the dawn refreshes the forward view, and nothing else (CC8) ─────────────
+
+
+def test_publish_calendar_replaces_the_forward_view(db):
+    pub.publish_calendar(db, calendar_events=[
+        {"date": date(2026, 7, 15), "kind": "earnings", "symbol": "AAPL", "timing": "amc",
+         "title": "AAPL earnings", "consensus": None, "prior": None, "importance": "medium", "code": "EARNINGS"},
+    ])
+    [(code, timing)] = db.execute("SELECT code, timing FROM calendar_event").fetchall()
+    assert (code, timing) == ("EARNINGS", "amc")
+
+
+def test_publish_calendar_leaves_the_table_untouched_when_no_source_ran(db):
+    pub.publish_calendar(db, calendar_events=[
+        {"date": date(2026, 7, 15), "kind": "macro", "symbol": None, "timing": "8:30 AM ET",
+         "title": "Consumer Price Index", "consensus": None, "prior": None, "importance": "high", "code": "CPI"},
+    ])
+    # None means the calendar sources were down — it must LEAVE the existing calendar, never blank it.
+    pub.publish_calendar(db, calendar_events=None)
+    assert _count(db, "calendar_event") == 1

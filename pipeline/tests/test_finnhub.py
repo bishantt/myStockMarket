@@ -5,7 +5,7 @@ from datetime import date, datetime, timezone
 import httpx
 
 from adapters.base import load_fixture
-from adapters.finnhub import FinnhubAdapter
+from adapters.finnhub import EarningsHour, FinnhubAdapter
 
 
 class NullLimiter:
@@ -44,6 +44,36 @@ def test_sends_the_symbol_and_date_window():
     assert seen["from"] == "2026-06-01"
     assert seen["to"] == "2026-06-30"
     assert seen["token"] == "test-key"
+
+
+def test_parses_the_earnings_calendar_into_symbol_date_hour():
+    # Finnhub answers under `earningsCalendar`; only the symbol, date and time-of-day matter here —
+    # FMP supplies the consensus, this supplies the bmo/amc/dmh split it lacks (CC8).
+    body = {
+        "earningsCalendar": [
+            {"symbol": "AAPL", "date": "2026-07-15", "hour": "amc", "epsEstimate": 1.28},
+            {"symbol": "JPM", "date": "2026-07-16", "hour": "bmo", "epsEstimate": 4.1},
+            {"symbol": "XYZ", "date": "2026-07-17", "hour": "", "epsEstimate": None},
+        ]
+    }
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, json=body)
+
+    rows = _adapter(handler).earnings_calendar(date(2026, 7, 15), date(2026, 7, 29))
+    assert rows == [
+        EarningsHour("AAPL", date(2026, 7, 15), "amc"),
+        EarningsHour("JPM", date(2026, 7, 16), "bmo"),
+        EarningsHour("XYZ", date(2026, 7, 17), ""),  # an untimed report is a real row, not a gap
+    ]
+
+
+def test_earnings_calendar_tolerates_an_empty_answer():
+    # Finnhub returns `{}` (no key) for a window with no reports — not an error, an empty calendar.
+    rows = _adapter(lambda request: httpx.Response(200, json={})).earnings_calendar(
+        date(2026, 7, 15), date(2026, 7, 29)
+    )
+    assert rows == []
 
 
 def test_metric_returns_the_metric_map():

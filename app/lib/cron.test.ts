@@ -7,7 +7,7 @@ import { describeCadence, describeNextRun, nextRun, parseCron } from "@/lib/cron
  *
  * The three real crons this table renders, verbatim from the workflow files:
  *   · nightly-a full  `37 22 * * 1-5`  = 6:37 PM EDT / 5:37 PM EST, ET Mon–Fri
- *   · nightly-a dawn  `0 10 * * 2-6`   = 6:00 AM EDT / 5:00 AM EST, ET Tue–Sat
+ *   · nightly-a dawn  `30 10 * * 1-5`  = 6:30 AM EDT / 5:30 AM EST, ET Mon–Fri (CC8; was Tue–Sat)
  *   · nightly-b       `25 0 * * 2-6`   = 8:25 PM EDT / 7:25 PM EST, ET Mon–Fri (UTC 00:25 rolls back a day)
  *
  * The whole point is that a UTC-fixed cron reads differently on the reader's ET wall clock in the two
@@ -16,7 +16,7 @@ import { describeCadence, describeNextRun, nextRun, parseCron } from "@/lib/cron
  */
 
 const FULL = "37 22 * * 1-5";
-const DAWN = "0 10 * * 2-6";
+const DAWN = "30 10 * * 1-5";
 const BRIEFING = "25 0 * * 2-6";
 
 describe("parseCron", () => {
@@ -24,8 +24,12 @@ describe("parseCron", () => {
     expect(parseCron(FULL)).toEqual({ minute: 37, hour: 22, dows: [1, 2, 3, 4, 5] });
   });
 
+  it("parses the dawn refresh's weekday range (Mon–Fri, CC8)", () => {
+    expect(parseCron(DAWN)).toEqual({ minute: 30, hour: 10, dows: [1, 2, 3, 4, 5] });
+  });
+
   it("parses a weekday range that includes Saturday", () => {
-    expect(parseCron(DAWN)).toEqual({ minute: 0, hour: 10, dows: [2, 3, 4, 5, 6] });
+    expect(parseCron("0 10 * * 2-6")).toEqual({ minute: 0, hour: 10, dows: [2, 3, 4, 5, 6] });
   });
 
   it("parses a comma list of weekdays", () => {
@@ -46,8 +50,8 @@ describe("describeCadence — DST-honest, both seasonal renderings when they dif
     expect(describeCadence(parseCron(FULL))).toBe("Mon–Fri · ~6:37 PM EDT / 5:37 PM EST");
   });
 
-  it("renders the dawn refresh: ET Tue–Sat, 6:00 AM EDT / 5:00 AM EST (no weekday shift)", () => {
-    expect(describeCadence(parseCron(DAWN))).toBe("Tue–Sat · ~6:00 AM EDT / 5:00 AM EST");
+  it("renders the dawn refresh: ET Mon–Fri, 6:30 AM EDT / 5:30 AM EST (CC8; no weekday shift)", () => {
+    expect(describeCadence(parseCron(DAWN))).toBe("Mon–Fri · ~6:30 AM EDT / 5:30 AM EST");
   });
 
   it("renders the evening briefing: UTC 00:25 rolls back a day, so ET Mon–Fri, 8:25 PM / 7:25 PM", () => {

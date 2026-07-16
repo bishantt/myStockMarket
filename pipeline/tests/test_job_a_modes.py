@@ -9,8 +9,9 @@ around 11:38pm — against Job A at 6:37pm and Job B at 8:25pm. So a Job-A-time 
 serves index levels one session older than everything else on the Desk by the time the user reads it
 over coffee the next morning. No amount of retrying fixes that; the data does not exist yet.
 
-The fix is a second, tiny run at dawn (`0 10 * * 2-6` UTC = 6:00am EDT) that re-reads FRED and
-updates nothing else. By the pre-open coffee read, every index level is the actual prior close.
+The fix is a second run at dawn that re-reads FRED. Since CC8 that run is `dawn` mode
+(`30 10 * * 1-5` UTC = 6:30am EDT, Mon–Fri) — macro is the same index-close fix as one stage of it,
+and stays a hand-only button. By the pre-open coffee read, every index level is the actual prior close.
 
 THE STAGE LISTS ARE CONSTANTS, AND THAT IS THE POINT. A mode is a promise about what a run will and
 will not touch — "macro mode does not ingest bars" is the whole reason it is safe to let a user
@@ -23,7 +24,9 @@ from __future__ import annotations
 
 import pytest
 
-from jobs.job_a import MODE_STAGES, parse_mode
+from datetime import date, datetime, timezone
+
+from jobs.job_a import MODE_STAGES, dawn_edition, parse_mode
 
 
 def test_the_default_mode_is_the_full_nightly():
@@ -68,6 +71,32 @@ def test_every_mode_publishes_and_revalidates():
         assert "revalidate" in stages, f"{mode} must revalidate"
 
 
+def test_dawn_mode_refreshes_the_morning_and_ingests_no_bar():
+    # THE PROMISE (CC8). The dawn run is the Morning Edition's engine: it re-reads the macro (the
+    # index closes FRED posts overnight), rebuilds the front page, and refreshes the forward calendar
+    # with its event times — then publishes and revalidates. It does NOT ingest a bar, recompute an
+    # indicator or rebuild a scan, which is what keeps it safe to run pre-open every weekday.
+    assert MODE_STAGES["dawn"] == ("macro", "news", "catalysts", "publish", "revalidate")
+
+    forbidden = {"ingest", "compute", "scan"}
+    assert forbidden.isdisjoint(MODE_STAGES["dawn"])
+
+
+def test_dawn_edition_refreshes_the_last_close_on_a_session_day():
+    # A Wednesday, before the open — the dawn refreshes the session that HAS closed (Tuesday).
+    now = datetime(2026, 7, 15, 10, 31, tzinfo=timezone.utc)  # 6:31 AM ET, Wed
+    assert dawn_edition(now) == date(2026, 7, 14)
+
+
+def test_dawn_edition_skips_a_non_session_day():
+    # The Mon–Fri cron fires on market HOLIDAYS too (it cannot know them). On a day the market never
+    # opens there is no morning to prepare, so the dawn skips — the same gate the full nightly keeps.
+    independence_day_observed = datetime(2026, 7, 3, 10, 31, tzinfo=timezone.utc)  # Fri Jul 3, holiday
+    assert dawn_edition(independence_day_observed) is None
+    saturday = datetime(2026, 7, 18, 10, 31, tzinfo=timezone.utc)
+    assert dawn_edition(saturday) is None
+
+
 def test_news_mode_rebuilds_the_front_page_and_touches_no_market_data():
     """
     THE PROMISE, N4's half. "Refresh the news" re-reads the providers and rebuilds the front page. It
@@ -102,7 +131,7 @@ def test_every_declared_mode_has_a_handler_and_no_mode_can_fall_through_to_a_ful
     The set is exactly what the job can actually do, and main() refuses anything else rather than
     guessing.
     """
-    assert set(MODE_STAGES) == {"full", "macro", "news", "compute"}
+    assert set(MODE_STAGES) == {"full", "macro", "news", "compute", "dawn"}
 
     from jobs.job_a import main  # noqa: F401 — imported to prove the handler guard exists
     import inspect

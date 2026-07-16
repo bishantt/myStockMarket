@@ -17,11 +17,12 @@
 # one session behind by the time the user reads the Desk over coffee. Retrying cannot fix it; the
 # data does not exist yet.
 #
-# So there is a second run at dawn (`0 10 * * 2-6` UTC = 6:00am EDT / 5:00am EST, Tue–Sat so that
-# Saturday catches Friday's close). It runs in `macro` mode: it re-reads FRED, updates the previous
-# session's three index levels and two context cells, revalidates, and touches NOTHING else — no
-# bars, no scans, no news, no LLM spend. By the pre-open read, every index level is the real prior
-# close.
+# So there is a second run at dawn (`30 10 * * 1-5` UTC = 6:30am EDT / 5:30am EST, Mon–Fri, pre-open
+# year-round). Since CC8 it runs in `dawn` mode — the Morning Edition's engine: it re-reads FRED for
+# the prior close's index levels, rebuilds the front page from fresh providers, and refreshes the
+# forward calendar with its event times. It ingests no bar, recomputes no scan, and opens no new
+# edition (E1) — the last close's date stands; it stamps a dawn entry beside the night's. Monday now
+# gains a dawn run (weekend news + Friday's close), and the old pointless Saturday run is gone.
 
 name: nightly-a
 
@@ -50,8 +51,8 @@ on:
   schedule:
     # The full nightly, after the US close.
     - cron: "37 22 * * 1-5"
-    # The dawn macro refresh — see the note above. Tue–Sat catches Friday's close on Saturday.
-    - cron: "0 10 * * 2-6"
+    # The dawn Morning-Edition refresh — see the note above. Mon–Fri, pre-open in both DST regimes.
+    - cron: "30 10 * * 1-5"
   # A hand-dispatched run picks its own mode. N6's control room dispatches this workflow with one of
   # these values, and the panel's copy promises what each will and will not touch — MODE_STAGES in
   # jobs/job_a.py is the pinned constant those promises are made of, with a test holding it.
@@ -68,6 +69,7 @@ on:
           - news      # rebuild the front page only — touches no price, no scan, no base rate
           - macro     # re-read the rates, gold, FX and the gauge inputs
           - compute   # recompute indicators/scans/analytics over STORED bars — fetches nothing
+          - dawn      # the pre-open Morning refresh: macro + news + calendar times, no market ingest
       request_id:
         description: "The control room's request id (leave blank for a hand-run from this tab)"
         type: string
@@ -97,8 +99,8 @@ jobs:
       - name: Sync dependencies
         run: uv sync --frozen
 
-      # Which mode this run is. The dawn cron runs `macro` (three numbers, nothing else); every
-      # other trigger — the after-close cron, or a hand-dispatch from the Actions tab — runs the
+      # Which mode this run is. The dawn cron runs `dawn` (macro + news + calendar, no market ingest);
+      # every other trigger — the after-close cron, or a hand-dispatch from the Actions tab — runs the
       # full night. GitHub tells us which schedule fired via `github.event.schedule`.
       #
       # The job itself refuses an unrecognised mode rather than falling back to "full" (see
@@ -110,8 +112,8 @@ jobs:
           if [ -n "${{ inputs.mode }}" ]; then
             # A hand dispatch (the Actions tab, or N6's control room) said what it wanted.
             echo "value=${{ inputs.mode }}" >> "$GITHUB_OUTPUT"
-          elif [ "${{ github.event.schedule }}" = "0 10 * * 2-6" ]; then
-            echo "value=macro" >> "$GITHUB_OUTPUT"
+          elif [ "${{ github.event.schedule }}" = "30 10 * * 1-5" ]; then
+            echo "value=dawn" >> "$GITHUB_OUTPUT"
           else
             echo "value=full" >> "$GITHUB_OUTPUT"
           fi
@@ -156,8 +158,8 @@ jobs:
       # A private repo's scheduled workflows are disabled by GitHub after 60 days without repo
       # activity. An empty heartbeat commit each night keeps the schedule alive.
       #
-      # Only the full nightly heartbeats. The dawn macro run would otherwise double the commit rate
-      # for no added liveness — one commit a night is what the 60-day timer needs.
+      # Only the full nightly heartbeats. The dawn run would otherwise double the commit rate for no
+      # added liveness — one commit a night is what the 60-day timer needs.
       - name: Heartbeat
         if: steps.mode.outputs.value == 'full'
         working-directory: .

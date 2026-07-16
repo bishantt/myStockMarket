@@ -13,6 +13,7 @@ the allowlist recognises, each carrying the chip code and the importance the Des
 from datetime import date, datetime, timezone
 from types import SimpleNamespace
 
+from adapters.finnhub import EarningsHour
 from adapters.fred import ReleaseDate
 from catalyst_ingest import gather_catalysts
 
@@ -21,6 +22,10 @@ class FakeFinnhub:
     def company_news(self, symbol, start, end):
         return [SimpleNamespace(published=datetime(2026, 7, 9, 13, tzinfo=timezone.utc),
                                 headline=f"{symbol} beats", url=f"https://x/{symbol}", summary="s", symbol=symbol)]
+
+    def earnings_calendar(self, start, end):
+        # Times AAPL's report (the one FakeFmp schedules) after the close; leaves an unknown one blank.
+        return [EarningsHour("AAPL", date(2026, 7, 15), "amc"), EarningsHour("ZZZZ", date(2026, 7, 20), "")]
 
 
 class RaisingMarketaux:
@@ -130,6 +135,47 @@ def test_earnings_rows_carry_the_earnings_chip_code():
     bundle = gather_catalysts([], date(2026, 7, 9), finnhub=None, marketaux=None, fmp=FakeFmp(), fred=None)
     [earnings] = _calendar_of(bundle, "earnings")
     assert earnings["code"] == "EARNINGS"
+
+
+# ── event times (CC8): earnings from Finnhub's hour, macro from the allowlist's convention ───────
+
+def test_an_earnings_row_gains_finnhubs_time_of_day():
+    # FMP schedules AAPL on Jul 15; Finnhub says it reports after the close. The row carries "amc".
+    bundle = gather_catalysts(
+        [], date(2026, 7, 9), finnhub=FakeFinnhub(), marketaux=None, fmp=FakeFmp(), fred=None
+    )
+    [earnings] = _calendar_of(bundle, "earnings")
+    assert earnings["timing"] == "amc"
+
+
+def test_an_earnings_row_finnhub_does_not_time_stays_untimed():
+    # No Finnhub adapter at all — the calendar still runs on FMP, and the report renders no time (P9).
+    bundle = gather_catalysts([], date(2026, 7, 9), finnhub=None, marketaux=None, fmp=FakeFmp(), fred=None)
+    [earnings] = _calendar_of(bundle, "earnings")
+    assert earnings["timing"] is None
+
+
+def test_a_finnhub_earnings_outage_leaves_the_calendar_intact_and_untimed():
+    # Finnhub's earnings endpoint raising must NOT mark FMP down — FMP's own answer arrived. The row
+    # is simply untimed, and fmp stays "ok".
+    class RaisingEarnings(FakeFinnhub):
+        def earnings_calendar(self, start, end):
+            raise RuntimeError("finnhub 429 rate limit")
+
+    bundle = gather_catalysts(
+        [], date(2026, 7, 9), finnhub=RaisingEarnings(), marketaux=None, fmp=FakeFmp(), fred=None
+    )
+    [earnings] = _calendar_of(bundle, "earnings")
+    assert earnings["timing"] is None
+    assert bundle.source_status["fmp"] == "ok"
+
+
+def test_a_macro_release_carries_its_canonical_et_time():
+    # The 8:30-and-2:00 convention reaches the row (CC8) — a scheduled time, not a fetched one.
+    bundle = gather_catalysts([], date(2026, 7, 9), finnhub=None, marketaux=None, fmp=None, fred=FakeFred())
+    by_code = {e["code"]: e for e in bundle.calendar_events}
+    assert by_code["CPI"]["timing"] == "8:30 AM ET"
+    assert by_code["FOMC"]["timing"] == "2:00 PM ET"
 
 
 def test_a_company_outside_the_served_core_reports_at_medium_importance():
