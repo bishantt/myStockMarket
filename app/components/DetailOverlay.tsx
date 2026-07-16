@@ -34,15 +34,26 @@ import { pullDismisses } from "@/lib/overlay-dismiss";
  *
  * Radix Dialog is the house pattern (as in RailDialog): it traps focus inside, marks the room behind
  * unreadable, locks body scroll while open, and restores focus to the launcher on close.
+ *
+ * TWO MODES, ONE COMPONENT. By default the sheet is a ROUTING sheet: every dismissal is `router.back()`,
+ * which unmounts the intercepting @modal route and reveals the untouched room (the story/ticker sheets).
+ * Pass `onClose` and it becomes a CONTROLLED sheet: dismissal calls `onClose` instead, and the PARENT
+ * unmounts it by conditionally rendering — which is how the control-room table opens a pipeline's depth
+ * over /settings without a route of its own (the table already holds the live polled state the sheet
+ * reads, so a routing sheet reading stale server data would be wrong here). The launcher-focus-return
+ * below works either way: it captures the activated control on mount and refocuses it on unmount, and
+ * both a `router.back()` and a parent unmount end in the same unmount.
  */
 
 type DetailOverlayProps = {
-  /** The dialog's accessible name — the story headline or the ticker symbol. */
+  /** The dialog's accessible name — the story headline, the ticker symbol, the pipeline name. */
   title: string;
   children: React.ReactNode;
+  /** Controlled mode: when given, dismissal calls this instead of navigating back. */
+  onClose?: () => void;
 };
 
-export function DetailOverlay({ title, children }: DetailOverlayProps) {
+export function DetailOverlay({ title, children, onClose }: DetailOverlayProps) {
   const router = useRouter();
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -62,9 +73,10 @@ export function DetailOverlay({ title, children }: DetailOverlayProps) {
   const startedAtTop = useRef(false);
   const maxDownward = useRef(0);
 
-  // Every dismissal routes here. `router.back()` pops the history entry the in-app navigation pushed,
-  // which unmounts this intercepting route and reveals the room exactly as it was left.
-  const dismiss = () => router.back();
+  // Every dismissal routes here. In routing mode `router.back()` pops the history entry the in-app
+  // navigation pushed, unmounting this intercepting route to reveal the room exactly as it was left; in
+  // controlled mode the parent unmounts us in response to `onClose`. Either way the room is never rebuilt.
+  const dismiss = onClose ?? (() => router.back());
 
   // Return focus to the launcher on UNMOUNT — every dismissal ends here, including the hardware/gesture
   // back button, which never runs through `dismiss()`. Because we close by navigating (not by Radix's

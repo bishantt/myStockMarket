@@ -174,9 +174,13 @@ test.describe("visual regression — the design system", () => {
    *     headline and words, with no generated frame. "The headline leads, a photo only supports" is
    *     true or false only in a picture, which no DOM test can hold.
    *   · /scans/unusual-volume — the match table (F3): recipe card, named order, lottery chip, pagination.
-   *   · /settings — THE CONTROL ROOM (N6), worth locking because its most important thing is a SENTENCE:
-   *     the pinned clock lands `full` in its "already succeeded at 18:41 ET" C5 line, whose failure mode is
-   *     typographic and invisible to a DOM assertion. (/settings had NO baseline before N6.)
+   *   · /settings — THE CONTROL ROOM (CC7), now a TABLE of the Desk's three schedules (was N6's flat
+   *     panel). Worth locking because its Cadence and Next-run columns are a DST-honest cron→ET
+   *     computation whose failure mode is typographic — a wrong weekday, a dropped season — and invisible
+   *     to a DOM assertion. The pinned clock makes the client-computed Next run deterministic (as it did
+   *     the old panel's `full` state). The run-now controls and `full`'s C5 sentence now live in the
+   *     per-row detail sheet — opened on demand, its sections asserted in control-room.spec, its chrome
+   *     the same DetailOverlay the story/ticker sheets already pixel-lock.
    * The ticker room is written by hand below, against /ticker/AAPL, because the Range Ladder needs seeded
    * vol bands (the sweeps open /ticker/SPY, which needs no seed).
    */

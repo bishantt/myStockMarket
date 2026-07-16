@@ -471,6 +471,54 @@ export const copy = {
     history: "Recent manual runs",
     /** The empty history. Nothing has been run by hand — which is the normal, healthy state. */
     historyEmpty: "You haven't run anything by hand yet. The scheduled runs are doing their job.",
+
+    /* ── CC7: the pipelines table (plan 4.6) ──────────────────────────────────────────────────────
+     * The control room becomes a table of the Desk's three schedules; the manual modes are actions
+     * inside each pipeline's sheet, not rows. One plain line of what each does — mechanical voice. */
+    pipelines: {
+      nightlyFull: {
+        name: "Nightly full (Job A)",
+        description: "Ingests the close, recomputes everything, and publishes the edition.",
+      },
+      dawnRefresh: {
+        name: "Dawn refresh",
+        description: "Re-reads the index closes FRED posts overnight, before the open.",
+      },
+      eveningBriefing: {
+        name: "Evening briefing (Job B)",
+        description: "Assembles the evening brief from the day's stored data.",
+      },
+    },
+
+    /** The table's column headers. */
+    col: {
+      pipeline: "Pipeline",
+      cadence: "Cadence",
+      lastRun: "Last run",
+      nextRun: "Next run",
+      duration: "Duration",
+    },
+
+    /** The table itself, and the affordance that opens a row's depth sheet. */
+    tableLabel: "Pipelines",
+    openSheet: "Open {name} details",
+
+    /** The detail sheet's sections (plan 4.6: what it fetches · stages · limits · run-now · recent). */
+    sheet: {
+      fetches: "What it fetches",
+      fetchesEmpty: "Reads only from the data already stored — it fetches nothing.",
+      stages: "Stages",
+      limits: "Daily limits",
+      perDay: "{n}/day",
+      cooldownGap: "{min}-min gap",
+      runByHand: "Run by hand",
+      recentRuns: "Recent runs",
+      /** M8: a list showing ten of an unknown number must state its cut. Shown only when it is at the cap. */
+      recentRunsCapped: "Recent runs · last 10",
+      recentEmpty: "No runs recorded yet.",
+      /** The honest note under the dawn refresh's empty last-run — it shares the nightly's record today. */
+      dawnShares: "The dawn refresh shares the nightly's run record for now; its own last-run appears once it runs on its own schedule.",
+    },
   },
 
   /** The ticker's chart captions — what the bars ARE, and through when (C2). */

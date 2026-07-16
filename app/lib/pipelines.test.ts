@@ -1,0 +1,130 @@
+import { describe, expect, it } from "vitest";
+
+import { RUN_ACTIONS } from "@/lib/constants";
+import type { ManualRunRow } from "@/lib/pipeline-control";
+import {
+  PIPELINES,
+  formatDuration,
+  mergeRuns,
+  statusFromBriefing,
+  statusFromRun,
+  type RunRecord,
+} from "@/lib/pipelines";
+
+/**
+ * pipelines.test.ts — the control-room table's pure logic (CC7, plan 4.6).
+ *
+ * The DB reads live in loadPipelines (the messy half, like readPanel); everything provable without a
+ * database is here: the row definitions, the OK/DEGRADED/FAILED/HELD mapping, the duration format, and
+ * the manual+scheduled run merge.
+ */
+
+describe("the pipeline definitions", () => {
+  it("names the three CC7 rows in reading order", () => {
+    expect(PIPELINES.map((p) => p.id)).toEqual(["nightly-full", "dawn-refresh", "evening-briefing"]);
+  });
+
+  it("assigns every manual action to exactly one sheet — no action is unreachable or duplicated", () => {
+    const assigned = PIPELINES.flatMap((p) => p.actions);
+    // Every one of the five actions has a home…
+    expect([...assigned].sort()).toEqual([...RUN_ACTIONS].sort());
+    // …and no action lives in two sheets.
+    expect(new Set(assigned).size).toBe(assigned.length);
+  });
+
+  it("groups macro under the dawn refresh (the dawn cron IS macro mode)", () => {
+    expect(PIPELINES.find((p) => p.id === "dawn-refresh")?.actions).toEqual(["macro"]);
+  });
+
+  it("carries a real cron line for each row", () => {
+    expect(PIPELINES.find((p) => p.id === "nightly-full")?.crons).toEqual(["37 22 * * 1-5"]);
+    expect(PIPELINES.find((p) => p.id === "dawn-refresh")?.crons).toEqual(["0 10 * * 2-6"]);
+    expect(PIPELINES.find((p) => p.id === "evening-briefing")?.crons).toEqual(["25 0 * * 2-6"]);
+  });
+});
+
+describe("statusFromRun — a run's health from its stage and source maps", () => {
+  it("is OK when every stage ran and every source reported normally", () => {
+    expect(statusFromRun({ ingest: "ok", publish: "ok" }, { alpaca: "ok", fred: "ok" })).toBe("OK");
+  });
+
+  it("is DEGRADED when a source did not report normally (the seed's marketaux case)", () => {
+    expect(statusFromRun({ ingest: "ok" }, { alpaca: "ok", marketaux: "degraded" })).toBe("DEGRADED");
+  });
+
+  it("is FAILED when a stage failed — a stage failure outranks a source degradation", () => {
+    expect(statusFromRun({ ingest: "ok", compute: "failed" }, { alpaca: "degraded" })).toBe("FAILED");
+  });
+});
+
+describe("statusFromBriefing — the briefing's own status field, where HELD lives", () => {
+  it("maps a published brief to OK", () => {
+    expect(statusFromBriefing("published")).toBe("OK");
+  });
+
+  it("maps a held brief to HELD (the gate flagged something; it published, quietly)", () => {
+    expect(statusFromBriefing("held")).toBe("HELD");
+  });
+
+  it("maps a skipped or unknown status to FAILED — go and look", () => {
+    expect(statusFromBriefing("skipped")).toBe("FAILED");
+    expect(statusFromBriefing("nonsense")).toBe("FAILED");
+  });
+});
+
+describe("formatDuration", () => {
+  it("is the honest unknown when there is no timing", () => {
+    expect(formatDuration(null)).toBeNull();
+  });
+
+  it("reads seconds under a minute", () => {
+    expect(formatDuration(45_000)).toBe("45s");
+  });
+
+  it("reads minutes and seconds — the seed's 3-minute nightly", () => {
+    expect(formatDuration(180_000)).toBe("3m 0s");
+    expect(formatDuration(192_000)).toBe("3m 12s");
+  });
+});
+
+describe("mergeRuns — manual + scheduled, newest first, per pipeline", () => {
+  const nightlyFull = PIPELINES.find((p) => p.id === "nightly-full")!;
+  const dawn = PIPELINES.find((p) => p.id === "dawn-refresh")!;
+
+  const manual: ManualRunRow[] = [
+    { id: "m1", action: "news", requestedAt: new Date("2026-07-14T18:00:00Z"), status: "succeeded", ghRunId: "1", finishedAt: new Date("2026-07-14T18:05:00Z") },
+    { id: "m2", action: "macro", requestedAt: new Date("2026-07-14T12:00:00Z"), status: "failed", ghRunId: "2", finishedAt: null },
+    { id: "m3", action: "briefing", requestedAt: new Date("2026-07-13T20:00:00Z"), status: "succeeded", ghRunId: "3", finishedAt: null },
+  ];
+  const records: RunRecord[] = [
+    { runDate: "2026-07-14", finishedAt: new Date("2026-07-14T22:40:00Z"), status: "DEGRADED" },
+  ];
+
+  it("keeps only the manual actions this sheet owns, plus the sheet's scheduled records", () => {
+    const events = mergeRuns(nightlyFull, manual, records);
+    // news is a nightly-full action; macro and briefing are NOT (they belong to other sheets).
+    expect(events.map((e) => e.kind + ":" + e.label)).toEqual([
+      `scheduled:${nightlyFull.name}`, // 22:40 — newest
+      "manual:news", // 18:00
+    ]);
+  });
+
+  it("attributes scheduled pipeline_run records only to the pipeline that writes them", () => {
+    // The dawn refresh owns `macro` but writes NO pipeline_run of its own (CC7) — so no scheduled row.
+    const events = mergeRuns(dawn, manual, records);
+    expect(events.map((e) => e.label)).toEqual(["macro"]);
+    expect(events.every((e) => e.kind === "manual")).toBe(true);
+  });
+
+  it("caps the merged list at ten", () => {
+    const many: ManualRunRow[] = Array.from({ length: 15 }, (_, i) => ({
+      id: `x${i}`,
+      action: "news" as const,
+      requestedAt: new Date(Date.UTC(2026, 6, 1, i)),
+      status: "succeeded" as const,
+      ghRunId: String(i),
+      finishedAt: null,
+    }));
+    expect(mergeRuns(nightlyFull, many, []).length).toBe(10);
+  });
+});

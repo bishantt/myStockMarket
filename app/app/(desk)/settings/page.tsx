@@ -3,9 +3,9 @@ import { Surface } from "@/components/Surface";
 import { BrandMark } from "@/components/BrandMark";
 import { FOCUS_CAP } from "@/lib/watchlist";
 import { ThemeToggle } from "@/components/desk/ThemeToggle";
-import { PipelinePanel } from "@/components/settings/PipelinePanel";
+import { PipelinesTable } from "@/components/settings/PipelinesTable";
+import { loadPipelines } from "@/lib/pipelines";
 import { readPanel } from "@/lib/pipeline-runs";
-import { formatEtClockPadded, formatEtDate, formatUtcDate } from "@/lib/time";
 import { AddWatchlistForm } from "./AddWatchlistForm";
 import { WatchlistManager, type ManagedItem } from "./WatchlistManager";
 
@@ -63,55 +63,29 @@ async function watchlistRows() {
 }
 
 /**
- * The control room's data (N6): what can be run, what cannot, and what the pipeline last did.
+ * The control room's data (N6/CC7): the three pipeline rows with their cadence and last run, plus the
+ * manual-run ledger the sheets act on.
  *
  * Wrapped like watchlistRows() above, and for the same reason: CI builds with no database, and a
  * settings page that cannot render without one is a settings page that fails the build. An absent
- * panel is also the honest state here — if we cannot read the ledger, we cannot say what is safe to
+ * table is also the honest state here — if we cannot read the ledger, we cannot say what is safe to
  * run, and the last thing this surface should do is guess.
  */
-async function pipelinePanel() {
+async function pipelineData() {
   try {
-    // These two reads know nothing about each other, so they go together. /settings is the ONE room
-    // in the app that is deliberately not cached (it is a writer — see B1's allowlist), so every
-    // visit pays for its queries in real time: 455ms measured against a 150ms budget at N7.
-    //
-    // Measured after the change: 434ms. About 20ms, not the ~100ms a round-trip to Supabase costs —
-    // so these two queries were NOT the room's problem, and the honest reading is that the cost lives
-    // somewhere else (most of it in `readPanel`'s own work, which is already parallel internally).
-    // Kept because a sequential await of two independent reads is wrong however little it happens to
-    // cost, but do not come here expecting to find the missing 300ms. It is not here.
-    const [panel, run] = await Promise.all([
-      readPanel(),
-      db.pipelineRun.findFirst({
-        where: { finishedAt: { not: null } },
-        orderBy: { runDate: "desc" },
-        select: { runDate: true, finishedAt: true, stageStatus: true, sourceStatus: true },
-      }),
-    ]);
-
-    return {
-      ...panel,
-      // The provenance block: what the last run did, and how each provider behaved while it did.
-      // Formatted here because it never changes — unlike the row STATES, which are derived in the
-      // browser against the reader's clock (see PipelinePanel).
-      lastRunDisplay: run?.finishedAt
-        ? {
-            session: formatUtcDate(run.runDate),
-            finishedAt: `${formatEtDate(run.finishedAt)} ${formatEtClockPadded(run.finishedAt)}`,
-            stages: (run.stageStatus ?? {}) as Record<string, string>,
-            sources: (run.sourceStatus ?? {}) as Record<string, string>,
-          }
-        : null,
-    };
+    // loadPipelines gathers the table's rows (cadence pure, last run from the records); readPanel is
+    // the live half — the manual ledger reconciled with GitHub, which the sheets' run-now controls
+    // and their action states read. Two independent reads, so they go together.
+    const [{ pipelines, records }, panel] = await Promise.all([loadPipelines(), readPanel()]);
+    return { pipelines, records, runs: panel.runs, lastRunSession: panel.lastRun, configured: panel.configured };
   } catch (error) {
-    console.error("SettingsPage: could not read the pipeline panel", error);
+    console.error("SettingsPage: could not read the pipeline data", error);
     return null;
   }
 }
 
 export default async function SettingsPage() {
-  const [rows, panel] = await Promise.all([watchlistRows(), pipelinePanel()]);
+  const [rows, panel] = await Promise.all([watchlistRows(), pipelineData()]);
 
   const items: ManagedItem[] = rows.map((r) => ({
     id: r.id,
@@ -207,10 +181,11 @@ export default async function SettingsPage() {
             aria-label="Pipeline"
             className="scroll-mt-24 p-5 desk:col-span-2 desk:p-6 lg:col-span-2"
           >
-            <PipelinePanel
+            <PipelinesTable
+              pipelines={panel.pipelines}
+              records={panel.records}
               runs={panel.runs}
-              lastRunSession={panel.lastRun}
-              lastRun={panel.lastRunDisplay}
+              lastRunSession={panel.lastRunSession}
               configured={panel.configured}
             />
           </Surface>

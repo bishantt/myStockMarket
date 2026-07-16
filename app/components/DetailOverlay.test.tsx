@@ -71,6 +71,21 @@ describe("DetailOverlay dismisses through router.back (the room behind is restor
   });
 });
 
+describe("DetailOverlay in controlled mode (the control-room table's sheet)", () => {
+  it("dismissal calls onClose and does NOT navigate back", () => {
+    const onClose = vi.fn();
+    render(
+      <DetailOverlay title="Nightly full" onClose={onClose}>
+        <p>b</p>
+      </DetailOverlay>,
+    );
+    fireEvent.click(screen.getByRole("button", { name: copy.overlay.close }));
+    expect(onClose).toHaveBeenCalledTimes(1);
+    // The whole point of the mode: a controlled sheet lives over /settings, not on a route to pop.
+    expect(back).not.toHaveBeenCalled();
+  });
+});
+
 /**
  * E9's structural half: the overlay and the standalone page must render the IDENTICAL body component,
  * so their DOMs are content-identical (the e2e proves the DOM; this proves they cannot silently drift

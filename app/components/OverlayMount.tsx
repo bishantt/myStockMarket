@@ -24,9 +24,16 @@ const DetailOverlay = dynamic(() =>
 export function OverlayMount({
   title,
   children,
+  onClose,
 }: {
   title: string;
   children: React.ReactNode;
+  /** Controlled mode — forwarded to DetailOverlay (the control-room table opens its sheet this way). */
+  onClose?: () => void;
 }) {
-  return <DetailOverlay title={title}>{children}</DetailOverlay>;
+  return (
+    <DetailOverlay title={title} onClose={onClose}>
+      {children}
+    </DetailOverlay>
+  );
 }
