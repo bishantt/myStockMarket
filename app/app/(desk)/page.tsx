@@ -6,8 +6,10 @@ import { Surface } from "@/components/Surface";
 import { Tag } from "@/components/Tag";
 import { MacroPulse } from "@/components/desk/MacroPulse";
 import { BriefArticle } from "@/components/desk/BriefArticle";
+import { MorningPlan } from "@/components/desk/MorningPlan";
 import { FrontPagePreview } from "@/components/desk/FrontPagePreview";
 import { DeskHeader } from "@/components/desk/DeskHeader";
+import { EditionStateProvider, EditionSwitch } from "@/components/desk/EditionState";
 import { Movers } from "@/components/desk/Movers";
 import { Watchlist } from "@/components/desk/Watchlist";
 import { ScorecardPM } from "@/components/desk/ScorecardPM";
@@ -20,7 +22,8 @@ import { OfflineRibbon } from "@/components/OfflineRibbon";
 import { getLatestCompletedRun, getLatestRun } from "@/lib/pipeline";
 import { getMorning } from "@/lib/morning";
 import { getTrackRecord } from "@/lib/track-record";
-import { formatEtDate } from "@/lib/time";
+import { formatEtDate, formatWeekdayLong } from "@/lib/time";
+import type { EditionFacts } from "@/lib/edition-state";
 import { copy, fill } from "@/lib/copy";
 import { cx } from "@/lib/cx";
 
@@ -68,13 +71,23 @@ export default async function DeskPage() {
   // recorded run — null if none, so every live module shows its placeholder rather than a fabricated date.
   const asOf = morning.asOf ? new Date(morning.asOf) : null;
   const lastRunFinishedAt = latest?.finishedAt ? new Date(latest.finishedAt) : null;
-  const runDate = latest ? new Date(latest.runDate) : null;
 
   // The edition's own "updated" stamp — what the masthead prints (CC3) and what every module's as-of
   // is measured against (CC4, D4). Today it equals morning.asOf (one run), so every module matches and
   // its stamp recedes; the CC9 morning edition refreshes some modules at dawn, and THOSE stamps differ
   // and come forward. Threaded to every module so the treatment is wired, not dormant.
   const editionAsOf = lastRunFinishedAt ?? undefined;
+
+  // The facts the edition-state machine grades against the reader's clock (CC9). The clock itself lives
+  // in the browser (EditionStateProvider); the server only seeds the first paint with its own instant.
+  const editionFacts: EditionFacts = {
+    dawnRanAt: latest?.dawnRanAt ?? null,
+    eveningPublishedAt: latest?.finishedAt ?? null,
+    runDate: latest ? latest.runDate.slice(0, 10) : "",
+  };
+  const serverNow = new Date().toISOString();
+  // The last closed session's weekday — the window the Morning Plan's "Where things closed" line names.
+  const closeWeekday = latest ? formatWeekdayLong(latest.runDate.slice(0, 10)) : "";
 
   /*
    * The spread engages at `lg:` (1024px), not only `desk:` (1366px). Gutters stay 16px until desk:, so at
@@ -108,8 +121,19 @@ export default async function DeskPage() {
 
   return (
     <RailProvider>
-      {runDate ? (
-        <DeskHeader runDate={runDate} updatedAt={lastRunFinishedAt} />
+      {/*
+       * The edition-state provider computes — in the browser, against the reader's clock — whether the
+       * Desk greets as Morning or Evening (CC9, R6). It wraps the masthead, module 02 and the calendar,
+       * which switch together so they never disagree about the hour. The server seeds `serverNow` so the
+       * first paint (and check:live's read of the raw HTML) matches production's actual state.
+       */}
+      <EditionStateProvider facts={editionFacts} serverNow={serverNow}>
+      {latest ? (
+        <DeskHeader
+          runDate={latest.runDate}
+          updatedAt={latest.finishedAt}
+          dawnRanAt={latest.dawnRanAt}
+        />
       ) : null}
 
       {/*
@@ -163,19 +187,55 @@ export default async function DeskPage() {
          * their natural heights, with nothing in the rail able to push them apart. That is Law 1's point.
          */}
         <div data-column="main" className={COLUMN}>
-          {/* 02 — the evening briefing: the editorial centrepiece. */}
-          {asOf && morning.brief ? (
-            <Surface className={cx("p-5 desk:p-6", BRIEF)}>
-              <BriefArticle asOf={asOf} editionAsOf={editionAsOf} brief={morning.brief} />
-            </Surface>
-          ) : (
-            <EmptyModule
-              index={2}
-              title="Daily brief"
-              note="The evening briefing lands after the close."
-              className={BRIEF}
-            />
-          )}
+          {/*
+           * 02 — the editorial centrepiece, and the one module that changes with the edition (CC9).
+           * EVENING: the daily brief, exactly as CC3 left it. MORNING: THE MORNING PLAN — overnight
+           * stories, today's calendar, where things closed — with last night's brief collapsed beneath.
+           * Both are rendered server-side and the browser switches between them, so module 02, the
+           * masthead and the calendar agree on the hour (EditionSwitch). The empty state (no run) is the
+           * same "Daily brief" placeholder in both.
+           */}
+          <EditionSwitch
+            evening={
+              asOf && morning.brief ? (
+                <Surface className={cx("p-5 desk:p-6", BRIEF)}>
+                  <BriefArticle asOf={asOf} editionAsOf={editionAsOf} brief={morning.brief} />
+                </Surface>
+              ) : (
+                <EmptyModule
+                  index={2}
+                  title="Daily brief"
+                  note="The evening briefing lands after the close."
+                  className={BRIEF}
+                />
+              )
+            }
+            morning={
+              asOf && morning.morningPlan ? (
+                <Surface className={cx("p-5 desk:p-6", BRIEF)}>
+                  <MorningPlan
+                    asOf={asOf}
+                    editionAsOf={editionAsOf}
+                    plan={morning.morningPlan}
+                    macro={morning.macro}
+                    closeWeekday={closeWeekday}
+                    lastBrief={
+                      morning.brief ? (
+                        <BriefArticle asOf={asOf} editionAsOf={editionAsOf} brief={morning.brief} />
+                      ) : undefined
+                    }
+                  />
+                </Surface>
+              ) : (
+                <EmptyModule
+                  index={2}
+                  title="Daily brief"
+                  note="The evening briefing lands after the close."
+                  className={BRIEF}
+                />
+              )
+            }
+          />
 
           {/* 04 — Movers: the volume-confirmed moves, each with a catalyst or the noise line. */}
           {asOf && morning.movers ? (
@@ -315,15 +375,36 @@ export default async function DeskPage() {
            * renders full-width in its ritual position — what `order-3` is for.
            */}
           {asOf && morning.calendar ? (
-            <Surface className={cx("p-5", CALENDAR)}>
-              <CalendarTimeline
-                asOf={asOf}
-                editionAsOf={editionAsOf}
-                events={morning.calendar.rows}
-                reportedToday={morning.calendar.reportedToday}
-                compact
-              />
-            </Surface>
+            /*
+             * 03 — the calendar flips today-first in morning state (CC9, D7 serving each state). EVENING
+             * (post-close): forward rows lead and today's already-reported earnings collapse into one
+             * "Reported today" line. MORNING (pre-open): the reader is ahead of everything, so there is no
+             * "reported today" — today's events are the lead FORWARD rows, retrospection suppressed.
+             */
+            <EditionSwitch
+              evening={
+                <Surface className={cx("p-5", CALENDAR)}>
+                  <CalendarTimeline
+                    asOf={asOf}
+                    editionAsOf={editionAsOf}
+                    events={morning.calendar.rows}
+                    reportedToday={morning.calendar.reportedToday}
+                    compact
+                  />
+                </Surface>
+              }
+              morning={
+                <Surface className={cx("p-5", CALENDAR)}>
+                  <CalendarTimeline
+                    asOf={asOf}
+                    editionAsOf={editionAsOf}
+                    events={morning.calendar.rows}
+                    reportedToday={[]}
+                    compact
+                  />
+                </Surface>
+              }
+            />
           ) : (
             <EmptyModule
               index={3}
@@ -359,6 +440,7 @@ export default async function DeskPage() {
         sources={morning.sources}
         window={lastRunFinishedAt ? `until ${formatEtDate(lastRunFinishedAt)}` : undefined}
       />
+      </EditionStateProvider>
     </RailProvider>
   );
 }

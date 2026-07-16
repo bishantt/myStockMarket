@@ -93,3 +93,25 @@ export function directionOf(delta: number): Direction {
   if (Math.abs(delta) < FLAT_BAND) return "flat";
   return delta > 0 ? "up" : "down";
 }
+
+/**
+ * The catalyst-timing codes Finnhub stamps on an earnings row, in the reader's words (CC8/CC9). The
+ * pipeline stores the raw code (`bmo`/`amc`/`dmh`); a macro release stores a clock string it publishes
+ * on convention ("8:30 AM ET"). This is the one door that turns a code into prose — the Morning Plan
+ * and the ticker calendar both pass their `timing` through it, so "before the open" is written once.
+ */
+const TIMING_PROSE: Record<string, string> = {
+  bmo: "before the open",
+  amc: "after the close",
+  dmh: "during the day",
+};
+
+/**
+ * An event's timing as the reader reads it. A known earnings code becomes its phrase; a macro clock
+ * string ("8:30 AM ET") passes through unchanged; a missing timing is null and renders nothing (P9 —
+ * untimed stays untimed, never a fabricated hour).
+ */
+export function timingLabel(timing: string | null | undefined): string | null {
+  if (!timing) return null;
+  return TIMING_PROSE[timing.toLowerCase()] ?? timing;
+}

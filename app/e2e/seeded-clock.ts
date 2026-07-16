@@ -49,3 +49,21 @@ export const SEEDED_SESSION = "2026-07-09";
  * the strip is FRESH — permanently, on every run, forever.
  */
 export const SEEDED_EVENING = new Date(`${SEEDED_SESSION}T23:00:00-04:00`);
+
+/**
+ * The morning AFTER the seeded session — Friday 2026-07-10, 7:00 AM ET (CC9). The seed stamps a dawn
+ * that ran this morning at 6:31 (beside Thursday's run), so pinning the browser here puts the Desk in
+ * its MORNING edition: the edition-state machine sees the dawn's date is today and the bell has not rung,
+ * so the masthead greets the Morning Edition, module 02 becomes the Morning Plan, and the calendar flips
+ * today-first. It is the twin of SEEDED_EVENING — same seeded world, a different reader's clock — and it
+ * is what lets ONE database photograph BOTH edition states (Appendix C).
+ *
+ * 7:00 AM is deliberate: after the 6:31 dawn (so the morning is real) and before the 9:30 open (so it is
+ * Morning, not Session), on a real trading Friday (so job_a would have run and R6 is satisfied).
+ *
+ * DERIVED from SEEDED_SESSION, not a second literal: the morning is the day after the session (a fixed
+ * Thursday → Friday, no weekend to step over), so one date still owns this world (drift rule 21's spirit).
+ */
+const MORNING_SESSION = new Date(`${SEEDED_SESSION}T00:00:00Z`);
+MORNING_SESSION.setUTCDate(MORNING_SESSION.getUTCDate() + 1);
+export const SEEDED_MORNING = new Date(`${MORNING_SESSION.toISOString().slice(0, 10)}T07:00:00-04:00`);

@@ -2,7 +2,7 @@ import { expect, test, type Page } from "@playwright/test";
 
 import { signIn } from "./session";
 
-import { SEEDED_EVENING } from "./seeded-clock";
+import { SEEDED_EVENING, SEEDED_MORNING } from "./seeded-clock";
 
 /**
  * Journey 1 (P1 variant) — the Desk renders the morning the pipeline published (plan §6.2, §9.2). The unit
@@ -508,4 +508,75 @@ test.describe("The phone's macro grids", () => {
     // The gauge is still on the page, full width, below the grid — where it can be READ.
     await expect(visible(page, /not CNN's index/)).toBeVisible();
   });
+});
+
+/**
+ * The Desk in its MORNING edition (CC9). The same seeded database, a different reader's clock: pinned to
+ * the Friday morning after the seeded run — after the 6:31 dawn, before the 9:30 open — the edition-state
+ * machine greets the Morning Edition and module 02 becomes the Morning Plan. The server seeds Evening (its
+ * clock is real time), so the client swaps on mount; these wait for that swap before asserting.
+ */
+test.describe("Desk — the Morning Edition (CC9)", () => {
+  test.skip(process.env.MSM_SEEDED !== "1", "needs a seeded test database (MSM_SEEDED=1)");
+
+  test.beforeEach(async ({ page }) => {
+    await page.clock.setFixedTime(SEEDED_MORNING);
+    await signIn(page);
+  });
+
+  test("module 02 becomes the Morning Plan — today's calendar with timing, and where things closed", async ({
+    page,
+  }) => {
+    await page.goto("/");
+
+    const plan = page.getByRole("region", { name: "The morning plan" });
+    await expect(plan).toBeVisible();
+
+    // Today's calendar (Friday 07-10), bmo-first, each catalyst's timing in the reader's words.
+    await expect(plan.getByText("Today's calendar")).toBeVisible();
+    await expect(plan.getByText("before the open")).toBeVisible(); // JNJ, bmo
+    await expect(plan.getByText("8:30 AM ET")).toBeVisible(); // PPI, a macro release
+    await expect(plan.getByText("after the close")).toBeVisible(); // NFLX, amc
+
+    // Where things closed — the evening's own verified S&P level, reused, not recomputed.
+    await expect(plan.getByText("Where things closed")).toBeVisible();
+    await expect(plan.getByText("6,812.34")).toBeVisible();
+
+    // Last evening's brief is one tap away, collapsed on the same page.
+    await expect(plan.getByText(/Last evening's brief/i)).toBeVisible();
+
+    // And the evening brief is NOT the shown module — it has become the plan.
+    await expect(page.getByRole("region", { name: "Daily brief" })).toHaveCount(0);
+  });
+
+  test("the calendar rail flips today-first — no retrospective 'Reported today' in the morning", async ({
+    page,
+  }) => {
+    await page.goto("/");
+    const calendar = page.getByRole("region", { name: "Session calendar" });
+    await expect(calendar).toBeVisible();
+
+    // The morning masthead is up, so we are in the morning edition — where everything is still ahead.
+    await expect(page.locator("header").filter({ has: page.getByRole("heading", { level: 1 }) })).toContainText(
+      /MORNING EDITION/i,
+    );
+    // Pre-open, the last session's earnings are not "today's" — there is no retrospective line.
+    await expect(calendar.getByText(/Reported today/i)).toHaveCount(0);
+    // Today's own catalysts lead the forward rail (Friday's earnings, upcoming).
+    await expect(calendar.getByText("JNJ")).toBeVisible();
+  });
+
+  // The hardening sweep runs at the wall clock — the EVENING desk — so it never photographs the Morning
+  // Plan. This closes that gap: the plan is a new surface, and a new surface earns its own phone check.
+  for (const width of [412, 360]) {
+    test(`the Morning Plan does not push the page sideways at ${width}px`, async ({ page }) => {
+      await page.setViewportSize({ width, height: 900 });
+      await page.goto("/");
+      await expect(page.getByRole("region", { name: "The morning plan" })).toBeVisible();
+      const overflow = await page.evaluate(
+        () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+      );
+      expect(overflow, `the Morning Plan pushes the page ${overflow}px sideways at ${width}`).toBeLessThanOrEqual(0);
+    });
+  }
 });

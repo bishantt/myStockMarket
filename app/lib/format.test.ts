@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { compactMoney, decimal, directionOf, multiple, percent, price, signedPercent } from "@/lib/format";
+import { compactMoney, decimal, directionOf, multiple, percent, price, signedPercent, timingLabel } from "@/lib/format";
 
 /**
  * Tests for lib/format — the one place numbers become strings (plan §4.3, convention: numbers
@@ -83,5 +83,28 @@ describe("compactMoney — dollar volume at a glance", () => {
   it("keeps two decimals rather than rounding to a bare '$3B'", () => {
     // $3.18B and $3.99B are different days. An integer would flatten them into the same cell.
     expect(compactMoney(3_990_000_000)).toBe("$3.99B");
+  });
+});
+
+describe("timingLabel — an event's timing in the reader's words (CC9)", () => {
+  it("turns Finnhub's earnings codes into prose", () => {
+    expect(timingLabel("bmo")).toBe("before the open");
+    expect(timingLabel("amc")).toBe("after the close");
+    expect(timingLabel("dmh")).toBe("during the day");
+  });
+
+  it("is case-insensitive about the code", () => {
+    expect(timingLabel("BMO")).toBe("before the open");
+  });
+
+  it("passes a macro clock string through unchanged — it is already prose", () => {
+    expect(timingLabel("8:30 AM ET")).toBe("8:30 AM ET");
+    expect(timingLabel("2:00 PM ET")).toBe("2:00 PM ET");
+  });
+
+  it("is null for an untimed event, so nothing renders (P9 — never a fabricated hour)", () => {
+    expect(timingLabel(null)).toBeNull();
+    expect(timingLabel(undefined)).toBeNull();
+    expect(timingLabel("")).toBeNull();
   });
 });

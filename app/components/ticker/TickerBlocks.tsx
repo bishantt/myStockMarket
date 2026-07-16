@@ -4,7 +4,7 @@ import { DeltaChip } from "@/components/DeltaChip";
 import { OutcomeChip } from "@/components/OutcomeChip";
 import { Tag } from "@/components/Tag";
 import { copy, fill } from "@/lib/copy";
-import { directionOf, multiple, price, signedPercent } from "@/lib/format";
+import { directionOf, multiple, price, signedPercent, timingLabel } from "@/lib/format";
 import { unrealizedPnl } from "@/lib/ledger";
 import type {
   TickerCalendarRow,
@@ -68,7 +68,8 @@ export function TickerCalendar({ rows }: { rows: TickerCalendarRow[] }) {
           <span className="font-ui text-sm text-ink-2">{row.title}</span>
           <span className="font-mono text-2xs text-muted">
             {formatUtcDate(row.date)}
-            {row.timing ? ` · ${row.timing}` : ""}
+            {/* The raw code (bmo/amc/dmh) or a macro clock string, in the reader's words (CC9). */}
+            {timingLabel(row.timing) ? ` · ${timingLabel(row.timing)}` : ""}
           </span>
           {row.consensus !== null ? (
             <span className="font-mono text-2xs text-muted">

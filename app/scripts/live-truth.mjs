@@ -96,6 +96,16 @@ export function parseLongDate(text) {
   return `${m[3]}-${String(month + 1).padStart(2, "0")}-${String(Number(m[2])).padStart(2, "0")}`;
 }
 
+/**
+ * Which edition the masthead is greeting with (CC9). "Morning Edition" appears only once a dawn has run
+ * for today (R6); everything else — the Evening Edition, or a strip-only fallback — is graded the way it
+ * always was. This is what lets the checks below judge a morning masthead by the morning's rules without
+ * relaxing a single evening assertion.
+ */
+export function mastheadKind(text) {
+  return /Morning Edition/i.test(text) ? "morning" : "evening";
+}
+
 // One shape for all three verdicts. `owed` is null unless a check is PENDING against a later phase —
 // uniform, so a caller can read the field without first asking which kind of verdict it holds.
 const pass = (surface, expected, found) => ({ surface, expected, found, verdict: "PASS", owed: null });
@@ -124,6 +134,23 @@ export function checkMasthead(deskText, now) {
       "masthead · session truth",
       "an edition dated to a real trading session",
       `${shown} — a ${weekday}. The market never opened. There was no close for this data to be "through".`,
+    );
+  }
+
+  // THE MORNING EDITION (CC9, R6, and the Q-CC5-2 fix). A Morning masthead is dated TODAY — the reader's
+  // own session — which is legitimately AHEAD of the last closed session. The evening logic below would
+  // read that as "an edition from the FUTURE" and red a perfectly healthy morning Desk; that false red is
+  // exactly what the edition-state machine was built to end. So a morning masthead is judged by the
+  // morning's rule: it is honest when its date is today and today is a real session, stale otherwise.
+  if (mastheadKind(deskText) === "morning") {
+    const today = easternParts(now).day;
+    if (shown === today) {
+      return pass("masthead · session truth", `${today} (morning edition)`, `${shown} — today's Morning Edition`);
+    }
+    return fail(
+      "masthead · session truth",
+      `${today} — today's morning session`,
+      `${shown} — a Morning Edition that is not today's. A stale morning the reader's clock should have corrected (R6).`,
     );
   }
 
@@ -234,7 +261,7 @@ function rowDate(monthAbbr, dayOfMonth, edition) {
   return daysBehind > 180 ? stamp(Number(edition.slice(0, 4)) + 1) : candidate;
 }
 
-export function checkCalendar(deskText) {
+export function checkCalendar(deskText, now) {
   const section = deskText.slice(deskText.indexOf("Session calendar"));
   const scope = section.slice(0, 600); // the module, not the whole page
 
@@ -247,13 +274,14 @@ export function checkCalendar(deskText) {
     );
   }
 
-  // Rows read "Jul 14 EARNINGS …"; anything dated before THE EDITION's session is stale — against the
-  // edition, not the clock (the third surface here corrected the same way). The calendar is floored at the
-  // edition's own session (lib/morning.ts, calendarFloor), so an event ON the edition's day belongs on it.
-  // Against the WALL CLOCK this called the edition's own FOMC decision "a row in the past" at 00:25 ET the
-  // moment the date rolled over — a red gate on a correct Desk. An edition-derived surface is measured
-  // against the edition, or the two disagree for a few hours every night.
-  const edition = parseLongDate(deskText);
+  // Rows read "Jul 14 EARNINGS …"; anything dated before THE FLOOR is stale — measured against the data
+  // session (lib/morning.ts's calendarFloor is the run's date), not the clock. In the EVENING the masthead
+  // date IS that session, so the evening path is unchanged. In the MORNING the masthead is dated today,
+  // which is ahead of the floor; measuring today's leading rows against the display date would flag them,
+  // so the morning path measures against the last close — the calendar's real floor. Against the WALL
+  // CLOCK this once called the edition's own FOMC decision "a row in the past" the moment midnight rolled
+  // over; an edition-derived surface is measured against the edition, or the two disagree every night.
+  const edition = mastheadKind(deskText) === "morning" ? latestClosedSession(now) : parseLongDate(deskText);
   if (!edition) {
     return fail("session calendar · hygiene", "an edition to measure against", "the Desk names no date");
   }
@@ -335,11 +363,15 @@ export function nextTradingDay(day) {
  * serving Monday's edition, said "Tue". The promise is a fact ABOUT THE EDITION, so the edition is what it is
  * measured against (the calendar-floor lesson again). A STALE masthead is assertion 1's loud job.
  */
-export function checkNextEdition(deskText) {
+export function checkNextEdition(deskText, now) {
   const m = deskText.match(/next edition (Sun|Mon|Tue|Wed|Thu|Fri|Sat)\b/);
   if (!m) return fail("strip · next-edition promise", "a named next session", "the strip promises nothing");
 
-  const edition = parseLongDate(deskText);
+  // The strip promises the NEXT nightly, which follows the last CLOSED session — the same session the
+  // strip's own freshness derives from. In the evening the masthead date IS that session (unchanged path).
+  // In the morning the masthead is dated today, and today's OWN evening is the next edition — so the promise
+  // is measured against the last close, exactly as the strip computes it, not against the morning display date.
+  const edition = mastheadKind(deskText) === "morning" ? latestClosedSession(now) : parseLongDate(deskText);
   if (!edition) {
     return fail("strip · next-edition promise", "an edition to promise from", "the Desk names no date");
   }
@@ -358,18 +390,65 @@ export function checkNextEdition(deskText) {
   return pass("strip · next-edition promise", `${expected}, the session after this edition`, promised);
 }
 
-/** All six, in the order plan 3.6 lists them. `now` is injected so the tests own the clock. */
-export function checkLive({ deskHtml, newsHtml, now }) {
+/**
+ * 7. MORNING WINDOW (CC9, R6) — run only under `--window=morning`, when the gate is checking a production
+ * dawn window. It asks the two questions the evening six cannot: (a) IS THE DESK GREETING THE MORNING? A
+ * dawn ran, so the masthead must claim the Morning Edition — the edition claim matching the dawn's
+ * presence is R6's own promise, and an Evening masthead in a morning window is a morning that never got
+ * greeted. (b) WAS THE DAWN A REAL PRE-OPEN RUN? "news & macro refreshed 6:31 AM ET" must name a time
+ * before the 9:30 bell; a refresh stamp at, say, 11:00 AM is not the dawn the morning edition promises.
+ */
+export function checkMorning(deskText) {
+  if (mastheadKind(deskText) !== "morning") {
+    return fail(
+      "masthead · morning window",
+      "the Morning Edition (a dawn ran for today — R6)",
+      "the Desk is still the Evening Edition — no morning was greeted in the morning window",
+    );
+  }
+
+  const m = deskText.match(/refreshed (\d{1,2}):(\d{2})\s*(AM|PM) ET/i);
+  if (!m) {
+    return fail(
+      "masthead · morning window",
+      "a 'refreshed {time}' stamp before the 9:30 AM ET open",
+      "the morning masthead names no refresh time",
+    );
+  }
+
+  const meridiem = m[3].toUpperCase();
+  const minute = ((Number(m[1]) % 12) + (meridiem === "PM" ? 12 : 0)) * 60 + Number(m[2]);
+  const stamp = `${m[1]}:${m[2]} ${meridiem} ET`;
+  if (minute >= 9 * 60 + 30) {
+    return fail(
+      "masthead · morning window",
+      "a dawn refreshed before the 9:30 AM ET open",
+      `refreshed ${stamp} — not a pre-open dawn`,
+    );
+  }
+  return pass("masthead · morning window", "a Morning Edition refreshed before the open", `refreshed ${stamp}`);
+}
+
+/**
+ * The checks, in the order plan 3.6 lists them. `now` is injected so the tests own the clock. Under
+ * `--window=morning` the morning assertion is appended (CC9); the evening six never relax — they run
+ * exactly the same, and a morning masthead simply changes how the date-derived three judge it.
+ *
+ * @param {{ deskHtml: string, newsHtml: string, now: Date, window?: string | null }} args
+ */
+export function checkLive({ deskHtml, newsHtml, now, window = null }) {
   const deskText = pageText(deskHtml);
   const newsText = pageText(newsHtml);
 
-  return [
+  const checks = [
     checkMasthead(deskText, now),
     checkBoard(deskText),
     checkIndexHonesty(deskText),
-    checkCalendar(deskText),
+    checkCalendar(deskText, now),
     checkPressTime(newsText),
     checkBylines(newsHtml),
-    checkNextEdition(deskText),
+    checkNextEdition(deskText, now),
   ];
+  if (window === "morning") checks.push(checkMorning(deskText));
+  return checks;
 }

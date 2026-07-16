@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 
 import { signIn } from "./session";
-import { SEEDED_EVENING } from "./seeded-clock";
+import { SEEDED_EVENING, SEEDED_MORNING } from "./seeded-clock";
 import { THEME_COOKIE } from "../lib/theme";
 
 /**
@@ -55,6 +55,54 @@ test.describe("R3 — one truth per line in the masthead", () => {
     expect(marketWords, `market-state word must appear exactly once (got ${JSON.stringify(marketWords)})`).toHaveLength(1);
 
     // The data vintage — only line 3's "{weekday}'s close" says it now; the strip gave it up (R3).
+    const closeRefs = text.match(/\bclose\b/gi) ?? [];
+    expect(closeRefs, `the close/vintage must appear exactly once (got ${JSON.stringify(closeRefs)})`).toHaveLength(1);
+  });
+});
+
+test.describe("CC9 — the Morning Edition (R6)", () => {
+  test.skip(process.env.MSM_SEEDED !== "1", "needs a seeded test database (MSM_SEEDED=1)");
+
+  test("greets the morning: a Morning masthead dated today, refreshed before the open", async ({ page }) => {
+    // The seed stamps a dawn that ran this Friday at 6:31; pinned to that morning, the edition-state
+    // machine greets the Morning Edition. The SERVER seeds Evening (its clock is the real machine time),
+    // so the client swaps the masthead on mount — which is exactly the reader-clock law (R6) working.
+    await page.clock.setFixedTime(SEEDED_MORNING);
+    await signIn(page);
+    await page.goto("/");
+
+    const masthead = page.locator("header").filter({ has: page.getByRole("heading", { level: 1 }) });
+    await expect(masthead).toContainText(/MORNING EDITION/i);
+    // Dated TODAY — the reader's own session (Friday 2026-07-10), legitimately ahead of Thursday's close.
+    await expect(masthead).toContainText("Friday, July 10, 2026");
+    await expect(masthead).toContainText(/before the open/i);
+    await expect(masthead).toContainText(/market data through Thursday's close/i);
+    await expect(masthead).toContainText(/refreshed 6:31 AM ET/i);
+  });
+
+  test("R3 still holds in the morning — the pill is the one LIVE market state; 'before the open' is provenance", async ({
+    page,
+  }) => {
+    await page.clock.setFixedTime(SEEDED_MORNING);
+    await signIn(page);
+    await page.goto("/");
+
+    const masthead = page.locator("header").filter({ has: page.getByRole("heading", { level: 1 }) });
+    await expect(masthead).toContainText(/MORNING EDITION/i);
+    // Wait for the pill (it mounts client-side) before counting the header.
+    await expect(page.locator("header").first()).toContainText(/\b(open|closed)\b/i);
+
+    const text = await headerRegionText(page);
+
+    // THE LIVE market state appears once — in the pill (it reads CLOSED pre-open). The masthead's "before
+    // the open" is edition PROVENANCE, the twin of the evening's "updated 7:36 PM ET" — it names when the
+    // edition was assembled, not whether the market is open now — so it is excluded from the live count
+    // (Q-CC9-1). Strip it, and exactly one live market-state word remains.
+    const live = text.replace(/before the open/gi, "").match(/\b(open|closed)\b/gi) ?? [];
+    expect(live, `the live market state must appear exactly once (got ${JSON.stringify(live)})`).toHaveLength(1);
+
+    // The data vintage — "Thursday's close" — appears once. "closed" (the pill) is a different token: a
+    // word boundary after "close" excludes it, exactly as the evening test relies on.
     const closeRefs = text.match(/\bclose\b/gi) ?? [];
     expect(closeRefs, `the close/vintage must appear exactly once (got ${JSON.stringify(closeRefs)})`).toHaveLength(1);
   });

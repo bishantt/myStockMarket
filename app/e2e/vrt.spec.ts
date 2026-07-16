@@ -3,7 +3,7 @@ import { VRT_ROOMS } from "../lib/routes";
 import { signIn } from "./session";
 import { THEME_COOKIE } from "../lib/theme";
 import { VRT_RESET_SECRET } from "../playwright.config";
-import { SEEDED_EVENING } from "./seeded-clock";
+import { SEEDED_EVENING, SEEDED_MORNING } from "./seeded-clock";
 import { applyThinNight } from "./thin-night";
 
 /**
@@ -498,6 +498,44 @@ test.describe("visual regression — the design system", () => {
       await restore();
     }
   });
+
+  /**
+   * THE DESK GREETS THE MORNING (CC9, Appendix C). The same seeded database, a different reader's clock:
+   * pinned to the Friday morning after the seeded run, the edition-state machine greets the Morning Edition
+   * — the morning masthead (dated today), module 02 as the Morning Plan (today's calendar with timing, where
+   * things closed, the collapsed brief), and the today-first calendar. The server seeds Evening against the
+   * real machine clock, so the CLIENT swaps on mount; this asserts the swap landed BEFORE the camera fires —
+   * a baseline of the evening masthead filed under "morning" would be PD3's law all over again (an exact
+   * baseline of the wrong state). BRAND-NEW SURFACE: its first baseline gets eyes before it is committed.
+   */
+  for (const theme of ["light", "dark"] as const) {
+    test(`the Desk greets the MORNING — masthead + Morning Plan — ${theme === "light" ? "Morning" : "Midnight"} (CC9)`, async ({
+      page,
+    }, testInfo) => {
+      test.skip(!process.env.MSM_SEEDED, "needs the seeded database");
+      // The layout legs (wide, mbp16) shoot light only, like every room — the palette is pinned at 1366/390.
+      test.skip(locksLayoutOnly(testInfo) && theme === "dark", "this project locks layout, not palette");
+
+      await useTheme(page, theme);
+      // Override the beforeEach's SEEDED_EVENING — the morning is the point of this shot.
+      await page.clock.setFixedTime(SEEDED_MORNING);
+      await page.goto("/");
+
+      // The masthead swaps to Morning on mount; prove it before shooting (PD3: never photograph the wrong state).
+      await expect(
+        page.locator("header").filter({ has: page.getByRole("heading", { level: 1 }) }),
+        "the masthead did not swap to Morning — the pinned clock and the seeded dawn have drifted apart",
+      ).toContainText(/MORNING EDITION/i);
+
+      await expect(page.locator(".skeleton-bone")).toHaveCount(0);
+      await waitForFonts(page);
+      await page.mouse.move(0, 0);
+      await expect(page).toHaveScreenshot(`desk-morning-${theme}.png`, {
+        fullPage: true,
+        mask: [page.locator('[data-vrt="mask"], time')],
+      });
+    });
+  }
 
 });
 

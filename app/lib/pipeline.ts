@@ -9,6 +9,29 @@ import type { TradingDate } from "@/lib/market-hours";
  * cards) is assembled by lib/morning.ts from P1 onward; this stays as the pipeline-status read.
  */
 
+/** The key the dawn refresh's entry lives under, inside the night's source_status (CC8, publish_dawn). */
+export const DAWN_KEY = "dawn";
+
+/** The dawn refresh's own entry, stamped beside the night's source_status by publish_dawn (CC8). */
+export type DawnEntry = {
+  ranAt?: string;
+  sources?: Record<string, string>;
+  stages?: Record<string, string>;
+};
+
+/**
+ * The dawn entry publish_dawn merged into a run's source_status, or null if no dawn has run. It rides
+ * BESIDE the night's per-provider strings (never overwriting them), so the reader must be a non-string
+ * object under `dawn`. One definition, here in the base module — pipelines.ts (the control room) and the
+ * edition-state machine both read the SAME entry, so a dawn is a dawn everywhere (the sibling-bug rule).
+ */
+export function readDawnEntry(sourceStatus: unknown): DawnEntry | null {
+  if (!sourceStatus || typeof sourceStatus !== "object") return null;
+  const dawn = (sourceStatus as Record<string, unknown>)[DAWN_KEY];
+  if (!dawn || typeof dawn !== "object") return null;
+  return dawn as DawnEntry;
+}
+
 /** The shape the Desk needs from the most recent run. Dates are ISO strings because this is cached
  * (the data cache serialises to JSON); the page reconstructs them. */
 export type LatestRun = {
@@ -16,6 +39,8 @@ export type LatestRun = {
   runDate: string;
   /** When it finished, if it did (ISO string). Null while a run is still in flight. */
   finishedAt: string | null;
+  /** When a dawn ran for the reader's session, if one has (CC9) — the edition-state machine's key fact. */
+  dawnRanAt: string | null;
 };
 
 /**
@@ -31,12 +56,16 @@ export async function getLatestRun(): Promise<LatestRun | null> {
   try {
     const row = await db.pipelineRun.findFirst({
       orderBy: { runDate: "desc" },
-      select: { runDate: true, finishedAt: true },
+      select: { runDate: true, finishedAt: true, sourceStatus: true },
     });
     if (!row) return null;
+    const dawn = readDawnEntry(row.sourceStatus);
     return {
       runDate: row.runDate.toISOString(),
       finishedAt: row.finishedAt ? row.finishedAt.toISOString() : null,
+      // The dawn's own instant (`ranAt`), not the night's finish — the morning edition is keyed on
+      // when the dawn ran, and a dawn stamps its own time (CC8).
+      dawnRanAt: dawn?.ranAt ?? null,
     };
   } catch (error) {
     console.error("getLatestRun: could not read pipeline_run", error);

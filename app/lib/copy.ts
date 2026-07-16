@@ -160,14 +160,40 @@ export const copy = {
 
   desk: {
     edition: "The Desk — Evening Edition",
+    /** The Morning Edition kicker (CC9, R6) — the Desk greets the reader only once a dawn has really run. */
+    morningEdition: "The Desk — Morning Edition",
     /**
      * The masthead's line 3 (CC3, ruling R3). Reader voice, weekday first. The market's state left
      * this line for the pill — one truth per line — and the data vintage the strip used to carry
      * ("Data through Tue's close") is stated HERE now, once: "{weekday}'s close".
      */
     status: "{weekday}'s close · updated {stamp}",
+    /**
+     * The Morning Edition's line 3 (CC9, Appendix A, verbatim). "before the open" is the edition's
+     * PROVENANCE — when it was assembled, the twin of the evening's "updated 7:36 PM ET" — not a live
+     * market-state claim; the pill remains the single truth about whether the market is open now (R3).
+     */
+    morningStatus: "before the open · market data through {weekday}'s close · news & macro refreshed {time}",
     /** Module 07 as a GLANCE: a figure, not a paragraph pointing at another page. */
     scanCount: "{n} matches across {k} scans",
+  },
+
+  /**
+   * THE MORNING PLAN (CC9, Appendix A). Module 02 in morning state — assembled from live tables, not a
+   * second LLM artifact (no dawn Anthropic spend). Three sections plus the doorway back to last night's
+   * brief; each empty state is information, not an apology (the no-shimmer-on-empty law).
+   */
+  morningPlan: {
+    title: "The Morning Plan",
+    overnight: "Overnight",
+    todayCalendar: "Today's calendar",
+    whereClosed: "Where things closed",
+    /** The collapsed doorway to the evening brief, which sits beneath the plan on the same page. */
+    lastBrief: "Last evening's brief →",
+    /** Nothing crossed the wire between the close and the dawn — a quiet market, said plainly. */
+    overnightEmpty: "No new stories crossed the wire overnight.",
+    /** No scheduled catalyst on today's session — the calendar being empty is the product working. */
+    todayCalendarEmpty: "Nothing scheduled for today.",
   },
 
   /** Chrome aria copy. The toggle names its DESTINATION so the spoken label and the icon agree. */
@@ -482,7 +508,8 @@ export const copy = {
       },
       dawnRefresh: {
         name: "Dawn refresh",
-        description: "Re-reads the index closes FRED posts overnight, before the open.",
+        // CC9 (Q-CC8-1): the dawn is the Morning Edition's engine now, not the macro-only fix it began as.
+        description: "Rebuilds the morning before the open — overnight news, macro, and the day's calendar.",
       },
       eveningBriefing: {
         name: "Evening briefing (Job B)",

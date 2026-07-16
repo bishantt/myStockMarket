@@ -165,6 +165,15 @@ export function etMinuteOf(instant: Date): number {
 }
 
 /**
+ * Is this instant before the 9:30 AM ET opening bell? The one door for the open boundary — the
+ * edition-state machine's Morning/Session line rides it (CC9), so the two never disagree about when
+ * the market opens. Half-days still open at 9:30 (only the CLOSE moves), so the open needs no calendar.
+ */
+export function isBeforeOpen(instant: Date): boolean {
+  return etMinuteOf(instant) < OPEN_MINUTE;
+}
+
+/**
  * Is this calendar date a trading session?
  *
  * A half day IS a session — it opens, it closes, it has a close price, and the pipeline owes an

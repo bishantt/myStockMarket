@@ -180,6 +180,14 @@ const CALENDAR = [
   { date: sessionPlus(0), kind: "earnings", symbol: "GS", timing: null, title: "GS earnings", consensus: 9.4, prior: 8.62, importance: "medium", code: "EARNINGS" }, // 2026-07-09
   { date: sessionPlus(0), kind: "earnings", symbol: "C", timing: null, title: "C earnings", consensus: 1.55, prior: 1.42, importance: "medium", code: "EARNINGS" }, // 2026-07-09
   { date: sessionPlus(0), kind: "earnings", symbol: "WFC", timing: null, title: "WFC earnings", consensus: 1.28, prior: 1.2, importance: "medium", code: "EARNINGS" }, // 2026-07-09
+  // TODAY (Friday 2026-07-10) — the session the seeded dawn ran for. These carry TIMING (CC8/CC9): earnings
+  // bmo/amc from Finnhub, a macro release at its canonical ET time. The Morning Plan's "Today's calendar"
+  // renders them bmo-first with the timing in words ("before the open", "8:30 AM ET"); the evening calendar
+  // shows the same events as its NEXT forward day (Friday is the session after Thursday). Untimed elsewhere
+  // stays null (P9). PPI is medium, so it does not add a fourth high row above the seed's three (CPI/FOMC/JOBS).
+  { date: sessionPlus(1), kind: "earnings", symbol: "JNJ", timing: "bmo", title: "JNJ earnings", consensus: 2.68, prior: 2.55, importance: "medium", code: "EARNINGS" }, // 2026-07-10
+  { date: sessionPlus(1), kind: "macro", symbol: null, timing: "8:30 AM ET", title: "Producer Price Index", consensus: null, prior: null, importance: "medium", code: "PPI" }, // 2026-07-10
+  { date: sessionPlus(1), kind: "earnings", symbol: "NFLX", timing: "amc", title: "NFLX earnings", consensus: 5.12, prior: 4.88, importance: "medium", code: "EARNINGS" }, // 2026-07-10
   { date: sessionPlus(3), kind: "macro", symbol: null, timing: null, title: "Consumer Price Index", consensus: null, prior: null, importance: "high", code: "CPI" }, // 2026-07-12
   { date: sessionPlus(4), kind: "earnings", symbol: "MSFT", timing: null, title: "MSFT earnings", consensus: 3.12, prior: 2.94, importance: "medium", code: "EARNINGS" }, // 2026-07-13
   { date: sessionPlus(5), kind: "earnings", symbol: "GME", timing: null, title: "GME earnings", consensus: 0.04, prior: 0.02, importance: "medium", code: "EARNINGS" }, // 2026-07-14
@@ -290,16 +298,30 @@ async function main() {
   guardAgainstProduction();
   console.log(`Seeding a deterministic synthetic morning (run date ${SEEDED_SESSION})…`);
 
+  // The dawn entry publish_dawn stamps BESIDE the night's source_status (CC8, closing Q-CC7-1). CC9 seeds
+  // it so the seeded world can exercise the MORNING edition: the masthead, the Morning Plan, and the
+  // control room's Dawn refresh row all read it. It rode a Friday 6:31 AM ET dawn — the session after the
+  // Thursday run (E1 keeps runDate Thursday). e2e/seeded-clock's SEEDED_MORNING pins the browser to that
+  // Friday morning, and the edition-state machine reads dawn.ranAt to greet the morning.
+  const DAWN_ENTRY = {
+    ranAt: sessionPlus(1, "10:31").toISOString(), // 2026-07-10T10:31Z = 6:31 AM ET Friday
+    sources: { fred: "ok", finnhub: "ok", marketaux: "ok" },
+    stages: { macro: "ok", news: "ok", catalysts: "ok", publish: "ok", revalidate: "ok" },
+  };
+  // marketaux degraded on purpose, so the SourceStatusFooter's honest degraded line shows. The dawn entry
+  // rides BESIDE these strings (statusFromRun ignores the nested object); it is the morning's engine.
+  const NIGHT_SOURCE_STATUS = { alpaca: "ok", finnhub: "ok", marketaux: "degraded", fmp: "ok", fred: "ok", dawn: DAWN_ENTRY };
   await db.pipelineRun.upsert({
     where: { runDate: RUN_DATE },
-    update: { finishedAt: sessionAt("22:40") },
+    // The update refreshes sourceStatus too, so a LOCAL re-seed of an existing row picks up the dawn entry
+    // (CI is always a fresh container, so its `create` path applies it either way).
+    update: { finishedAt: sessionAt("22:40"), sourceStatus: NIGHT_SOURCE_STATUS },
     create: {
       runDate: RUN_DATE,
       startedAt: sessionAt("22:37"), // 2026-07-09T22:37Z — the cron's real slot
       finishedAt: sessionAt("22:40"), // 2026-07-09T22:40Z
       stageStatus: { ingest: "ok", compute: "ok", scan: "ok", publish: "ok" },
-      // marketaux degraded on purpose, so the SourceStatusFooter's honest degraded line shows.
-      sourceStatus: { alpaca: "ok", finnhub: "ok", marketaux: "degraded", fmp: "ok", fred: "ok" },
+      sourceStatus: NIGHT_SOURCE_STATUS,
     },
   });
 

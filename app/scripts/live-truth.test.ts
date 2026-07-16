@@ -4,7 +4,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import {
   checkLive, checkMasthead, checkBoard, checkIndexHonesty, checkCalendar,
-  checkPressTime, checkBylines, checkNextEdition,
+  checkPressTime, checkBylines, checkNextEdition, checkMorning, mastheadKind,
   isTradingDay, latestClosedSession, pageText, parseLongDate,
 } from "./live-truth.mjs";
 
@@ -283,6 +283,77 @@ describe("6 — the next-edition promise", () => {
   it("says so when the Desk names no edition at all", () => {
     const noDate = desk(HEALTHY_DESK).replace("Monday, July 13, 2026", "");
     expect(checkNextEdition(noDate).verdict).toBe("FAIL");
+  });
+});
+
+describe("CC9 — check:live learns the morning edition (R6, and the Q-CC5-2 fix)", () => {
+  /** 7:00 AM ET Tuesday 2026-07-14 — a dawn ran at 6:31, the last close was Monday 2026-07-13. */
+  const TUE_MORNING = new Date("2026-07-14T11:00:00Z");
+  /** A Morning masthead dated TODAY (Jul 14), legitimately ahead of the last close (Mon Jul 13). */
+  const morningMasthead =
+    "The Desk — Morning Edition Tuesday, July 14, 2026 before the open · market data through "
+    + "Monday's close · news & macro refreshed 6:31 AM ET";
+
+  it("reads the morning kicker as a morning edition, everything else as evening", () => {
+    expect(mastheadKind(morningMasthead)).toBe("morning");
+    expect(mastheadKind(desk(HEALTHY_DESK))).toBe("evening");
+  });
+
+  it("PASSES a Morning Edition dated today, though its date is ahead of the last close (R6)", () => {
+    const r = checkMasthead(morningMasthead, TUE_MORNING);
+    expect(r.verdict).toBe("PASS");
+    expect(r.found).toContain("2026-07-14");
+  });
+
+  it("does NOT fire the evening 'future edition' red on a morning masthead — the Q-CC5-2 false red", () => {
+    // The masthead date (Jul 14) is ahead of the last closed session (Jul 13). The evening path would call
+    // that "an edition from the FUTURE"; the morning greeting is exactly that, and honestly so.
+    const r = checkMasthead(morningMasthead, TUE_MORNING);
+    expect(r.found).not.toContain("FUTURE");
+  });
+
+  it("catches a STALE morning — a Morning Edition dated a day that is not today", () => {
+    const stale = morningMasthead.replace("Tuesday, July 14, 2026", "Monday, July 13, 2026");
+    const r = checkMasthead(stale, TUE_MORNING);
+    expect(r.verdict).toBe("FAIL");
+    expect(r.found).toContain("stale morning");
+  });
+
+  it("measures the next-edition promise against the DATA session, not the morning display date", () => {
+    // Morning of Jul 14; the strip promises Tuesday's own evening. Against the display date (Jul 14) the
+    // promise reads wrong (it would demand Wednesday); against the last close (Jul 13) it is right.
+    const withStrip = `${morningMasthead} 14 sources · 0 degraded · next edition Tue ~6:37 PM ET`;
+    expect(checkNextEdition(withStrip, TUE_MORNING).verdict).toBe("PASS");
+  });
+
+  it("measures the calendar against the floor (the last close), so today's leading rows are not stale", () => {
+    // The morning rail leads with TODAY's events (Jul 14), which sit ON the display date and would be
+    // flagged if measured against it. Measured against the floor (Jul 13) they pass.
+    const withCal = `${morningMasthead} Session calendar Jul 14 EARNINGS AAPL Jul 15 macro CPI`;
+    expect(checkCalendar(withCal, TUE_MORNING).verdict).toBe("PASS");
+  });
+
+  it("checkMorning PASSES a Morning Edition refreshed before the open", () => {
+    expect(checkMorning(morningMasthead).verdict).toBe("PASS");
+  });
+
+  it("checkMorning FAILS when the Desk is still the Evening Edition in a morning window", () => {
+    // An evening masthead in a morning window is a morning that never got greeted — the R6 miss.
+    expect(checkMorning(desk(HEALTHY_DESK)).verdict).toBe("FAIL");
+  });
+
+  it("checkMorning FAILS a refresh stamp that is not before the open", () => {
+    const late = morningMasthead.replace("6:31 AM ET", "11:00 AM ET");
+    expect(checkMorning(late).verdict).toBe("FAIL");
+  });
+
+  it("appends the morning assertion ONLY under --window=morning; the evening six never grow", () => {
+    const evening = checkLive({ deskHtml: HEALTHY_DESK, newsHtml: HEALTHY_NEWS, now: MONDAY_EVENING });
+    expect(evening).toHaveLength(7);
+    const morning = checkLive({
+      deskHtml: HEALTHY_DESK, newsHtml: HEALTHY_NEWS, now: MONDAY_EVENING, window: "morning",
+    });
+    expect(morning).toHaveLength(8);
   });
 });
 

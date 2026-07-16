@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { buildCalendar, buildMacro, buildMovers, buildScanBreakdown, buildSourceStatus, buildWatchlist, calendarFloor, isLiquidFloorEligible } from "@/lib/morning";
+import { buildCalendar, buildMacro, buildMorningPlanCalendar, buildMovers, buildScanBreakdown, buildSourceStatus, buildWatchlist, calendarFloor, isLiquidFloorEligible, type MorningEventSource } from "@/lib/morning";
 import { SCAN_PRESETS } from "@/lib/scan-presets";
 
 /**
@@ -453,5 +453,52 @@ describe("buildScanBreakdown — the Desk's Sectors & Scans module (CC4, D4)", (
     expect(gap?.folklore).toBe(true);
     expect(gap?.label).toBe("Gap of 3% or more");
     expect(gap?.grade).toBe("folklore");
+  });
+});
+
+describe("buildMorningPlanCalendar — today's events, bmo-first (CC9)", () => {
+  const ev = (over: Partial<MorningEventSource>): MorningEventSource => ({
+    code: null,
+    kind: "earnings",
+    symbol: null,
+    title: "",
+    timing: null,
+    importance: null,
+    ...over,
+  });
+
+  it("orders before-the-open earnings first, then the day, then after-close, then the untimed", () => {
+    const ordered = buildMorningPlanCalendar([
+      ev({ code: "EARNINGS", symbol: "AMC", title: "AMC", timing: "amc" }),
+      ev({ code: "EARNINGS", symbol: "NONE", title: "NONE", timing: null }),
+      ev({ code: "EARNINGS", symbol: "BMO", title: "BMO", timing: "bmo" }),
+      ev({ code: "EARNINGS", symbol: "DAY", title: "DAY", timing: "dmh" }),
+    ]);
+    expect(ordered.map((e) => e.symbol)).toEqual(["BMO", "DAY", "AMC", "NONE"]);
+  });
+
+  it("turns each code into prose and passes a macro clock string through", () => {
+    const [earnings, macro] = buildMorningPlanCalendar([
+      ev({ code: "EARNINGS", symbol: "JNJ", title: "JNJ", timing: "bmo" }),
+      ev({ code: "CPI", kind: "macro", title: "CPI", timing: "8:30 AM ET", importance: "high" }),
+    ]);
+    expect(earnings.timing).toBe("before the open");
+    expect(earnings.symbol).toBe("JNJ");
+    expect(macro.timing).toBe("8:30 AM ET");
+    expect(macro.high).toBe(true);
+  });
+
+  it("ranks a morning macro release (8:30 AM) ahead of an after-close earnings, but behind bmo", () => {
+    const ordered = buildMorningPlanCalendar([
+      ev({ symbol: "AMC", title: "AMC", timing: "amc" }),
+      ev({ code: "CPI", kind: "macro", title: "CPI", timing: "8:30 AM ET" }),
+      ev({ symbol: "BMO", title: "BMO", timing: "bmo" }),
+    ]);
+    expect(ordered.map((e) => e.title)).toEqual(["BMO", "CPI", "AMC"]);
+  });
+
+  it("falls back to the kind when the allowlist assigned no code", () => {
+    const [row] = buildMorningPlanCalendar([ev({ code: null, kind: "earnings", symbol: "X", title: "X" })]);
+    expect(row.code).toBe("earnings");
   });
 });

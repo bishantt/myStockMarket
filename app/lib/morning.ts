@@ -2,8 +2,10 @@ import { db } from "@/lib/db";
 import { SCAN_PRESETS } from "@/lib/scan-presets";
 import type { EvidenceGrade } from "@/components/Tag";
 import { copy } from "@/lib/copy";
-import { directionOf, multiple, percent, price, signedPercent } from "@/lib/format";
+import { directionOf, multiple, percent, price, signedPercent, timingLabel } from "@/lib/format";
 import { formatUtcDate, formatUtcWeekday } from "@/lib/time";
+import { nextTradingDay } from "@/lib/market-hours";
+import { toTradingDate } from "@/lib/pipeline";
 import { buildBrief, parseBriefDraft, type BriefView } from "@/lib/briefing";
 import { isKnownLesson } from "@/lib/academy";
 import {
@@ -414,6 +416,79 @@ export function buildCalendar(sources: CalendarSource[]): CalendarRow[] {
   }));
 }
 
+// ── The Morning Plan (CC9) ──────────────────────────────────────────────────────────────────────
+
+/**
+ * One event on today's calendar as the Morning Plan shows it — the chip, the name, and its timing in
+ * the reader's words ("before the open", "8:30 AM ET"). Assembled from live tables (calendar_event),
+ * never a second LLM artifact — the morning is deterministic, so there is nothing to verify at dawn.
+ */
+export type MorningPlanEvent = {
+  code: string;
+  symbol?: string;
+  title: string;
+  /** The timing, already turned to prose (timingLabel). Null when the event is untimed (P9). */
+  timing: string | null;
+  high: boolean;
+};
+
+/** The Morning Plan's assembled view — the overnight stories and today's scheduled events. "Where things
+ * closed" is not here: it reuses the evening's own verified macro numbers (morning.macro), unchanged. */
+export type MorningPlanView = {
+  /** The stories that crossed the wire since the evening press time, top by significance. */
+  overnight: FrontPagePreviewRow[];
+  /** Today's scheduled catalysts, bmo-first. */
+  todayCalendar: MorningPlanEvent[];
+};
+
+/** The calendar_event fields the Morning Plan reads (its `timing` is the field the evening view ignores). */
+export type MorningEventSource = {
+  code: string | null;
+  kind: string;
+  symbol: string | null;
+  title: string;
+  timing: string | null;
+  importance: string | null;
+};
+
+/**
+ * How early in the trading day an event falls, for the "bmo-first" ordering (D7 serving the morning).
+ * Before-the-open earnings lead; a macro clock string sorts by its actual time; during-the-day and
+ * after-close events follow; an untimed event sorts last (it has made no claim about when).
+ */
+function timingRank(timing: string | null): number {
+  if (!timing) return 100_000;
+  const code = timing.toLowerCase();
+  if (code === "bmo") return 0;
+  if (code === "dmh") return 10_000;
+  if (code === "amc") return 20_000;
+  // A macro release carries a clock string ("8:30 AM ET"); rank it by minutes past midnight ET.
+  const clock = timing.match(/(\d{1,2}):(\d{2})\s*(AM|PM)/i);
+  if (clock) {
+    const hour = (Number(clock[1]) % 12) + (clock[3].toUpperCase() === "PM" ? 12 : 0);
+    // +1 so a timed release never ties bmo at 0 — bmo (the pre-open earnings convention) leads its day.
+    return hour * 60 + Number(clock[2]) + 1;
+  }
+  return 99_999;
+}
+
+/**
+ * Build today's calendar for the Morning Plan, bmo-first. Pure and exported so the ordering is tested
+ * without a database. The chip is the allowlist's `code` (falling back to `kind`), the timing is turned
+ * to prose here so the component never sees a raw `bmo` code.
+ */
+export function buildMorningPlanCalendar(sources: MorningEventSource[]): MorningPlanEvent[] {
+  return [...sources]
+    .sort((a, b) => timingRank(a.timing) - timingRank(b.timing))
+    .map((s) => ({
+      code: s.code ?? s.kind,
+      symbol: s.symbol ?? undefined,
+      title: s.title,
+      timing: timingLabel(s.timing),
+      high: s.importance === "high",
+    }));
+}
+
 // ── Source status ─────────────────────────────────────────────────────────────────────────────
 
 /** The order sources are listed in the footer — a stable inventory, whichever ran tonight. */
@@ -501,6 +576,12 @@ export type Morning = {
   movers: Mover[] | null;
   watch: WatchRow[] | null;
   calendar: CalendarView | null;
+  /**
+   * THE MORNING PLAN (CC9) — module 02 in morning state: the overnight stories and today's calendar,
+   * assembled from live tables. Loaded on every render (cheap); the edition-state machine decides in
+   * the browser whether it is shown or the evening brief is. Null only when no run is recorded.
+   */
+  morningPlan: MorningPlanView | null;
   /** Per-source health for the run's footer; an empty array when no run is recorded. */
   sources: SourceStatus[];
   /**
@@ -613,7 +694,7 @@ function closesBy(rows: Array<{ symbol: string; close: number }>): Record<string
  */
 export async function getMorning(): Promise<Morning> {
   const asOf = await latestAsOf();
-  const [macro, macroBoard, brief, setupCards, movers, watch, calendar, sources, scans, frontPage, journalSavedToday] =
+  const [macro, macroBoard, brief, setupCards, movers, watch, calendar, morningPlan, sources, scans, frontPage, journalSavedToday] =
     await Promise.all([
       loadMacro(),
       loadMacroBoard(),
@@ -622,6 +703,7 @@ export async function getMorning(): Promise<Morning> {
       loadMovers(),
       loadWatchlist(),
       loadCalendar(),
+      loadMorningPlan(),
       loadSourceStatus(),
       loadScanCount(),
       loadFrontPage(),
@@ -636,11 +718,57 @@ export async function getMorning(): Promise<Morning> {
     movers,
     watch,
     calendar,
+    morningPlan,
     sources,
     scans,
     frontPage,
     journalSavedToday,
   };
+}
+
+/** How many overnight stories the Morning Plan previews before the reader opens the room. */
+const OVERNIGHT_PREVIEW = 3;
+
+/**
+ * Assemble the Morning Plan (CC9) from live tables: the stories that crossed the wire since the evening
+ * press time (ranked by significance), and today's scheduled catalysts (bmo-first). "Today" is the
+ * session AFTER the last close — nextTradingDay(runDate) — which is server-derivable, so the plan needs
+ * no clock of its own. A read failure degrades the module to a placeholder, never the Desk.
+ */
+async function loadMorningPlan(): Promise<MorningPlanView | null> {
+  try {
+    const run = await db.pipelineRun.findFirst({
+      orderBy: { runDate: "desc" },
+      select: { runDate: true, finishedAt: true },
+    });
+    if (!run) return null;
+
+    // The morning's session is the one after the last closed run (E1 keeps runDate at the last close).
+    const todaySession = new Date(`${nextTradingDay(toTradingDate(run.runDate))}T00:00:00.000Z`);
+    const pressTime = run.finishedAt;
+
+    const [overnight, todayEvents] = await Promise.all([
+      // Genuinely overnight: first seen AFTER the evening went to press. Ordered like the front page —
+      // significance first, then newest — so the morning leads with the biggest new fact.
+      pressTime
+        ? db.newsCluster.findMany({
+            where: { firstSeen: { gt: pressTime } },
+            orderBy: [{ significance: "desc" }, { firstSeen: "desc" }, { id: "asc" }],
+            take: OVERNIGHT_PREVIEW,
+            select: { id: true, headline: true, eventType: true, sources: true },
+          })
+        : Promise.resolve([] as FrontPagePreviewRow[]),
+      db.calendarEvent.findMany({
+        where: { date: todaySession },
+        select: { code: true, kind: true, symbol: true, title: true, timing: true, importance: true },
+      }),
+    ]);
+
+    return { overnight, todayCalendar: buildMorningPlanCalendar(todayEvents) };
+  } catch (error) {
+    console.error("getMorning: could not assemble the Morning Plan", error);
+    return null;
+  }
 }
 
 /** How many stories the Desk's Front Page preview shows before pointing at the room. */

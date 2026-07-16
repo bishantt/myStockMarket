@@ -3,7 +3,7 @@ import { copy } from "@/lib/copy";
 import { describeCadence, parseCron } from "@/lib/cron";
 import { db } from "@/lib/db";
 import type { ManualRunRow } from "@/lib/pipeline-control";
-import { toTradingDate } from "@/lib/pipeline";
+import { DAWN_KEY, readDawnEntry, toTradingDate } from "@/lib/pipeline";
 import { formatEtStamp, formatUtcDate } from "@/lib/time";
 
 /**
@@ -69,8 +69,10 @@ export const PIPELINES: PipelineDef[] = [
     crons: ["30 10 * * 1-5"],
     workflow: "nightly-a.yml",
     actions: ["macro"],
-    stages: ["macro", "publish"],
-    providers: ["fred"],
+    // Since CC8 the dawn runs `dawn` mode — the full Morning-Edition refresh, not the macro-only fix it
+    // began as (Q-CC8-1). Its stages and providers now describe what it actually does at breakfast.
+    stages: ["macro", "news", "catalysts", "publish", "revalidate"],
+    providers: ["fred", "finnhub", "marketaux"],
     writesPipelineRun: false,
   },
   {
@@ -85,9 +87,6 @@ export const PIPELINES: PipelineDef[] = [
     writesPipelineRun: false,
   },
 ];
-
-/** The key the dawn refresh's entry lives under, inside the night's source_status (CC8). */
-const DAWN_KEY = "dawn";
 
 /**
  * A run counts as DEGRADED if a source misbehaved, FAILED if a stage broke — the graver fact wins.
@@ -222,20 +221,6 @@ function lastRunForNightly(run: RunRow | null): LastRunFacts | null {
     sources,
     stages,
   };
-}
-
-/** The dawn refresh's own entry, stamped by publish_dawn beside the night's source_status (CC8). */
-type DawnEntry = {
-  ranAt?: string;
-  sources?: Record<string, string>;
-  stages?: Record<string, string>;
-};
-
-function readDawnEntry(sourceStatus: unknown): DawnEntry | null {
-  if (!sourceStatus || typeof sourceStatus !== "object") return null;
-  const dawn = (sourceStatus as Record<string, unknown>)[DAWN_KEY];
-  if (!dawn || typeof dawn !== "object") return null;
-  return dawn as DawnEntry;
 }
 
 /**

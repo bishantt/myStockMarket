@@ -33,6 +33,9 @@ import { checkLive } from "./live-truth.mjs";
 const TARGET = (process.argv.find((a) => a.startsWith("https://"))
   ?? "https://mystockmarket-eight.vercel.app").replace(/\/$/, "");
 const REPORT = process.argv.includes("--report");
+// `--window=morning` appends the Morning-Edition assertions (CC9). Run it against a production dawn
+// window (~6:31–9:30 AM ET, after a dawn dispatch); the default run asks the evening six only.
+const WINDOW = process.argv.find((a) => a.startsWith("--window="))?.split("=")[1];
 
 const secret = process.env.AUTH_COOKIE_SECRET;
 if (!secret) {
@@ -61,7 +64,7 @@ const cookie = await mintSessionCookie(secret, { ttlSeconds: 60 * 60 });
 const [deskHtml, newsHtml] = await Promise.all([fetchPage(cookie, "/"), fetchPage(cookie, "/news")]);
 
 const now = new Date();
-const results = checkLive({ deskHtml, newsHtml, now });
+const results = checkLive({ deskHtml, newsHtml, now, window: WINDOW });
 
 // ── the table ─────────────────────────────────────────────────────────────────────────────────
 
