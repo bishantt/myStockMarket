@@ -1253,3 +1253,19 @@ that was the four `scans-preset` shots (585px, the masked as-of `<time>` box wid
 gained its weekday) and `track-record` on the phone (408/412px) — all updated so no stale-tolerated
 baseline survived. Open EVERY diff image before copying; a diff you cannot explain is a bug, not a
 baseline (the one VRT rule).
+
+## A feature that reads a new column needs a "not backfilled yet" fallback (CC6)
+
+A migration adds a column NULL; only the next run of the pipeline backfills it. Any app feature that
+REQUIRES that column will therefore behave as if every row is empty for the whole window between the
+deploy and the first backfilling run — and if the feature treats "no value" as "exclude", a core module
+goes blank in production the instant it ships (CC6's Movers floor reads `instrument.dv_bucket`; production
+had 12,992 rows, all null, so the floor returned nothing).
+
+The pattern: detect the not-ready state (`rows.some(r => r.dv_bucket != null)` — is there ANY value yet?)
+and fall back to the pre-feature behavior until the data arrives, self-healing on the next run. Keep the
+fallback VRT-neutral by ensuring the SEED has the column populated, so every test and the oracle exercise
+the real feature; the fallback is production-transition code only. The only way to know the production
+state is to QUERY PRODUCTION before tagging — the seed and CI both have the data, so they cannot show you
+the gap. Same family as the N0 migration (a schema change takes effect on the next run, and the app must
+degrade honestly until then).

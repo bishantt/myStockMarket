@@ -8,6 +8,75 @@ Format: newest first. I mark each as [FYI], [VETO?], or [NEED] so you can scan.
 
 ---
 
+## 2026-07-15 — CC6 (Honest relevance)
+
+CC6 made the Desk's relevance deterministic and tested (R5): front-page significance v2 (a 4-term
+product), the movers liquid floor, the RelVol "≥20×" label, and the calendar row grammar. Tagged `cc-6`.
+Five heads-ups — and the FIRST one matters, because the pipeline-verification read earned its keep.
+
+### [NEEDS YOUR EYES — the real finding] The pre-existing event CLASSIFIER is too weak for v2's promise
+I did the plan's step-5 check: dispatched a real `news` run in production and READ the published front
+page (not the green suite — the memory's lesson). It surfaced a genuine problem. The top of the page is:
+
+  1. sig 0.60 [**macro**] "Exodus Offers Subscription Payments via Stablecoins…" — a crypto/product PR
+  2. sig 0.60 [**macro**] "ETF Prime: ETF Inflows, the Nasdaq 100 Fee War…" — an ETF podcast
+  4. sig 0.39 [**ma**]   "PayPal: A Bargain For Stripe, A Bad Deal For Shareholders (NASDAQ:PYPL)" — a SeekingAlpha ANALYST opinion
+  5. sig 0.39 [**ma**]   "Alaska Air: A Better Airline, Not Yet A Better Investment (NYSE:ALK)" — an ANALYST opinion
+  7. sig 0.39 [**fda**]  "Certara to Report Q2 2026 Financial Results…" — an earnings-date notice
+
+The formula is CORRECT (the seed proves it: Fed/macro → FDA → SMCI earnings, and Appendix E passes). The
+problem is `newsdesk/rank.py`'s **`classify_event` keyword classifier — which CC6 did NOT touch (it is
+N4's, unchanged)** — mislabels real headlines: a crypto stablecoin PR as "macro" (so it LEADS at
+market-wide entity), and the exact SeekingAlpha analyst pieces 4.5 wanted BELOW hard news as "ma". So
+v2's headline promise — "hard events over commentary, kills the seekingalpha lead" — is defeated at the
+source. This is NOT a CC6 regression: v1 ranked misclassified-macro stories high too (via its `scope`
+term), and the entity backfill will NOT fix it (a macro-misclassified story is market-wide regardless of
+its bucket). **But v2 makes the classifier's quality load-bearing in a way v1 half-hid, and reading
+production is the only thing that shows it.** The fix is a classifier improvement (better keyword/category
+handling for crypto, analyst-blog formats like "(NASDAQ:XXX)"/"A Bargain For", ETF commentary) — a real,
+separate piece of work I deliberately did NOT smuggle into CC6's end (the exact over-reach this build
+regresses on). **Q-CC6-2: do you want a dedicated classifier pass (its own small phase), or fold it into
+a later CC phase?** Until then the front page leads by a weak classifier's guess — same as before CC6,
+now just more visible.
+
+### [FYI · a pending live-observation gate, NOT a defect] The floor + entity_weight go fully live at the next full nightly
+The migration added `instrument.dv_bucket`, which the movers floor and entity_weight read — and which
+only the FULL nightly backfills. Production has 12,992 instruments, ALL with a null bucket right now, so
+until the 22:37 UTC nightly runs the new code, the floor's data is not ready. I built a **backfill
+bridge**: loadMovers falls back to the raw ranked top 8 (the pre-CC6 behavior — the junk parade, no worse
+than before) rather than emptying the module, and self-heals on the next nightly. So the floor's full
+effect (junk filtered) and entity_weight's mega-cap-over-micro-cap boost are confirmed AT THE NEXT FULL
+NIGHTLY — the exact N0-migration pattern (a migration takes effect on the next run). The seeded world shows
+CC6 in full (VRT/e2e). **To see it in production sooner:** dispatch a full nightly (`gh workflow run
+nightly-a.yml -f mode=full`), then open the Desk — the movers should lose AHD/ASMH and gain the liquid
+names, and the front page should lead with the corroborated macro story. I did NOT dispatch one myself (it
+re-fetches the whole market, re-clusters, and submits an LLM batch — heavier than the endgame needed, and
+the scheduled nightly does it for free).
+
+### [VETO? · marked deviation from 4.5] Q-CC6-1 — the liquidity notion is scans' single-day is_large_mid, not baserates' 63-day median
+4.5 said "reuse `_DV_WINDOW` (the base-rate engine's large/mid boundary)." I reused scans.py's existing
+`is_large_mid` instead. BOTH use the top-1000-by-dollar-volume cutoff; they differ ONLY in the averaging
+window — scans is single-day (today's snapshot), baserates is a 63-day median. I chose scans' because it is
+the EXISTING notion the movers already carry (so "no second liquidity notion" is honored by reuse — the
+plan named `_DV_WINDOW` unaware scans.py already had this), because single-day liquidity is arguably more
+apt for a "today's movers" floor (a small-cap trading $2B today on a real catalyst IS a mover a 63-day
+median would wrongly exclude), and because it works with the pipeline's snapshot flow + the tiny nightly
+fixtures. If you'd rather the 63-day median (literally `_DV_WINDOW`), it's a swap of `_universe_buckets` to
+call `assign_buckets` + a 63-bar nightly fixture. Full reasoning in DECISIONS.
+
+### [FYI · RESOLVED clean] check:live 7/7 and check:migrations both green post-deploy
+The CC5 delayed-nightly transient (Q-CC5-2) did NOT recur — check:live was 7/7 (masthead 2026-07-15,
+calendar hygiene clean, next-edition Thu correct). check:migrations confirmed production's DB got the CC6
+migration on deploy. check:nav worst 457ms (settings writer room, unchanged). check:lighthouse gates green
+(CLS 0.002, first-load JS 183 KB, a11y 100); advisory perf 86 (synthetic-4G, in line with prior phases).
+
+### [still open, unanswered since LC1] Q-LC1-1 — vrt-diff.mjs is broken (pixelmatch absent)
+CC6's re-shoot needed "diff every candidate" again (it caught the login/sheet-ticker/ticker/track-record
+camera-noise shots that moved WITHOUT failing). `scripts/vrt-diff.mjs` still throws
+`ERR_MODULE_NOT_FOUND: pixelmatch`, so I used the pngjs-only counter (PATTERNS.md) again, written inside
+app/ and deleted after. The fix is one line — `npm i -D pixelmatch` — or a pngjs rewrite. Your call, still.
+
+
 ## 2026-07-15 — CC5 (News, text-first)
 
 CC5 rebuilt the news TEXT-FIRST (R4/D5): the generated L4/L3 image frames are deleted, so a card with

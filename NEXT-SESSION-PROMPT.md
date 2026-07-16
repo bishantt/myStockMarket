@@ -1,165 +1,135 @@
-# Your session: CC6 — Honest relevance. CC6 ONLY.
+# Your session: CC7 — The control room. CC7 ONLY.
 
-The two-plan commission (2026-07-15) is under way. **CC1, LC1, LC2, LC3, CC2, CC3, CC4 and CC5 are DONE
-and tagged (`cc-1`, `lc-1`, `lc-2`, `lc-3`, `cc-2`, `cc-3`, `cc-4`, `cc-5`). LEAN-CODEBASE (Plan B) is
-COMPLETE.** Two plans sit at the repo root: **CLARITY-AND-CADENCE-PLAN.md** (Plan A, `cc-1`…`cc-10`) and
-**LEAN-CODEBASE-PLAN.md** (Plan B, done). The decided execution order, fixed across both plans:
+The two-plan commission (2026-07-15) is under way. **CC1–CC6 and LC1–LC3 are DONE and tagged (`cc-1`…
+`cc-6`, `lc-1`…`lc-3`). LEAN-CODEBASE (Plan B) is COMPLETE.** Two plans sit at the repo root:
+**CLARITY-AND-CADENCE-PLAN.md** (Plan A, `cc-1`…`cc-10`) and **LEAN-CODEBASE-PLAN.md** (Plan B, done).
+The decided execution order, fixed across both plans:
 
-> **CC1 ✓ → LC1 ✓ → LC2 ✓ → LC3 ✓ → CC2 ✓ → CC3 ✓ → CC4 ✓ → CC5 ✓ → CC6 → CC7 → CC8 → CC9 → CC10**
+> **CC1 ✓ → LC1 ✓ → LC2 ✓ → LC3 ✓ → CC2 ✓ → CC3 ✓ → CC4 ✓ → CC5 ✓ → CC6 ✓ → CC7 → CC8 → CC9 → CC10**
 
-You run **CC6 of CLARITY-AND-CADENCE-PLAN.md and nothing else** — one phase per session is standing
+You run **CC7 of CLARITY-AND-CADENCE-PLAN.md and nothing else** — one phase per session is standing
 law (CLAUDE.md, Session rhythm). Within the phase the Autonomy Contract holds in full: never ask, never
 wait; anything that would be a question goes to QUESTIONS-FOR-BISHANT.md with the most reasonable
-assumption made and marked. **After CC6 the order continues at CC7.**
+assumption made and marked. **After CC7 the order continues at CC8.**
 
 ## The standing handoff rule (this is how Bishan steers, phase by phase)
 
 At the END of your phase, after the tag is green:
 1. Bring every intelligence file current (PROGRESS.md exact checkpoint, DECISIONS.md, LESSONS.md,
    PATTERNS.md, QUESTIONS-FOR-BISHANT.md, and the phase evidence file — CC evidence goes under
-   `docs/clarity-evidence/cc6.md`).
+   `docs/clarity-evidence/cc7.md`).
 2. **Rewrite THIS file** (NEXT-SESSION-PROMPT.md) as the complete, self-contained, paste-ready prompt
-   for the NEXT phase in the order above (for you, **CC7** of CLARITY-AND-CADENCE-PLAN.md) — carrying
-   this handoff rule forward verbatim in spirit, the phase-order line, the phase's build list distilled
-   from its plan, its gate, and anything in flight. Assume the next session has NO memory of yours.
-   (Read CLARITY-AND-CADENCE-PLAN.md's CC7 section — Part 4.6 + the Part 5 CC7 line + Appendix C — to distill it.)
+   for the NEXT phase in the order above (for you, **CC8** of CLARITY-AND-CADENCE-PLAN.md) — carrying
+   this handoff rule forward, the phase-order line, the phase's build list distilled from its plan, its
+   gate, and anything in flight. Assume the next session has NO memory of yours. (Read
+   CLARITY-AND-CADENCE-PLAN.md's CC8 section — Part 4.7 + the Part 5 CC8 line + Appendix B/C — to distill it.)
 3. Report back to Bishan in plain English: what was built, what passed (cite the tag and run id), what
-   changed in QUESTIONS, and confirm this file is ready. **Then STOP and wait.** Do not roll into CC7.
+   changed in QUESTIONS, and confirm this file is ready. **Then STOP and wait.** Do not roll into CC8.
 
 ## Session start (the CLAUDE.md ritual)
 
 1. `git pull` → read CLAUDE.md → PROGRESS.md → LESSONS.md → diff DECISIONS.md (any non-[claude] line
    is a user veto, rank 2.5 — honor it FIRST). Check specifically for any answer/veto to the OPEN
-   questions (QUESTIONS-FOR-BISHANT.md): **Q-LC1-1** (vrt-diff.mjs BROKEN — `pixelmatch` absent from
-   node_modules; fix is `npm i -D pixelmatch` or a pngjs-only rewrite — if unanswered and CC6's re-shoot
-   needs a candidate diff, use the pngjs-only counter in PATTERNS.md, "Count VRT candidate pixels without
-   pixelmatch"). **Q-CC5-2** (the check:live "strip · next-edition" transient — see below; it is CC8/CC9's,
-   not CC6's, but if it is STILL red at your post-deploy step, read it the same way: is a nightly delayed
-   past its cron? If so it is the PD1 wall-clock window, not your defect). **Q-CC5-1** (the story-sheet
-   image reposition — P-1's; not CC6's). **P-1** (media bucket — still text-first default; not CC6's).
-2. Read CLARITY-AND-CADENCE-PLAN.md before touching anything — especially **Part 4.5** (the CC6 spec:
-   the movers floor, RelVol diagnosis, significance v2, calendar hygiene), **R5** in Part 3 (relevance is
-   significance, ties break newest-first — the ruling + its guard), **D6** in Part 2 (the junk-parade
-   diagnosis) and **D7** (the calendar-tells-yesterday-twice diagnosis), **Appendix B #1** (the
-   `instrument.assetClass/exchange` migration), **Appendix E** (Significance v2 worked example — THE TEST
-   IS THIS TABLE), and the **Part 5 CC6 line**.
+   questions (QUESTIONS-FOR-BISHANT.md): **Q-CC6-2** (the BIG one — the pre-existing `classify_event`
+   keyword classifier mislabels real headlines, so the production front page leads by a weak guess; v2
+   made it visible. NOT CC7's domain — CC7 is the control room — but if Bishan answered it wanting a
+   classifier pass, that reorders the plan; otherwise carry it forward). **Q-CC6-1** (the movers/entity
+   liquidity notion — scans' single-day is_large_mid vs baserates' 63-day `_DV_WINDOW`; if unanswered,
+   CC7 does NOT touch it — settled for CC6, only a swap if Bishan asks). **Q-LC1-1** (vrt-diff.mjs BROKEN — `pixelmatch`
+   absent; fix is `npm i -D pixelmatch` or a pngjs-only rewrite — if unanswered and CC7's VRT re-shoot
+   needs a candidate diff, use the pngjs-only counter in PATTERNS.md). **Q-CC5-2** (the check:live "strip
+   · next-edition" transient — CC8/CC9's; if red at your post-deploy, read it: is a nightly delayed past
+   its cron? then it is the PD1 wall-clock window, not your defect).
+2. Read CLARITY-AND-CADENCE-PLAN.md before touching anything — especially **Part 4.6** (the CC7 spec:
+   the pipelines table columns/rows, the DetailOverlay sheet, the run-now button), **the Part 5 CC7
+   line**, **Part 0.2** (P-2 the GitHub PAT — display-only default), and **Appendix C** (CC7 = settings,
+   all legs). And read **.claude/skills/new-surface/SKILL.md FIRST — it is the law for any new sheet.**
 3. Run both suites (app: `npm test` · pipeline: `env -u DATABASE_URL uv run pytest`) and announce the
-   checkpoint. Expect **app 781 · pipeline 579 passed / 35 skipped** (unchanged since cc-5).
+   checkpoint. Expect **app 788 · pipeline 584 passed / 35 skipped** (unchanged since cc-6).
 
-## CC6's build list (Part 4.5 + the Part 5 CC6 line are authoritative; this is the distillation)
+## CC7's build list (Part 4.6 + the Part 5 CC7 line are authoritative; this is the distillation)
 
-CC6 makes RELEVANCE honest — two deterministic, pipeline-side, tested scores (R5). Build 4.5 exactly:
+Settings' pipeline card becomes a **pipelines TABLE** via `components/DataTable` (the one-table law) +
+the existing action machinery. **Read `.claude/skills/new-surface` FIRST.**
 
-- **RelVol diagnosis FIRST (the first hour).** Every seeded mover prints RelVol "20.0×" exactly (D6) —
-  find the clamp or the degenerate denominator. Fix it, or if it is a real cap, LABEL it ("≥20×",
-  copy `relvolCapped`). A number that cannot exceed its cap must SAY so.
-- **The movers floor (Desk module + "moved without a story").** Eligible = common stocks + the ~15 core
-  sector/index ETFs; EXCLUDE trusts, ADR-hedged wrappers, structured products, and anything below the
-  dollar-volume floor. **Reuse `_DV_WINDOW` (the base-rate engine's large/mid bucket boundary) — do NOT
-  invent a second liquidity notion.** Instrument classification comes from Alpaca's `list_universe`
-  payload (already fetched nightly). Module footnote: "Liquid names only — the full universe stays in
-  Scans." (copy `movers.floorNote`). Scans stay universe-wide (their job; D6). The Desk movers e2e
-  asserts every rendered symbol carries the liquid-floor marker the loader exposes.
-- **THE MIGRATION (Appendix B #1):** `instrument.assetClass String?` + `instrument.exchange String?` —
-  ONE additive migration, backfilled from the Alpaca universe payload on the next full run; null stays
-  legal (delisted rows). `npx prisma migrate dev --name <name>`, then **run `check:migrations` (it is a
-  once-per-phase local check, and CC6 is the phase that adds a migration — CI structurally cannot answer
-  whether the LIVE db got it; deploy runs `prisma migrate deploy`).**
-- **Front-page significance v2:** `score = catalyst_weight × corroboration × entity_weight × freshness`.
-  catalyst_weight ranks hard events over commentary (M&A/FDA/earnings/Fed > guidance > analyst/opinion —
-  this kills the single-name-blog analyst lead); corroboration = distinct outlets (already computed);
-  entity_weight uses the same dollar-volume bucket (a mega-cap/index outranks a micro-cap PR at equal
-  catalyst); freshness decays over the window and **ties break NEWEST-first** (amends the documented
-  oldest-first tie). **Weights live in ONE table with a unit test PER ROW, and the worked example is
-  Appendix E — the test IS that table (d > a > b > c for the four clusters).** The Front-page dek names
-  the new ordering in one sentence (copy.ts).
-- **Calendar hygiene (D7):** row grammar becomes `[WEEKDAY DATE] [KIND CHIP] Title`, the symbol spoken
-  ONCE ("JPM earnings" — the chip says EARNINGS, the ticker chip says JPM, the title stops repeating
-  both); ordering is forward-first (post-close: tomorrow's events lead), and today's reported earnings
-  collapse into ONE "Reported today: JPM · BAC · GS · C · WFC" row (copy `reportedToday`). NOTE: the
-  dedupe BUG itself landed earlier (CC1, on (code,date,symbol)); CC6 is the row GRAMMAR + ordering.
+- **Columns:** Pipeline (name + 1-line plain-English description, copy.ts) · Cadence (DST-honest ET,
+  computed from the cron UTC line — BOTH seasonal renderings when they differ: "6:37 PM EDT / 5:37 PM
+  EST") · Last run (status chip OK/DEGRADED/FAILED/HELD + `formatEtStamp`) · Next run (computed from cron
+  in ET, "~" honors runner jitter) · Duration (mono, from pipeline_run started/finished) · → (opens a
+  **DetailOverlay** sheet — PD9's component; the new-surface skill applies).
+- **Rows:** Nightly full (Job A) · Evening briefing (Job B) · Dawn refresh (macro today; becomes the
+  Morning Edition run at CC8) · [Janitor appears at CC10] · plus the four manual modes as ACTIONS, not rows.
+- **The sheet per row:** what it fetches (per-provider list + tonight's per-source status) · its stages ·
+  caps/cooldowns · the last 10 runs (manual_run + pipeline_run MERGED) · the run-now button — which uses
+  the PROVEN dispatch path (request_id → run-name recovery; the load-bearing `run-name:` line in
+  nightly-a/b.yml stays guarded by `pipeline/tests/test_workflow_dispatch.py`). **Reuse that recovery path
+  untouched.** Without P-2 the button renders DARK with the existing banner (Part 0.2). Data-level truth
+  (source_status, run rows) renders regardless of P-2 — the table is NEVER blank.
+- **Compute next-run from the cron lines DST-honestly** — the two seasonal renderings when they differ.
+- **P-2 (the GitHub PAT, workflow scope) is NOT provisioned** → buttons dark in production (the default).
+  The whole dispatch path is proven (N6 evidence §6). It is a secret and nothing else.
 
-## CC6's gate (the Endgame, CLAUDE.md) — pipeline-first TDD, a migration, and a REAL run read by eye
+## CC7's gate (the Endgame, CLAUDE.md)
 
-1. **Pipeline tests FIRST** (the significance scoring table row-by-row against Appendix E; movers-floor
-   membership; the calendar dedupe/collapse fixture). Then app tests (the module footnote, the ordering,
-   the calendar grammar). Then build.
+1. TDD as the plan's §6.2 list dictates (UI is exempt; DO test the cron→ET next-run/cadence computation
+   and the row/status mapping — those are logic, not looks). App tests + pipeline (unchanged). Then build.
 2. Local gate (`typecheck && lint && test` · `uv run pytest` · `build` + `check:routes` +
-   `check:bundles` + `check:fonts` · `e2e:local` · `check:drift` — **29 rules at cc-5**). Guard scripts
-   need Node 24 — prepend `PATH="$HOME/.nvm/versions/node/v24.18.0/bin:$PATH"`. **`check:migrations`
-   once-per-phase — CC6 ADDS a migration, so this matters: apply it locally AND confirm the live DB gets
-   it (deploy runs migrate deploy; check:migrations compares disk vs live).**
+   `check:bundles` + `check:fonts` · `e2e:local` · `check:drift` — 29 rules at cc-6). Guard scripts need
+   Node 24 — prepend `PATH="$HOME/.nvm/versions/node/v24.18.0/bin:$PATH"`. **check:migrations is
+   once-per-phase; CC7 adds NO migration, so it just confirms the live DB still matches (CC6's landed).**
+   Settings is ALREADY a room, so likely no `routes-manifest.json` change (but the unit test reds if a
+   new room appears without an entry).
 3. Push to main → confirm branch CI green.
 4. **REHEARSE:** `gh workflow run ci.yml -f job=e2e` on the exact SHA you will tag (four-leg oracle).
-   **VRT: desk + news move (Appendix C CC6 — movers module, front-page ORDER, calendar rail).** The
-   front-page order changes (significance v2), so the lead may change — open every candidate, confirm the
-   diff is the new ordering + the movers floor + the calendar grammar, and nothing else. Read
-   `.claude/skills/vrt-update/SKILL.md` first. Diff EVERY candidate (the pngjs counter — Q-LC1-1). Batch
-   every red leg into ONE re-shoot (standing rule). In parallel: wait for the Vercel deploy, then
-   `check:live`, `check:nav`, `check:lighthouse`.
-   **check:live watch:** CC6 changes movers ordering + calendar + the front-page dek. `scripts/live-truth.mjs`
-   reads the macro board, the calendar hygiene (retired providers / rows behind the edition), the news
-   press-time and byline links — GREP it before the deploy (the CC3 lesson) and confirm no CC6 phrase is
-   asserted that your copy change would break. If the "strip · next-edition" red is still present, it is
-   the Q-CC5-2 delayed-nightly transient (CC8/CC9's), not CC6's — verify by checking whether the current
-   nightly-a has fired.
-5. **Post-deploy, the pipeline-verification memory (the real check):** dispatch a REAL `news` mode run
-   (`gh workflow run nightly-a.yml -f mode=news` or the control-room path) and **READ THE PUBLISHED FRONT
-   PAGE IN PRODUCTION** — the suite going green is NOT the check (PD7's sha1-hash-in-a-newspaper scar; the
-   `pipeline-phase-verification` memory). Confirm the new ordering reads sensibly and the movers floor
-   actually filtered the junk.
-6. Rehearsal green → tag `cc-6` **by SHA** → push → confirm the tag run.
-7. ONE docs commit after (evidence `docs/clarity-evidence/cc6.md`; intelligence files; this file
-   rewritten for CC7). Every evidence file ends with the gate-size line. Then report and STOP.
+   **VRT: settings, all legs (Appendix C CC7 = "settings only").** The pipelines table replaces the
+   pipeline card, so settings moves — open every candidate, confirm the diff is the table + sheet and
+   nothing else. Diff EVERY candidate (the pngjs counter — Q-LC1-1). Batch every red leg into ONE
+   re-shoot. In parallel: wait for the Vercel deploy, then `check:live`, `check:nav`, `check:lighthouse`.
+   **check:live watch:** CC7 changes only /settings; grep `app/scripts/live-truth.mjs` before the deploy
+   (the CC3 lesson) — it should assert nothing CC7 touches.
+5. **Post-deploy, the pipeline-verification memory:** CC7 is display + a dark button (P-2 unprovisioned),
+   so the real check is OPENING /settings in production and confirming the table renders all rows from
+   the live pipeline_run/manual_run data, the cadences read DST-honestly, and the button is dark with the
+   banner. No dispatch needed (the buttons are dark). Read the `pipeline-phase-verification` memory.
+6. Rehearsal green → tag `cc-7` **by SHA** → push → confirm the tag run.
+7. ONE docs commit after (evidence `docs/clarity-evidence/cc7.md`; intelligence files; this file
+   rewritten for CC8). Every evidence file ends with the gate-size line. Then report and STOP.
 
 ## Scope discipline
 
-CC6 is honest relevance: the front-page ORDER, the movers floor, RelVol, and calendar grammar. Do NOT
-touch the news CARD anatomy (CC5, DONE — text-first is shipped), the control-room table (CC7), the dawn
-cron / Morning Edition (CC8/CC9), or the grid columns. If a relevance change tempts an adjacent
-control-room or edition fix, LOG it — CC7/CC8/CC9 own those.
+CC7 is the control-room table + sheet ONLY. Do NOT touch the news/movers/calendar (CC5/CC6, DONE), the
+dawn cron / Morning Edition (CC8/CC9), the grid, or the significance formula. If a control-room change
+tempts a dawn-cron or edition fix, LOG it — CC8/CC9 own those.
 
 ## Carry-forward notes (do not lose these)
 
-- **`cc-5` state:** app **781** unit · pipeline **579** passed / 35 skipped · **97 VRT baselines** ·
-  **29 drift rules** (no new rule in CC5 — R4 deletes the L3/L4 rungs but keeps drift rule 20's NewsImage
-  door) · **27 e2e specs** · **14 manifest rooms** · 4 oracle legs · **16 bundle baselines**. Tag `cc-5`
-  on `5382f06`, tag run `29458574720` green (7 m 51 s). (All run ids in docs/clarity-evidence/cc5.md.)
-- **CC5 is shipped and correct:** the news is text-first — NewsImage is L1/L2-or-nothing (L3/L4 DELETED),
-  the card is headline-first with a byline carrying the source count (only when >1), "Market-wide" on the
-  card / the full sentence on the sheet, the story-sheet placeholder gone. `bylineSourceCount` is the new
-  pure helper. If you touch the movers or the front page, you are working ON TOP of the text-first cards —
-  do not re-introduce any image frame; drift rule 20 + the R4 e2e guard (`news-image-generated` count 0)
-  will red the build if you do.
-- **Q-CC5-2 — the check:live "strip · next-edition" transient (NOT a CC5 or CC6 defect).** At CC5's
-  post-deploy step, check:live redded 6/7: the strip promised "next edition Thu" while the edition was
-  Tuesday, because tonight's Wednesday nightly-a had not fired at 44 min past its 22:37 UTC cron, so the
-  strip's wall-clock next-edition rolled forward. It is the PD1 transitional window, stretched by a GitHub
-  cron delay. It is owed to CC8/CC9 (the edition-state machine). If your CC6 post-deploy check:live shows
-  the same red, check whether the current nightly has fired before believing it (PD1: read it first).
-- **Q-CC5-1 — the story-sheet image "below the byline" reposition — deferred to P-1** (Option B: the
-  placeholder is removed, real photos stay put). Not CC6's.
-- **The seed's news images:** three fixture photos (fed-hold, fda-nonopioid, amd-acquisition) exercise
-  the L1/L2 paths in VRT; the other 11 clusters are text-first. The Desk front-page module
-  (FrontPagePreview) is a GLANCE list (headline + tag + sourcesLine), NOT the NewsCard — CC6's front-page
-  ordering changes which 3 it shows, so its VRT may move.
-- **The pipeline-verification memory is load-bearing for CC6:** the test suite goes green while production
-  can publish garbage (PD7's sha1 hash in a sentence). CC6's real check is dispatching a `news` run and
-  READING the front page. Memory: `pipeline-phase-verification`.
-- **`vrt-diff.mjs` is BROKEN** (`pixelmatch` absent — Q-LC1-1, unanswered through CC5). Use the pngjs-only
-  counter (PATTERNS.md), write it INSIDE app/, run under Node 24, delete after. The moved==failed check it
-  gives you is the PD5 law's proof that nothing hid under the 600px tolerance.
-- **The guard scripts need Node 24** (Claude Code runs Node 20 and shadows nvm). Prepend the explicit
-  version (`v24.18.0`; the glob `v24*` breaks). `check:live`/`check:nav`/`check:lighthouse` need
-  `set -a; source .env; set +a`; Lighthouse needs `CHROME_PATH`.
+- **`cc-6` state:** app **788** unit · pipeline **584** passed / 35 skipped · **97 VRT baselines** (19
+  re-shot in CC6, 0 added) · **29 drift rules** (no new rule) · **27 e2e specs** · **14 manifest rooms** ·
+  4 oracle legs · **16 bundle baselines**. Tag `cc-6` on `2764e4f`. (All run ids in
+  docs/clarity-evidence/cc6.md.)
+- **CC6 is shipped:** significance v2 (`newsdesk/rank.py` — a 4-term product; the N-phase 5-term sum is
+  gone), the movers liquid floor (`isLiquidFloorEligible` in `app/lib/morning.ts` + the footnote + the
+  `data-liquid-floor` marker), the RelVol "≥20×" label, the `instrument.asset_class`/`dv_bucket`
+  migration + nightly backfill (`nightly._universe_buckets`, `universe.classify_asset_class`,
+  `publish._upsert_instruments` COALESCE), and the calendar grammar + reported-today collapse
+  (`CalendarTimeline.tsx`, `loadCalendar`). None overlap /settings.
+- **THE BACKFILL BRIDGE IS LIVE (CC6):** `instrument.dv_bucket` is null in production until the next full
+  nightly (22:37 UTC) runs the CC6 code. loadMovers falls back to the raw top 8 until then. **The movers
+  floor's full production effect + entity_weight are confirmed at the next full nightly** — a pending
+  live-observation gate (QUESTIONS-FOR-BISHANT.md, Q about the backfill). If you want to SEE it before
+  then, dispatch `gh workflow run nightly-a.yml -f mode=full` and open the Desk. NOT CC7's job.
+- **The seed's control-room data:** `pipeline_run` + `manual_run` rows already exist (N6). The CC7 table
+  reads them; the DetailOverlay merges manual_run + pipeline_run for the last-10-runs list.
+- **The pipeline-verification memory is load-bearing:** the test suite goes green while production can
+  render garbage. CC7's real check is OPENING /settings in production. Memory: `pipeline-phase-verification`.
+- **`vrt-diff.mjs` is BROKEN** (`pixelmatch` absent — Q-LC1-1, unanswered through CC6). Use the pngjs-only
+  counter (PATTERNS.md, "Count VRT candidate pixels without pixelmatch"), inside app/, Node 24, delete after.
+- **Guard scripts need Node 24** (Claude Code runs Node 20 and shadows nvm). Prepend the explicit version
+  (`v24.18.0`; the glob `v24*` breaks). `check:live`/`check:nav`/`check:lighthouse` need
+  `set -a; source .env; set +a`; Lighthouse needs `CHROME_PATH="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"`.
 - **The local e2e harness (docker `msm-e2e`) works** — DB URL
   `postgresql://postgres:test@localhost:55434/msmtest` (both DATABASE_URL and DIRECT_URL), then
   `npx prisma migrate deploy && npm run db:seed && export MSM_SEEDED=1`, `lsof -ti:3210 | xargs kill -9`
   before any run, ONE project at a time with `--workers=1 --ignore-snapshots`. **RE-SEED before the run.**
-  **CC6 adds a migration — after `prisma migrate dev`, re-run `migrate deploy && db:seed` on the docker DB
-  before the e2e harness.** The new columns are nullable so the seed is safe, BUT the movers-floor logic
-  needs SOME seeded instruments classified (assetClass/exchange) or the floor will exclude everything or
-  nothing — seed a few values so the filter is actually exercised by the Desk movers e2e.
-- **`dummy/`** was RETIRED at CC5's docs commit (the old news-placeholder screenshots are stale). The
-  **UI-LIBRARY-EVALUATION trio** (`.md` + PDF + HTML, untracked) is a finished deliverable — leave it.
-- **Stage by explicit path, never `git add -A`** (the 2026-07-12 scar).
+- **Stage by explicit path, never `git add -A`** (the 2026-07-12 scar). The **UI-LIBRARY-EVALUATION trio**
+  (`.md` + PDF + HTML, untracked) and **`dummy/`** are audit/deliverable evidence — leave them.

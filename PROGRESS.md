@@ -1,114 +1,115 @@
 # PROGRESS.md — resumable state
 
-# CC5 IS DONE — tagged `cc-5` (2026-07-15). Next phase: CC6.
+# CC6 IS DONE — tagged `cc-6` (2026-07-15). Next phase: CC7.
 
 **Two plans are active (2026-07-15): CLARITY-AND-CADENCE-PLAN.md (Plan A, `cc-1`…`cc-10`) and
 LEAN-CODEBASE-PLAN.md (Plan B, `lc-1`…`lc-3`, COMPLETE). Fixed execution order:**
 
-> **CC1 ✓ → LC1 ✓ → LC2 ✓ → LC3 ✓ → CC2 ✓ → CC3 ✓ → CC4 ✓ → CC5 ✓ → CC6 → CC7 → CC8 → CC9 → CC10**
+> **CC1 ✓ → LC1 ✓ → LC2 ✓ → LC3 ✓ → CC2 ✓ → CC3 ✓ → CC4 ✓ → CC5 ✓ → CC6 ✓ → CC7 → CC8 → CC9 → CC10**
 
-**Checkpoint: CC5 ("News, text-first") is DONE and tagged `cc-5` by SHA on `5382f06`.
-Nothing is blocked. Nothing is in flight. The next phase is CC6** (CLARITY-AND-CADENCE-PLAN.md —
-"Honest relevance"), and NEXT-SESSION-PROMPT.md is the paste-ready prompt for it.
+**Checkpoint: CC6 ("Honest relevance") is DONE and tagged `cc-6` by SHA on `2764e4f`.
+Nothing is blocked. The next phase is CC7** (CLARITY-AND-CADENCE-PLAN.md — "The control room"), and
+NEXT-SESSION-PROMPT.md is the paste-ready prompt for it.
 
-## What CC5 did, in one paragraph
+## What CC6 did, in one paragraph
 
-CC5 made the news TEXT-FIRST (R4/D5). NewsImage shrank to L1/L2 (a real stored photo) or nothing — the
-generated L3/L4 catalyst/publisher cards are DELETED, because with P-1 unprovisioned every card every
-night was a grey L4 slab carrying the catalyst word, taller than its own headline, saying nothing the
-Tag did not. The card is now its words: catalyst + sector tags · headline (a LEAD up to 3 lines, a ROW
-2) · why-it-matters (the LEAD's alone) · ticker chips OR the single word "Market-wide" · a byline
-(outlet · date · time · source count, the count speaking only when >1 — the standalone "1 SOURCE" row
-is gone). A real photo, when one exists (seed: fed-hold/fda/amd), renders right-of-headline at 40% on a
-lead, a small thumb on a row. The story sheet keeps its structure; only the placeholder block goes (the
-figure renders ONLY when a real image exists), so a no-photo story falls straight from headline into
-body. The full "No direct listing in our universe." sentence keeps its room on the sheet. No migration,
-no pipeline change.
+CC6 made the Desk's relevance deterministic, inspectable, pipeline-side and tested (R5). Four things:
+(1) **Front-page significance v2** — `newsdesk/rank.py`'s N-phase 5-term SUM is replaced by the plan's
+4-term PRODUCT (`catalyst_weight × corroboration × entity_weight × freshness`); entity_weight is the new
+dollar-volume term (a macro/Fed event is market-wide → max; else the largest linked name's bucket); scope
+and magnitude leave the formula; ties break newest-first; Appendix E (d>a>b>c) is the acceptance test with
+a unit test per weight row. (2) **The movers liquid floor** (D6) — the Desk's Movers module shows liquid
+names only (large/mid by dollar volume AND a common stock or one of the 15 core ETFs); trusts, wrappers,
+structured products and other funds fall to Scans; a per-row `data-liquid-floor` marker + the footnote
+"Liquid names only — the full universe stays in Scans." (3) **RelVol "≥20×"** — the degenerate 20.0×
+(a thin name's rvol saturating at its window length) now says so. (4) **Calendar hygiene** (D7) — an
+earnings row speaks its symbol once (`[EARNINGS] [JPM]` via TickerChip, no "JPM earnings" title);
+forward-first ordering; today's reported earnings collapse into one "Reported today: BAC · C · GS · JPM ·
+WFC" line. One additive migration: `instrument.asset_class` + `dv_bucket`, backfilled each full nightly.
 
-## The two judgment calls worth knowing (both in DECISIONS)
+## The judgment calls worth knowing (all in DECISIONS)
 
-1. **The story-sheet image position ("below the byline") is DEFERRED, not built (Option B).** 4.4
-   self-conflicts: "below the byline, never between headline and body" vs "only removes the placeholder
-   block" vs "keep the excellent structure." A REAL photo between headline and body is standard news
-   layout, and D5's complaint was the grey PLACEHOLDER hole, not a photo. So CC5 removed the placeholder
-   (figure renders only with a real image) and left real photos where they are. The reposition is
-   Q-CC5-1, for when P-1 lands and a real photo actually renders in production.
-2. **The lead's photo flips to right-of-headline at 40% (was image-left at 55%).** This is the
-   text-first thesis and 4.4 is explicit. It supersedes the PD8 "image-left broadsheet" justification.
-   The seeded lead (fed-hold) has a real fixture photo, so this renders in VRT.
+1. **significance v2 REPLACES the N-phase 5-term sum** (the plan specified v2 unaware rank.py existed;
+   built the product form faithfully, kept the classifier + magnitude-as-evidence). See LESSONS.
+2. **The liquidity notion is scans' single-day `is_large_mid`, NOT baserates' 63-day `_DV_WINDOW`** —
+   both top-1000, differ only in the window; scans' is the existing notion the movers carry + more apt for
+   a "today's movers" floor. Marked as **Q-CC6-1** (a swap if Bishan wants the 63-day median).
+3. **The migration adds `dv_bucket` beyond the plan's named columns** (exchange already exists;
+   entity_weight needs per-symbol size the newsdesk can read). assetClass is name-derived (Alpaca gives
+   no security type).
+4. **The movers loader has a backfill BRIDGE** — falls back to the raw top 8 when dv_bucket is not
+   backfilled (a fresh deploy / this migration), so the module never empties; self-heals on the next
+   nightly (N0's honest-degrade shape). VRT-neutral (the seed has buckets).
 
-## The gate at `cc-5` (all green on `5382f06`)
+## The gate at `cc-6` (all green on `2764e4f`)
 
-- **App unit 781 (was 778; +3 `bylineSourceCount` tests). Pipeline 579 passed / 35 skipped —
-  UNCHANGED (CC5 touches no pipeline code).** typecheck · lint · build · check:routes (14/15 cached) ·
-  check:bundles (worst 198.8 KB < 200; /news shrank — L3/L4 deleted) · check:fonts (243 KB, 317 KB
-  headroom) · **check:drift 29/29 (NO new rule — R4 deletes the L3/L4 rungs but KEEPS drift rule 20's
-  NewsImage door)** · check:migrations (no migration; live DB matches repo).
-- **e2e:local (--ignore-snapshots):** news.spec desktop 26 / phone 25+1 skip (the R4 height check is
-  desktop-only); hardening sweep phone 30/30; all news/story/styleguide/sheet VRT surfaces render.
-  Eyeballed the desktop + phone feed and the SMCI text-first story — all correct.
+- **App unit 788 (was 781: +1 RelVol cap, +3 isLiquidFloorEligible, +3 CalendarTimeline CC6). Pipeline
+  584 passed / 35 skipped (was 579: +4 test_universe, +1 nightly-instrument-enrichment; test_rank
+  rewritten for v2).** typecheck · lint · build · check:routes 14/15 · check:bundles (worst 198.9 KB <
+  200) · check:fonts (243 KB, 317 KB headroom) · **check:drift 29/29 (NO new rule)** · check:migrations
+  (applied locally AND confirmed against production).
+- **e2e:local (--ignore-snapshots):** desk desktop 20 + phone 23 (incl. the new movers-marker,
+  calendar reported-today, and news-ordering-dek assertions); news desktop 26. Eyeballed the desk-light
+  and news-zero-state candidates — all CC6 changes render correctly.
 
-## VRT at `cc-5` — 24 of 97 re-shot, every diff explained
+## VRT at `cc-6` — 19 of 97 re-shot, every diff explained
 
-Rehearsal #1 (`7e11b56`) redded 13 shots. Per the PD5 law, EVERY candidate was diffed against its
-committed baseline (pngjs counter — vrt-diff.mjs still broken, Q-LC1-1): the moved set EQUALS the
-failure set (nothing snuck under the 600px tolerance), 24 baseline FILES across the four legs. All
-explained + every actual/diff opened (PD3 first-baseline eyes on the new text-first lead composition):
-news feed (text-first, RESIZE shorter — L4 slabs gone), news-filtered/week, news-story-dropped/sparse
-(SMCI/Uber placeholder removed, ~444px shorter), sheet-story-phone + sheet-overlay-desktop (SMCI sheet,
-placeholder removed), styleguide (ladder shrank to L1/L2). The ONE shot that got TALLER (news-filtered
-phone, +27px) is the FDA lead headline gaining its 3rd line (clamp-2→clamp-3) — explained, not a bug.
-NOTHING unexpected moved: the Desk front-page module, the image-bearing news-story room (fda keeps its
-photo, Option B), login and scans are byte-identical. 24 re-shot, 0 added. 97 total.
+Rehearsal #1 (`9fb1cfa`) redded on VRT. Per the PD5 law, EVERY candidate was diffed against its committed
+baseline (pngjs counter — vrt-diff.mjs still broken, Q-LC1-1). The moved set EQUALLED the failed set on
+the CC6 surfaces: 19 baseline FILES across four legs. desk-light/dark + desk-thin-night grew ~19px (the
+movers footnote + the calendar's reported-today line); news-light/dark/filtered/week/zero-state moved (the
+v2 ordering dek + the reordered front page). FOUR shots moved WITHOUT failing on pages CC6 never touched —
+login (~17.5k px), sheet-ticker, ticker (6px), track-record (29px) — AA noise on gradients/grids (login
+byte-visually identical, confirmed by EYE); LEFT at their committed baselines (PD5 camera law). 19 re-shot,
+0 added, 97 total.
 
-## CI evidence (full in docs/clarity-evidence/cc5.md) — two pushes, one rehearsal each, one tag
+## CI evidence (full in docs/clarity-evidence/cc6.md) — two pushes, two rehearsals, one tag
 
-- **Push CI (7e11b56 = code): 29457189445 green (app + pipeline). Rehearsal #1 (7e11b56): 29457195791
-  RED on pixels (expected, all four legs), minted candidates.**
-- **Push CI (5382f06 = 24 baselines): 29458095546 green. Rehearsal #2 (5382f06): 29458095405 GREEN,
-  all four legs.**
-- **Tag run (cc-5 on 5382f06): 29458574720 — four-leg oracle, green.**
-- **Post-deploy: check:live 6/7 at first → CONFIRMED 7/7 after the delayed nightly landed.** The one red
-  (strip · next-edition) was a DELAYED-NIGHTLY transient, NOT a CC5 defect (see below); the Wednesday
-  nightly fired ~60 min late (run `29459077778`), published the Jul 15 edition, and check:live re-ran
-  7/7. check:nav report mode, worst 407ms (settings writer room, no regression). check:lighthouse gates
-  green (CLS 0.000/0.011, first-load JS 183 KB < 200, a11y 100); advisory perf 75→83 on re-sample
-  (synthetic-4G noise, per the endgame rule), in line with cc-4.
+- **Push CI (9fb1cfa = code): 29463477067 green. Rehearsal #1 (9fb1cfa): 29463479390 RED on VRT
+  (expected), minted candidates.**
+- **Push CI (2764e4f = bridge + 19 baselines): 29464231324 green. Rehearsal #2 (2764e4f): 29464236697
+  GREEN, all four legs.**
+- **Tag run (cc-6 on 2764e4f): `29464652788` — four-leg oracle, green (8 m 19 s).**
+- **Post-deploy: check:live 7/7 (masthead 2026-07-15, calendar hygiene clean, next-edition Thu — the
+  CC5 transient did NOT recur). check:migrations PASS (production got the CC6 migration). check:nav worst
+  457ms (settings, no regression). check:lighthouse gates green (CLS 0.002, JS 183 KB, a11y 100); advisory
+  perf 86.**
+- **Step 5 (the pipeline-verification READ): dispatched a real `news` run (`29464668482`, green) and read
+  the production front page — see the finding below.**
 
-## The check:live red — read it, it is a transient owed to CC8/CC9 (NOT a blocker, NOT CC5's)
+## THE FINDING FROM READING PRODUCTION (Q-CC6-2 — needs Bishant's eyes)
 
-check:live's "strip · next-edition promise" redded: the strip says "next edition Thu" while the edition
-is Tuesday Jul 14 (next session is Wed). ROOT CAUSE, read not assumed: tonight's Wednesday nightly-a had
-NOT fired at 44 min past its 22:37 UTC cron (last night's ran 52 min late), so production correctly
-serves Tuesday's edition while the strip's WALL-CLOCK next-edition rolled to Thursday — the exact PD1
-transitional window, extended by a GitHub cron delay. **CC5 touches no strip/masthead/edition/cron code**
-(it changed news CARD copy), the assertion PASSED at cc-4 hours earlier, and the CC5-relevant assertion
-(news byline links: 20 outbound anchors) is GREEN — proving the new byline works in production. The
-next-edition/strip logic is CC8/CC9's explicit domain (R6 + the edition-state machine + check:live
-`--window=morning`), so this is a red "owed to a later phase," which the Endgame permits. **CONFIRMED:
-the Wednesday nightly fired ~60 min late (`29459077778`), published the Jul 15 edition, and check:live
-re-ran 7/7 — the masthead now reads 2026-07-15 and "next edition Thu" is correct. Exactly as diagnosed.**
-That nightly shows `failure` in the history, but only its trailing Heartbeat step failed (its empty
-commit was rejected because CC5's docs commit `c4e928a` beat it to main — the documented "main moves
-under your endgame" race; harmless, the edition published fine). Logged as Q-CC5-2 (resolved).
+The formula is correct (the seed orders Fed/macro → FDA → SMCI earnings; Appendix E passes), but the REAL
+production front page leads with MISCLASSIFIED stories: a crypto stablecoin PR classified "macro" (leads),
+and two SeekingAlpha analyst opinions classified "ma". The fault is `rank.py`'s pre-existing
+`classify_event` keyword classifier — **which CC6 never touched** (byte-identical cc-5→cc-6). NOT a CC6
+regression (v1 misclassified too, via `scope`), but v2 makes catalyst_weight a full factor, so the
+classifier's quality is now load-bearing and newly visible. The entity backfill will NOT fix it (a
+macro-misclassified story is market-wide regardless of its bucket). **A classifier improvement is a real,
+separate piece of work — Q-CC6-2 (its own small phase, or folded into a later CC phase). The green suite
+and the seed both looked perfect; production did not — the pipeline-verification memory earning its keep.**
+
+## THE PENDING LIVE-OBSERVATION GATE (not a blocker — the N0 pattern)
+
+Production's `instrument.dv_bucket` is NULL for all 12,992 rows until the next full nightly (22:37 UTC)
+runs the CC6 code. So the movers floor's data is not ready in production yet: the **backfill bridge** shows
+the raw top 8 (the pre-CC6 junk parade, e.g. AHD/ASMH — no worse than the status quo), NOT an empty module.
+**The floor's full production effect (junk filtered) and entity_weight are confirmed at the next full
+nightly.** To see it sooner: `gh workflow run nightly-a.yml -f mode=full`, then open the Desk (the movers
+should lose AHD/ASMH and gain the liquid names; the front page should lead with the corroborated macro
+story). The seeded world (VRT/e2e) shows CC6 in full already. This is exactly N0's "a migration takes
+effect on the next run" — the Autonomy Contract permits proceeding with the pending gate.
 
 ## Open / carried forward (none blocking)
 
-1. **Q-LC1-1 still open:** vrt-diff.mjs broken (`pixelmatch` absent). Worked around again with the
-   pngjs-only counter (PATTERNS.md); the triptychs + the moved==failed proof are the real evidence.
-   Fix is `npm i -D pixelmatch` or a pngjs rewrite — Bishan's call.
-2. **Q-CC5-1 (new):** the story-sheet image position "below the byline" is deferred to P-1 (Option B —
-   the placeholder is removed, real photos stay put; a reposition of an invisible-in-prod path is an
-   end-of-phase over-reach). Decide the exact placement when a real photo renders.
-3. **Q-CC5-2 (new):** the check:live strip transient above — a heads-up that the strip's next-edition
-   follows the wall clock and rolls forward when a nightly is delayed past its cron; owed to CC8/CC9.
-4. **P-1 (news media bucket) still unprovisioned** — the default (text-first, no image) is 4.4's design
-   TARGET, so nothing is blocked. Provision any time and the kept L1/L2 code lights up.
-5. **`dummy/` LEFT in place (not deleted) — Q-CC5-3.** Part 4.4 authorised CC5 to retire it, but it is
-   UNTRACKED audit evidence (51 screenshots both plans were built from, not only news) that I did not
-   create; CLAUDE.md's deletion-safety rule says surface rather than delete such files. The news
-   screenshots in it are stale now, and Bishan can `rm -rf dummy/` any time. The UI-LIBRARY-EVALUATION
-   trio (untracked .md + PDF + HTML) is a finished deliverable — also LEFT in place.
+1. **Q-CC6-1 (new, [VETO?]):** the liquidity notion — scans' single-day is_large_mid vs baserates'
+   63-day `_DV_WINDOW`. Marked deviation; a swap if Bishan wants the median. See DECISIONS + QUESTIONS.
+2. **Q-LC1-1 still open:** vrt-diff.mjs broken (`pixelmatch` absent). Worked around with the pngjs
+   counter again. Fix is `npm i -D pixelmatch` or a pngjs rewrite — Bishan's call.
+3. **Q-CC5-2:** the check:live strip transient — did NOT recur at CC6 (7/7). Still owed to CC8/CC9.
+4. **P-1 (news media bucket) + P-2 (control-room PAT) still unprovisioned** — CC7's control room is
+   display-only without P-2 (the plan's default). Nothing blocked.
+5. **`dummy/` + the UI-LIBRARY-EVALUATION trio** — untracked audit/deliverable evidence, LEFT in place.
 
 ## The local harness (unchanged — still works; Node 24 required for the guard scripts)
 
@@ -121,11 +122,11 @@ lsof -ti:3210 | xargs kill -9                     # ALWAYS, before any run
 npx playwright test --project=desktop --workers=1 --ignore-snapshots   # one project at a time
 ```
 Guard scripts need **Node 24** — prepend `PATH="$HOME/.nvm/versions/node/v24.18.0/bin:$PATH"`.
-`check:live/nav/lighthouse` need `set -a; source .env; set +a`; Lighthouse needs `CHROME_PATH`.
+`check:live/nav/lighthouse` need `set -a; source .env; set +a`; Lighthouse needs
+`CHROME_PATH="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"`.
 
 ## The committed dev tools (LC1–LC3 + the VRT diff)
 
 - `pipeline/scripts/comment_stats.py` · `pipeline/scripts/comment_prover.py`
 - `app/scripts/vrt-diff.mjs` — **STILL BROKEN (pixelmatch absent); see Q-LC1-1.** The pngjs-only
-  workaround pattern is in PATTERNS.md ("Count VRT candidate pixels without pixelmatch") — write it
-  INSIDE app/, run under Node 24, delete after.
+  workaround pattern is in PATTERNS.md ("Count VRT candidate pixels without pixelmatch").
