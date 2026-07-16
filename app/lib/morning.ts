@@ -961,16 +961,24 @@ async function loadMovers(): Promise<Mover[] | null> {
     // (the base-rate engine's own bucket — reused, never a second liquidity notion) AND either a
     // common stock or one of the core index/sector ETFs. Trusts, ADR-hedged wrappers, structured
     // products and every other fund fall out here — in the front-of-paper module, not in Scans.
-    const eligible = rows
-      .filter((r) => {
-        const m = meta[r.symbol];
-        return m !== undefined && isLiquidFloorEligible({ symbol: r.symbol, ...m });
-      })
-      .slice(0, DESK_MOVERS);
-    if (eligible.length === 0) return [];
+    const eligible = rows.filter((r) => {
+      const m = meta[r.symbol];
+      return m !== undefined && isLiquidFloorEligible({ symbol: r.symbol, ...m });
+    });
 
-    const catalysts = await loadCatalysts(eligible.map((r) => r.symbol), latest.runDate);
-    const sources: MoverSource[] = eligible.map((r) => {
+    // THE BACKFILL BRIDGE. instrument.dv_bucket is stamped by the full nightly (the pipeline). Between a
+    // deploy that first ships this floor — or this very migration — and the first nightly to run the new
+    // code, the column exists but is null for every name, so the floor above would return NOTHING and
+    // empty the Desk's Movers module. When the floor's data is not ready yet (no mover carries a bucket),
+    // fall back to the raw ranked top 8 — the pre-CC6 behavior, no worse than the status quo — rather than
+    // an empty shelf. It self-heals the moment the next nightly backfills. (Same shape as N0's migration:
+    // the app degrades honestly until the data it depends on has been written.)
+    const floorReady = rows.some((r) => meta[r.symbol]?.dvBucket != null);
+    const selected = (floorReady ? eligible : rows).slice(0, DESK_MOVERS);
+    if (selected.length === 0) return [];
+
+    const catalysts = await loadCatalysts(selected.map((r) => r.symbol), latest.runDate);
+    const sources: MoverSource[] = selected.map((r) => {
       const m = (r.metrics ?? {}) as Record<string, unknown>;
       return {
         symbol: r.symbol,
