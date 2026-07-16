@@ -5,7 +5,7 @@ import { copy } from "@/lib/copy";
 import { directionOf, multiple, percent, price, signedPercent, timingLabel } from "@/lib/format";
 import { formatUtcDate, formatUtcWeekday } from "@/lib/time";
 import { nextTradingDay } from "@/lib/market-hours";
-import { toTradingDate } from "@/lib/pipeline";
+import { DAWN_KEY, toTradingDate } from "@/lib/pipeline";
 import { buildBrief, parseBriefDraft, type BriefView } from "@/lib/briefing";
 import { isKnownLesson } from "@/lib/academy";
 import {
@@ -494,16 +494,26 @@ export function buildMorningPlanCalendar(sources: MorningEventSource[]): Morning
 /** The order sources are listed in the footer — a stable inventory, whichever ran tonight. */
 const SOURCE_ORDER = ["alpaca", "finnhub", "marketaux", "fmp", "fred", "edgar"];
 
-/** Turn the run's sourceStatus JSON ({alpaca: "ok", finnhub: "degraded", ...}) into ordered rows. */
+/**
+ * Turn the run's sourceStatus JSON ({alpaca: "ok", finnhub: "degraded", ...}) into ordered rows.
+ *
+ * Since CC8 the dawn refresh stamps a nested `dawn` OBJECT beside the night's provider strings (its own
+ * ranAt/sources/stages). It is NOT a provider, so it is skipped here — otherwise the footer printed
+ * "dawn [object Object]" and counted it as a degraded source, which inflated the degraded count and the
+ * strip's "N degraded" (statusFromRun and nightSources already skip it the same way). Caught by CC9's
+ * seeded dawn entry surfacing in the VRT; it had been live in production since CC8's first dawn.
+ */
 export function buildSourceStatus(status: Record<string, unknown> | null): SourceStatus[] {
   if (!status) return [];
+  const isProvider = (name: string) => name !== DAWN_KEY;
   const known = SOURCE_ORDER.filter((name) => name in status).map((name) => ({
     name,
     status: String(status[name]),
   }));
-  // Include any provider not in the known order (a future source), after the known ones.
+  // Include any provider not in the known order (a future source), after the known ones — but never
+  // the nested dawn entry, which is metadata, not a provider's health.
   const extra = Object.keys(status)
-    .filter((name) => !SOURCE_ORDER.includes(name))
+    .filter((name) => !SOURCE_ORDER.includes(name) && isProvider(name))
     .map((name) => ({ name, status: String(status[name]) }));
   return [...known, ...extra];
 }

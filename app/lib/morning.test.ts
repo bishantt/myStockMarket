@@ -430,6 +430,20 @@ describe("buildSourceStatus", () => {
   it("returns an empty list when there is no run", () => {
     expect(buildSourceStatus(null)).toEqual([]);
   });
+
+  it("skips the nested dawn entry — it is metadata, not a degraded provider (CC8/CC9)", () => {
+    // The dawn refresh stamps a `dawn` OBJECT beside the night's provider strings. Left in, the footer
+    // printed "dawn [object Object]" and the strip counted it as a second degraded source.
+    const rows = buildSourceStatus({
+      alpaca: "ok",
+      marketaux: "degraded",
+      fred: "ok",
+      dawn: { ranAt: "2026-07-10T10:31:00Z", sources: { fred: "ok" }, stages: { macro: "ok" } },
+    });
+    expect(rows.map((r) => r.name)).not.toContain("dawn");
+    // Exactly one degraded source — marketaux, not marketaux + a phantom "dawn".
+    expect(rows.filter((r) => r.status !== "ok")).toHaveLength(1);
+  });
 });
 
 describe("buildScanBreakdown — the Desk's Sectors & Scans module (CC4, D4)", () => {
