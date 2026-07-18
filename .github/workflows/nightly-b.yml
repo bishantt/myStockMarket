@@ -56,6 +56,10 @@ jobs:
           curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo gpg --dearmor -o /etc/apt/trusted.gpg.d/pgdg.gpg
           sudo apt-get update
           sudo apt-get install -y postgresql-client-17
+          # The runner ships a v16 client whose binaries shadow the new v17 on PATH; put v17 first,
+          # or pg_dump still resolves to 16 and aborts on the version mismatch (the server is 17).
+          echo "/usr/lib/postgresql/17/bin" >> "$GITHUB_PATH"
+          /usr/lib/postgresql/17/bin/pg_dump --version
 
       - name: Run Job B
         env:
