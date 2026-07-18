@@ -8,8 +8,9 @@ R2, and a test proves the dump can actually be restored (a backup you have never
 hope, not a backup).
 
 The dump is PostgreSQL's custom format (-Fc): compressed, and restorable with pg_restore's
-selective/parallel options. Both wrappers shell out to the postgres client tools, which must be the
-same major version as the server (Supabase is 16), so the workflow installs postgresql-client-16.
+selective/parallel options. Both wrappers shell out to the postgres client tools, whose major
+version must be >= the server (Supabase is now 17 — pg_dump refuses to dump a newer server than
+itself), so the workflow installs postgresql-client-17.
 """
 
 from __future__ import annotations

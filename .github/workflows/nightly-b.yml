@@ -6,7 +6,7 @@
 # Job B pings /start, does its work, and pings success — the dead-man switch is live from day one.
 # The pings live inside jobs/job_b.py (unit-testable with a mock transport); the workflow only runs
 # the job. From P1 the Friday-evening run also takes a pg_dump of the serving database and pushes it
-# to R2, so postgresql-client-16 is installed for pg_dump. The full briefing pipeline and the
+# to R2, so postgresql-client-17 is installed for pg_dump. The full briefing pipeline and the
 # monthly Stooq spot-check attach here in P3.
 
 name: nightly-b
@@ -47,14 +47,15 @@ jobs:
       - name: Sync dependencies
         run: uv sync --frozen
 
-      # pg_dump for the weekly backup — the client major version must match Supabase (16).
-      - name: Install postgresql-client-16
+      # pg_dump for the weekly backup — the client major version must be >= the Supabase server,
+      # which Supabase upgraded to Postgres 17 (pg_dump refuses to dump a newer server than itself).
+      - name: Install postgresql-client-17
         working-directory: .
         run: |
           sudo sh -c 'echo "deb https://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list'
           curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo gpg --dearmor -o /etc/apt/trusted.gpg.d/pgdg.gpg
           sudo apt-get update
-          sudo apt-get install -y postgresql-client-16
+          sudo apt-get install -y postgresql-client-17
 
       - name: Run Job B
         env:

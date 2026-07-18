@@ -6,7 +6,7 @@ a backup. This inserts a sentinel row, dumps the database, deletes the row, rest
 checks the row is back — the whole dump → restore round trip against the throwaway Postgres.
 
 Gated twice: it skips without TEST_DATABASE_URL (the `db` fixture) and without the postgres client
-tools on PATH. CI installs postgresql-client-16 and provides the service container, so it runs there.
+tools on PATH. CI installs postgresql-client-17 and provides the service container, so it runs there.
 """
 
 import os
